@@ -130,7 +130,7 @@ fn inventory_hotbar_rules_hold() {
         inv.try_add_block(Block::Dirt as u16);
     }
     let total = inv.count_of(Block::Dirt as u16);
-    assert!(total <= (SLOTS as i32) * (STACK as i32), "capacity is bounded: {total}");
+    assert!(total <= (SLOTS as i32) * STACK, "capacity is bounded: {total}");
     inv.move_item(SLOTS + 1, 0);
     inv.move_item(0, 0);
     let mut swap_inv = Inventory::empty();

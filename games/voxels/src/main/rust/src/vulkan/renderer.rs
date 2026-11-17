@@ -38,6 +38,17 @@ fn aabb_in_frustum(planes: &[glam::Vec4; 6], min: Vec3, max: Vec3) -> bool {
     true
 }
 
+/// Per-frame inputs to `VulkanRenderer::update_ubo`, grouped as one argument.
+pub struct UboFrame {
+    pub view_proj: Mat4,
+    pub player_pos: Vec3,
+    pub time: f32,
+    pub underwater: f32,
+    pub night_vision: f32,
+    pub dim: u8,
+    pub rain: f32,
+}
+
 pub struct VulkanRenderer {
     pub ctx: VulkanContext,
     pub swapchain: Swapchain,
@@ -75,6 +86,10 @@ pub struct VulkanRenderer {
 }
 
 impl VulkanRenderer {
+    /// Builds the renderer on an existing Vulkan context.
+    ///
+    /// # Safety
+    /// `ctx` must own live Vulkan handles, and this must run on the thread that will own the renderer.
     pub unsafe fn new(ctx: VulkanContext, width: u32, height: u32) -> Result<Self, String> {
         let swapchain = Swapchain::new(&ctx, width.max(1), height.max(1))?;
         let ubo_size = std::mem::size_of::<UboData>() as u64;
@@ -86,14 +101,14 @@ impl VulkanRenderer {
         let atlas_pixels = crate::texture_atlas::load_atlas_bin();
         let atlas = unsafe { TextureAtlas::new(&instance, &device, phys, command_pool, ctx.queue, &atlas_pixels)? };
         let entity_pixels = crate::texture_atlas::load_entity_atlas_bin();
-        let entity_atlas = unsafe { TextureAtlas::new_sized(&instance, &device, phys, command_pool, ctx.queue, crate::texture_atlas::ENTITY_ATLAS_W, crate::texture_atlas::ENTITY_ATLAS_H, &entity_pixels)? };
+        let entity_atlas = unsafe { TextureAtlas::new_sized(crate::texture_atlas::TextureUpload { instance: &instance, device: &device, phys, command_pool, queue: ctx.queue }, crate::texture_atlas::ENTITY_ATLAS_W, crate::texture_atlas::ENTITY_ATLAS_H, &entity_pixels)? };
         // Dynamic host-visible buffers for the per-frame mob mesh.
         let entity_vbuf = unsafe { AllocatedBuffer::new(&instance, &device, phys, (MAX_ENTITY_VERTS * std::mem::size_of::<VulkanVertex>()) as u64, vk::BufferUsageFlags::VERTEX_BUFFER, vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT)? };
         let entity_ibuf = unsafe { AllocatedBuffer::new(&instance, &device, phys, (MAX_ENTITY_INDICES * 4) as u64, vk::BufferUsageFlags::INDEX_BUFFER, vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT)? };
         let shadow = unsafe { crate::vulkan::shadow::ShadowMap::new(&instance, &device, phys)? };
         let postfx = unsafe { crate::vulkan::postfx::PostFx::new(&instance, &device, phys, &swapchain, vk::Format::D32_SFLOAT)? };
         let ubo_buffer = unsafe { AllocatedBuffer::new(&instance, &device, phys, ubo_size, vk::BufferUsageFlags::UNIFORM_BUFFER, vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT)? };
-        let pipelines = unsafe { Pipelines::new(&device, postfx.main_rp, shadow.render_pass, swapchain.render_pass, postfx.post_rp, postfx.desc_layout, ubo_buffer.buffer, ubo_size, atlas.view, atlas.sampler, shadow.view, shadow.sampler, entity_atlas.view, entity_atlas.sampler)? };
+        let pipelines = unsafe { Pipelines::new(&device, crate::vulkan::pipeline::PipelineDeps { render_pass: postfx.main_rp, shadow_render_pass: shadow.render_pass, composite_rp: swapchain.render_pass, post_rp: postfx.post_rp, post_desc_layout: postfx.desc_layout, ubo_buffer: ubo_buffer.buffer, ubo_size, atlas_view: atlas.view, atlas_sampler: atlas.sampler, shadow_view: shadow.view, shadow_sampler: shadow.sampler, entity_view: entity_atlas.view, entity_sampler: entity_atlas.sampler })? };
         let alloc_info = vk::CommandBufferAllocateInfo::default().command_pool(command_pool).level(vk::CommandBufferLevel::PRIMARY).command_buffer_count(swapchain.images.len() as u32);
         let command_buffers = device.allocate_command_buffers(&alloc_info).map_err(|e| format!("alloc cmd {e:?}"))?;
         let sem_info = vk::SemaphoreCreateInfo::default();
@@ -111,6 +126,10 @@ impl VulkanRenderer {
         let ts_period = ctx.device_properties.limits.timestamp_period;
         Ok(Self { ctx, swapchain, atlas, entity_atlas, entity_vbuf, entity_ibuf, entity_index_count: 0, shadow, postfx, pipelines, command_pool, command_buffers, image_available, render_finished, in_flight_fences, ubo_buffer, ubo_data: UboData::default(), queued_meshes: HashMap::new(), gpu_meshes: HashMap::new(), current_frame: 0, frame_count: 0, width, height, query_pool, ts_period, ts_written: vec![false; img_count], pass_ms: [0.0;4], drawn_sections: 0, dim: 0, suspended: false })
     }
+    /// Rebuilds the swapchain at a new size.
+    ///
+    /// # Safety
+    /// Must be called from the thread that owns the renderer, with no frames in flight beyond what the call itself synchronises.
     pub unsafe fn resize(&mut self, width: u32, height: u32) -> Result<(), String> {
         if width==0 || height==0 || self.suspended { return Ok(()); }
         self.ctx.device.device_wait_idle().map_err(|e| format!("wait {e:?}"))?;
@@ -154,10 +173,18 @@ impl VulkanRenderer {
         self.suspended = false;
         Ok(())
     }
+    /// Queues a meshed section for upload.
+    ///
+    /// # Safety
+    /// Must be called from the thread that owns the renderer.
     pub unsafe fn enqueue_mesh(&mut self, chunk_x: i32, sec_y: i32, chunk_z: i32, mesh: Option<MeshData>) {
         self.queued_meshes.insert((chunk_x, sec_y, chunk_z), mesh);
     }
     // Destroy all chunk meshes (used when switching dimensions — mesh keys are per chunk coord).
+    /// Destroys every uploaded chunk mesh.
+    ///
+    /// # Safety
+    /// Must be called from the thread that owns the renderer, and the device must be idle or made idle by this call before handles are destroyed.
     pub unsafe fn clear_meshes(&mut self) {
         self.ctx.device.device_wait_idle().ok();
         for (_, mut m) in self.gpu_meshes.drain() {
@@ -169,6 +196,10 @@ impl VulkanRenderer {
         self.queued_meshes.clear();
     }
     // Replace the mob mesh for this frame (host-visible buffers, clamped to capacity).
+    /// Copies the entity mesh into the host-visible buffers.
+    ///
+    /// # Safety
+    /// Must be called from the thread that owns the renderer, and the buffers must not be in use by an in-flight frame.
     pub unsafe fn upload_entity_mesh(&mut self, verts: &[VulkanVertex], indices: &[u32]) {
         let nv = verts.len().min(MAX_ENTITY_VERTS);
         let ni = indices.len().min(MAX_ENTITY_INDICES);
@@ -181,6 +212,9 @@ impl VulkanRenderer {
     }
     /// Uploads up to `budget` queued section meshes, nearest to chunk (`cx`, `cz`) first so the
     /// ground around the player fills in before the horizon.
+    ///
+    /// # Safety
+    /// Must be called from the thread that owns the renderer; all Vulkan handles in `self` must be valid.
     pub unsafe fn process_pending_uploads(&mut self, cx: i32, cz: i32, budget: usize) -> Result<(), String> {
         let mut processed=0;
         let mut keys: Vec<_> = self.queued_meshes.keys().copied().collect();
@@ -222,7 +256,12 @@ impl VulkanRenderer {
         }
         Ok(())
     }
-    pub unsafe fn update_ubo(&mut self, view_proj: Mat4, player_pos: Vec3, time: f32, underwater: f32, night_vision: f32, dim: u8, rain: f32) {
+    /// Recomputes and uploads the per-frame uniform block.
+    ///
+    /// # Safety
+    /// Must be called from the thread that owns the renderer, and the UBO buffer must not be read by an in-flight frame while it is rewritten.
+    pub unsafe fn update_ubo(&mut self, frame: UboFrame) {
+        let UboFrame { view_proj, player_pos, time, underwater, night_vision, dim, rain } = frame;
         self.dim = dim;
         let day_cycle=crate::engine::DAY_CYCLE; let day_t=(time/day_cycle)%1.0;
         let sun_angle=day_t*std::f32::consts::TAU - std::f32::consts::FRAC_PI_2;
@@ -281,6 +320,10 @@ impl VulkanRenderer {
     pub fn queued_near(&self, cx: i32, cz: i32, r: i32) -> usize {
         self.queued_meshes.keys().filter(|k| (k.0 - cx).abs() <= r && (k.2 - cz).abs() <= r).count()
     }
+    /// Records and submits one frame.
+    ///
+    /// # Safety
+    /// Must be called from the thread that owns the renderer; all Vulkan handles in `self` must be valid and the surface must be live unless suspended.
     pub unsafe fn draw_frame(&mut self, cx: i32, cz: i32, upload_budget: usize) -> Result<bool, String> {
         if self.suspended { return Ok(false); }
         let device=self.ctx.device.clone();
@@ -401,18 +444,16 @@ impl VulkanRenderer {
             let post_layout = self.pipelines.post_layout;
             let post_rp = self.postfx.post_rp;
             let post_pass = |fb: vk::Framebuffer, pipe: vk::Pipeline, dset: vk::DescriptorSet, pc: [f32;4]| {
-                unsafe {
-                    let bg = vk::RenderPassBeginInfo::default().render_pass(post_rp).framebuffer(fb).render_area(vk::Rect2D{offset:vk::Offset2D{x:0,y:0},extent:bext}).clear_values(std::slice::from_ref(&zero_clear));
-                    device.cmd_begin_render_pass(cmd, &bg, vk::SubpassContents::INLINE);
-                    device.cmd_set_viewport(cmd, 0, std::slice::from_ref(&bvp));
-                    device.cmd_set_scissor(cmd, 0, std::slice::from_ref(&bsc));
-                    device.cmd_bind_pipeline(cmd, vk::PipelineBindPoint::GRAPHICS, pipe);
-                    device.cmd_bind_descriptor_sets(cmd, vk::PipelineBindPoint::GRAPHICS, post_layout, 0, std::slice::from_ref(&dset), &[]);
-                    let bytes = std::slice::from_raw_parts(pc.as_ptr() as *const u8, 16);
-                    device.cmd_push_constants(cmd, post_layout, vk::ShaderStageFlags::FRAGMENT, 0, bytes);
-                    device.cmd_draw(cmd, 3, 1, 0, 0);
-                    device.cmd_end_render_pass(cmd);
-                }
+                let bg = vk::RenderPassBeginInfo::default().render_pass(post_rp).framebuffer(fb).render_area(vk::Rect2D{offset:vk::Offset2D{x:0,y:0},extent:bext}).clear_values(std::slice::from_ref(&zero_clear));
+                device.cmd_begin_render_pass(cmd, &bg, vk::SubpassContents::INLINE);
+                device.cmd_set_viewport(cmd, 0, std::slice::from_ref(&bvp));
+                device.cmd_set_scissor(cmd, 0, std::slice::from_ref(&bsc));
+                device.cmd_bind_pipeline(cmd, vk::PipelineBindPoint::GRAPHICS, pipe);
+                device.cmd_bind_descriptor_sets(cmd, vk::PipelineBindPoint::GRAPHICS, post_layout, 0, std::slice::from_ref(&dset), &[]);
+                let bytes = std::slice::from_raw_parts(pc.as_ptr() as *const u8, 16);
+                device.cmd_push_constants(cmd, post_layout, vk::ShaderStageFlags::FRAGMENT, 0, bytes);
+                device.cmd_draw(cmd, 3, 1, 0, 0);
+                device.cmd_end_render_pass(cmd);
             };
             let (bw, bh) = (bext.width as f32, bext.height as f32);
             post_pass(self.postfx.bloom_a_fb, self.pipelines.bright_pipeline, self.postfx.bright_set, [0.0,0.0,0.0,0.0]);
@@ -454,6 +495,10 @@ impl VulkanRenderer {
         self.frame_count+=1;
         Ok(true)
     }
+    /// Destroys the renderer and every Vulkan object it owns.
+    ///
+    /// # Safety
+    /// Must be called once, from the thread that owns the renderer, after the device is idle; `self` must not be used afterwards.
     pub unsafe fn destroy(&mut self) {
         self.ctx.device.device_wait_idle().ok();
         for (_, mut mesh) in self.gpu_meshes.drain() {

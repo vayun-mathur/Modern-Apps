@@ -82,7 +82,7 @@ pub fn raycast(chunks: &ChunkMap, origin: Vec3, dir: Vec3, max_dist: f32) -> Opt
         let border = if step_z > 0 { z as f32 + 1.0 } else { z as f32 };
         (border - origin.z) / dir.z
     } else { f32::INFINITY };
-    let mut prev = (x,y,z);
+    let mut prev;
     let mut dist = 0.0;
     // Which axis the DDA last crossed, so a cube hit reports the face it entered through without
     // relying on float equality between accumulated t values.

@@ -16,7 +16,7 @@ mod tests {
     // One boundary, and blocks have to stay on their side of it.
     #[test]
     fn blocks_and_items_never_share_an_id() {
-        assert!(MAX_BLOCK_ID < crate::item::ITEM_BASE);
+        const { assert!(MAX_BLOCK_ID < crate::item::ITEM_BASE) };
         for id in 0..=MAX_BLOCK_ID { assert!(!crate::item::is_item(id), "block {id} reads as an item"); }
         assert!(crate::item::is_item(crate::item::ITEM_BASE));
         // Every item id decodes to air, so a stray one in a chunk is a hole rather than a wrong block.

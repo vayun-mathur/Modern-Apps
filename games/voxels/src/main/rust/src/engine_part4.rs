@@ -47,7 +47,7 @@ fn tick_farmland(state: &mut EngineState, dt: f32, player_pos: Vec3) {
 
     let (px, py, pz) = (player_pos.x.floor() as i32, player_pos.y.floor() as i32, player_pos.z.floor() as i32);
     let mut r = state.spawn_rng;
-    let mut next = |s: &mut u32| { *s ^= *s << 13; *s ^= *s >> 17; *s ^= *s << 5; *s };
+    let next = |s: &mut u32| { *s ^= *s << 13; *s ^= *s >> 17; *s ^= *s << 5; *s };
     let mut grown: Vec<(i32, i32)> = Vec::new();
     for _ in 0..FARM_SAMPLES {
         let a = next(&mut r);
@@ -157,8 +157,8 @@ fn explode(state: &mut EngineState, center: Vec3, radius: f32) {
     for (x, z) in cols { mark_neighbors_dirty(state, x, z); }
     let pd = (state.player.pos - center).length();
     if pd < radius * 2.0 { hurt_player(state, (1.0 - pd / (radius * 2.0)).max(0.0) * 22.0); }
-    spawn_particles(&mut state.spawn_rng, &mut state.particles, center, 30, [0.28, 0.25, 0.22], 6.0, 0.9, 0.3);
-    spawn_particles(&mut state.spawn_rng, &mut state.particles, center, 12, [1.0, 0.55, 0.15], 5.0, 0.5, 0.22);
+    spawn_particles(&mut state.spawn_rng, &mut state.particles, Burst { center, n: 30, color: [0.28, 0.25, 0.22], speed: 6.0, life: 0.9, size: 0.3 });
+    spawn_particles(&mut state.spawn_rng, &mut state.particles, Burst { center, n: 12, color: [1.0, 0.55, 0.15], speed: 5.0, life: 0.5, size: 0.22 });
 }
 
 /// Which way a stair placed now should face. Its low side looks back at the player so that walking
@@ -226,13 +226,12 @@ fn do_place(state: &mut EngineState, origin: Vec3, dir: Vec3) -> bool {
         if state.chunks.get_block_world(tx, ty, tz) == sel {
             let existing_top = state.chunks.get_meta_world(tx, ty, tz) & crate::world::block::META_TOP != 0;
             // Only the face on the cell's empty side can complete it.
-            if (existing_top && hit.normal.1 == -1) || (!existing_top && hit.normal.1 == 1) {
-                if state.inventory.consume_selected().is_some() {
+            if ((existing_top && hit.normal.1 == -1) || (!existing_top && hit.normal.1 == 1))
+                && state.inventory.consume_selected().is_some() {
                     state.chunks.set_block_world(tx, ty, tz, block.parent() as Id);
                     mark_neighbors_dirty(state, tx, tz);
                     return true;
                 }
-            }
         }
     }
 
@@ -308,7 +307,7 @@ fn place_at(state: &mut EngineState, px: f32, py: f32) -> i32 {
                     state.weather = WEATHER_CLEAR;
                     state.weather_cd = weather_duration(0.4);
                     let c = vec3(x as f32 + 0.5, y as f32 + 1.2, z as f32 + 0.5);
-                    spawn_particles(&mut state.spawn_rng, &mut state.particles, c, 20, [1.0, 0.82, 0.42], 2.0, 1.0, 0.12);
+                    spawn_particles(&mut state.spawn_rng, &mut state.particles, Burst { center: c, n: 20, color: [1.0, 0.82, 0.42], speed: 2.0, life: 1.0, size: 0.12 });
                     return 1;
                 }
                 if id == 83 { // chest: open its container
@@ -317,9 +316,8 @@ fn place_at(state: &mut EngineState, px: f32, py: f32) -> i32 {
                     return 30;
                 }
                 // Tap an obsidian frame with flint & steel to ignite a nether portal.
-                if id == 78 && state.dim != 2 && crate::item::is_flint_steel(state.inventory.selected_block()) {
-                    if light_portal(state, x, y, z) { state.inventory.damage_selected(); return 41; }
-                }
+                if id == 78 && state.dim != 2 && crate::item::is_flint_steel(state.inventory.selected_block())
+                    && light_portal(state, x, y, z) { state.inventory.damage_selected(); return 41; }
                 let m = crate::world::block::Block::from_id(id).menu();
                 if m != 0 { return 10 + m; }
             }

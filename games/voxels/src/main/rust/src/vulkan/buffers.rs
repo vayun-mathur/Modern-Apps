@@ -68,6 +68,10 @@ pub struct AllocatedBuffer {
 }
 
 impl AllocatedBuffer {
+    /// Allocates a Vulkan buffer.
+    ///
+    /// # Safety
+    /// The Vulkan handles passed in must be valid, created from the same instance/device, and must not be destroyed or used concurrently while this call runs.
     pub unsafe fn new(instance: &ash::Instance, device: &ash::Device, phys: vk::PhysicalDevice, size: vk::DeviceSize, usage: vk::BufferUsageFlags, properties: vk::MemoryPropertyFlags) -> Result<Self, String> {
         let info = vk::BufferCreateInfo::default().size(size.max(1)).usage(usage).sharing_mode(vk::SharingMode::EXCLUSIVE);
         let buffer = device.create_buffer(&info, None).map_err(|e| format!("create buffer {e:?}"))?;
@@ -79,16 +83,28 @@ impl AllocatedBuffer {
         device.bind_buffer_memory(buffer, memory, 0).map_err(|e| format!("bind {e:?}"))?;
         Ok(Self { buffer, memory, size })
     }
+    /// Copies `data` into the mapped buffer memory.
+    ///
+    /// # Safety
+    /// `device` must be the device this buffer was created on, `data` must fit in the allocation, and the memory must not be in use by the GPU.
     pub unsafe fn upload(&self, device: &ash::Device, data: &[u8]) {
         if data.is_empty() { return; }
         let ptr = device.map_memory(self.memory, 0, data.len() as u64, vk::MemoryMapFlags::empty()).unwrap() as *mut u8;
         ptr.copy_from_nonoverlapping(data.as_ptr(), data.len());
         device.unmap_memory(self.memory);
     }
+    /// Destroys the buffer and frees its memory.
+    ///
+    /// # Safety
+    /// The handles owned by `self` must have been created on `device`, must not already have been destroyed, and no in-flight GPU work may still use them.
     pub unsafe fn destroy(&mut self, device: &ash::Device) {
         device.destroy_buffer(self.buffer, None);
         device.free_memory(self.memory, None);
     }
+    /// Destroys the buffer and frees its memory (shared-reference form).
+    ///
+    /// # Safety
+    /// The handles owned by `self` must have been created on `device`, must not already have been destroyed, and no in-flight GPU work may still use them. The caller must guarantee no other reference will use or destroy them again.
     pub unsafe fn destroy_inner(&self, device: &ash::Device) {
         device.destroy_buffer(self.buffer, None);
         device.free_memory(self.memory, None);

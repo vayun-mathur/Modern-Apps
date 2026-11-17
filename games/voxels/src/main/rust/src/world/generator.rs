@@ -43,9 +43,14 @@ fn hash3(a: i32, b: i32, c: u32) -> u64 {
 }
 fn in_chunk(wx: i32, wz: i32, ox: i32, oz: i32) -> bool { wx >= ox && wx < ox + 16 && wz >= oz && wz < oz + 16 }
 
+/// One tree to plant: its cell, surface height, wood and canopy.
+struct Tree { dx: usize, dz: usize, h: usize, log: Id, leaf: Id, trunk_h: usize }
+/// One village building: its world corner, footprint, surface base and kind.
+struct Building { bx: i32, bz: i32, w: i32, d: i32, base: usize, kind: u8 }
 // Render a single village building, writing only the columns that fall inside this chunk (so a
 // building straddling a chunk border is completed by whichever chunks overlap it).
-fn render_building(chunk: &mut Chunk, ox: i32, oz: i32, bx: i32, bz: i32, w: i32, d: i32, base: usize, kind: u8) {
+fn render_building(chunk: &mut Chunk, ox: i32, oz: i32, building: Building) {
+    let Building { bx, bz, w, d, base, kind } = building;
     if base + 7 >= CHUNK_HEIGHT { return; }
     match kind {
         B_WELL => {
@@ -128,7 +133,7 @@ fn build_ruined_portal(chunk: &mut Chunk, cx: usize, cz: usize, base: usize) {
     // A little rubble at the base, with scattered magma and glowstone.
     for gx in -1i32..=4 {
         let x = cx as i32 + gx;
-        if x >= 0 && x < 16 {
+        if (0..16).contains(&x) {
             let rub = match (gx.rem_euclid(3), gx.rem_euclid(5)) { (0, _) => 76, (_, 0) => 77, _ => 78 }; // magma/glowstone/obsidian
             chunk.set_block(x as usize, base, cz, rub);
         }
@@ -139,7 +144,10 @@ fn build_ruined_portal(chunk: &mut Chunk, cx: usize, cz: usize, base: usize) {
 
 // Carve one 3-wide mineshaft corridor arm from a centre along (dirx,dirz), with a plank floor,
 // periodic wood support frames, and only the columns inside this chunk written.
-fn carve_corridor(chunk: &mut Chunk, ox: i32, oz: i32, cx: i32, cz: i32, dirx: i32, dirz: i32, len: i32, fy: usize) {
+/// One mineshaft corridor arm: centre, direction, length and floor height.
+struct Corridor { cx: i32, cz: i32, dirx: i32, dirz: i32, len: i32, fy: usize }
+fn carve_corridor(chunk: &mut Chunk, ox: i32, oz: i32, corridor: Corridor) {
+    let Corridor { cx, cz, dirx, dirz, len, fy } = corridor;
     for i in 0..len {
         let (ax, az) = (cx + dirx * i, cz + dirz * i);
         for p in -1..=1 {

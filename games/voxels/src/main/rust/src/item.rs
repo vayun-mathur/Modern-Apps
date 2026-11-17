@@ -144,7 +144,7 @@ mod tests {
     // line it would silently become unplaceable, so pin the invariant down.
     #[test]
     fn block_ids_stay_below_the_item_base() {
-        assert!(crate::world::block::MAX_BLOCK_ID < ITEM_BASE);
+        const { assert!(crate::world::block::MAX_BLOCK_ID < ITEM_BASE) };
         assert!(!is_item(crate::world::block::MAX_BLOCK_ID));
         assert!(is_item(ITEM_BASE), "the boundary itself belongs to items");
     }

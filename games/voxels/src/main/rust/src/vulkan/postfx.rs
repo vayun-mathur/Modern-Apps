@@ -32,7 +32,8 @@ unsafe fn mem_type(instance: &ash::Instance, phys: vk::PhysicalDevice, bits: u32
     (0..mp.memory_type_count).find(|&i| (bits & (1<<i))!=0 && mp.memory_types[i as usize].property_flags.contains(props)).ok_or("no mem type".into())
 }
 
-unsafe fn make_image(instance: &ash::Instance, device: &ash::Device, phys: vk::PhysicalDevice, w: u32, h: u32, format: vk::Format, usage: vk::ImageUsageFlags, aspect: vk::ImageAspectFlags) -> Result<(vk::Image, vk::DeviceMemory, vk::ImageView), String> {
+unsafe fn make_image(instance: &ash::Instance, device: &ash::Device, phys: vk::PhysicalDevice, extent: vk::Extent2D, format: vk::Format, usage: vk::ImageUsageFlags, aspect: vk::ImageAspectFlags) -> Result<(vk::Image, vk::DeviceMemory, vk::ImageView), String> {
+    let (w, h) = (extent.width, extent.height);
     let ci = vk::ImageCreateInfo::default().image_type(vk::ImageType::TYPE_2D).format(format)
         .extent(vk::Extent3D{width:w.max(1),height:h.max(1),depth:1}).mip_levels(1).array_layers(1)
         .samples(vk::SampleCountFlags::TYPE_1).tiling(vk::ImageTiling::OPTIMAL).usage(usage).initial_layout(vk::ImageLayout::UNDEFINED);
@@ -72,6 +73,10 @@ fn color_rp(device: &ash::Device, format: vk::Format, with_depth: Option<vk::For
 }
 
 impl PostFx {
+    /// Creates the post-processing render passes and targets.
+    ///
+    /// # Safety
+    /// The Vulkan handles passed in must be valid, created from the same instance/device, and must not be destroyed or used concurrently while this call runs. `swapchain` must be live and its depth view valid.
     pub unsafe fn new(instance: &ash::Instance, device: &ash::Device, phys: vk::PhysicalDevice, swapchain: &Swapchain, depth_format: vk::Format) -> Result<Self, String> {
         let main_rp = color_rp(device, HDR_FORMAT, Some(depth_format))?;
         let post_rp = color_rp(device, HDR_FORMAT, None)?;
@@ -103,9 +108,9 @@ impl PostFx {
         let ext = swapchain.extent;
         self.extent = ext;
         self.bloom_extent = vk::Extent2D { width: (ext.width/2).max(1), height: (ext.height/2).max(1) };
-        let (hi, hm, hv) = make_image(instance, device, phys, ext.width, ext.height, HDR_FORMAT, vk::ImageUsageFlags::COLOR_ATTACHMENT | vk::ImageUsageFlags::SAMPLED, vk::ImageAspectFlags::COLOR)?;
-        let (ai, am, av) = make_image(instance, device, phys, self.bloom_extent.width, self.bloom_extent.height, HDR_FORMAT, vk::ImageUsageFlags::COLOR_ATTACHMENT | vk::ImageUsageFlags::SAMPLED, vk::ImageAspectFlags::COLOR)?;
-        let (bi, bm, bv) = make_image(instance, device, phys, self.bloom_extent.width, self.bloom_extent.height, HDR_FORMAT, vk::ImageUsageFlags::COLOR_ATTACHMENT | vk::ImageUsageFlags::SAMPLED, vk::ImageAspectFlags::COLOR)?;
+        let (hi, hm, hv) = make_image(instance, device, phys, ext, HDR_FORMAT, vk::ImageUsageFlags::COLOR_ATTACHMENT | vk::ImageUsageFlags::SAMPLED, vk::ImageAspectFlags::COLOR)?;
+        let (ai, am, av) = make_image(instance, device, phys, self.bloom_extent, HDR_FORMAT, vk::ImageUsageFlags::COLOR_ATTACHMENT | vk::ImageUsageFlags::SAMPLED, vk::ImageAspectFlags::COLOR)?;
+        let (bi, bm, bv) = make_image(instance, device, phys, self.bloom_extent, HDR_FORMAT, vk::ImageUsageFlags::COLOR_ATTACHMENT | vk::ImageUsageFlags::SAMPLED, vk::ImageAspectFlags::COLOR)?;
         self.hdr_img=hi; self.hdr_mem=hm; self.hdr_view=hv;
         self.ba_img=ai; self.ba_mem=am; self.bloom_a_view=av;
         self.bb_img=bi; self.bb_mem=bm; self.bloom_b_view=bv;
@@ -141,11 +146,19 @@ impl PostFx {
         for m in [self.hdr_mem, self.ba_mem, self.bb_mem] { if m != vk::DeviceMemory::null() { device.free_memory(m, None); } }
     }
 
+    /// Recreates the sized targets for a new swapchain extent.
+    ///
+    /// # Safety
+    /// The Vulkan handles passed in must be valid, created from the same instance/device, and must not be destroyed or used concurrently while this call runs.
     pub unsafe fn resize(&mut self, instance: &ash::Instance, device: &ash::Device, phys: vk::PhysicalDevice, swapchain: &Swapchain) -> Result<(), String> {
         self.destroy_targets(device);
         self.create_targets(instance, device, phys, swapchain)
     }
 
+    /// Destroys the render passes, descriptor objects and targets.
+    ///
+    /// # Safety
+    /// The handles owned by `self` must have been created on `device`, must not already have been destroyed, and no in-flight GPU work may still use them.
     pub unsafe fn destroy(&mut self, device: &ash::Device) {
         self.destroy_targets(device);
         device.destroy_descriptor_pool(self.desc_pool, None);

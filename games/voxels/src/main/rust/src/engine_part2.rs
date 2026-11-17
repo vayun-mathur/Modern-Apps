@@ -311,11 +311,11 @@ fn tick_projectiles(state: &mut EngineState, dt: f32) {
         state.player.vel = Vec3::ZERO;
         state.player.air_max_y = state.player.pos.y; // no fall damage from the teleport
         state.player.damage(2.0); // ender pearls jar you a little
-        spawn_particles(&mut state.spawn_rng, &mut state.particles, tp, 16, [0.25, 0.85, 0.7], 4.0, 0.6, 0.14);
+        spawn_particles(&mut state.spawn_rng, &mut state.particles, Burst { center: tp, n: 16, color: [0.25, 0.85, 0.7], speed: 4.0, life: 0.6, size: 0.14 });
     }
     for (pos, color, big) in bursts {
         let n = if big { 24 } else { 10 };
-        spawn_particles(&mut state.spawn_rng, &mut state.particles, pos, n, color, if big { 5.0 } else { 3.0 }, 0.6, if big { 0.22 } else { 0.13 });
+        spawn_particles(&mut state.spawn_rng, &mut state.particles, Burst { center: pos, n, color, speed: if big { 5.0 } else { 3.0 }, life: 0.6, size: if big { 0.22 } else { 0.13 } });
     }
 }
 
@@ -333,7 +333,7 @@ fn tick_fishing(state: &mut EngineState, dt: f32, player_pos: Vec3) {
     }
     if state.fishing.tick(dt) {
         // A bite: splash, so the player knows to strike without needing to watch a HUD element.
-        spawn_particles(&mut state.spawn_rng, &mut state.particles, bob, 10, [0.60, 0.80, 0.95], 3.0, 0.5, 0.09);
+        spawn_particles(&mut state.spawn_rng, &mut state.particles, Burst { center: bob, n: 10, color: [0.60, 0.80, 0.95], speed: 3.0, life: 0.5, size: 0.09 });
     }
     // The float itself, redrawn each frame as a short-lived particle.
     if state.particles.len() < 480 {

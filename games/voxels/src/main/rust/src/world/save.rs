@@ -15,7 +15,7 @@ pub fn save_chunk(base: &str, chunk: &Chunk) -> std::io::Result<()> {
     fs::create_dir_all(&dir)?;
     let path = chunk_file(base, chunk.pos);
     let tmp = path.with_extension("tmp");
-    fs::write(&tmp, &encode_chunk(chunk))?;
+    fs::write(&tmp, encode_chunk(chunk))?;
     fs::rename(&tmp, &path)?;
     Ok(())
 }

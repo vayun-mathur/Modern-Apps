@@ -7,7 +7,7 @@ pub extern "system" fn Java_com_vayunmathur_games_voxels_util_VoxelsNative_selec
     slot: jint,
 ) {
     engine::with_engine(|s| {
-        s.inventory.select(slot.max(0).min(8) as usize);
+        s.inventory.select(slot.clamp(0, 8) as usize);
     });
 }
 

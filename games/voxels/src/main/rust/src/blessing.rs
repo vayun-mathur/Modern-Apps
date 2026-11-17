@@ -119,7 +119,7 @@ impl Attunement {
         self.slots[slot] = 0;
         Some(id)
     }
-    pub fn to_json(&self) -> String {
+    pub fn to_json(self) -> String {
         let list: Vec<_> = self.slots.iter().map(|&id| {
             match find(id) {
                 Some(b) => serde_json::json!({"id": b.id, "name": b.name, "effect": b.effect}),

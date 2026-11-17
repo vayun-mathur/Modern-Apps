@@ -1,6 +1,6 @@
 impl Block {
     pub fn from_id(id: Id) -> Self {
-        if id <= MAX_BLOCK_ID { unsafe { std::mem::transmute(id) } } else { Self::Air }
+        if id <= MAX_BLOCK_ID { unsafe { std::mem::transmute::<Id, Self>(id) } } else { Self::Air }
     }
     pub fn id(self) -> Id { self as Id }
     pub fn is_air(self) -> bool { matches!(self, Self::Air) }
@@ -176,9 +176,9 @@ impl Block {
             Self::DiamondOre => 23,
             Self::RedstoneOre => 24,
             Self::EmeraldOre => 25,
-            Self::IronBlock => 26,
-            Self::DiamondBlock => 27,
-            Self::EmeraldBlock => 28,
+            Self::Iron => 26,
+            Self::Diamond => 27,
+            Self::Emerald => 28,
             Self::BirchLog => 30,
             Self::BirchPlanks => 31,
             Self::BirchLeaves => 32,
@@ -211,7 +211,7 @@ impl Block {
             Self::NetherBricks => 90,
             Self::EndStoneBricks => 91,
             Self::CobbledDeepslate => 92,
-            Self::HayBlock => 94,
+            Self::Hay => 94,
             Self::Farmland => 95,
             Self::PackedDirt => 96,
             Self::TubeCoral => 97,
@@ -224,7 +224,7 @@ impl Block {
             Self::Prismarine => 104,
             Self::DarkPrismarine => 105,
             Self::Dripstone => 106,
-            Self::MossBlock => 107,
+            Self::Moss => 107,
             Self::Sculk => 108,
             Self::Amethyst => 109,
             Self::Calcite => 110,
@@ -246,15 +246,15 @@ impl Block {
             Self::SilverOre => 128,
             Self::SulfurOre => 129,
             Self::CinnabarOre => 130,
-            Self::SilverBlock => 131,
-            Self::SteelBlock => 132,
-            Self::AdamantBlock => 133,
+            Self::Silver => 131,
+            Self::Steel => 132,
+            Self::Adamant => 133,
             Self::BlastFurnace => 134,
             Self::CopperOre => 136,
             Self::GoldOre => 137,
-            Self::CopperBlock => 138,
-            Self::GoldBlock => 139,
-            Self::BronzeBlock => 140,
+            Self::Copper => 138,
+            Self::Gold => 139,
+            Self::Bronze => 140,
             Self::Stonecutter => 141,
             Self::Wool => 143,
             Self::SuspiciousSand => 144,
@@ -304,7 +304,7 @@ impl Block {
             Self::DarkOakLog => 79,
             Self::AcaciaLog => 83,
             Self::JungleLog => 85,
-            Self::HayBlock => 93,
+            Self::Hay => 93,
             Self::Farmland => 1,
             Self::BlastFurnace => 135,
             Self::Stonecutter => 142,
@@ -332,12 +332,12 @@ impl Block {
         matches!(self,
             Self::Stone | Self::Cobble | Self::Brick | Self::MossyCobble | Self::Diorite | Self::PolishedDiorite
             | Self::CoalOre | Self::IronOre | Self::DiamondOre | Self::RedstoneOre | Self::EmeraldOre
-            | Self::IronBlock | Self::DiamondBlock | Self::EmeraldBlock | Self::Netherrack | Self::Furnace
+            | Self::Iron | Self::Diamond | Self::Emerald | Self::Netherrack | Self::Furnace
             | Self::RedSandstone | Self::Sandstone | Self::GraniteBricks | Self::DeepslateBricks | Self::NetherBricks
             | Self::EndStoneBricks | Self::CobbledDeepslate | Self::Prismarine | Self::DarkPrismarine | Self::Dripstone
             | Self::Amethyst | Self::Calcite | Self::Tuff | Self::Magma | Self::Obsidian | Self::PackedIce | Self::BlueIce | Self::Purpur
-            | Self::SilverOre | Self::SulfurOre | Self::CinnabarOre | Self::SilverBlock | Self::SteelBlock | Self::AdamantBlock | Self::BlastFurnace
-            | Self::CopperOre | Self::GoldOre | Self::CopperBlock | Self::GoldBlock | Self::BronzeBlock
+            | Self::SilverOre | Self::SulfurOre | Self::CinnabarOre | Self::Silver | Self::Steel | Self::Adamant | Self::BlastFurnace
+            | Self::CopperOre | Self::GoldOre | Self::Copper | Self::Gold | Self::Bronze
             | Self::Stonecutter
             | Self::StoneSlab | Self::StoneStairs | Self::CobbleSlab | Self::CobbleStairs
             | Self::BrickSlab | Self::BrickStairs | Self::SandstoneSlab | Self::SandstoneStairs

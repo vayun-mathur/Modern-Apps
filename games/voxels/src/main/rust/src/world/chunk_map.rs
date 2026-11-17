@@ -184,5 +184,6 @@ impl ChunkMap {
     /// Edited chunks waiting for the next save after leaving range.
     pub fn pending_len(&self) -> usize { self.pending.len() }
     pub fn len(&self) -> usize { self.chunks.len() }
+    pub fn is_empty(&self) -> bool { self.chunks.is_empty() }
     pub fn grass_tint(&self, wx: i32, wz: i32) -> [f32; 3] { self.gen.grass_tint(wx as f64, wz as f64) }
 }

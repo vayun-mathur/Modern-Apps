@@ -58,11 +58,11 @@ impl TerrainGen {
         if temp < 0.28 {
             if variant > 0.86 { return Biome::IceSpikes; }
             if humid > 0.55 { return Biome::SnowyTaiga; }
-            return Biome::SnowyPlains;
+            Biome::SnowyPlains
         } else if temp > 0.72 {
             if humid < 0.28 { return if variant > 0.72 { Biome::Badlands } else { Biome::Desert }; }
             if humid > 0.60 { return if variant > 0.5 { Biome::Jungle } else { Biome::SparseJungle }; }
-            return Biome::Savanna;
+            Biome::Savanna
         } else {
             if humid < 0.30 { return Biome::Savanna; }
             if humid > 0.78 { return if variant > 0.7 { Biome::MushroomFields } else if temp > 0.5 { Biome::MangroveSwamp } else { Biome::Swamp }; }
@@ -72,7 +72,7 @@ impl TerrainGen {
             if variant > 0.72 { return Biome::FlowerForest; }
             if variant < 0.14 { return Biome::BirchForest; }
             if variant < 0.30 { return Biome::Meadow; }
-            return Biome::Plains;
+            Biome::Plains
         }
     }
     // Surface + subsurface block for a biome at surface height `h` (before the sea/beach override).
@@ -99,7 +99,8 @@ impl TerrainGen {
         }
     }
     // Plant a simple tree: a trunk of `log` topped with a `leaf` canopy. Shared by all wooded biomes.
-    fn plant_tree(&self, chunk: &mut Chunk, dx: usize, dz: usize, h: usize, log: Id, leaf: Id, trunk_h: usize) {
+    fn plant_tree(&self, chunk: &mut Chunk, tree: Tree) {
+        let Tree { dx, dz, h, log, leaf, trunk_h } = tree;
         for ty in 1..=trunk_h {
             let y = h + ty;
             if y < CHUNK_HEIGHT { chunk.set_block(dx, y, dz, log); }
@@ -112,7 +113,7 @@ impl TerrainGen {
                 if lx.abs() == 2 && lz.abs() == 2 { continue; }
                 let x = dx as i32 + lx;
                 let z = dz as i32 + lz;
-                if x < 0 || x >= 16 || z < 0 || z >= 16 { continue; }
+                if !(0..16).contains(&x) || !(0..16).contains(&z) { continue; }
                 if ly == 0 && lx == 0 && lz == 0 { continue; }
                 if chunk.get_block(x as usize, y, z as usize) == 0 {
                     chunk.set_block(x as usize, y, z as usize, leaf);
@@ -132,7 +133,7 @@ impl TerrainGen {
         base.clamp(12.0, 128.0) as i32
     }
     pub fn cave_at(&self, x: f64, y: f64, z: f64) -> bool {
-        if y < 6.0 || y > 112.0 { return false; }
+        if !(6.0..=112.0).contains(&y) { return false; }
         // Spaghetti tunnels: two independent noise fields both near zero carve winding 1D tubes
         // (Perlin-worm approximation), giving long connected passages instead of isolated blobs.
         let n1 = self.perlin_cave.get([x * 0.021 + 11.0, y * 0.030, z * 0.021]).abs();
@@ -141,7 +142,7 @@ impl TerrainGen {
         if n1 < width && n2 < width { return true; }
         // Cheese caverns: larger open rooms, concentrated in the lower half of the world.
         let cheese = self.perlin_cave.get([x * 0.045, y * 0.055, z * 0.045]);
-        let depth_bias = ((60.0 - y) / 55.0).clamp(0.0, 1.0) as f64; // more/bigger caverns deeper
+        let depth_bias = ((60.0 - y) / 55.0).clamp(0.0, 1.0); // more/bigger caverns deeper
         cheese > (0.70 - 0.16 * depth_bias)
     }
     // The block that fills a solid underground cell: an ore/variant vein if one passes here,
@@ -237,7 +238,7 @@ impl TerrainGen {
         // Obsidian pillars on the central island.
         if ox.abs() < 16 && oz.abs() < 16 {
             for &(px, pz) in &[(2i32, 2i32), (12, 3), (4, 12), (11, 11)] {
-                if px >= 0 && px < 16 && pz >= 0 && pz < 16 {
+                if (0..16).contains(&px) && (0..16).contains(&pz) {
                     for y in 63..70 { chunk.set_block(px as usize, y, pz as usize, 78); }
                 }
             }

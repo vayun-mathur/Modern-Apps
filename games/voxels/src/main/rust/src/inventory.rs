@@ -6,8 +6,8 @@ pub const HOTBAR: usize = 9;
 pub const STACK: i32 = 64;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct InvSlot { pub id: Id, pub count: i32 }
-impl Default for InvSlot { fn default() -> Self { Self { id: 0, count: 0 } } }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Inventory {
@@ -46,7 +46,7 @@ pub const RECIPES: [Recipe; 96] = [
     r(1055, 3, 1033, 2, 1149, 1, 1055), // sticks + leather -> fishing rod
     r(1055, 1, 1132, 1, 1151, 1, 1055), // stick + copper   -> archaeologist's brush
     r(1147, 3, 0, 0, 1027, 1, 1146),   // wheat            -> bread
-    r(Block::HayBlock as Id, 1, 0, 0, 1146, 4, 0), // hay bale -> wheat seeds
+    r(Block::Hay as Id, 1, 0, 0, 1146, 4, 0), // hay bale -> wheat seeds
     r(1083, 1, Block::Glass as Id, 5, Block::Beacon as Id, 1, 1065), // nether star + glass -> beacon
     r(1034, 2, 0, 0, 1085, 3, 0), // gunpowder -> firework rockets
     r(Block::Snow as Id, 1, 0, 0, 1086, 4, 0), // snow -> snowballs
@@ -58,9 +58,9 @@ pub const RECIPES: [Recipe; 96] = [
     r(Block::Diorite as Id, 4, 0, 0, Block::PolishedDiorite as Id, 4, 0),
     r(Block::Planks as Id, 2, 0, 0, 1055 /*Stick*/, 4, 0),
     // Material -> block.
-    r(1050, 9, 0, 0, Block::IronBlock as Id, 1, 1061),
-    r(1051, 9, 0, 0, Block::DiamondBlock as Id, 1, 1063),
-    r(1052, 9, 0, 0, Block::EmeraldBlock as Id, 1, 1063),
+    r(1050, 9, 0, 0, Block::Iron as Id, 1, 1061),
+    r(1051, 9, 0, 0, Block::Diamond as Id, 1, 1063),
+    r(1052, 9, 0, 0, Block::Emerald as Id, 1, 1063),
     // Tools: material + stick(1055).
     r(Block::Planks as Id, 3, 1055, 2, 1059, 1, 0), // wood pickaxe
     r(Block::Planks as Id, 2, 1055, 1, 1060, 1, 0), // wood sword
@@ -79,9 +79,9 @@ pub const RECIPES: [Recipe; 96] = [
     r(1092, 2, 1055, 1, 1094, 1, 1093), // adamant sword
     r(1092, 5, 0, 0, 1095, 1, 1093), r(1092, 8, 0, 0, 1096, 1, 1093), r(1092, 7, 0, 0, 1097, 1, 1093), r(1092, 4, 0, 0, 1098, 1, 1093),
     // Metal storage blocks (silver/steel/adamant also power beacons).
-    r(1089, 9, 0, 0, Block::SilverBlock as Id, 1, Block::BlastFurnace as Id),
-    r(1091, 9, 0, 0, Block::SteelBlock as Id, 1, Block::BlastFurnace as Id),
-    r(1092, 9, 0, 0, Block::AdamantBlock as Id, 1, Block::BlastFurnace as Id),
+    r(1089, 9, 0, 0, Block::Silver as Id, 1, Block::BlastFurnace as Id),
+    r(1091, 9, 0, 0, Block::Steel as Id, 1, Block::BlastFurnace as Id),
+    r(1092, 9, 0, 0, Block::Adamant as Id, 1, Block::BlastFurnace as Id),
     // A steel-lined furnace: the only place the alloy recipes will smelt.
     r(Block::Furnace as Id, 1, 1091, 5, Block::BlastFurnace as Id, 1, Block::Furnace as Id),
     // Blessings: quicksilver charms bound to a thematic offering. Attuning one grants a permanent
@@ -97,7 +97,7 @@ pub const RECIPES: [Recipe; 96] = [
     r(1090, 2, 1034, 8, 1104, 1, Block::BlastFurnace as Id),  // gunpowder       -> Arachnae, bane of horrors
     r(1090, 2, 1092, 2, 1105, 1, Block::BlastFurnace as Id),  // adamant         -> Prometheus, armor never wears
     r(1090, 2, 1051, 3, 1106, 1, Block::BlastFurnace as Id),  // diamond         -> Lu Ban, mending
-    r(1090, 2, Block::EmeraldBlock as Id, 1, 1107, 1, Block::BlastFurnace as Id), // Eros, fortune
+    r(1090, 2, Block::Emerald as Id, 1, 1107, 1, Block::BlastFurnace as Id), // Eros, fortune
     r(1090, 2, 1087, 3, 1108, 1, Block::BlastFurnace as Id),  // ender pearls    -> Will, reach
     r(1090, 2, Block::Glowstone as Id, 4, 1109, 1, Block::BlastFurnace as Id),  // Hyacinthus, second jump
     r(1090, 2, Block::Purpur as Id, 6, 1110, 1, Block::BlastFurnace as Id),     // Aeolus, wind burst
@@ -107,9 +107,9 @@ pub const RECIPES: [Recipe; 96] = [
     r(1090, 2, Block::Amethyst as Id, 6, 1114, 1, Block::BlastFurnace as Id),   // Apollo, marksman
     r(1090, 2, 1086, 16, 1115, 1, Block::BlastFurnace as Id), // snowballs       -> Artemis, multishot
     r(1090, 2, Block::WardingStone as Id, 2, 1116, 1, Block::BlastFurnace as Id), // Warding, thorns
-    r(1090, 2, Block::DiamondBlock as Id, 1, 1117, 1, Block::BlastFurnace as Id), // Paris, infinity
+    r(1090, 2, Block::Diamond as Id, 1, 1117, 1, Block::BlastFurnace as Id), // Paris, infinity
     // The five late additions cost the alloy tier, so they arrive after the Blast Furnace does.
-    r(1090, 2, Block::IronBlock as Id, 2, 1141, 1, Block::BlastFurnace as Id),    // Athena, absorption shield
+    r(1090, 2, Block::Iron as Id, 2, 1141, 1, Block::BlastFurnace as Id),    // Athena, absorption shield
     r(1090, 2, Block::Magma as Id, 4, 1142, 1, Block::BlastFurnace as Id),        // Sekhmet, bloodrage
     r(1090, 2, 1118, 12, 1143, 1, Block::BlastFurnace as Id), // raw meat        -> Camazotz, lifesteal
     r(1090, 2, Block::Prismarine as Id, 8, 1144, 1, Block::BlastFurnace as Id),   // Tangaroa, conduit
@@ -134,9 +134,9 @@ pub const RECIPES: [Recipe; 96] = [
     r(1134, 3, 1055, 2, 1135, 1, 1063), // bronze pickaxe
     r(1134, 2, 1055, 1, 1136, 1, 1135), // bronze sword
     r(1134, 5, 0, 0, 1137, 1, 1135), r(1134, 8, 0, 0, 1138, 1, 1135), r(1134, 7, 0, 0, 1139, 1, 1135), r(1134, 4, 0, 0, 1140, 1, 1135),
-    r(1132, 9, 0, 0, Block::CopperBlock as Id, 1, 1063),
-    r(1133, 9, 0, 0, Block::GoldBlock as Id, 1, 1063),
-    r(1134, 9, 0, 0, Block::BronzeBlock as Id, 1, 1063),
+    r(1132, 9, 0, 0, Block::Copper as Id, 1, 1063),
+    r(1133, 9, 0, 0, Block::Gold as Id, 1, 1063),
+    r(1134, 9, 0, 0, Block::Bronze as Id, 1, 1063),
     // The stonecutter itself: an iron blade on a stone bed.
     r(Block::Stone as Id, 3, 1050, 1, Block::Stonecutter as Id, 1, 1061),
 ];
@@ -151,30 +151,30 @@ pub struct Smelt {
     pub secs: f32,
     pub blast: bool,
 }
-const fn smelt(in1: Id, n1: i32, in2: Id, n2: i32, out: Id, out_n: i32, secs: f32, blast: bool) -> Smelt {
-    Smelt { in1, n1, in2, n2, out, out_n, secs, blast }
+const fn smelt(first: (Id, i32), second: (Id, i32), output: (Id, i32), secs: f32, blast: bool) -> Smelt {
+    Smelt { in1: first.0, n1: first.1, in2: second.0, n2: second.1, out: output.0, out_n: output.1, secs, blast }
 }
 pub const SMELTING: [Smelt; 19] = [
-    smelt(1150, 1, 0, 0, 1028, 1, 6.0, false), // raw fish -> cooked fish
-    smelt(Block::CoalOre as Id,     1, 0, 0, 1053, 1,  6.0, false), // coal
-    smelt(Block::IronOre as Id,     1, 0, 0, 1050, 1,  8.0, false), // iron ingot
-    smelt(Block::DiamondOre as Id,  1, 0, 0, 1051, 1, 10.0, false),
-    smelt(Block::EmeraldOre as Id,  1, 0, 0, 1052, 1, 10.0, false),
-    smelt(Block::RedstoneOre as Id, 1, 0, 0, 1054, 1,  6.0, false),
-    smelt(Block::SilverOre as Id,   1, 0, 0, 1089, 1,  9.0, false), // silver ingot
-    smelt(Block::Sand as Id,        2, 0, 0, Block::Glass as Id,  1, 5.0, false),
-    smelt(Block::Cobble as Id,      4, 0, 0, Block::Stone as Id,  1, 5.0, false),
-    smelt(Block::Clay as Id,        4, 0, 0, Block::Brick as Id,  1, 6.0, false),
-    smelt(1118, 1, 0, 0, 1119, 1, 6.0, false), // raw meat -> cooked meat
-    smelt(1027, 1, 0, 0, 1043, 3, 5.0, false), // bread -> cookies (baking)
-    smelt(Block::CopperOre as Id, 1, 0, 0, 1132, 1, 6.0, false), // copper ingot
-    smelt(Block::GoldOre as Id,   1, 0, 0, 1133, 1, 8.0, false), // gold ingot
-    smelt(1132, 6, 1133, 1, 1134, 1, 14.0, true),                  // copper + gold -> bronze
+    smelt((1150, 1), (0, 0), (1028, 1), 6.0, false), // raw fish -> cooked fish
+    smelt((Block::CoalOre as Id, 1), (0, 0), (1053, 1), 6.0, false), // coal
+    smelt((Block::IronOre as Id, 1), (0, 0), (1050, 1), 8.0, false), // iron ingot
+    smelt((Block::DiamondOre as Id, 1), (0, 0), (1051, 1), 10.0, false),
+    smelt((Block::EmeraldOre as Id, 1), (0, 0), (1052, 1), 10.0, false),
+    smelt((Block::RedstoneOre as Id, 1), (0, 0), (1054, 1), 6.0, false),
+    smelt((Block::SilverOre as Id, 1), (0, 0), (1089, 1), 9.0, false), // silver ingot
+    smelt((Block::Sand as Id, 2), (0, 0), (Block::Glass as Id, 1), 5.0, false),
+    smelt((Block::Cobble as Id, 4), (0, 0), (Block::Stone as Id, 1), 5.0, false),
+    smelt((Block::Clay as Id, 4), (0, 0), (Block::Brick as Id, 1), 6.0, false),
+    smelt((1118, 1), (0, 0), (1119, 1), 6.0, false), // raw meat -> cooked meat
+    smelt((1027, 1), (0, 0), (1043, 3), 5.0, false), // bread -> cookies (baking)
+    smelt((Block::CopperOre as Id, 1), (0, 0), (1132, 1), 6.0, false), // copper ingot
+    smelt((Block::GoldOre as Id, 1), (0, 0), (1133, 1), 8.0, false), // gold ingot
+    smelt((1132, 6), (1133, 1), (1134, 1), 14.0, true),                  // copper + gold -> bronze
     // Blast furnace only: the alloy line.
-    smelt(Block::SulfurOre as Id,   1, 0, 0, 1088, 2,  5.0, true),  // sulfur
-    smelt(Block::CinnabarOre as Id, 1, 0, 0, 1090, 1,  7.0, true),  // quicksilver
-    smelt(1050, 1, 1088, 1, 1091, 1, 12.0, true),                     // iron + sulfur -> steel
-    smelt(1091, 4, 1090, 2, 1092, 1, 20.0, true),                     // steel + quicksilver -> adamant
+    smelt((Block::SulfurOre as Id, 1), (0, 0), (1088, 2), 5.0, true),  // sulfur
+    smelt((Block::CinnabarOre as Id, 1), (0, 0), (1090, 1), 7.0, true),  // quicksilver
+    smelt((1050, 1), (1088, 1), (1091, 1), 12.0, true),                     // iron + sulfur -> steel
+    smelt((1091, 4), (1090, 2), (1092, 1), 20.0, true),                     // steel + quicksilver -> adamant
 ];
 
 // Seconds of furnace burn a stack item is worth. Anything not listed can't be used as fuel.

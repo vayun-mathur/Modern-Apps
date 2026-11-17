@@ -7,6 +7,16 @@ pub const TILE_SIZE: u32 = 16;
 pub const ATLAS_W: u32 = ATLAS_TILES_PER_ROW * TILE_SIZE; // 256
 pub const ATLAS_H: u32 = ATLAS_TILE_ROWS * TILE_SIZE;     // 256
 
+/// The Vulkan objects an atlas upload runs on, grouped so texture creation
+/// does not take them as five separate arguments.
+pub struct TextureUpload<'a> {
+    pub instance: &'a ash::Instance,
+    pub device: &'a ash::Device,
+    pub phys: vk::PhysicalDevice,
+    pub command_pool: vk::CommandPool,
+    pub queue: vk::Queue,
+}
+
 pub struct TextureAtlas {
     pub image: vk::Image,
     pub memory: vk::DeviceMemory,
@@ -15,6 +25,10 @@ pub struct TextureAtlas {
 }
 
 impl TextureAtlas {
+    /// Creates the block atlas texture.
+    ///
+    /// # Safety
+    /// The Vulkan handles passed in must be valid, created from the same instance/device, and must not be destroyed or used concurrently while this call runs. `atlas_pixels` must hold the atlas image data.
     pub unsafe fn new(
         instance: &ash::Instance,
         device: &ash::Device,
@@ -23,19 +37,20 @@ impl TextureAtlas {
         queue: vk::Queue,
         atlas_pixels: &[u8],
     ) -> Result<Self, String> {
-        Self::new_sized(instance, device, phys, command_pool, queue, ATLAS_W, ATLAS_H, atlas_pixels)
+        Self::new_sized(TextureUpload { instance, device, phys, command_pool, queue }, ATLAS_W, ATLAS_H, atlas_pixels)
     }
     // Generic RGBA sampled texture of arbitrary size (used for the block atlas and the entity atlas).
+    /// Creates a sized RGBA texture.
+    ///
+    /// # Safety
+    /// The Vulkan handles passed in must be valid, created from the same instance/device, and must not be destroyed or used concurrently while this call runs. `atlas_pixels` must be `atlas_w * atlas_h * 4` bytes.
     pub unsafe fn new_sized(
-        instance: &ash::Instance,
-        device: &ash::Device,
-        phys: vk::PhysicalDevice,
-        command_pool: vk::CommandPool,
-        queue: vk::Queue,
+        upload: TextureUpload<'_>,
         atlas_w: u32,
         atlas_h: u32,
         atlas_pixels: &[u8],
     ) -> Result<Self, String> {
+        let TextureUpload { instance, device, phys, command_pool, queue } = upload;
         let img_info = vk::ImageCreateInfo::default()
             .image_type(vk::ImageType::TYPE_2D)
             .format(vk::Format::R8G8B8A8_SRGB)
@@ -80,6 +95,10 @@ impl TextureAtlas {
         let sampler = device.create_sampler(&sampler_info, None).map_err(|e| format!("sampler failed: {e:?}"))?;
         Ok(Self { image, memory, view, sampler })
     }
+    /// Destroys the atlas handles.
+    ///
+    /// # Safety
+    /// The handles owned by `self` must have been created on `device`, must not already have been destroyed, and no in-flight GPU work may still use them.
     pub unsafe fn destroy(&mut self, device: &ash::Device) {
         device.destroy_sampler(self.sampler, None);
         device.destroy_image_view(self.view, None);

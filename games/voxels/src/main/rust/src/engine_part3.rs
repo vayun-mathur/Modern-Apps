@@ -1,6 +1,9 @@
 // Spawn a small burst of particles (capped so the buffer never overflows).
-fn spawn_particles(rng: &mut u32, out: &mut Vec<Particle>, center: Vec3, n: usize, color: [f32; 3], speed: f32, life: f32, size: f32) {
-    let mut r = |s: &mut u32| { let mut x = *s; x ^= x << 13; x ^= x >> 17; x ^= x << 5; *s = x; (x >> 8) as f32 / 16_777_216.0 * 2.0 - 1.0 };
+/// What one particle burst looks like: where, how many, and how they fly.
+struct Burst { center: Vec3, n: usize, color: [f32; 3], speed: f32, life: f32, size: f32 }
+fn spawn_particles(rng: &mut u32, out: &mut Vec<Particle>, burst: Burst) {
+    let Burst { center, n, color, speed, life, size } = burst;
+    let r = |s: &mut u32| { let mut x = *s; x ^= x << 13; x ^= x >> 17; x ^= x << 5; *s = x; (x >> 8) as f32 / 16_777_216.0 * 2.0 - 1.0 };
     for _ in 0..n {
         if out.len() > 500 { break; }
         let v = vec3(r(rng) * speed, r(rng).abs() * speed + 1.0, r(rng) * speed);
@@ -59,8 +62,8 @@ fn do_break(state: &mut EngineState, origin: Vec3, dir: Vec3) -> bool {
         }
     }
     // Firework rocket: consume one to launch a burst; boosts the player forward while gliding.
-    if item::is_firework(sel) && state.player.eat_cd <= 0.0 {
-        if state.inventory.consume_selected().is_some() {
+    if item::is_firework(sel) && state.player.eat_cd <= 0.0
+        && state.inventory.consume_selected().is_some() {
             state.player.firework_boost();
             let f = state.player.forward();
             let origin = state.player.eye_pos() + f * 0.5;
@@ -68,7 +71,6 @@ fn do_break(state: &mut EngineState, origin: Vec3, dir: Vec3) -> bool {
             state.player.eat_cd = 0.4;
             return true;
         }
-    }
     // Brushing: sweep suspicious sand for whatever was buried in it. The sand stays behind either
     // way, so a dig site can't be turned into a hole by accident.
     if sel == crate::item::BRUSH {
@@ -86,7 +88,7 @@ fn do_break(state: &mut EngineState, origin: Vec3, dir: Vec3) -> bool {
                 mark_neighbors_dirty(state, x, z);
                 damage_tool(state);
                 let c = vec3(x as f32 + 0.5, y as f32 + 1.0, z as f32 + 0.5);
-                spawn_particles(&mut state.spawn_rng, &mut state.particles, c, 12, [0.86, 0.78, 0.58], 2.5, 0.6, 0.1);
+                spawn_particles(&mut state.spawn_rng, &mut state.particles, Burst { center: c, n: 12, color: [0.86, 0.78, 0.58], speed: 2.5, life: 0.6, size: 0.1 });
                 return true;
             }
         }
@@ -158,7 +160,7 @@ fn do_break(state: &mut EngineState, origin: Vec3, dir: Vec3) -> bool {
             if p.from_player || p.kind != ProjKind::Fireball { continue; }
             let to = p.pos - eye_pos;
             let d = to.length();
-            if d < 4.5 && to.normalize_or_zero().dot(f) > 0.5 && best.map_or(true, |b| d < b.1) { best = Some((i, d)); }
+            if d < 4.5 && to.normalize_or_zero().dot(f) > 0.5 && best.is_none_or(|b| d < b.1) { best = Some((i, d)); }
         }
         if let Some((i, _)) = best {
             let p = &mut state.projectiles[i];
@@ -184,14 +186,13 @@ fn do_break(state: &mut EngineState, origin: Vec3, dir: Vec3) -> bool {
                 state.player.eat_cd = 0.8;
                 return true;
             }
-        } else if item::is_heart_container(sel) && state.player.max_health < crate::player::CAP_MAX_HEALTH {
-            if state.inventory.consume_selected().is_some() {
+        } else if item::is_heart_container(sel) && state.player.max_health < crate::player::CAP_MAX_HEALTH
+            && state.inventory.consume_selected().is_some() {
                 state.player.max_health = (state.player.max_health + 2.0).min(crate::player::CAP_MAX_HEALTH);
                 state.player.heal(2.0);
                 state.player.eat_cd = 0.8;
                 return true;
             }
-        }
     }
     // Attack a mob if one is under the cursor within reach and nearer than any block.
     let reach = player_reach(state);
@@ -216,7 +217,7 @@ fn do_break(state: &mut EngineState, origin: Vec3, dir: Vec3) -> bool {
             }
             state.player.lifesteal(dmg);
             state.player.wind_burst();
-            spawn_particles(&mut state.spawn_rng, &mut state.particles, mpos, 6, [0.85, 0.12, 0.12], 3.0, 0.4, 0.09);
+            spawn_particles(&mut state.spawn_rng, &mut state.particles, Burst { center: mpos, n: 6, color: [0.85, 0.12, 0.12], speed: 3.0, life: 0.4, size: 0.09 });
             return true;
         }
     }
@@ -228,10 +229,7 @@ fn do_break(state: &mut EngineState, origin: Vec3, dir: Vec3) -> bool {
             let key = ensure_chest(state, x, y, z);
             // Only break the chest once everything actually fit — otherwise the leftovers would be
             // dropped on the floor, which this game has no representation for.
-            let mut left = match state.containers.remove(key) {
-                Some(slots) => slots,
-                None => Vec::new(),
-            };
+            let mut left = state.containers.remove(key).unwrap_or_default();
             for s in left.iter_mut() { state.inventory.take_from(s); }
             if left.iter().any(|s| s.id != 0) {
                 state.containers.insert(key, left);
@@ -268,7 +266,7 @@ fn do_break(state: &mut EngineState, origin: Vec3, dir: Vec3) -> bool {
             damage_tool(state);
             mark_neighbors_dirty(state, x, z);
             let c = vec3(x as f32 + 0.5, y as f32 + 0.5, z as f32 + 0.5);
-            spawn_particles(&mut state.spawn_rng, &mut state.particles, c, 7, [0.55, 0.45, 0.35], 2.6, 0.5, 0.11);
+            spawn_particles(&mut state.spawn_rng, &mut state.particles, Burst { center: c, n: 7, color: [0.55, 0.45, 0.35], speed: 2.6, life: 0.5, size: 0.11 });
             return true;
         }
     }

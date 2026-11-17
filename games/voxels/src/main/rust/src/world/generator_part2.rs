@@ -2,14 +2,14 @@ impl TerrainGen {
     fn fill_overworld(&self, chunk: &mut Chunk) {
         let (ox, oz) = chunk.pos.world_origin();
         let mut heightmap = [[0i32; CHUNK_SIZE]; CHUNK_SIZE];
-        for dz in 0..CHUNK_SIZE { for dx in 0..CHUNK_SIZE {
-            heightmap[dz][dx] = self.height_at((ox + dx as i32) as f64, (oz + dz as i32) as f64);
+        for (dz, row) in heightmap.iter_mut().enumerate() { for (dx, cell) in row.iter_mut().enumerate() {
+            *cell = self.height_at((ox + dx as i32) as f64, (oz + dz as i32) as f64);
         }}
-        for dz in 0..CHUNK_SIZE { for dx in 0..CHUNK_SIZE {
+        for (dz, row) in heightmap.iter().enumerate() { for (dx, &cell) in row.iter().enumerate() {
             let wx = (ox + dx as i32) as f64;
             let wz = (oz + dz as i32) as f64;
-            let h = (heightmap[dz][dx] as usize).min(CHUNK_HEIGHT - 2);
-            let biome = self.biome_at(wx, wz, heightmap[dz][dx]);
+            let h = (cell as usize).min(CHUNK_HEIGHT - 2);
+            let biome = self.biome_at(wx, wz, cell);
             for y in 0..5 {
                 let id = if y == 0 { 13 } else if y < 3 && self.perlin_detail.get([wx * 0.1, y as f64 * 0.2, wz *0.1]) > 0.2 { 0 } else { 1 };
                 if id != 0 { chunk.set_block(dx, y, dz, id); }
@@ -42,13 +42,13 @@ impl TerrainGen {
             }
         }}
         // Vegetation / surface decoration, per biome.
-        for dz in 0..CHUNK_SIZE { for dx in 0..CHUNK_SIZE {
-            let h = heightmap[dz][dx] as usize;
-            if h < 63 || h > 122 { continue; }
+        for (dz, row) in heightmap.iter().enumerate() { for (dx, &cell) in row.iter().enumerate() {
+            let h = cell as usize;
+            if !(63..=122).contains(&h) { continue; }
             let wx = (ox + dx as i32) as f64;
             let wz = (oz + dz as i32) as f64;
             let surf = chunk.get_block(dx, h, dz);
-            let biome = self.biome_at(wx, wz, heightmap[dz][dx]);
+            let biome = self.biome_at(wx, wz, cell);
             let mut hasher = DefaultHasher::new();
             (ox+dx as i32, oz+dz as i32, self.seed).hash(&mut hasher);
             let r = hasher.finish() % 1000;
@@ -59,8 +59,8 @@ impl TerrainGen {
             match biome {
                 Desert => { if surf == 6 && r < 4 { let y = h + 1; if y < CHUNK_HEIGHT { chunk.set_block(dx, y, dz, 8); } } }
                 Badlands => { /* barren red terrain */ }
-                SnowyPlains => { if surf == 11 && r < 4 { self.plant_tree(chunk, dx, dz, h, 29, 31, th); } }
-                SnowyTaiga => { if surf == 11 && r < 40 { self.plant_tree(chunk, dx, dz, h, 29, 31, th + 1); } }
+                SnowyPlains => { if surf == 11 && r < 4 { self.plant_tree(chunk, Tree { dx, dz, h, log: 29, leaf: 31, trunk_h: th }); } }
+                SnowyTaiga => { if surf == 11 && r < 40 { self.plant_tree(chunk, Tree { dx, dz, h, log: 29, leaf: 31, trunk_h: th + 1 }); } }
                 IceSpikes => {
                     // Tall spikes of packed ice.
                     if surf == 11 && r < 12 {
@@ -68,34 +68,34 @@ impl TerrainGen {
                         for ty in 1..=sh { let y = h + ty; if y < CHUNK_HEIGHT { chunk.set_block(dx, y, dz, 42); } }
                     }
                 }
-                Taiga => { if (surf == 3 || surf == 39 || surf == 40) && r < 55 { self.plant_tree(chunk, dx, dz, h, 29, 31, th + 1); } }
-                Forest => { if grassy && r < 65 { if alt { self.plant_tree(chunk, dx, dz, h, 26, 28, th); } else { self.plant_tree(chunk, dx, dz, h, 4, 5, th); } } }
-                BirchForest => { if grassy && r < 70 { self.plant_tree(chunk, dx, dz, h, 26, 28, th + 1); } }
-                DarkForest => { if grassy && r < 90 { self.plant_tree(chunk, dx, dz, h, 47, 48, th); } } // dense dark oak
-                FlowerForest => { if grassy && r < 18 { self.plant_tree(chunk, dx, dz, h, 4, 5, th); } }
-                Savanna => { if grassy && r < 12 { self.plant_tree(chunk, dx, dz, h, 50, 5, th.min(5)); } } // acacia (oak leaves)
-                Jungle => { if grassy && r < 85 { self.plant_tree(chunk, dx, dz, h, 51, 5, th + 3); } }     // tall jungle
-                SparseJungle => { if grassy && r < 22 { self.plant_tree(chunk, dx, dz, h, 51, 5, th + 2); } }
-                Swamp => { if grassy && r < 8 { self.plant_tree(chunk, dx, dz, h, 4, 5, th); } }
-                MangroveSwamp => { if surf == 45 && r < 20 { self.plant_tree(chunk, dx, dz, h, 51, 5, th); } }
+                Taiga => { if (surf == 3 || surf == 39 || surf == 40) && r < 55 { self.plant_tree(chunk, Tree { dx, dz, h, log: 29, leaf: 31, trunk_h: th + 1 }); } }
+                Forest => { if grassy && r < 65 { if alt { self.plant_tree(chunk, Tree { dx, dz, h, log: 26, leaf: 28, trunk_h: th }); } else { self.plant_tree(chunk, Tree { dx, dz, h, log: 4, leaf: 5, trunk_h: th }); } } }
+                BirchForest => { if grassy && r < 70 { self.plant_tree(chunk, Tree { dx, dz, h, log: 26, leaf: 28, trunk_h: th + 1 }); } }
+                DarkForest => { if grassy && r < 90 { self.plant_tree(chunk, Tree { dx, dz, h, log: 47, leaf: 48, trunk_h: th }); } } // dense dark oak
+                FlowerForest => { if grassy && r < 18 { self.plant_tree(chunk, Tree { dx, dz, h, log: 4, leaf: 5, trunk_h: th }); } }
+                Savanna => { if grassy && r < 12 { self.plant_tree(chunk, Tree { dx, dz, h, log: 50, leaf: 5, trunk_h: th.min(5) }); } } // acacia (oak leaves)
+                Jungle => { if grassy && r < 85 { self.plant_tree(chunk, Tree { dx, dz, h, log: 51, leaf: 5, trunk_h: th + 3 }); } }     // tall jungle
+                SparseJungle => { if grassy && r < 22 { self.plant_tree(chunk, Tree { dx, dz, h, log: 51, leaf: 5, trunk_h: th + 2 }); } }
+                Swamp => { if grassy && r < 8 { self.plant_tree(chunk, Tree { dx, dz, h, log: 4, leaf: 5, trunk_h: th }); } }
+                MangroveSwamp => { if surf == 45 && r < 20 { self.plant_tree(chunk, Tree { dx, dz, h, log: 51, leaf: 5, trunk_h: th }); } }
                 MushroomFields => { if surf == 41 && r < 3 { let y = h + 1; if y < CHUNK_HEIGHT { chunk.set_block(dx, y, dz, 5); } } }
-                Meadow => { if grassy && r == 3 { self.plant_tree(chunk, dx, dz, h, 4, 5, th); } }
-                Grove => { if surf == 11 && r < 30 { self.plant_tree(chunk, dx, dz, h, 29, 31, th); } }
-                WindsweptHills => { if grassy && r < 6 { self.plant_tree(chunk, dx, dz, h, 29, 31, th); } }
+                Meadow => { if grassy && r == 3 { self.plant_tree(chunk, Tree { dx, dz, h, log: 4, leaf: 5, trunk_h: th }); } }
+                Grove => { if surf == 11 && r < 30 { self.plant_tree(chunk, Tree { dx, dz, h, log: 29, leaf: 31, trunk_h: th }); } }
+                WindsweptHills => { if grassy && r < 6 { self.plant_tree(chunk, Tree { dx, dz, h, log: 29, leaf: 31, trunk_h: th }); } }
                 SnowySlopes | JaggedPeaks | FrozenPeaks | StonyPeaks => { /* bare peaks */ }
                 Plains | SunflowerPlains => {
                     if grassy {
                         if r == 3 { let y = h + 1; if y < CHUNK_HEIGHT { chunk.set_block(dx, y, dz, 8); } }
-                        else if r < 10 { self.plant_tree(chunk, dx, dz, h, 4, 5, th); }
+                        else if r < 10 { self.plant_tree(chunk, Tree { dx, dz, h, log: 4, leaf: 5, trunk_h: th }); }
                     }
                 }
             }
         }}
         // --- Cave decoration: dress cave floors/ceilings by underground biome. ---
-        for dz in 0..CHUNK_SIZE { for dx in 0..CHUNK_SIZE {
+        for (dz, row) in heightmap.iter().enumerate() { for (dx, &cell) in row.iter().enumerate() {
             let wx = (ox + dx as i32) as f64;
             let wz = (oz + dz as i32) as f64;
-            let top = (heightmap[dz][dx] as usize).min(CHUNK_HEIGHT - 1);
+            let top = (cell as usize).min(CHUNK_HEIGHT - 1);
             let mut y = 7usize;
             while y + 1 < top {
                 let here = chunk.get_block(dx, y, dz);
@@ -107,8 +107,15 @@ impl TerrainGen {
                     (ox + dx as i32, y as i32, oz + dz as i32, self.seed ^ 0x5EED).hash(&mut hasher);
                     let r = hasher.finish() % 100;
                     match kind {
-                        0 => { if r < 22 { chunk.set_block(dx, y, dz, 72); } if r == 5 { chunk.set_block(dx, y + 1, dz, 77); } } // sculk / rare glowstone
-                        1 => { if r < 40 { chunk.set_block(dx, y, dz, 71); } if r < 6 { chunk.set_block(dx, y + 1, dz, 80); } if r == 7 { chunk.set_block(dx, y + 1, dz, 77); } } // moss / azalea / glow
+                        0 => { // sculk / rare glowstone
+                            if r < 22 { chunk.set_block(dx, y, dz, 72); }
+                            if r == 5 { chunk.set_block(dx, y + 1, dz, 77); }
+                        }
+                        1 => { // moss / azalea / glow
+                            if r < 40 { chunk.set_block(dx, y, dz, 71); }
+                            if r < 6 { chunk.set_block(dx, y + 1, dz, 80); }
+                            if r == 7 { chunk.set_block(dx, y + 1, dz, 77); }
+                        }
                         _ => { if r < 25 { chunk.set_block(dx, y, dz, 70); } } // dripstone
                     }
                 } else if here == 0 && matches!(above, 1 | 57) {
@@ -123,8 +130,8 @@ impl TerrainGen {
             }
         }}
         // --- Ocean floor: coral reefs / kelp by water temperature (survives the later water fill). ---
-        for dz in 0..CHUNK_SIZE { for dx in 0..CHUNK_SIZE {
-            let h = heightmap[dz][dx] as usize;
+        for (dz, row) in heightmap.iter().enumerate() { for (dx, &cell) in row.iter().enumerate() {
+            let h = cell as usize;
             if h + 1 >= Self::SEA_LEVEL { continue; }
             let floor = chunk.get_block(dx, h, dz);
             if floor != 6 && floor != 2 && floor != 1 { continue; }
@@ -143,12 +150,11 @@ impl TerrainGen {
                         if r < 20 && y + 1 < Self::SEA_LEVEL { chunk.set_block(dx, y + 1, dz, coral); }
                     } else if r < 96 { chunk.set_block(dx, y, dz, 67); } // sea lantern
                 }
-                1 | 2 => { // kelp forests
-                    if r < 120 {
+                1 | 2 // kelp forests
+                    if r < 120 => {
                         let kh = 2 + (hasher.finish() % 5) as usize;
                         for k in 0..kh { let yy = y + k; if yy < Self::SEA_LEVEL { chunk.set_block(dx, yy, dz, 66); } }
                     }
-                }
                 _ => {}
             }
         }}
@@ -168,7 +174,7 @@ impl TerrainGen {
                     for ddx in -1i32..=1 { for ddy in 0i32..=2 { for ddz in -1i32..=1 {
                         if ddx.abs() + ddy + ddz.abs() > 3 { continue; }
                         let (x, y, z) = (bx as i32 + ddx, cy as i32 + ddy, bz as i32 + ddz);
-                        if x < 0 || x >= 16 || z < 0 || z >= 16 || y < 0 || y as usize >= CHUNK_HEIGHT { continue; }
+                        if !(0..16).contains(&x) || !(0..16).contains(&z) || y < 0 || y as usize >= CHUNK_HEIGHT { continue; }
                         chunk.set_block(x as usize, y as usize, z as usize, 15);
                     }}}
                 }
@@ -177,7 +183,7 @@ impl TerrainGen {
                     let cy = sh_top;
                     for ddx in -1i32..=1 { for ddz in -1i32..=1 {
                         let (x, z) = (bx as i32 + ddx, bz as i32 + ddz);
-                        if x < 0 || x >= 16 || z < 0 || z >= 16 { continue; }
+                        if !(0..16).contains(&x) || !(0..16).contains(&z) { continue; }
                         let id = if ddx == 0 && ddz == 0 { 12 } else { 38 };
                         chunk.set_block(x as usize, cy, z as usize, id);
                     }}
@@ -187,13 +193,13 @@ impl TerrainGen {
                     let cy = sh_top;
                     for ddx in -1i32..=1 { for ddz in -1i32..=1 {
                         let (x, z) = (bx as i32 + ddx, bz as i32 + ddz);
-                        if x < 0 || x >= 16 || z < 0 || z >= 16 { continue; }
+                        if !(0..16).contains(&x) || !(0..16).contains(&z) { continue; }
                         chunk.set_block(x as usize, cy, z as usize, 8); // cobble platform
                     }}
                     // Corner pillars + warding stone centre.
                     for &(px, pz) in &[(-1i32, -1i32), (1, -1), (-1, 1), (1, 1)] {
                         let (x, z) = (bx as i32 + px, bz as i32 + pz);
-                        if x >= 0 && x < 16 && z >= 0 && z < 16 && cy + 1 < CHUNK_HEIGHT { chunk.set_block(x as usize, cy + 1, z as usize, 1); }
+                        if (0..16).contains(&x) && (0..16).contains(&z) && cy + 1 < CHUNK_HEIGHT { chunk.set_block(x as usize, cy + 1, z as usize, 1); }
                     }
                     if cy + 1 < CHUNK_HEIGHT { chunk.set_block(bx, cy + 1, bz, 81); } // warding stone
                 }
@@ -291,7 +297,7 @@ impl TerrainGen {
                 }}
             }
             for (bx, bz, w, d, kind) in self.village_layout(cx, cz) {
-                render_building(chunk, ox, oz, bx, bz, w, d, base, kind);
+                render_building(chunk, ox, oz, Building { bx, bz, w, d, base, kind });
             }
         }}
     }
@@ -320,7 +326,7 @@ impl TerrainGen {
                 for dy in 1..=2 { if fy + dy < CHUNK_HEIGHT { chunk.set_block(lx, fy + dy, lz, 0); } }
             }}
             for (dx, dz) in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
-                carve_corridor(chunk, ox, oz, cx, cz, dx, dz, 44, fy);
+                carve_corridor(chunk, ox, oz, Corridor { cx, cz, dirx: dx, dirz: dz, len: 44, fy });
             }
             // A bit of loot + light in the junction.
             if in_chunk(cx, cz, ox, oz) {

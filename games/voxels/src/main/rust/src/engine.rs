@@ -108,7 +108,7 @@ const NOON_OFFSET: f32 = DAY_CYCLE * 0.5;
 pub fn day_t_at(elapsed: f32) -> f32 { ((NOON_OFFSET + elapsed) / DAY_CYCLE) % 1.0 }
 // The sun is below the horizon at both ends of the cycle (day_t = 0 is midnight). This band is not
 // arbitrary: renderer.rs derives sun height as -cos(day_t * TAU), which is negative exactly here.
-pub fn is_night_at(day_t: f32) -> bool { day_t < 0.25 || day_t > 0.75 }
+pub fn is_night_at(day_t: f32) -> bool { !(0.25..=0.75).contains(&day_t) }
 /// The world clock wraps after this many seconds: a whole number of days (96), so wrapping never
 /// shifts the time of day, while keeping f32 precision fine over endless sessions.
 pub const WORLD_SECS_WRAP: f32 = 86_400.0;
@@ -188,8 +188,7 @@ pub fn new_state(files_dir: String, seed: u32, render_distance: i32) -> EngineSt
     let progress = player_save.as_ref().map(|ps| ps.progress.clone()).unwrap_or_default();
     let (px, py, pz, yaw, pitch, inv) = if let Some(ps) = &player_save {
         let inv = {
-            let mut inv = Inventory::default();
-            inv.selected = ps.inventory.selected.min(8);
+            let mut inv = Inventory { selected: ps.inventory.selected.min(8), ..Default::default() };
             for (i, slot) in ps.inventory.slots.iter().enumerate().take(inv.slots.len()) {
                 inv.slots[i].id = slot.id;
                 inv.slots[i].count = slot.count;

@@ -9,10 +9,10 @@ pub type Neighbor<'a> = dyn Fn(i32, i32, i32) -> (Id, u8) + 'a;
 // chunk's own data, which is plenty for caves + torch pools.
 fn compute_light(chunk: &Chunk) -> ([[i32; 16]; 16], Vec<u8>) {
     let mut col_top = [[-1i32; 16]; 16];
-    for x in 0..16 { for z in 0..16 {
+    for (x, col) in col_top.iter_mut().enumerate() { for (z, top) in col.iter_mut().enumerate() {
         for y in (0..CHUNK_HEIGHT).rev() {
             let id = chunk.get_block(x, y, z);
-            if id != 0 && Block::from_id(id).blocks_light() { col_top[x][z] = y as i32; break; }
+            if id != 0 && Block::from_id(id).blocks_light() { *top = y as i32; break; }
         }
     }}
     let mut blk = vec![0u8; 16 * CHUNK_HEIGHT * 16];
@@ -29,7 +29,7 @@ fn compute_light(chunk: &Chunk) -> ([[i32; 16]; 16], Vec<u8>) {
                     (x as i32, y as i32 + 1, z as i32), (x as i32, y as i32 - 1, z as i32),
                     (x as i32, y as i32, z as i32 + 1), (x as i32, y as i32, z as i32 - 1)];
         for (nx, ny, nz) in nbrs {
-            if nx < 0 || nx >= 16 || nz < 0 || nz >= 16 || ny < 0 || ny >= CHUNK_HEIGHT as i32 { continue; }
+            if !(0..16).contains(&nx) || !(0..16).contains(&nz) || ny < 0 || ny >= CHUNK_HEIGHT as i32 { continue; }
             let (nx, ny, nz) = (nx as usize, ny as usize, nz as usize);
             let bid = chunk.get_block(nx, ny, nz);
             if bid != 0 && Block::from_id(bid).blocks_light() { continue; }
@@ -166,7 +166,7 @@ pub fn mesh_chunk(chunk: &Chunk, get_neighbor: &Neighbor, grass_tint: &dyn Fn(i3
         let b = blk[(by * 16 + lz) * 16 + lx];
         sky | (b << 4)
     };
-    for sec_idx in 0..SECTIONS_PER_CHUNK {
+    for (sec_idx, slot) in result.iter_mut().enumerate() {
         let section = match &chunk.sections[sec_idx] {
             Some(s) if !s.is_empty() => s,
             _ => continue,
@@ -182,7 +182,7 @@ pub fn mesh_chunk(chunk: &Chunk, get_neighbor: &Neighbor, grass_tint: &dyn Fn(i3
                 0 => {
                     for x in 0..SECTION_SIZE {
                         let mut mask = [[None::<(Id,u32,[u8;4],u8)>; 16]; 16];
-                        for y in 0..SECTION_SIZE { for z in 0..SECTION_SIZE {
+                        for (y, row) in mask.iter_mut().enumerate() { for (z, cell) in row.iter_mut().enumerate() {
                             let id = section.get(x,y,z);
                             if id == 0 || id == Block::Water as Id { continue; }
                             if Block::from_id(id).shape() != Shape::Cube { continue; } // emitted as boxes below
@@ -193,13 +193,13 @@ pub fn mesh_chunk(chunk: &Chunk, get_neighbor: &Neighbor, grass_tint: &dyn Fn(i3
                                 let ao = |ys: i32, zs: i32| vao(occ(nb, wy+ys, wz), occ(nb, wy, wz+zs), occ(nb, wy+ys, wz+zs));
                                 let ao4 = if dx==1 { [ao(-1,-1), ao(1,-1), ao(1,1), ao(-1,1)] }
                                           else       { [ao(-1,1),  ao(1,1),  ao(1,-1), ao(-1,-1)] };
-                                mask[y][z] = Some((id, tile, ao4, face_light(wx+dx, wy+dy, wz+dz)));
+                                *cell = Some((id, tile, ao4, face_light(wx+dx, wy+dy, wz+dz)));
                             }
                         }}
                         let mut visited = [[false; 16]; 16];
-                        for y in 0..SECTION_SIZE { for z in 0..SECTION_SIZE {
+                        for (y, row) in mask.iter().enumerate() { for (z, cell) in row.iter().enumerate() {
                             if visited[y][z] { continue; }
-                            let Some((bid, tile_idx, ao4, lpk)) = mask[y][z] else { continue; };
+                            let Some((bid, tile_idx, ao4, lpk)) = *cell else { continue; };
                             let mut w = 1;
                             while z + w < SECTION_SIZE && !visited[y][z+w] && mask[y][z+w] == Some((bid, tile_idx, ao4, lpk)) { w+=1; }
                             let mut h = 1;
@@ -207,7 +207,7 @@ pub fn mesh_chunk(chunk: &Chunk, get_neighbor: &Neighbor, grass_tint: &dyn Fn(i3
                                 for k in 0..w { if visited[y+h][z+k] || mask[y+h][z+k] != Some((bid, tile_idx, ao4, lpk)) { break 'outer; } }
                                 h+=1;
                             }
-                            for yy in y..y+h { for zz in z..z+w { visited[yy][zz]=true; } }
+                            for row in visited.iter_mut().skip(y).take(h) { for cell in row.iter_mut().skip(z).take(w) { *cell = true; } }
                             let x0 = x as f32 + if dx==1 { 1.0 } else { 0.0 };
                             let y0 = y as f32; let z0 = z as f32; let ww = w as f32; let hh = h as f32;
                             let (u0,v0,u1,v1) = (0.0f32, 0.0f32, ww, hh);
@@ -232,7 +232,7 @@ pub fn mesh_chunk(chunk: &Chunk, get_neighbor: &Neighbor, grass_tint: &dyn Fn(i3
                 1 => {
                     for y in 0..SECTION_SIZE {
                         let mut mask = [[None::<(Id,u32,[u8;4],u8)>; 16]; 16];
-                        for x in 0..SECTION_SIZE { for z in 0..SECTION_SIZE {
+                        for (x, row) in mask.iter_mut().enumerate() { for (z, cell) in row.iter_mut().enumerate() {
                             let id = section.get(x,y,z);
                             if id==0 || id==Block::Water as Id { continue; }
                             if Block::from_id(id).shape() != Shape::Cube { continue; }
@@ -244,14 +244,14 @@ pub fn mesh_chunk(chunk: &Chunk, get_neighbor: &Neighbor, grass_tint: &dyn Fn(i3
                                     let ao = |xs: i32, zs: i32| vao(occ(wx+xs, nb, wz), occ(wx, nb, wz+zs), occ(wx+xs, nb, wz+zs));
                                     let ao4 = if dy==1 { [ao(-1,-1), ao(1,-1), ao(1,1), ao(-1,1)] }
                                               else       { [ao(-1,1),  ao(1,1),  ao(1,-1), ao(-1,-1)] };
-                                    mask[x][z]=Some((id, tile, ao4, face_light(wx+dx, wy+dy, wz+dz)));
+                                    *cell=Some((id, tile, ao4, face_light(wx+dx, wy+dy, wz+dz)));
                                 }
                             }
                         }}
                         let mut visited = [[false; 16]; 16];
-                        for x in 0..SECTION_SIZE { for z in 0..SECTION_SIZE {
+                        for (x, row) in mask.iter().enumerate() { for (z, cell) in row.iter().enumerate() {
                             if visited[x][z] { continue; }
-                            let Some((bid, tile_idx, ao4, lpk)) = mask[x][z] else { continue; };
+                            let Some((bid, tile_idx, ao4, lpk)) = *cell else { continue; };
                             let mut w = 1;
                             while z+w < SECTION_SIZE && !visited[x][z+w] && mask[x][z+w]==Some((bid, tile_idx, ao4, lpk)) { w+=1; }
                             let mut h = 1;
@@ -259,7 +259,7 @@ pub fn mesh_chunk(chunk: &Chunk, get_neighbor: &Neighbor, grass_tint: &dyn Fn(i3
                                 for k in 0..w { if visited[x+h][z+k] || mask[x+h][z+k]!=Some((bid, tile_idx, ao4, lpk)) { break 'outer2; } }
                                 h+=1;
                             }
-                            for xx in x..x+h { for zz in z..z+w { visited[xx][zz]=true; } }
+                            for row in visited.iter_mut().skip(x).take(h) { for cell in row.iter_mut().skip(z).take(w) { *cell = true; } }
                             let y0 = y as f32 + if dy==1 { 1.0 } else { 0.0 };
                             let x0 = x as f32; let z0 = z as f32; let ww = w as f32; let hh = h as f32;
                             let (u0,v0,u1,v1) = (0.0f32, 0.0f32, hh, ww);
@@ -283,7 +283,7 @@ pub fn mesh_chunk(chunk: &Chunk, get_neighbor: &Neighbor, grass_tint: &dyn Fn(i3
                 2 => {
                     for z in 0..SECTION_SIZE {
                         let mut mask = [[None::<(Id,u32,[u8;4],u8)>; 16]; 16];
-                        for x in 0..SECTION_SIZE { for y in 0..SECTION_SIZE {
+                        for (x, row) in mask.iter_mut().enumerate() { for (y, cell) in row.iter_mut().enumerate() {
                             let id = section.get(x,y,z);
                             if id==0 || id==Block::Water as Id { continue; }
                             if Block::from_id(id).shape() != Shape::Cube { continue; }
@@ -294,13 +294,13 @@ pub fn mesh_chunk(chunk: &Chunk, get_neighbor: &Neighbor, grass_tint: &dyn Fn(i3
                                 let ao = |xs: i32, ys: i32| vao(occ(wx+xs, wy, nb), occ(wx, wy+ys, nb), occ(wx+xs, wy+ys, nb));
                                 let ao4 = if dz==1 { [ao(-1,-1), ao(1,-1), ao(1,1), ao(-1,1)] }
                                           else       { [ao(1,-1),  ao(-1,-1), ao(-1,1), ao(1,1)] };
-                                mask[x][y]=Some((id, tile, ao4, face_light(wx+dx, wy+dy, wz+dz)));
+                                *cell=Some((id, tile, ao4, face_light(wx+dx, wy+dy, wz+dz)));
                             }
                         }}
                         let mut visited = [[false; 16]; 16];
-                        for x in 0..SECTION_SIZE { for y in 0..SECTION_SIZE {
+                        for (x, row) in mask.iter().enumerate() { for (y, cell) in row.iter().enumerate() {
                             if visited[x][y] { continue; }
-                            let Some((bid, tile_idx, ao4, lpk)) = mask[x][y] else { continue; };
+                            let Some((bid, tile_idx, ao4, lpk)) = *cell else { continue; };
                             let mut w = 1;
                             while y+w < SECTION_SIZE && !visited[x][y+w] && mask[x][y+w]==Some((bid, tile_idx, ao4, lpk)) { w+=1; }
                             let mut h = 1;
@@ -308,7 +308,7 @@ pub fn mesh_chunk(chunk: &Chunk, get_neighbor: &Neighbor, grass_tint: &dyn Fn(i3
                                 for k in 0..w { if visited[x+h][y+k] || mask[x+h][y+k]!=Some((bid, tile_idx, ao4, lpk)) { break 'outer3; } }
                                 h+=1;
                             }
-                            for xx in x..x+h { for yy in y..y+w { visited[xx][yy]=true; } }
+                            for row in visited.iter_mut().skip(x).take(h) { for cell in row.iter_mut().skip(y).take(w) { *cell = true; } }
                             let z0 = z as f32 + if dz==1 { 1.0 } else { 0.0 };
                             let x0 = x as f32; let y0 = y as f32; let ww = w as f32; let hh = h as f32;
                             let (u0,v0,u1,v1) = (0.0f32, 0.0f32, hh, ww);
@@ -337,20 +337,20 @@ pub fn mesh_chunk(chunk: &Chunk, get_neighbor: &Neighbor, grass_tint: &dyn Fn(i3
         let mut windices: Vec<u32> = Vec::new();
         for y in 0..SECTION_SIZE {
             let mut wmask = [[false; 16]; 16];
-            for x in 0..SECTION_SIZE { for z in 0..SECTION_SIZE {
+            for (x, row) in wmask.iter_mut().enumerate() { for (z, cell) in row.iter_mut().enumerate() {
                 if section.get(x,y,z) != Block::Water as Id { continue; }
                 let wx = ox + x as i32; let wy = base_y + y as i32; let wz = oz + z as i32;
                 let above = get_neighbor(wx, wy+1, wz).0;
                 if above != Block::Water as Id && !(above != 0 && Block::from_id(above).is_opaque()) {
-                    wmask[x][z] = true;
+                    *cell = true;
                 }
             }}
             let mut visited = [[false; 16]; 16];
-            for x in 0..SECTION_SIZE { for z in 0..SECTION_SIZE {
-                if visited[x][z] || !wmask[x][z] { continue; }
+            for (x, row) in wmask.iter().enumerate() { for (z, &cell) in row.iter().enumerate() {
+                if visited[x][z] || !cell { continue; }
                 let mut w = 1; while z+w < SECTION_SIZE && !visited[x][z+w] && wmask[x][z+w] { w+=1; }
                 let mut h = 1; 'ow: while x+h < SECTION_SIZE { for k in 0..w { if visited[x+h][z+k] || !wmask[x+h][z+k] { break 'ow; } } h+=1; }
-                for xx in x..x+h { for zz in z..z+w { visited[xx][zz]=true; } }
+                for row in visited.iter_mut().skip(x).take(h) { for cell in row.iter_mut().skip(z).take(w) { *cell = true; } }
                 let y0 = (y+1) as f32;
                 let x0 = x as f32; let z0 = z as f32; let ww = w as f32; let hh = h as f32;
                 let (u0,v0,u1,v1) = (0.0f32, 0.0f32, hh, ww);
@@ -380,7 +380,7 @@ pub fn mesh_chunk(chunk: &Chunk, get_neighbor: &Neighbor, grass_tint: &dyn Fn(i3
                            &|dx, dy, dz| face_light(wx + dx, wy + dy, wz + dz));
             }
         }}}
-        if !verts.is_empty() || !wverts.is_empty() { result[sec_idx] = Some(MeshData{ vertices: verts, indices, water_vertices: wverts, water_indices: windices }); }
+        if !verts.is_empty() || !wverts.is_empty() { *slot = Some(MeshData{ vertices: verts, indices, water_vertices: wverts, water_indices: windices }); }
     }
     result
 }

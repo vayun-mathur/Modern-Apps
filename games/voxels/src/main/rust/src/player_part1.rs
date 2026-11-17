@@ -17,7 +17,7 @@ mod tests {
         plain.damage(plain.air_max_y - plain.pos.y - 3.5);
         assert!(plain.health < 20.0, "an unblessed fall should hurt");
 
-        let mut blessed = blessed_player(&[1100]);
+        let blessed = blessed_player(&[1100]);
         assert!(blessed.blessed(Passive::FeatherFall));
         // The tick applies the same drop with the blessing attuned.
         assert_eq!(blessed.health, 20.0);

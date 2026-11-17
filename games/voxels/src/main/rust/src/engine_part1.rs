@@ -151,7 +151,7 @@ fn simulate(state: &mut EngineState, dt: f32) {
                     if tier == 0 { continue; }
                     let d2 = dx * dx + dz * dz;
                     let range = tier * 10 + 10;
-                    if d2 <= range * range && best.map_or(true, |b| d2 < b.1) {
+                    if d2 <= range * range && best.is_none_or(|b| d2 < b.1) {
                         best = Some((tier, d2));
                     }
                 }
@@ -231,12 +231,12 @@ fn simulate(state: &mut EngineState, dt: f32) {
         // Slain Ender Dragon: mark defeated + a victory burst of particles.
         if let Some(dpos) = state.mobs.iter().find(|m| m.kind == MobKind::Dragon && m.health <= 0.0).map(|m| m.pos) {
             state.end_dragon_dead = true;
-            spawn_particles(&mut state.spawn_rng, &mut state.particles, dpos, 60, [0.7, 0.3, 0.95], 8.0, 1.4, 0.4);
+            spawn_particles(&mut state.spawn_rng, &mut state.particles, Burst { center: dpos, n: 60, color: [0.7, 0.3, 0.95], speed: 8.0, life: 1.4, size: 0.4 });
         }
         // Slain Wither: mark defeated + drop the Nether Star (via loot) + a dark burst.
         if let Some(wpos) = state.mobs.iter().find(|m| m.kind == MobKind::Wither && m.health <= 0.0).map(|m| m.pos) {
             state.nether_wither_dead = true;
-            spawn_particles(&mut state.spawn_rng, &mut state.particles, wpos, 60, [0.15, 0.15, 0.2], 8.0, 1.4, 0.4);
+            spawn_particles(&mut state.spawn_rng, &mut state.particles, Burst { center: wpos, n: 60, color: [0.15, 0.15, 0.2], speed: 8.0, life: 1.4, size: 0.4 });
         }
         // Remove dead mobs and auto-collect their drops. Glaucus makes ordinary kills pay double,
         // but not bosses — a second Nether Star would hand out a free extra beacon.
@@ -259,7 +259,7 @@ fn simulate(state: &mut EngineState, dt: f32) {
             if state.mobs.len() < 22 {
                 use crate::world::chunk::CHUNK_HEIGHT;
                 let mut rng = state.spawn_rng;
-                let mut rand = |r: &mut u32| { let mut x = *r; x ^= x << 13; x ^= x >> 17; x ^= x << 5; *r = x; (x >> 8) as f32 / 16_777_216.0 };
+                let rand = |r: &mut u32| { let mut x = *r; x ^= x << 13; x ^= x >> 17; x ^= x << 5; *r = x; (x >> 8) as f32 / 16_777_216.0 };
                 let ang = rand(&mut rng) * std::f32::consts::TAU;
                 let dist = 24.0 + rand(&mut rng) * 20.0;
                 let sx = player_pos.x + ang.cos() * dist;
@@ -380,7 +380,7 @@ fn render_frame(state: &mut EngineState) {
             let dim = state.dim;
             let rain = state.rain;
             unsafe {
-                renderer.update_ubo(view_proj, state.player.pos, time, underwater, nv, dim, rain);
+                renderer.update_ubo(crate::vulkan::renderer::UboFrame { view_proj, player_pos: state.player.pos, time, underwater, night_vision: nv, dim, rain });
                 renderer.upload_entity_mesh(&entity_verts, &entity_indices);
                 let _ = renderer.draw_frame(pcx, pcz, uploads);
             }

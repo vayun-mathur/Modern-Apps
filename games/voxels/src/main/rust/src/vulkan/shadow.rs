@@ -15,6 +15,10 @@ pub struct ShadowMap {
 }
 
 impl ShadowMap {
+    /// Creates the shadow map target.
+    ///
+    /// # Safety
+    /// The Vulkan handles passed in must be valid, created from the same instance/device, and must not be destroyed or used concurrently while this call runs.
     pub unsafe fn new(instance: &ash::Instance, device: &ash::Device, phys: vk::PhysicalDevice) -> Result<Self, String> {
         let img_ci = vk::ImageCreateInfo::default()
             .image_type(vk::ImageType::TYPE_2D)
@@ -69,6 +73,10 @@ impl ShadowMap {
         Ok(Self { image, memory, view, sampler, render_pass, framebuffer })
     }
 
+    /// Destroys the shadow map handles.
+    ///
+    /// # Safety
+    /// The handles owned by `self` must have been created on `device`, must not already have been destroyed, and no in-flight GPU work may still use them.
     pub unsafe fn destroy(&mut self, device: &ash::Device) {
         device.destroy_framebuffer(self.framebuffer, None);
         device.destroy_render_pass(self.render_pass, None);

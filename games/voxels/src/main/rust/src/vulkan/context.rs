@@ -18,14 +18,26 @@ extern "C" {
 
 #[cfg(not(target_os = "android"))]
 #[allow(non_snake_case)]
+/// Non-Android stub; always returns null.
+///
+/// # Safety
+/// No pointers are dereferenced on this platform, so no requirements are imposed on the arguments.
 pub unsafe fn ANativeWindow_fromSurface(_env: *mut c_void, _surface: *mut c_void) -> *mut ANativeWindow {
     std::ptr::null_mut()
 }
 #[cfg(not(target_os = "android"))]
 #[allow(non_snake_case)]
+/// Non-Android stub; does nothing.
+///
+/// # Safety
+/// The argument is never dereferenced on this platform.
 pub unsafe fn ANativeWindow_acquire(_window: *mut ANativeWindow) {}
 #[cfg(not(target_os = "android"))]
 #[allow(non_snake_case)]
+/// Non-Android stub; does nothing.
+///
+/// # Safety
+/// The argument is never dereferenced on this platform.
 pub unsafe fn ANativeWindow_release(_window: *mut ANativeWindow) {}
 
 pub struct VulkanContext {
@@ -42,6 +54,10 @@ pub struct VulkanContext {
 }
 
 impl VulkanContext {
+    /// Creates the instance, surface, device and queue.
+    ///
+    /// # Safety
+    /// `window` must be a live, acquired `ANativeWindow` that stays alive until the surface is destroyed.
     pub unsafe fn new(window: *mut ANativeWindow, _width: i32, _height: i32) -> Result<Self, String> {
         let entry = unsafe { Entry::load().map_err(|e| format!("Entry::load failed: {e:?}"))? };
         let app_name = CString::new("Voxels").unwrap();

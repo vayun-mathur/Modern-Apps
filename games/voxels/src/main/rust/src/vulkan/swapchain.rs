@@ -37,7 +37,7 @@ impl Swapchain {
         let formats = ctx.surface_loader.get_physical_device_surface_formats(ctx.physical_device, ctx.surface).map_err(|e| format!("formats {e:?}"))?;
         let present_modes = ctx.surface_loader.get_physical_device_surface_present_modes(ctx.physical_device, ctx.surface).map_err(|e| format!("present_modes {e:?}"))?;
         // Fix black screen: Pixel gralloc rejects SRGB 0x3b, prefer B8G8R8A8_UNORM
-        let mut chosen_format = formats.get(0).copied().ok_or("no surface formats")?;
+        let mut chosen_format = formats.first().copied().ok_or("no surface formats")?;
         for fmt in &formats { if fmt.format == vk::Format::B8G8R8A8_UNORM { chosen_format = *fmt; break; } }
         if chosen_format.format == vk::Format::B8G8R8A8_SRGB {
             if let Some(&f) = formats.iter().find(|f| f.format == vk::Format::B8G8R8A8_UNORM || f.format == vk::Format::R8G8B8A8_UNORM) { chosen_format = f; }

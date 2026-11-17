@@ -30,9 +30,32 @@ pub struct Pipelines {
     pub descriptor_pool: vk::DescriptorPool,
     pub descriptor_set: vk::DescriptorSet,
 }
+/// Everything `Pipelines::new` needs besides the device: the render passes it
+/// renders into and the images it samples, grouped as one argument.
+pub struct PipelineDeps {
+    pub render_pass: vk::RenderPass,
+    pub shadow_render_pass: vk::RenderPass,
+    pub composite_rp: vk::RenderPass,
+    pub post_rp: vk::RenderPass,
+    pub post_desc_layout: vk::DescriptorSetLayout,
+    pub ubo_buffer: vk::Buffer,
+    pub ubo_size: u64,
+    pub atlas_view: vk::ImageView,
+    pub atlas_sampler: vk::Sampler,
+    pub shadow_view: vk::ImageView,
+    pub shadow_sampler: vk::Sampler,
+    pub entity_view: vk::ImageView,
+    pub entity_sampler: vk::Sampler,
+}
+
 impl Pipelines {
     // Classic Vulkan 1.0 RenderPass path - no KHR_dynamic_rendering, avoids Unable to load cmd_begin_rendering
-    pub unsafe fn new(device: &ash::Device, render_pass: vk::RenderPass, shadow_render_pass: vk::RenderPass, composite_rp: vk::RenderPass, post_rp: vk::RenderPass, post_desc_layout: vk::DescriptorSetLayout, ubo_buffer: vk::Buffer, ubo_size: u64, atlas_view: vk::ImageView, atlas_sampler: vk::Sampler, shadow_view: vk::ImageView, shadow_sampler: vk::Sampler, entity_view: vk::ImageView, entity_sampler: vk::Sampler) -> Result<Self, String> {
+    /// Creates layouts, descriptor set and all pipelines.
+    ///
+    /// # Safety
+    /// The Vulkan handles passed in must be valid, created from the same instance/device, and must not be destroyed or used concurrently while this call runs. All render passes, views, samplers and the UBO buffer must outlive the pipelines built from them.
+    pub unsafe fn new(device: &ash::Device, deps: PipelineDeps) -> Result<Self, String> {
+        let PipelineDeps { render_pass, shadow_render_pass, composite_rp, post_rp, post_desc_layout, ubo_buffer, ubo_size, atlas_view, atlas_sampler, shadow_view, shadow_sampler, entity_view, entity_sampler } = deps;
         let bindings = [
             vk::DescriptorSetLayoutBinding::default().binding(0).descriptor_type(vk::DescriptorType::UNIFORM_BUFFER).descriptor_count(1).stage_flags(vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT),
             vk::DescriptorSetLayoutBinding::default().binding(1).descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER).descriptor_count(1).stage_flags(vk::ShaderStageFlags::FRAGMENT),
@@ -201,6 +224,10 @@ impl Pipelines {
         let code = unsafe { std::slice::from_raw_parts(spv.as_ptr() as *const u32, spv.len()/4) };
         device.create_shader_module(&vk::ShaderModuleCreateInfo::default().code(code), None).map_err(|e| format!("mod {e:?}"))
     }
+    /// Destroys all pipelines, layouts and descriptor objects.
+    ///
+    /// # Safety
+    /// The handles owned by `self` must have been created on `device`, must not already have been destroyed, and no in-flight GPU work may still use them.
     pub unsafe fn destroy(&mut self, device: &ash::Device) {
         device.destroy_pipeline(self.pipeline, None);
         device.destroy_pipeline(self.sky_pipeline, None);
