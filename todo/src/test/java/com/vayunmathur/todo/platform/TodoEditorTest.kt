@@ -10,6 +10,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
@@ -129,13 +130,25 @@ class TodoEditorTest {
 
     @Test fun updateBeforeLoadAndAfterCloseAreIgnored() = runBlocking {
         repo.upsert(Todo(syncId = "a", title = "Stable"))
-        val editor = editorFor(id = repo.getBySyncId("a")!!.id)
+        // Gate the editor's scope on a single occupied thread so the load
+        // cannot complete before the update below: on an unloaded box the
+        // load (Dispatchers.Default) can win that race, the "too early"
+        // update then legitimately applies, and the load await times out
+        // waiting for a title that was correctly overwritten.
+        val gate = java.util.concurrent.CountDownLatch(1)
+        val gatedScope = kotlinx.coroutines.CoroutineScope(
+            kotlinx.coroutines.SupervisorJob() + Dispatchers.Default.limitedParallelism(1)
+        )
+        gatedScope.launch { gate.await() }
+        val editor = TodoEditor(repo, gatedScope, repo.getBySyncId("a")!!.id, null, Todo())
         // state is still null here, so this update must be dropped, not crash.
         editor.update { it.copy(title = "Too early") }
+        gate.countDown()
         await("load") { editor.state.value?.title == "Stable" }
         editor.close()
         editor.update { it.copy(title = "Too late") }
         assertEquals("Stable", repo.getBySyncId("a")!!.title)
+        gatedScope.cancel()
     }
 
     @Test fun closeFlushesPendingEditWithoutWaitingForDebounce() = runBlocking {
