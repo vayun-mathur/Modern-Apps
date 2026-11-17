@@ -43,16 +43,23 @@
     <!-- CompetitiveLobbyScreen: Label above difficulty dropdown. Noun -->
     <string name="competitive_difficulty">Difficulty</string>
     <!-- CompetitiveLobbyScreen: Info showing time limit per level for selected difficulty. %1$d = seconds e.g. 45. Noun phrase duration -->
-    <string name="competitive_time_limit"><xliff:g id="seconds" example="45">%1$d</xliff:g> seconds per level</string>
+    <plurals name="competitive_time_limit">
+        <item quantity="one"><xliff:g id="seconds" example="45">%1$d</xliff:g> second per level</item>
+        <item quantity="other"><xliff:g id="seconds" example="45">%1$d</xliff:g> seconds per level</item>
+    </plurals>
     <!-- CompetitiveLobbyScreen: Result when level solved within time. %1$d = points delta e.g. 50 positive. Celebratory sentence -->
-    <string name="competitive_solved">Solved! +<xliff:g id="points" example="50">%1$d</xliff:g> points</string>
+    <plurals name="competitive_solved">
+        <item quantity="one">Solved! +<xliff:g id="points" example="50">%1$d</xliff:g> point</item>
+        <item quantity="other">Solved! +<xliff:g id="points" example="50">%1$d</xliff:g> points</item>
+    </plurals>
     <!-- CompetitiveLobbyScreen: Result when timer expired. %1$d = points delta negative e.g. -15 or penalized, but displays as positive in string with context. Sentence -->
-    <string name="competitive_timed_out">Time\'s up! <xliff:g id="points" example="-15">%1$d</xliff:g> points</string>
+    <plurals name="competitive_timed_out">
+        <item quantity="one">Time\'s up! <xliff:g id="points" example="-15">%1$d</xliff:g> point</item>
+        <item quantity="other">Time\'s up! <xliff:g id="points" example="-15">%1$d</xliff:g> points</item>
+    </plurals>
 
     <!-- GameModeDropdown: Daily challenge mode label. One date-seeded puzzle per day. Adjective -->
     <string name="mode_daily">Daily</string>
-    <!-- DailyStatusBar: Consecutive days solved. %1$d = streak length e.g. 5. Noun phrase with number -->
-    <string name="daily_streak"><xliff:g id="days" example="5">%1$d</xliff:g> day streak</string>
     <!-- WordGameScreen: Shown after solving the daily, in place of the Next Level button. Sentence -->
     <string name="daily_come_back_tomorrow">Solved! Come back tomorrow.</string>
 

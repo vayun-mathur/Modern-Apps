@@ -2,7 +2,6 @@
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="error_parse_level">فشل تحليل بيانات المستوى.</string>
     <string name="level_number">المستوى <xliff:g id="level" example="12">%1$d</xliff:g></string>
-    <string name="next_level">المستوى التالي</string>
     <string name="yes">نعم</string>
     <string name="no">لا</string>
 </resources>

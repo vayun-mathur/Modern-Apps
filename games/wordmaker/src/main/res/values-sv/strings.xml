@@ -1,10 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <string name="daily_challenge">Dagens utmaning</string>
-    <string name="daily_streak">%1$d dagars svit</string>
     <string name="error_parse_level">Kunde inte tolka nivådata.</string>
     <string name="level_number">Nivå <xliff:g id="level" example="12">%1$d</xliff:g></string>
-    <string name="next_level">Nästa nivå</string>
     <string name="bonus_words">Bonusord</string>
     <string name="tap_to_spell">Tryck för att stava</string>
     <string name="tap_to_spell_description">Tryck på bokstäver för att bygga ord i stället för att dra</string>
@@ -18,15 +15,21 @@
     <string name="no">Nej</string>
     <string name="mode_casual">Avslappnat</string>
     <string name="mode_competitive">Tävlingsinriktat</string>
-    <string name="difficulty_easy">Lätt</string>
-    <string name="difficulty_medium">Medel</string>
-    <string name="difficulty_hard">Svårt</string>
     <string name="competitive_score">Poäng: <xliff:g id="score" example="150">%1$d</xliff:g></string>
     <string name="competitive_start">Starta</string>
     <string name="competitive_difficulty">Svårighetsgrad</string>
-    <string name="competitive_time_limit"><xliff:g id="seconds" example="45">%1$d</xliff:g> sekunder per nivå</string>
-    <string name="competitive_solved">Löst! +<xliff:g id="points" example="50">%1$d</xliff:g> poäng</string>
-    <string name="competitive_timed_out">Tiden är ute! <xliff:g id="points" example="-15">%1$d</xliff:g> poäng</string>
+    <plurals name="competitive_time_limit">
+        <item quantity="one"><xliff:g id="seconds" example="45">%1$d</xliff:g> sekunder per nivå</item>
+        <item quantity="other"><xliff:g id="seconds" example="45">%1$d</xliff:g> sekunder per nivå</item>
+    </plurals>
+    <plurals name="competitive_solved">
+        <item quantity="one">Löst! +<xliff:g id="points" example="50">%1$d</xliff:g> poäng</item>
+        <item quantity="other">Löst! +<xliff:g id="points" example="50">%1$d</xliff:g> poäng</item>
+    </plurals>
+    <plurals name="competitive_timed_out">
+        <item quantity="one">Tiden är ute! <xliff:g id="points" example="-15">%1$d</xliff:g> poäng</item>
+        <item quantity="other">Tiden är ute! <xliff:g id="points" example="-15">%1$d</xliff:g> poäng</item>
+    </plurals>
     <string name="mode_daily">Daglig</string>
     <string name="daily_come_back_tomorrow">Löst! Kom tillbaka i morgon.</string>
     <string name="cd_shuffle">Blanda</string>

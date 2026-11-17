@@ -1,9 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="difficulty_easy">Facile</string>
-    <string name="difficulty_medium">Moyen</string>
-    <string name="difficulty_hard">Difficile</string>
-    <string name="next_level">Niveau suivant</string>
     <string name="yes">Oui</string>
     <string name="no">Non</string>
     <string name="mode_casual">Décontracté</string>
@@ -11,13 +7,25 @@
     <string name="competitive_score">Score : %1$d</string>
     <string name="competitive_start">Démarrer</string>
     <string name="competitive_difficulty">Difficulté</string>
-    <string name="competitive_time_limit">%1$d secondes par niveau</string>
-    <string name="competitive_solved">Résolu ! +%1$d points</string>
+    <plurals name="competitive_time_limit">
+        <item quantity="one">%1$d secondes par niveau</item>
+        <item quantity="many">%1$d secondes par niveau</item>
+        <item quantity="other">%1$d secondes par niveau</item>
+    </plurals>
+    <plurals name="competitive_solved">
+        <item quantity="one">Résolu ! +%1$d points</item>
+        <item quantity="many">Résolu ! +%1$d points</item>
+        <item quantity="other">Résolu ! +%1$d points</item>
+    </plurals>
     <string name="error_parse_level">Échec de l\'analyse des données du niveau.</string>
     <string name="level_number">Niveau %1$d</string>
     <string name="bonus_words">Mots bonus</string>
     <string name="tap_to_spell">Appuyez pour épeler</string>
     <string name="tap_to_spell_description">Appuyez sur les lettres pour former des mots au lieu de les faire glisser</string>
     <string name="hint_confirmation">Êtes-vous sûr de vouloir utiliser un indice ?</string>
-    <string name="competitive_timed_out">Temps écoulé ! %1$d points</string>
+    <plurals name="competitive_timed_out">
+        <item quantity="one">Temps écoulé ! %1$d points</item>
+        <item quantity="many">Temps écoulé ! %1$d points</item>
+        <item quantity="other">Temps écoulé ! %1$d points</item>
+    </plurals>
 </resources>

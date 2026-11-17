@@ -11,6 +11,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -100,9 +101,9 @@ fun CompetitiveLobbyScreen(
                 Spacer(Modifier.height(24.dp))
                 Text(
                     text = if (it.won) {
-                        stringResource(R.string.competitive_solved, it.delta)
+                        pluralStringResource(R.plurals.competitive_solved, it.delta, it.delta)
                     } else {
-                        stringResource(R.string.competitive_timed_out, it.delta)
+                        pluralStringResource(R.plurals.competitive_timed_out, it.delta, it.delta)
                     },
                     color = if (it.won) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
                     fontWeight = FontWeight.Bold,
@@ -113,7 +114,7 @@ fun CompetitiveLobbyScreen(
             Spacer(Modifier.height(32.dp))
             Text(stringResource(R.string.competitive_difficulty), fontWeight = FontWeight.Bold)
             DifficultyDropdown(selected = difficulty, onSelected = { actions.setDifficulty(it) })
-            Text(stringResource(R.string.competitive_time_limit, difficulty.timeLimitSeconds))
+            Text(pluralStringResource(R.plurals.competitive_time_limit, difficulty.timeLimitSeconds, difficulty.timeLimitSeconds))
 
             Spacer(Modifier.height(32.dp))
             Button(onClick = { actions.loadNextCompetitiveLevel() }) {

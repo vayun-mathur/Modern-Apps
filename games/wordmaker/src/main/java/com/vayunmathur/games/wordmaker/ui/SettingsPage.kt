@@ -1,5 +1,4 @@
 package com.vayunmathur.games.wordmaker.ui
-import android.Manifest
 import android.os.Build
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.library.ui.DailyReminderSettingsSection
@@ -28,7 +27,10 @@ fun SettingsPage(viewModel: WordMakerViewModel, onBack: () -> Unit) {
     val reminderEnabled by viewModel.reminderEnabled.collectAsState()
     val reminderMinutes by viewModel.reminderMinutesOfDay.collectAsState()
 
-    val requestNotifications = rememberPermissionRequest(Manifest.permission.POST_NOTIFICATIONS)
+    // Literal, not the Manifest permission field: that field is API 33+, and referencing
+    // it here trips InlinedApi on minSdk 31 even though the request is only fired on TIRAMISU+
+    // (see setReminderEnabled below). The permission string itself is stable.
+    val requestNotifications = rememberPermissionRequest("android.permission.POST_NOTIFICATIONS")
 
     SettingsScreen(
         state = SettingsUiState(

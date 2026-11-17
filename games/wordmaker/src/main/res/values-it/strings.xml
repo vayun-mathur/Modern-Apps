@@ -2,7 +2,6 @@
 <resources>
     <string name="error_parse_level">Impossibile caricare i dati del livello.</string>
     <string name="level_number">Livello %1$d</string>
-    <string name="next_level">Livello successivo</string>
     <string name="bonus_words">Parole bonus</string>
     <string name="hint_confirmation">Sei sicuro di voler usare un suggerimento?</string>
     <string name="yes">Sì</string>
@@ -11,13 +10,22 @@
     <string name="tap_to_spell_description">Tocca le lettere per comporre le parole invece di trascinarle</string>
     <string name="mode_casual">Amichevole</string>
     <string name="mode_competitive">Competitiva</string>
-    <string name="difficulty_easy">Facile</string>
-    <string name="difficulty_medium">Media</string>
-    <string name="difficulty_hard">Difficile</string>
     <string name="competitive_score">Punteggio: %1$d</string>
     <string name="competitive_start">Avvia</string>
     <string name="competitive_difficulty">Difficoltà</string>
-    <string name="competitive_time_limit">%1$d secondi per livello</string>
-    <string name="competitive_solved">Risolto! +%1$d punti</string>
-    <string name="competitive_timed_out">Tempo scaduto! %1$d punti</string>
+    <plurals name="competitive_time_limit">
+        <item quantity="one">%1$d secondi per livello</item>
+        <item quantity="many">%1$d secondi per livello</item>
+        <item quantity="other">%1$d secondi per livello</item>
+    </plurals>
+    <plurals name="competitive_solved">
+        <item quantity="one">Risolto! +%1$d punti</item>
+        <item quantity="many">Risolto! +%1$d punti</item>
+        <item quantity="other">Risolto! +%1$d punti</item>
+    </plurals>
+    <plurals name="competitive_timed_out">
+        <item quantity="one">Tempo scaduto! %1$d punti</item>
+        <item quantity="many">Tempo scaduto! %1$d punti</item>
+        <item quantity="other">Tempo scaduto! %1$d punti</item>
+    </plurals>
 </resources>

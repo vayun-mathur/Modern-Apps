@@ -2,7 +2,6 @@
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="error_parse_level">无法解析关卡数据。</string>
     <string name="level_number">关卡 <xliff:g id="level" example="12">%1$d</xliff:g></string>
-    <string name="next_level">下一关</string>
     <string name="bonus_words">奖励单词</string>
     <string name="tap_to_spell">点按拼写</string>
     <string name="tap_to_spell_description">点按字母拼写单词，而非拖动</string>
@@ -11,21 +10,22 @@
     <string name="no">否</string>
     <string name="mode_casual">休闲</string>
     <string name="mode_competitive">竞技</string>
-    <string name="difficulty_easy">简单</string>
-    <string name="difficulty_medium">中等</string>
-    <string name="difficulty_hard">困难</string>
     <string name="competitive_score">得分：<xliff:g id="score" example="150">%1$d</xliff:g></string>
     <string name="competitive_start">开始</string>
     <string name="competitive_difficulty">难度</string>
-    <string name="competitive_time_limit">每关 <xliff:g id="seconds" example="45">%1$d</xliff:g> 秒</string>
-    <string name="competitive_solved">通关！+<xliff:g id="points" example="50">%1$d</xliff:g> 分</string>
-    <string name="competitive_timed_out">时间到！<xliff:g id="points" example="-15">%1$d</xliff:g> 分</string>
+    <plurals name="competitive_time_limit">
+        <item quantity="other">每关 <xliff:g id="seconds" example="45">%1$d</xliff:g> 秒</item>
+    </plurals>
+    <plurals name="competitive_solved">
+        <item quantity="other">通关！+<xliff:g id="points" example="50">%1$d</xliff:g> 分</item>
+    </plurals>
+    <plurals name="competitive_timed_out">
+        <item quantity="other">时间到！<xliff:g id="points" example="-15">%1$d</xliff:g> 分</item>
+    </plurals>
     <string name="cd_hint">提示</string>
     <string name="cd_shuffle">随机排序</string>
     <string name="cd_submit">提交</string>
     <string name="cd_backspace">退格键</string>
-    <string name="daily_challenge">每日挑战</string>
-    <string name="daily_streak">连续 <xliff:g id="days" example="5">%1$d</xliff:g> 天</string>
     <string name="mode_daily">每日</string>
     <string name="daily_come_back_tomorrow">已解决！明天再来。</string>
     <string name="wheel_spacing">字母转盘间距</string>

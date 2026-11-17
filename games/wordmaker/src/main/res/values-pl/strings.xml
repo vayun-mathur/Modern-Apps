@@ -2,6 +2,5 @@
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="error_parse_level">Nie udało się przetworzyć danych poziomu.</string>
     <string name="level_number">Poziom <xliff:g id="level" example="12">%1$d</xliff:g></string>
-    <string name="next_level">Następny poziom</string>
     <string name="bonus_words">Dodatkowe słowa</string>
 </resources>

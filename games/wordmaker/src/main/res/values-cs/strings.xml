@@ -1,17 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <string name="difficulty_easy">Jednoduchá</string>
-    <string name="difficulty_medium">Střední</string>
-    <string name="difficulty_hard">Těžká</string>
     <string name="competitive_score">Skóre: <xliff:g id="score" example="150">%1$d</xliff:g></string>
     <string name="competitive_start">Začít</string>
     <string name="competitive_difficulty">Obtížnost</string>
-    <string name="competitive_time_limit"><xliff:g id="seconds" example="45">%1$d</xliff:g> vteřin na úroveň</string>
-    <string name="competitive_solved">Vyřešeno! +<xliff:g id="points" example="50">%1$d</xliff:g> bodů</string>
-    <string name="competitive_timed_out">Čas vypršel! <xliff:g id="points" example="-15">%1$d</xliff:g> bodů</string>
+    <plurals name="competitive_time_limit">
+        <item quantity="one"><xliff:g id="seconds" example="45">%1$d</xliff:g> vteřin na úroveň</item>
+        <item quantity="few"><xliff:g id="seconds" example="45">%1$d</xliff:g> vteřin na úroveň</item>
+        <item quantity="many"><xliff:g id="seconds" example="45">%1$d</xliff:g> vteřin na úroveň</item>
+        <item quantity="other"><xliff:g id="seconds" example="45">%1$d</xliff:g> vteřin na úroveň</item>
+    </plurals>
+    <plurals name="competitive_solved">
+        <item quantity="one">Vyřešeno! +<xliff:g id="points" example="50">%1$d</xliff:g> bodů</item>
+        <item quantity="few">Vyřešeno! +<xliff:g id="points" example="50">%1$d</xliff:g> bodů</item>
+        <item quantity="many">Vyřešeno! +<xliff:g id="points" example="50">%1$d</xliff:g> bodů</item>
+        <item quantity="other">Vyřešeno! +<xliff:g id="points" example="50">%1$d</xliff:g> bodů</item>
+    </plurals>
+    <plurals name="competitive_timed_out">
+        <item quantity="one">Čas vypršel! <xliff:g id="points" example="-15">%1$d</xliff:g> bodů</item>
+        <item quantity="few">Čas vypršel! <xliff:g id="points" example="-15">%1$d</xliff:g> bodů</item>
+        <item quantity="many">Čas vypršel! <xliff:g id="points" example="-15">%1$d</xliff:g> bodů</item>
+        <item quantity="other">Čas vypršel! <xliff:g id="points" example="-15">%1$d</xliff:g> bodů</item>
+    </plurals>
     <string name="error_parse_level">Nepovedlo se zpracovat data úrovně.</string>
     <string name="level_number">Level <xliff:g id="level" example="12">%1$d</xliff:g></string>
-    <string name="next_level">Další úroveň</string>
     <string name="bonus_words">Bonusová slova</string>
     <string name="tap_to_spell">Hláskovat klepnutím</string>
     <string name="tap_to_spell_description">Pro stavbu slov na písmena klepejte namísto tažení</string>
@@ -25,8 +36,6 @@
     <string name="cd_submit">Odeslat</string>
     <string name="cd_backspace">Backspace</string>
     <string name="mode_daily">Denní</string>
-    <string name="daily_challenge">Denní výzva</string>
-    <string name="daily_streak"><xliff:g id="days" example="5">%1$d</xliff:g> denní řada</string>
     <string name="daily_come_back_tomorrow">Vyřešeno! Vraťte se zítra.</string>
     <string name="wheel_spacing">Rozestupy v kole písmen</string>
     <string name="wheel_spacing_default">Výchozí</string>
