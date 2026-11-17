@@ -25,12 +25,19 @@
     <uses-permission
         android:name="android.permission.READ_LOGS_FULL"
         tools:ignore="SystemPermissionTypo" />
-    <uses-permission android:name="android.permission.READ_OEM_UNLOCK_STATE" />
+    <uses-permission
+        android:name="android.permission.READ_OEM_UNLOCK_STATE"
+        tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- A log can be about ANY installed app, and both the uid to filter logcat on and the label in
          the title come from PackageManager. A <queries> list is not an option when the set of
          packages is "whichever one just crashed". -->
-    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
-    <uses-permission android:name="android.permission.QUERY_USERS" />
+    <uses-permission
+        android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="QueryAllPackagesPermission" />
+    <uses-permission
+        android:name="android.permission.QUERY_USERS"
+        tools:ignore="ProtectedPermissions" />
 
     <!-- Renamed from app.grapheneos.logviewer.* but the protection levels are unchanged, because
          they are what makes the two entry points safe to export. `privileged` on the logcat side
