@@ -42,7 +42,7 @@
 //! Both of those were bugs that had to be fixed once already.
 
 use std::fs::File;
-use std::io::{BufReader, BufWriter, Read, Write};
+use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 
 use crate::compact::Chain;
@@ -132,9 +132,7 @@ pub(crate) fn count_degrees(
         let _ = pbf::run_pass_sink(
             input,
             blobs,
-            Some(blob_kinds),
-            KIND_WAYS,
-            "Pass 3: node degrees",
+            pbf::PassSpec { blob_kinds: Some(blob_kinds), want: KIND_WAYS, label: "Pass 3: node degrees" },
             DegreePass::default,
             |_state: &mut DegreePass, block| {
                 let mut kinds = 0u8;
@@ -235,9 +233,7 @@ pub(crate) fn build<W: Write + Send>(
         pbf::run_pass_sink(
             input,
             blobs,
-            Some(blob_kinds),
-            KIND_WAYS,
-            "Pass 4: chains",
+            pbf::PassSpec { blob_kinds: Some(blob_kinds), want: KIND_WAYS, label: "Pass 4: chains" },
             ChainPass::default,
             |state: &mut ChainPass, block| {
                 chain_blob(state, block, index, coords, degree, stop, filter, &ends)

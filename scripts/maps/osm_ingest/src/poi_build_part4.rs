@@ -196,16 +196,7 @@ mod admin_tests {
     #[test]
     fn the_admin_table_walks_linked_boundaries_to_the_top() {
         let (pbf_path, dir) = testpbf::write_admin_sample("poi_admin");
-        let stats = build(
-            &pbf_path,
-            &dir.join("pois.geojsonseq"),
-            &dir.join("poi_names.bin"),
-            &dir.join("poi_index.bin"),
-            &dir.join("poi_attrs.bin"),
-            &dir.join("poi_spatial.bin"),
-            &dir.join("poi_name_index.bin"),
-            &dir.join("poi_region.bin"),
-        )
+        let stats = build(Paths { input: &pbf_path, geojson: &dir.join("pois.geojsonseq"), names: &dir.join("poi_names.bin"), index: &dir.join("poi_index.bin"), attrs: &dir.join("poi_attrs.bin"), spatial: &dir.join("poi_spatial.bin"), name_index: &dir.join("poi_name_index.bin"), region: &dir.join("poi_region.bin") })
         .unwrap();
         let admin = read_admin(&dir);
         assert_eq!(stats.admin_entries, 3);

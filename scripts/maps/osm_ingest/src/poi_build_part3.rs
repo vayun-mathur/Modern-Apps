@@ -70,7 +70,7 @@ impl RingIndex {
             max_y = max_y.max(y);
         }
         let span = max_y - min_y;
-        let bands = if n < 3 || !(span > 0.0) {
+        let bands = if n < 3 || span.partial_cmp(&0.0) != Some(std::cmp::Ordering::Greater) {
             1
         } else {
             (n / EDGES_PER_BAND).clamp(1, MAX_BANDS)
@@ -186,7 +186,7 @@ where
             })
             .collect();
         // The stats are a per-call report nobody reads on this path.
-        let polys = rings::assemble(&members, &locate, &mut RingStats::default());
+        let polys = rings::assemble(&members, locate, &mut RingStats::default());
         if polys.is_empty() {
             return None;
         }
@@ -385,7 +385,7 @@ mod region_index_tests {
         let flat = vec![(0.0, 1.0), (1.0, 1.0), (2.0, 1.0), (0.0, 1.0)];
         let idx = RingIndex::new(&flat);
         assert!(!idx.contains((1.0, 1.0), &flat));
-        assert_eq!(rings::point_in_ring((1.0, 1.0), &flat), false);
+        assert!(!rings::point_in_ring((1.0, 1.0), &flat));
         let tiny = vec![(0.0, 0.0), (1.0, 1.0)];
         assert!(!RingIndex::new(&tiny).contains((0.5, 0.5), &tiny));
     }

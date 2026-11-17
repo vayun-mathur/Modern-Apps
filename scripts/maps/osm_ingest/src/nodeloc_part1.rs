@@ -65,9 +65,7 @@ where
     pbf::run_pass_sink(
         input,
         blobs,
-        Some(blob_kinds),
-        KIND_NODES,
-        label,
+        pbf::PassSpec { blob_kinds: Some(blob_kinds), want: KIND_NODES, label },
         || (Vec::<(u64, i32, i32)>::new(), Vec::<L>::new()),
         |state: &mut (Vec<(u64, i32, i32)>, Vec<L>), block| {
             let mut kinds = 0u8;

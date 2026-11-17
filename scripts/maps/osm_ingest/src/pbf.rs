@@ -294,12 +294,22 @@ impl<'a> PrimitiveBlock<'a> {
 /// then ways, then relations. A skipped blob's incoming kinds are carried into
 /// the returned mask, so a filtered pass's mask is still a complete description
 /// of the file and can be fed to the pass after it.
+/// Which blobs a pass wants, and how it is labelled in progress output.
+#[derive(Clone, Copy)]
+pub struct PassSpec<'a> {
+    /// Kind mask from a previous full pass, letting this pass skip blobs that
+    /// hold nothing it wants. `None` scans every blob.
+    pub blob_kinds: Option<&'a [u8]>,
+    /// Bitmask of blob kinds this pass wants.
+    pub want: u8,
+    /// Progress label.
+    pub label: &'a str,
+}
+
 pub fn run_pass_sink<S, F, G, H>(
     path: &Path,
     blobs: &[BlobLoc],
-    blob_kinds: Option<&[u8]>,
-    want: u8,
-    label: &str,
+    spec: PassSpec<'_>,
     make: F,
     body: G,
     sink: H,
@@ -406,7 +416,7 @@ where
                     let mut state = make();
                     for (i, loc) in blobs[start..end].iter().enumerate() {
                         let idx = start + i;
-                        match blob_kinds.filter(|k| k[idx] & want == 0) {
+                        match spec.blob_kinds.filter(|k| k[idx] & spec.want == 0) {
                             Some(k) => kinds[idx].store(k[idx], Ordering::Relaxed),
                             None => {
                                 read_exact_at(&mut file, loc, &mut compressed).map_err(fail)?;
@@ -416,7 +426,7 @@ where
                                 kinds[idx].store(seen, Ordering::Relaxed);
                             }
                         }
-                        report(label, &done_blobs, &last_pct, blobs.len(), &pass_start);
+                        report(spec.label, &done_blobs, &last_pct, blobs.len(), &pass_start);
                     }
                     shared.lock().expect("chunk slot mutex").slots[chunk] = Some(state);
                     drain_thread.unpark();
@@ -494,7 +504,7 @@ where
         }
         if first_err.is_none() && next < n_chunks {
             first_err = Some(Error(format!(
-                "pass {label}: chunks {next}..{n_chunks} were never produced"
+                "pass {}: chunks {next}..{n_chunks} were never produced", spec.label
             )));
         }
     });
@@ -510,7 +520,7 @@ where
     {
         let n = blobs.len();
         eprintln!(
-            "\r{label:<28} [100%] {n}/{n}  {} elapsed, ETA 0s   ",
+            "\r{:<28} [100%] {n}/{n}  {} elapsed, ETA 0s   ", spec.label,
             crate::progress::hms(pass_start.elapsed().as_secs_f64()),
         );
     }
@@ -549,7 +559,7 @@ where
     G: Fn(&mut S, &PrimitiveBlock) -> Result<u8> + Sync,
 {
     let mut out: Vec<S> = Vec::new();
-    let kinds = run_pass_sink(path, blobs, blob_kinds, want, label, make, body, |s| {
+    let kinds = run_pass_sink(path, blobs, PassSpec { blob_kinds, want, label }, make, body, |s| {
         out.push(s);
         Ok(())
     })?;

@@ -87,16 +87,7 @@ mod tests {
 
     fn build_sample(tag: &str) -> (Stats, PathBuf) {
         let (pbf_path, dir) = testpbf::write_sample(tag);
-        let stats = build(
-            &pbf_path,
-            &dir.join("pois.geojsonseq"),
-            &dir.join("poi_names.bin"),
-            &dir.join("poi_index.bin"),
-            &dir.join("poi_attrs.bin"),
-            &dir.join("poi_spatial.bin"),
-            &dir.join("poi_name_index.bin"),
-            &dir.join("poi_region.bin"),
-        )
+        let stats = build(Paths { input: &pbf_path, geojson: &dir.join("pois.geojsonseq"), names: &dir.join("poi_names.bin"), index: &dir.join("poi_index.bin"), attrs: &dir.join("poi_attrs.bin"), spatial: &dir.join("poi_spatial.bin"), name_index: &dir.join("poi_name_index.bin"), region: &dir.join("poi_region.bin") })
         .unwrap();
         (stats, dir)
     }
@@ -203,16 +194,7 @@ mod tests {
     fn two_runs_are_byte_identical() {
         let (pbf_path, dir) = testpbf::write_sample("poi_det");
         let run = |suffix: &str| {
-            build(
-                &pbf_path,
-                &dir.join(format!("pois{suffix}.geojsonseq")),
-                &dir.join(format!("names{suffix}.bin")),
-                &dir.join(format!("index{suffix}.bin")),
-                &dir.join(format!("attrs{suffix}.bin")),
-                &dir.join(format!("spatial{suffix}.bin")),
-                &dir.join(format!("nameidx{suffix}.bin")),
-                &dir.join(format!("region{suffix}.bin")),
-            )
+            build(Paths { input: &pbf_path, geojson: &dir.join(format!("pois{suffix}.geojsonseq")), names: &dir.join(format!("names{suffix}.bin")), index: &dir.join(format!("index{suffix}.bin")), attrs: &dir.join(format!("attrs{suffix}.bin")), spatial: &dir.join(format!("spatial{suffix}.bin")), name_index: &dir.join(format!("nameidx{suffix}.bin")), region: &dir.join(format!("region{suffix}.bin")) })
             .unwrap();
         };
         run("a");
@@ -287,16 +269,7 @@ mod tests {
     #[test]
     fn boundary_links_resolve_member_first_then_containment() {
         let (pbf_path, dir) = testpbf::write_region_sample("poi_region");
-        let stats = build(
-            &pbf_path,
-            &dir.join("pois.geojsonseq"),
-            &dir.join("poi_names.bin"),
-            &dir.join("poi_index.bin"),
-            &dir.join("poi_attrs.bin"),
-            &dir.join("poi_spatial.bin"),
-            &dir.join("poi_name_index.bin"),
-            &dir.join("poi_region.bin"),
-        )
+        let stats = build(Paths { input: &pbf_path, geojson: &dir.join("pois.geojsonseq"), names: &dir.join("poi_names.bin"), index: &dir.join("poi_index.bin"), attrs: &dir.join("poi_attrs.bin"), spatial: &dir.join("poi_spatial.bin"), name_index: &dir.join("poi_name_index.bin"), region: &dir.join("poi_region.bin") })
         .unwrap();
         let (records, _) = read_records(&dir);
         assert_eq!(records.len(), 4);
@@ -337,18 +310,7 @@ mod tests {
             testpbf::CAFE_NODE_ID,
         ))
         .unwrap();
-        let stats = build_with_reviews(
-            &pbf_path,
-            &dir.join("pois.geojsonseq"),
-            &dir.join("poi_names.bin"),
-            &dir.join("poi_index.bin"),
-            &dir.join("poi_attrs.bin"),
-            &dir.join("poi_spatial.bin"),
-            &dir.join("poi_name_index.bin"),
-            &dir.join("poi_region.bin"),
-            None,
-            Some(&table),
-        )
+        let stats = build_with_reviews(Paths { input: &pbf_path, geojson: &dir.join("pois.geojsonseq"), names: &dir.join("poi_names.bin"), index: &dir.join("poi_index.bin"), attrs: &dir.join("poi_attrs.bin"), spatial: &dir.join("poi_spatial.bin"), name_index: &dir.join("poi_name_index.bin"), region: &dir.join("poi_region.bin") }, None, Some(&table))
         .unwrap();
         assert_eq!(stats.with_reviews, 3);
 

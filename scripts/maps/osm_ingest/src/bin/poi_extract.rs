@@ -37,32 +37,24 @@ fn main() -> ExitCode {
         println!("Loaded {} review row(s)", table.len());
     };
 
+    let paths = osm_ingest::poi_build::Paths {
+        input: &args.input,
+        geojson: &args.geojson,
+        names: &args.names,
+        index: &args.index,
+        attrs: &args.attrs,
+        spatial: &args.spatial,
+        name_index: &args.name_index,
+        region: &args.region,
+    };
     let result = match loader {
         Some(loader) => osm_ingest::poi_build::build_with_review_loader(
-            &args.input,
-            &args.geojson,
-            &args.names,
-            &args.index,
-            &args.attrs,
-            &args.spatial,
-            &args.name_index,
-            &args.region,
+            paths,
             args.bbox,
             loader,
             &on_loaded,
         ),
-        None => osm_ingest::poi_build::build_with_reviews(
-            &args.input,
-            &args.geojson,
-            &args.names,
-            &args.index,
-            &args.attrs,
-            &args.spatial,
-            &args.name_index,
-            &args.region,
-            args.bbox,
-            None,
-        ),
+        None => osm_ingest::poi_build::build_with_reviews(paths, args.bbox, None),
     };
     match result {
         Ok(stats) => {

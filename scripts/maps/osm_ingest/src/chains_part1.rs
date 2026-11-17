@@ -98,8 +98,8 @@ impl Spill {
     /// byte-deterministic.
     pub fn writer(&self) -> Result<SpillWriter> {
         self.make_dirs()?;
-        let mut hdr = BufWriter::with_capacity(8 << 20, create(&self.hdr)?);
-        let mut pts = BufWriter::with_capacity(8 << 20, create(&self.pts)?);
+        let hdr = BufWriter::with_capacity(8 << 20, create(&self.hdr)?);
+        let pts = BufWriter::with_capacity(8 << 20, create(&self.pts)?);
         // The appends run on threads of their own — one per file, since the two
         // are independent streams — so the chain pass's ordered sink hands
         // buffers over instead of copying ~45 GB (planet) through write(2)
@@ -196,14 +196,15 @@ impl Spill {
     #[cfg(test)]
     pub fn read_all(&self) -> Result<(Vec<ChainRec>, Vec<geom::Pt>)> {
         let count = self.chain_count()?;
-        let mut hdr = self.headers()?;
+        let hdr = self.headers_mapped()?;
         let mut chains = Vec::with_capacity(count as usize);
-        while let Some(c) = hdr.next()? {
-            chains.push(c);
+        for i in 0..count {
+            chains.push(hdr.get(i)?);
         }
 
         let bytes = self.point_bytes()?;
-        let mut src = BufReader::new(open(&self.pts)?);
+        use std::io::Read as _;
+        let mut src = std::io::BufReader::new(open(&self.pts)?);
         let mut buf = [0u8; CHAIN_PT_BYTES as usize];
         let mut pts = Vec::with_capacity((bytes / CHAIN_PT_BYTES) as usize);
         for _ in 0..bytes / CHAIN_PT_BYTES {
@@ -211,16 +212,6 @@ impl Spill {
             pts.push(decode_pt(&buf));
         }
         Ok((chains, pts))
-    }
-
-    /// Sequential reader over `chains.hdr`. Every stage after the chain pass is one
-    /// of these: the degree count for the CSR, the target scatter, and the single
-    /// round-assignment scan feeding [`Spill::headers_mapped`](Self::headers_mapped).
-    pub fn headers(&self) -> Result<HeaderReader> {
-        Ok(HeaderReader {
-            src: BufReader::with_capacity(1 << 20, open(&self.hdr)?),
-            left: self.chain_count()?,
-        })
     }
 
     /// Random-access reader over `chains.hdr`, for the write rounds.
@@ -285,6 +276,7 @@ fn create(path: &Path) -> Result<File> {
     File::create(path).map_err(|e| Error(format!("cannot write {}: {e}", path.display())))
 }
 
+#[cfg(test)]
 fn open(path: &Path) -> Result<File> {
     File::open(path).map_err(|e| Error(format!("cannot read {}: {e}", path.display())))
 }
@@ -297,14 +289,18 @@ fn decode_pt(b: &[u8]) -> geom::Pt {
 }
 
 /// Streams `chains.hdr` and `chains.pts` from the front.
+/// Sender for one spill file's writer thread.
+type SpillSender = std::sync::mpsc::SyncSender<Vec<u8>>;
+/// The two spill writer threads: `(chains.hdr, chains.pts)`.
+type SpillThreads = (
+    std::thread::JoinHandle<std::io::Result<()>>,
+    std::thread::JoinHandle<std::io::Result<()>>,
+);
+
 pub(crate) struct SpillWriter {
     /// Buffers for the writer thread, in order: `(chains.hdr bytes, chains.pts bytes)`.
-    tx: Option<(std::sync::mpsc::SyncSender<Vec<u8>>, std::sync::mpsc::SyncSender<Vec<u8>>)>,
-    #[allow(clippy::type_complexity)]
-    thread: Option<(
-        std::thread::JoinHandle<std::io::Result<()>>,
-        std::thread::JoinHandle<std::io::Result<()>>,
-    )>,
+    tx: Option<(SpillSender, SpillSender)>,
+    thread: Option<SpillThreads>,
     /// Points written so far, which is the next chain's `pts_start`.
     pub(crate) points: u64,
     chains: u64,
@@ -316,6 +312,7 @@ impl SpillWriter {
     /// `ids` are the chain's dense node ids in order; their coordinates go to
     /// `chains.pts` and only the two endpoint *ids* are kept, in the header, since
     /// coordinates cannot be mapped back to a node.
+    #[cfg(test)]
     pub fn push(&mut self, c: &Chain, ids: &[u32], coords: &[geom::Pt]) -> Result<()> {
         debug_assert_eq!(ids.len(), c.pts_len as usize);
         let mut rec = [0u8; CHAIN_REC_BYTES as usize];
@@ -347,7 +344,7 @@ impl SpillWriter {
     /// Append chains already encoded by [`build`]'s workers: `hdr` holds whole
     /// header records whose `pts_start` the caller has rebased onto
     /// [`SpillWriter::points`], and `pts` the `points` coordinates they cover.
-    /// Same bytes as [`SpillWriter::push`] per chain; the write itself happens
+    /// Same bytes as a per-chain encode would produce; the write itself happens
     /// on the writer thread, in the order of these calls.
     pub fn push_encoded(&mut self, hdr: Vec<u8>, pts: Vec<u8>, points: u64) -> Result<()> {
         debug_assert_eq!(hdr.len() as u64 % CHAIN_REC_BYTES, 0);
@@ -386,25 +383,6 @@ impl SpillWriter {
 impl Drop for SpillWriter {
     fn drop(&mut self) {
         let _ = self.join();
-    }
-}
-
-/// Streams `chains.hdr` from the front.
-pub(crate) struct HeaderReader {
-    src: BufReader<File>,
-    left: u64,
-}
-
-impl HeaderReader {
-    #[allow(clippy::should_implement_trait)]
-    pub fn next(&mut self) -> Result<Option<ChainRec>> {
-        if self.left == 0 {
-            return Ok(None);
-        }
-        let mut rec = [0u8; CHAIN_REC_BYTES as usize];
-        self.src.read_exact(&mut rec).map_err(io_err)?;
-        self.left -= 1;
-        Ok(Some(ChainRec::decode(&rec)))
     }
 }
 
@@ -453,23 +431,7 @@ pub(crate) fn points_map(reader: &PointReader) -> &crate::mem::Mapped {
 }
 
 impl PointReader {
-    /// Replace `out` with the `len` points starting at point index `start`.
-    ///
-    /// A slice of one persistent mapping, not a positional read: the write
-    /// rounds visit chains in edge order, not chain order, so a `File` paid
-    /// one syscall per edge (~300 M at planet scale) for a few dozen bytes
-    /// each. The mapping faults the same pages with zero syscalls, no
-    /// per-edge buffer zeroing, and no cursor to keep — which is also what a
-    /// parallel writer would need first.
-    ///
-    /// Short reads fail exactly as the positional path did (`UnexpectedEof`
-    /// naming the file), so a truncated spill surfaces here rather than as a
-    /// wrong polyline downstream.
-    pub fn read(&mut self, start: u64, len: u32, out: &mut Vec<geom::Pt>) -> Result<()> {
-        Self::read_from(&self.map, start, len, out)
-    }
-
-    /// [`read`](Self::read) over an explicit mapping: the shared-read form.
+    /// Read over an explicit mapping: the shared-read form.
     ///
     /// `read` takes `&mut self` for the historical reason that the reader
     /// used to hold a cursor; the mapping itself is never mutated, so pool
@@ -487,7 +449,7 @@ impl PointReader {
         let at = start as u128 * CHAIN_PT_BYTES as u128;
         let bytes = len as u128 * CHAIN_PT_BYTES as u128;
         if at + bytes > map.len() as u128 {
-            return Err(Error(format!("chains.pts ended mid-chain")));
+            return Err(Error("chains.pts ended mid-chain".to_string()));
         }
         let (at, bytes) = (at as usize, bytes as usize);
         out.extend(map[at..at + bytes].chunks_exact(CHAIN_PT_BYTES as usize).map(decode_pt));

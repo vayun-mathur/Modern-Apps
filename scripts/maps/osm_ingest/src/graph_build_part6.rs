@@ -106,7 +106,6 @@
         name_rank_at: usize,
         name_present_at: usize,
         name_off_at: usize,
-        named_edges: u64,
     }
 
     impl<'a> Edges<'a> {
@@ -114,7 +113,6 @@
             bytes: &'a [u8],
             edge_count: u64,
             escape_count: u64,
-            named_edges: u64,
         ) -> Edges<'a> {
             // The records may be a ZBLK section (v7 writer) or raw (v6
             // fixtures). Either way `records` holds the unpacked array and
@@ -157,22 +155,16 @@
                 name_rank_at,
                 name_present_at: name_rank_at + rank_bytes,
                 name_off_at: name_rank_at + PresenceBitmap::bytes(edge_count) as usize,
-                named_edges,
             }
         }
 
         fn of(o: &'a Outputs) -> Edges<'a> {
-            Edges::new(&o.edges, meta_u64(o, 16), meta_u64(o, 24), meta_u64(o, 32))
+            Edges::new(&o.edges, meta_u64(o, 16), meta_u64(o, 24))
         }
 
         /// Unpacked record-array length. The v7 container check.
         fn records_len(&self) -> usize {
             self.records.len()
-        }
-
-        /// What the reader will compute the file's length to be.
-        fn total_bytes(&self) -> usize {
-            self.name_off_at + (self.named_edges * 4) as usize
         }
 
         /// True when edge `idx` has a name, from the presence bitmap.

@@ -222,7 +222,7 @@ impl Census {
 /// `edge_ptr` is the base plus the edges before it in the batch. Per edge it
 /// mirrors the serial body exactly: census, twin-check-before-read, polyline
 /// read + reverse + `geom::fits` + `assert_endpoints` + encode, the narrowing
-/// of [`EdgeFile::push`], name and lanes.
+/// of `EdgeFile::push`, name and lanes.
 ///
 /// Pure over shared tables (`node_coords`, `lane_pool`, `csr`, `synth`, the
 /// `chains.pts` mapping): safe across the pool. Fallible only like the serial
@@ -381,7 +381,7 @@ fn drain_batch(s: &mut WriteSinks, b: &BakedBatch, base: u64) -> Result<()> {
 impl EdgeFile {
     /// Append a baked batch's records and side tables, its first edge being
     /// absolute index `base`. Same rows, bits and offsets as calling
-    /// [`EdgeFile::push`] once per edge.
+    /// `EdgeFile::push` once per edge.
     fn push_baked(&mut self, b: &BakedBatch, base: u64) -> Result<()> {
         for &(local, target, dist) in &b.escapes {
             let idx = cap_u32("escaped edge index", base + u64::from(local))?;
@@ -402,7 +402,7 @@ impl EdgeFile {
 impl GeomFile {
     /// Append a baked batch: presence bits, offset entries and polyline bytes
     /// for its storing edges, a skip for every other edge. Same state as the
-    /// serial sequence of [`GeomFile::store`] / [`GeomFile::skip`] calls, with
+    /// serial sequence of `GeomFile::store` / `GeomFile::skip` calls, with
     /// the batch's blob going out as one write.
     fn store_batch(&mut self, base: u64, b: &BakedBatch) -> Result<()> {
         for &(local, len) in &b.geom_runs {

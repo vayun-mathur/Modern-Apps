@@ -96,21 +96,6 @@ impl Drop for LaneFile {
     }
 }
 
-/// `nodes.bin` is 12 bytes a record: `edge_ptr` is a `u32`, which planet's 1.07 G
-/// directed edges leave 4x of headroom in. [`cap_u32`] on the edge count is what
-/// keeps that safe — a wrapped `edge_ptr` would address a real but wrong node's
-/// edge range.
-fn write_node<W: Write>(
-    out: &mut W,
-    lat_e7: i32,
-    lon_e7: i32,
-    edge_ptr: u32,
-) -> std::io::Result<()> {
-    out.write_all(&lat_e7.to_le_bytes())?;
-    out.write_all(&lon_e7.to_le_bytes())?;
-    out.write_all(&edge_ptr.to_le_bytes())
-}
-
 fn create(path: &Path) -> Result<File> {
     File::create(path).map_err(|e| Error(format!("cannot write {}: {e}", path.display())))
 }
@@ -131,12 +116,11 @@ pub fn parse_args(
 ) -> std::result::Result<(PathBuf, PathBuf, Options), String> {
     let mut input: Option<PathBuf> = None;
     let mut out = PathBuf::from("map_data");
-    let mut opts = Options::default();
     // The CLI defaults to the streaming within-way collapse: it is the only path
     // whose working set fits a planet build on a commodity box. The reference
     // whole-graph collapse stays reachable for cross-checking via
     // --reference-collapse. The library default (`Options::default`) is unchanged.
-    opts.within_way_chains = true;
+    let mut opts = Options { within_way_chains: true, ..Default::default() };
     let mut i = 0;
     while i < args.len() {
         match args[i].as_str() {

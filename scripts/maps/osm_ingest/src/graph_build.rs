@@ -89,9 +89,6 @@ const GRAPH_MAGIC: u32 = 0x4752_414D;
 /// a `u64` offset table). Same records, same order — only the container
 /// changes. Readers accept 6 and 7; writers emit 7.
 const GRAPH_VERSION: u32 = 7;
-/// Oldest graph version accepted: v6 raw tables still decode.
-const GRAPH_VERSION_MIN: u32 = 6;
-
 /// Geometry edges per coarse block in `intermediate.bin`'s two-level offset table
 /// — `INTERMEDIATE_BLOCK` in `graph.rs`, and the two must agree.
 ///

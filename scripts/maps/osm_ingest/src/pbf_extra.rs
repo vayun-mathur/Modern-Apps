@@ -186,9 +186,7 @@ mod tests {
         run_pass_sink(
             &path,
             &blobs,
-            None,
-            KIND_NODES,
-            "window",
+            crate::pbf::PassSpec { blob_kinds: None, want: KIND_NODES, label: "window" },
             || {
                 let n = mk_live.fetch_add(1, Ordering::SeqCst) + 1;
                 mk_peak.fetch_max(n, Ordering::SeqCst);

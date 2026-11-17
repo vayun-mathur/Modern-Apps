@@ -124,11 +124,11 @@ fn reconnect_isolated_stops(coords: &[geom::Pt], stops: &Bitset, csr: &Csr) -> R
             while radius <= 1_000_000 {
                 let lo = (i as usize).saturating_sub(radius);
                 let hi = (i as usize + radius).min(n);
-                for j in lo..hi {
+                for (j, coord) in coords.iter().enumerate().take(hi).skip(lo) {
                     if !routable(j as u32) {
                         continue;
                     }
-                    let d = accurate_dist_mm(stop.0, stop.1, coords[j].0, coords[j].1);
+                    let d = accurate_dist_mm(stop.0, stop.1, coord.0, coord.1);
                     if best.is_none_or(|(bd, _)| d < bd) {
                         best = Some((d, j as u32));
                     }
@@ -298,11 +298,9 @@ fn write_graph(
         });
         let mut by_round: Vec<Vec<u32>> = vec![Vec::new(); rounds as usize];
         let mut sizes = vec![0usize; rounds as usize];
-        for p in &parts {
-            if let Ok(p) = p {
-                for (r, v) in p.iter().enumerate() {
-                    sizes[r] += v.len();
-                }
+        for p in parts.iter().filter_map(|p| p.as_ref().ok()) {
+            for (r, v) in p.iter().enumerate() {
+                sizes[r] += v.len();
             }
         }
         for (r, v) in by_round.iter_mut().enumerate() {
@@ -470,9 +468,6 @@ fn finish_pack(
     dem: Option<&crate::dem::Dem>,
 ) -> Result<Written> {
     let mut nodes_blocked = nodes_blocked;
-    let mut edges_out = edges_out;
-    let mut inter = inter;
-    let mut lanes = lanes;
     // Trailing sentinel so `graph.rs` can read node(v + 1).edge_ptr as the end of
     // node v's edge range.
     let mut sentinel = [0u8; 12];

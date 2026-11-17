@@ -124,6 +124,7 @@ impl GeomFile {
 
     /// This edge stores no polyline. Its presence bit stays clear and it owns no
     /// offset at all, which is the whole point of the bitmap.
+    #[cfg(test)]
     fn skip(&mut self) {
         self.pushed += 1;
     }
@@ -131,6 +132,7 @@ impl GeomFile {
     /// Record `bytes` as this edge's polyline. Called once per storing edge, in
     /// ascending edge index, because the rounds ascend and each round writes its
     /// edges in index order.
+    #[cfg(test)]
     fn store(&mut self, bytes: &[u8]) -> Result<()> {
         debug_assert!(
             !bytes.is_empty(),
@@ -147,7 +149,7 @@ impl GeomFile {
 
     /// One `(coarse?, within)` pair for geometry index `self.stored`.
     fn push_entry(&mut self) {
-        if self.stored.is_multiple_of(INTERMEDIATE_BLOCK) {
+        if self.stored % INTERMEDIATE_BLOCK == 0 {
             self.block_base = self.blob_len;
             self.coarse.push(self.blob_len);
         }
@@ -177,7 +179,7 @@ impl GeomFile {
         // `coarse` is sized by `div_ceil`, so when `G` is not a multiple of the
         // block size it holds one slot past the last block the sentinel touched.
         // Filling it keeps the table exactly the length the reader computes.
-        if !self.stored.is_multiple_of(INTERMEDIATE_BLOCK) {
+        if self.stored % INTERMEDIATE_BLOCK != 0 {
             self.coarse.push(self.blob_len);
         }
 
@@ -331,6 +333,7 @@ impl EdgeFile {
     /// computable from counts; the v7 blocked layout is data-dependent, so
     /// this covers the trailer and the reader parses the records' end out of
     /// the ZBLK header instead.
+    #[cfg(test)]
     fn total_bytes(edge_count: u64, escapes: u64, named: u64) -> u64 {
         let rows = align_up(edge_count * EDGE_REC_BYTES, SECTION_ALIGN)
             + (edge_count.div_ceil(ESCAPE_BLOCK) + 1) * 4
@@ -354,6 +357,7 @@ impl EdgeFile {
 
     /// Write one directed edge's record, escaping it if either field will not fit and
     /// recording its name if it has one.
+    #[cfg(test)]
     fn push(&mut self, e: &TmpEdge, type_: u8) -> Result<()> {
         let (delta, dist) = match target_delta(e.source, e.target) {
             Some(d) if e.dist_mm < DIST_MM_ESCAPE => (d, e.dist_mm),
@@ -400,7 +404,7 @@ impl EdgeFile {
         let mut at = blocked
             .finish_into(&mut out)
             .map_err(|e| Error(format!("cannot finish {}: {e}", path.display())))?;
-        at = pad_to(&mut out, &path, at)?;
+        at = pad_to(&mut out, at)?;
 
         // `escape_first[b]` is the index of the first row in block `b`, i.e. the
         // count of rows below `b * ESCAPE_BLOCK`. The rows ascend, so one walk over
@@ -431,7 +435,7 @@ impl EdgeFile {
             out.write_all(&dist_mm.to_le_bytes()).map_err(io_err)?;
         }
         at += escapes.len() as u64 * 12;
-        at = pad_to(&mut out, &path, at)?;
+        pad_to(&mut out, at)?;
 
         let named = named.write(&mut out)?;
         if named != name_offsets.len() as u64 {
@@ -469,7 +473,7 @@ impl EdgeFile {
 ///
 /// Free function (not a method): [`EdgeFile::finish`] destructures `self`
 /// before the trailer, so there is no receiver left to hang it on.
-fn pad_to(out: &mut BufWriter<File>, path: &Path, at: u64) -> Result<u64> {
+fn pad_to(out: &mut BufWriter<File>, at: u64) -> Result<u64> {
     let aligned = align_up(at, SECTION_ALIGN);
     let zeroes = [0u8; SECTION_ALIGN as usize];
     out.write_all(&zeroes[..(aligned - at) as usize]).map_err(io_err)?;

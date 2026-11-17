@@ -172,8 +172,11 @@ fn parse_chunk(text: &str) -> (usize, ChunkRows) {
     (lines, Ok(out))
 }
 
+/// One parsed table line, keyed by `(element kind, OSM id)`.
+type ParsedLine = std::result::Result<Option<((u8, i64), Review)>, String>;
+
 /// One table line: `Ok(None)` for a blank or comment line.
-fn parse_line(line: &str) -> std::result::Result<Option<((u8, i64), Review)>, String> {
+fn parse_line(line: &str) -> ParsedLine {
     let line = line.trim_end_matches('\r');
     if line.trim().is_empty() || line.starts_with('#') {
         return Ok(None);

@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests_part4 {
-    use osm_ingest::extract::{parse_args, Args, Layer}; use std::path::PathBuf;
+    use osm_ingest::extract::{parse_args, Layer}; use std::path::PathBuf;
 
     #[test]
     fn args_need_a_layer_and_an_out() {

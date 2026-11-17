@@ -173,63 +173,56 @@ struct NodePass {
     locs: Vec<(u32, i32, i32)>,
 }
 
-pub fn build(
-    input: &Path,
-    geojson: &Path,
-    names: &Path,
-    index: &Path,
-    attrs: &Path,
-    spatial: &Path,
-    name_index: &Path,
-    region: &Path,
-) -> Result<Stats> {
-    build_with(input, geojson, names, index, attrs, spatial, name_index, region, None)
+/// The input PBF and every output file of a POI build, grouped so the build
+/// entry points take one paths argument instead of eight loose ones.
+#[derive(Clone, Copy)]
+pub struct Paths<'a> {
+    /// Input `.osm.pbf`.
+    pub input: &'a Path,
+    /// GeoJSONSeq output.
+    pub geojson: &'a Path,
+    /// Name pool output.
+    pub names: &'a Path,
+    /// POI index output.
+    pub index: &'a Path,
+    /// Attribute sidecar output.
+    pub attrs: &'a Path,
+    /// Spatial grid output.
+    pub spatial: &'a Path,
+    /// Name index output.
+    pub name_index: &'a Path,
+    /// Region (boundary link) output.
+    pub region: &'a Path,
+}
+
+pub fn build(paths: Paths<'_>) -> Result<Stats> {
+    build_with(paths, None)
 }
 
 /// [`build`] with a region bbox filter: `Some` keeps only POIs touching the
 /// box, `None` (world) keeps everything. Ways and relations are kept whole
 /// when any vertex touches — the `complete_ways` rule — so a POI straddling
 /// the border keeps its true centroid rather than one computed from a clip.
-pub fn build_with(
-    input: &Path,
-    geojson: &Path,
-    names: &Path,
-    index: &Path,
-    attrs: &Path,
-    spatial: &Path,
-    name_index: &Path,
-    region: &Path,
-    bbox: Option<crate::bbox::BBox>,
-) -> Result<Stats> {
-    build_with_reviews(
-        input, geojson, names, index, attrs, spatial, name_index, region, bbox, None,
-    )
+pub fn build_with(paths: Paths<'_>, bbox: Option<crate::bbox::BBox>) -> Result<Stats> {
+    build_with_reviews(paths, bbox, None)
 }
 
 /// [`build_with`] plus an external review table whose rows are appended to the
 /// matching POIs' attribute records (see [`crate::poi_reviews`]).
-#[allow(clippy::too_many_arguments)]
 pub fn build_with_reviews(
-    input: &Path,
-    geojson: &Path,
-    names: &Path,
-    index: &Path,
-    attrs: &Path,
-    spatial: &Path,
-    name_index: &Path,
-    region: &Path,
+    paths: Paths<'_>,
     bbox: Option<crate::bbox::BBox>,
     reviews: Option<&ReviewTable>,
 ) -> Result<Stats> {
     build_inner(
-        input,
-        geojson,
-        names,
-        index,
-        attrs,
-        spatial,
-        name_index,
-        region,
+        paths.input,
+        paths.geojson,
+        paths.names,
+        paths.index,
+        paths.attrs,
+        paths.spatial,
+        paths.name_index,
+        paths.region,
         bbox,
         match reviews {
             Some(t) => Reviews::Ready(t),
@@ -252,29 +245,21 @@ pub type ReviewLoader = std::thread::JoinHandle<Result<ReviewTable>>;
 ///
 /// `on_loaded` runs once with the joined table (the binary prints its row
 /// count there).
-#[allow(clippy::too_many_arguments)]
 pub fn build_with_review_loader(
-    input: &Path,
-    geojson: &Path,
-    names: &Path,
-    index: &Path,
-    attrs: &Path,
-    spatial: &Path,
-    name_index: &Path,
-    region: &Path,
+    paths: Paths<'_>,
     bbox: Option<crate::bbox::BBox>,
     loader: ReviewLoader,
     on_loaded: &dyn Fn(&ReviewTable),
 ) -> Result<Stats> {
     build_inner(
-        input,
-        geojson,
-        names,
-        index,
-        attrs,
-        spatial,
-        name_index,
-        region,
+        paths.input,
+        paths.geojson,
+        paths.names,
+        paths.index,
+        paths.attrs,
+        paths.spatial,
+        paths.name_index,
+        paths.region,
         bbox,
         Reviews::Loading(Some(loader), on_loaded, None),
     )

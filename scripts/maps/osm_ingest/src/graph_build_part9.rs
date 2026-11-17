@@ -97,7 +97,7 @@
         let total = f.finish(n).unwrap();
         let bytes = std::fs::read(dir.join("edges.bin")).unwrap();
         assert_eq!(bytes.len() as u64, total);
-        let e = Edges::new(&bytes, n, escapes, named_count);
+        let e = Edges::new(&bytes, n, escapes);
         for i in 0..n {
             let (target, dist, name, type_, speed) = e.get(0, i);
             assert_eq!(target, i as u32);
@@ -136,7 +136,7 @@
             // v7 record array: blocked, unpacking to exactly the pushed records.
             let blocked = tilecodec::blocked::Blocked::parse(&bytes).expect("blocked records");
             assert_eq!(blocked.unpacked_len(), n * EDGE_REC_BYTES);
-            let e = Edges::new(&bytes, n, 0, named_count);
+            let e = Edges::new(&bytes, n, 0);
             for i in 0..n {
                 let want = if all_named { i as u32 * 3 } else { NO_NAME };
                 assert_eq!(e.get(0, i).2, want, "edge {i} with all_named={all_named}");

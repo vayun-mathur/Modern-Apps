@@ -5,6 +5,9 @@
 /// blobs a second time. Ways are a small minority of a planet file's blobs and
 /// `blob_kinds` lets the pass skip the rest outright, so the trade is heavily in
 /// favour of re-reading.
+/// One Morton-key piece: its slot range plus its disjoint slice of the key array.
+type KeyPiece<'a> = ((usize, usize), &'a mut [(u64, u32)]);
+
 #[derive(Default)]
 struct WayPass {
     segs: Vec<Seg>,
@@ -149,9 +152,7 @@ pub fn build_with(input: &Path, out_dir: &Path, opts: Options) -> Result<Stats> 
         pbf::run_pass_sink(
             input,
             &blobs,
-            None,
-            KIND_NODES | KIND_WAYS,
-            "Pass 1: refs + stops",
+            pbf::PassSpec { blob_kinds: None, want: KIND_NODES | KIND_WAYS, label: "Pass 1: refs + stops" },
             Pass1::default,
             |state, block| pass1_blob(state, block, filter, &bits),
             |chunk| {
@@ -210,9 +211,7 @@ pub fn build_with(input: &Path, out_dir: &Path, opts: Options) -> Result<Stats> 
         let _ = pbf::run_pass_sink(
             input,
             &blobs,
-            Some(&blob_kinds),
-            KIND_NODES,
-            "Pass 2: node scan",
+            pbf::PassSpec { blob_kinds: Some(&blob_kinds), want: KIND_NODES, label: "Pass 2: node scan" },
             Pass2::default,
             |state, block| {
                 let kinds = pass2_blob(state, block, &mask)?;
@@ -248,9 +247,7 @@ pub fn build_with(input: &Path, out_dir: &Path, opts: Options) -> Result<Stats> 
         let _ = pbf::run_pass_sink(
             input,
             &blobs,
-            Some(&blob_kinds),
-            KIND_NODES,
-            "Pass 2: node scan (serial)",
+            pbf::PassSpec { blob_kinds: Some(&blob_kinds), want: KIND_NODES, label: "Pass 2: node scan (serial)" },
             Pass2::default,
             |state, block| pass2_blob(state, block, &mask),
             |chunk| {
@@ -335,7 +332,7 @@ pub fn build_with(input: &Path, out_dir: &Path, opts: Options) -> Result<Stats> 
         let ranges: Vec<(usize, usize)> = (0..(slots as usize).div_ceil(RANGE))
             .map(|r| (r * RANGE, ((r + 1) * RANGE).min(slots as usize)))
             .collect();
-        let mut pieces: Vec<((usize, usize), &mut [(u64, u32)])> = Vec::with_capacity(ranges.len());
+        let mut pieces: Vec<KeyPiece<'_>> = Vec::with_capacity(ranges.len());
         let mut rest: &mut [(u64, u32)] = &mut keys;
         for &(lo, hi) in &ranges {
             // Kept ids below `hi` minus those below `lo`.
@@ -533,9 +530,7 @@ fn collapse_segments<W: std::io::Write + Send>(
     let way_kinds = pbf::run_pass_sink(
         input,
         blobs,
-        Some(blob_kinds),
-        KIND_WAYS,
-        "Pass 3: segments",
+        pbf::PassSpec { blob_kinds: Some(blob_kinds), want: KIND_WAYS, label: "Pass 3: segments" },
         WayPass::default,
         |state, block| way_blob(state, block, index, coords, filter),
         |chunk| {

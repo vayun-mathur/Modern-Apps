@@ -414,10 +414,12 @@
     /// two nodes exactly 32,768 apart in Morton order would mean choosing
     /// coordinates for 32,767 nodes in between. So the encoder and the decoder are
     /// exercised as a pair directly, which is also where the off-by-one would be.
+    type EdgeRoundtrip = (Vec<(u32, u32, u32, u8, u8)>, Vec<u8>, u64);
+
     fn roundtrip_edges(
         tag: &str,
         spec: &[(u32, u32, u32)],
-    ) -> (Vec<(u32, u32, u32, u8, u8)>, Vec<u8>, u64) {
+    ) -> EdgeRoundtrip {
         let dir = std::env::temp_dir().join(format!("osm_ingest_edges_{tag}"));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
@@ -427,7 +429,6 @@
             f.push(&tmp_edge(*source, *target, *dist), 1).unwrap();
         }
         let escapes = f.escapes.len() as u64;
-        let named = f.name_offsets.len() as u64;
         let total = f.finish(count).unwrap();
         let bytes = std::fs::read(dir.join("edges.bin")).unwrap();
         assert_eq!(bytes.len() as u64, total, "finish() lied about the length");
@@ -439,7 +440,7 @@
             .expect("the record array is a blocked section");
         assert_eq!(blocked.unpacked_len(), count * EDGE_REC_BYTES);
         assert_eq!(blocked.record_len(), EDGE_REC_BYTES as usize);
-        let e = Edges::new(&bytes, count, escapes, named);
+        let e = Edges::new(&bytes, count, escapes);
         // The block index's last entry is the row total, which is what the reader
         // cross-checks `escape_count` against.
         let blocks = count.div_ceil(ESCAPE_BLOCK) + 1;

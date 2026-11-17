@@ -180,8 +180,8 @@ pub fn compact(
     // device binary-searches is preserved for free.
     out.new_id = vec![REMOVED; n];
     let mut next = 0u32;
-    for i in 0..n {
-        if !interior[i] {
+    for (i, &is_interior) in interior.iter().enumerate().take(n) {
+        if !is_interior {
             out.new_id[i] = next;
             next += 1;
         }
