@@ -87,8 +87,10 @@ private const val DIGEST_BYTES = 6
  * Config contents — including private keys — are never logged here.
  */
 object MavpnBundleStore {
-    fun bundleDir(context: Context, bundleId: String): File =
-        File(File(context.filesDir, "mavpn-bundles"), safeSegment(bundleId))
+    fun bundleDir(context: Context, bundleId: String): File = bundleDir(context.filesDir, bundleId)
+
+    fun bundleDir(filesDir: File, bundleId: String): File =
+        File(File(filesDir, "mavpn-bundles"), safeSegment(bundleId))
 
     fun save(context: Context, bundleId: String, bundle: MavpnBundle<WgQuickImport>, manifestJson: String) {
         val dir = bundleDir(context, bundleId)
@@ -105,6 +107,23 @@ object MavpnBundleStore {
     fun storedBundleIds(context: Context): List<String> =
         File(context.filesDir, "mavpn-bundles").listFiles { file -> file.isDirectory }
             ?.map { it.name }?.sorted().orEmpty()
+
+    /**
+     * Best-effort removal of one bundle's stored files, for when its last
+     * config has been deleted from the database. The database is the source
+     * of truth, so a failure here (or a bundle that was never stored) must
+     * never fail the delete that triggered it: it reports whether the bundle
+     * directory is gone instead of throwing. [safeSegment] confines the target to `mavpn-bundles/`, so a
+     * hostile bundle id cannot delete anything outside it.
+     */
+    fun delete(context: Context, bundleId: String): Boolean = delete(context.filesDir, bundleId)
+
+    fun delete(filesDir: File, bundleId: String): Boolean =
+        runCatching {
+            val dir = bundleDir(filesDir, bundleId)
+            dir.deleteRecursively()
+            !dir.exists()
+        }.getOrDefault(false)
 
     private fun safeSegment(raw: String): String =
         raw.map { char -> if (char.isLetterOrDigit() || char in "._-") char else '-' }

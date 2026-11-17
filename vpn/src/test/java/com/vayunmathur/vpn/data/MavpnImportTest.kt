@@ -2,10 +2,13 @@ package com.vayunmathur.vpn.data
 
 import com.vayunmathur.vpn.domain.MavpnParser
 import java.io.ByteArrayOutputStream
+import java.io.File
+import java.nio.file.Files
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -94,6 +97,41 @@ class MavpnImportTest {
         assertEquals(2L, geo?.configId)
         assertEquals("h:1", geo?.endpoint)
         assertTrue(geo?.name?.contains("Frankfurt") == true)
+    }
+
+    @Test fun bundleStoreDeleteRemovesOnlyThatBundle() {
+        val filesDir = Files.createTempDirectory("mavpn-store").toFile()
+        try {
+            val bundleDir = MavpnBundleStore.bundleDir(filesDir, "bundle-a").apply { mkdirs() }
+            File(bundleDir, "manifest.json").writeText("{}")
+            File(File(bundleDir, "servers").apply { mkdirs() }, "de-1.conf").writeText(conf)
+            val otherDir = MavpnBundleStore.bundleDir(filesDir, "bundle-b").apply { mkdirs() }
+            File(otherDir, "manifest.json").writeText("{}")
+
+            assertTrue(MavpnBundleStore.delete(filesDir, "bundle-a"))
+            assertFalse(bundleDir.exists())
+            assertTrue(otherDir.exists())
+            assertEquals(listOf("bundle-b"), otherDir.parentFile?.listFiles()?.map { it.name })
+        } finally {
+            filesDir.deleteRecursively()
+        }
+    }
+
+    @Test fun bundleStoreDeleteIsBestEffortAndConfined() {
+        val root = Files.createTempDirectory("mavpn-store-confined").toFile()
+        try {
+            val filesDir = File(root, "files").apply { mkdirs() }
+            val outside = File(root, "outside.txt").apply { writeText("keep") }
+
+            // A bundle that was never stored deletes cleanly, without throwing.
+            assertTrue(MavpnBundleStore.delete(filesDir, "never-stored"))
+            // A traversal-shaped id is confined to mavpn-bundles/ by safeSegment.
+            MavpnBundleStore.delete(filesDir, "../outside.txt")
+            assertTrue(outside.exists())
+            assertEquals("keep", outside.readText())
+        } finally {
+            root.deleteRecursively()
+        }
     }
 
     @Test fun entityRoundTripKeepsBundleMetadata() {

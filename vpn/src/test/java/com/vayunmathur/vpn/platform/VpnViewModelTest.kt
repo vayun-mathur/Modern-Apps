@@ -109,6 +109,40 @@ class VpnViewModelTest {
         vm.clearStatus(); assertNull(vm.status.value)
     } }
 
+    @Test fun deletingLastBundleConfigRemovesBundleFiles() { runBlocking {
+        val dao = FakeConfigDao(); val vm = vm(dao)
+        val ctx = app as Context
+        val bundleDir = File(File(ctx.filesDir, "mavpn-bundles"), "bundle-1").apply { mkdirs() }
+        File(bundleDir, "manifest.json").writeText("{}")
+        dao.rows.value = listOf(
+            VpnConfigEntity(id = 1, name = "a", bundleId = "bundle-1", bundleServerId = "de-1"),
+            VpnConfigEntity(id = 2, name = "b", bundleId = "bundle-1", bundleServerId = "us-1"),
+            VpnConfigEntity(id = 3, name = "plain"),
+        )
+        // Deleting one of two bundle configs keeps the bundle files.
+        vm.delete(VpnConfig(id = 1, name = "a", bundleId = "bundle-1", bundleServerId = "de-1"))
+        withTimeout(5000) { while (dao.rows.value.any { it.id == 1L }) delay(20) }
+        delay(100)
+        assertTrue(bundleDir.exists())
+        // Deleting the last bundle config removes them; the plain config is untouched.
+        vm.delete(VpnConfig(id = 2, name = "b", bundleId = "bundle-1", bundleServerId = "us-1"))
+        withTimeout(5000) { while (bundleDir.exists()) delay(20) }
+        assertEquals(listOf(3L), dao.rows.value.map { it.id })
+        // Deleting a plain (non-bundle) config never touches bundle storage.
+        vm.delete(VpnConfig(id = 3, name = "plain"))
+        withTimeout(5000) { while (dao.rows.value.isNotEmpty()) delay(20) }
+    } }
+
+    @Test fun deletingBundleConfigToleratesMissingBundleFiles() { runBlocking {
+        val dao = FakeConfigDao(); val vm = vm(dao)
+        dao.rows.value = listOf(
+            VpnConfigEntity(id = 1, name = "a", bundleId = "never-stored", bundleServerId = "de-1"),
+        )
+        vm.delete(VpnConfig(id = 1, name = "a", bundleId = "never-stored", bundleServerId = "de-1"))
+        withTimeout(5000) { while (dao.rows.value.isNotEmpty()) delay(20) }
+        assertEquals(1, dao.deleted.size)
+    } }
+
     @Test fun stopVpnSetsDisconnectedStatus() {
         val vm = vm()
         vm.stopVpn()

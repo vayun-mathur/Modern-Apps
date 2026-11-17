@@ -41,6 +41,25 @@
                 <action android:name="android.intent.action.APPLICATION_PREFERENCES" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
+            <!-- .mavpn bundles are ZIP files under a custom extension, so file
+                 managers report them as zip/octet-stream (or with no useful
+                 type): match on content/file URIs scoped by the .mavpn path,
+                 the same shape notes/ uses for .md and email/ for .eml.
+                 MainActivity.handleIntent already routes VIEW data URIs to
+                 the bundle importer. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:host="*" />
+                <data android:mimeType="application/zip" />
+                <data android:mimeType="application/x-zip-compressed" />
+                <data android:mimeType="application/octet-stream" />
+                <data android:pathSuffix=".mavpn" />
+                <data android:pathPattern=".*\\.mavpn" />
+            </intent-filter>
         </activity>
 
         <!-- systemExempted is the FGS type for preinstalled system apps; this VPN ships in

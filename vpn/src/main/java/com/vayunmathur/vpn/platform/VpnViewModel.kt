@@ -162,7 +162,19 @@ class VpnViewModel(
     }
 
     fun delete(config: VpnConfig) {
-        viewModelScope.launch(Dispatchers.IO) { dao.delete(config.toEntity()) }
+        viewModelScope.launch(Dispatchers.IO) {
+            // The database row goes first and is authoritative: the bundle's
+            // files are removed only once no config references the bundle any
+            // more, and a failed file cleanup never undoes the delete.
+            dao.delete(config.toEntity())
+            if (config.bundleId.isBlank()) return@launch
+            val bundleStillUsed = dao.getAll().any { it.bundleId == config.bundleId }
+            if (!bundleStillUsed) {
+                runCatching {
+                    MavpnBundleStore.delete(getApplication(), config.bundleId)
+                }.onFailure { Log.status("VpnVM", "bundle file cleanup failed", it) }
+            }
+        }
     }
 
     fun upsert(config: VpnConfig, onSaved: ((Long) -> Unit)? = null) {
