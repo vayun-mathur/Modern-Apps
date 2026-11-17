@@ -165,7 +165,11 @@ pub fn find_essential_ransac(
     }
 
     if best_inliers.len() < 8 {
-        return best.map(|e| (e, best_inliers));
+        // A model backed by fewer points than the minimal 8-point sample is
+        // not a RANSAC result (its "inliers" may be a handful of points the
+        // projected sample happens to fit). Report failure instead of handing
+        // callers an unsupported matrix and pose.
+        return None;
     }
     let ia: Vec<NPt> = best_inliers.iter().map(|&i| a[i]).collect();
     let ib: Vec<NPt> = best_inliers.iter().map(|&i| b[i]).collect();
@@ -270,6 +274,8 @@ pub fn recover_pose(
     let pose = decompose_essential(&e, &ia, &ib)?;
     Some((pose, inliers))
 }
+
+#[cfg(test)] #[path = "epipolar_tests.rs"] mod epipolar_tests;
 
 #[cfg(test)]
 mod tests {
@@ -410,3 +416,4 @@ mod tests {
         }
     }
 }
+

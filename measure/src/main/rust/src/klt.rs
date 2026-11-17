@@ -171,6 +171,8 @@ pub fn track(prev: &Pyramid, next: &Pyramid, points: &[(f32, f32)]) -> Vec<Track
         .collect()
 }
 
+#[cfg(test)] #[path = "klt_tests.rs"] mod klt_tests;
+
 #[cfg(test)]
 mod tests {
     use super::*;

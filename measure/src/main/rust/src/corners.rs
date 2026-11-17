@@ -142,6 +142,8 @@ fn refine_subpixel(gray: &Gray, ix: &[f32], iy: &[f32], x: f32, y: f32) -> (f32,
     (px, py)
 }
 
+#[cfg(test)] #[path = "corners_tests.rs"] mod corners_tests;
+
 #[cfg(test)]
 mod tests {
     use super::*;

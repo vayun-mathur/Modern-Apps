@@ -19,6 +19,8 @@ pub mod corners;
 pub mod epipolar;
 pub mod klt;
 
+#[cfg(test)] #[path = "lib_tests.rs"] mod lib_tests;
+
 use epipolar::{recover_pose, RelPose};
 use klt::Pyramid;
 use vision_core::imgbuf::Gray;
