@@ -66,6 +66,14 @@ class TvMainActivityTest {
 
     @Test
     fun `rail renders and destinations can be selected`() {
+        // The activity's first composition lands on the paused Robolectric
+        // main looper, which waitForIdle alone does not pump: wait for the
+        // rail itself, idling that looper per poll (as the destination
+        // waits below already do).
+        composeRule.waitUntil(timeoutMillis = 15_000) {
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+            composeRule.onAllNodesWithText("Home").fetchSemanticsNodes().isNotEmpty()
+        }
         composeRule.waitForIdle()
         for (label in listOf("Home", "Search", "Updates", "Library", "Sources")) {
             composeRule.onNodeWithText(label).assertIsDisplayed()

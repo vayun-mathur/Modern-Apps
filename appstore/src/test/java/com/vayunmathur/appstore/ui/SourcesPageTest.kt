@@ -3,6 +3,7 @@ package com.vayunmathur.appstore.ui
 import android.app.Application
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -46,9 +47,18 @@ class SourcesPageTest {
     // collecting its flows (see the matching fix in the ViewModel
     // tests); the in-memory DB dies with the Robolectric sandbox.
 
+    /** Waits for [text] to exist, idling the paused Robolectric main looper per poll: the first composition lands on it, and the compose rule's waits do not pump it. */
+    private fun awaitNode(text: String) {
+        rule.waitUntil(timeoutMillis = 15_000) {
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+            rule.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
     @Test
     fun `all source cards and the auto install row render`() {
         rule.setContent { SourcesPage(viewModel = vm) }
+        awaitNode("Modern Apps")
         rule.onNodeWithText("Modern Apps", substring = true).assertIsDisplayed()
         rule.onNodeWithText("Automatically install updates", substring = true).assertIsDisplayed()
         // The F-Droid card sits below the scroll fold on the Robolectric

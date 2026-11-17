@@ -152,6 +152,14 @@ class AccrescentVmOpsW5Test {
         server.shutdownNow()
     }
 
+    // The settings edits below run on Dispatchers.IO, not the bare
+    // runBlocking main thread: in the full suite this test class shares
+    // the appstore-settings DataStore with every earlier ViewModel's
+    // still-collecting SettingsRepository mirror, and an edit issued
+    // from the paused Robolectric main thread could wait forever for
+    // work queued on that same thread (phoneVmHomeBrowseAndPackageSelection
+    // deadlocked at the edit in full-suite runs, while passing alone).
+
     private fun await(description: String, condition: () -> Boolean) {
         val deadline = System.currentTimeMillis() + 30_000
         while (System.currentTimeMillis() < deadline) {
@@ -165,7 +173,7 @@ class AccrescentVmOpsW5Test {
     @Test
     fun phoneVmAccrescentSearchSelectAndUpdateCheck() {
         val vm = AppStoreViewModel(app, db, accrescentOverride = repo)
-        runBlocking { vm.settings.setSourceEnabled(AppSource.ACCRESCENT, true) }
+        runBlocking(kotlinx.coroutines.Dispatchers.IO) { vm.settings.setSourceEnabled(AppSource.ACCRESCENT, true) } // off the main thread (see below)
         vm.setSearch("alpha")
         await("accrescent search") {
             vm.search.value.results.any { it.packageName == "app.alpha" }
@@ -197,7 +205,7 @@ class AccrescentVmOpsW5Test {
     fun tvVmAccrescentSearchSelectAndUpdateCheck() {
         val vm = TvStoreViewModel(app, db, accrescentOverride = repo)
         vm.enabledSourcesFlow.value = setOf(AppSource.ACCRESCENT, AppSource.MODERN_APPS)
-        runBlocking { vm.settings.setSourceEnabled(AppSource.ACCRESCENT, true) }
+        runBlocking(kotlinx.coroutines.Dispatchers.IO) { vm.settings.setSourceEnabled(AppSource.ACCRESCENT, true) }
         vm.setSearch("beta")
         await("tv accrescent search") {
             vm.search.value.results.any { it.packageName == "app.beta" }
@@ -228,7 +236,7 @@ class AccrescentVmOpsW5Test {
     @Test
     fun phoneVmHomeBrowseAndPackageSelection() {
         val vm = AppStoreViewModel(app, db, accrescentOverride = repo)
-        runBlocking { vm.settings.setSourceEnabled(AppSource.ACCRESCENT, true) }
+        runBlocking(kotlinx.coroutines.Dispatchers.IO) { vm.settings.setSourceEnabled(AppSource.ACCRESCENT, true) }
         vm.refresh()
         await("home sections from accrescent") {
             vm.home.value.sections.flatMap { it.apps }.any { it.packageName == "app.alpha" } ||
@@ -253,7 +261,7 @@ class AccrescentVmOpsW5Test {
     fun tvVmLibraryBrowseInstallAndSourceToggles() {
         val vm = TvStoreViewModel(app, db, accrescentOverride = repo)
         vm.enabledSourcesFlow.value = setOf(AppSource.ACCRESCENT, AppSource.MODERN_APPS)
-        runBlocking { vm.settings.setSourceEnabled(AppSource.ACCRESCENT, true) }
+        runBlocking(kotlinx.coroutines.Dispatchers.IO) { vm.settings.setSourceEnabled(AppSource.ACCRESCENT, true) }
         vm.loadHome()
         await("tv home for browse") { !vm.isLoadingFlow.value }
         vm.home.value.categories.firstOrNull()?.let { vm.selectCategory(it) }
