@@ -2,16 +2,12 @@
 <resources>
     <string name="all_apps_up_to_date">Alles ist auf dem neusten Stand</string>
     <string name="app_name">App Store</string>
-    <string name="open">Öffnen</string>
     <string name="uninstall">Deinstallieren</string>
     <string name="view_in_play_store">Im Play Store öffnen</string>
     <string name="installed">Installiert</string>
     <string name="installed_2">Installiert %1$s</string>
     <string name="uninstall_3">Deinstallieren %1$s?</string>
     <string name="this_will_uninstall_you_can_reinstall_la">%1$s wird entfernt. Du kannst es jederzeit wieder installieren.</string>
-    <string name="last_sync">Letzte Synchronisation: %1$s</string>
-    <string name="repositories">Quellen</string>
-    <string name="sources_are_fixed">Diese drei Quellen sind eingebaut und können nicht geändert werden. Andere F-Droid-Repos verteilen einfach Binärdateien, die jemand anderes erstellt hat, also gibt es nichts, gegen das man sie prüfen könnte.</string>
     <string name="nav_home">Start</string>
     <string name="nav_search">Suchen</string>
     <string name="nav_updates">Aktualisierungen</string>
@@ -20,12 +16,9 @@
     <string name="source_chip_play">Play Store</string>
     <string name="filter_all">Alle</string>
     <string name="filter_with_count">%1$s (%2$d)</string>
-    <string name="category_all">Alle</string>
     <string name="section_modern_apps">Von Modern Apps</string>
     <string name="section_modern_apps_subtitle">In diesem Repo gebaut und mit dem gleichen Schlüssel signiert wie dieser Store</string>
     <string name="section_play_top_charts">Top im Play Store</string>
-    <string name="section_recently_updated">Neu und aktualisiert</string>
-    <string name="section_recently_updated_subtitle">Die neusten Builds auf F-Droid</string>
     <string name="section_category_subtitle">Apps aus dem Offline-Katalog in dieser Kategorie</string>
     <string name="home_empty_title">Noch nichts hier</string>
     <string name="home_empty_message">Synchronisiere deine Quellen, um dies zu füllen, oder suche nach einer App nach Name.</string>
@@ -33,7 +26,7 @@
     <string name="sync_in_progress">Synchronisieren…</string>
     <string name="sync_step_fdroid">F-Droid Builds werden geprüft…</string>
     <string name="sync_step_modern_apps">Modern Apps wird überprüft…</string>
-    <string name="sync_done">Katalog aktualisiert — %1$d Apps</string>
+    <plurals name="sync_done"><item quantity="one">Katalog aktualisiert — %1$d Apps</item><item quantity="other">Katalog aktualisiert — %1$d Apps</item></plurals>
     <string name="sync_failed_all">Keine der Quellen konnte synchronisiert werden. Ihr bestehender Katalog bleibt unverändert.</string>
     <string name="sync_failed_fdroid">F-Droid wurde nicht synchronisiert. Die vorhandenen Apps bleiben unverändert.</string>
     <string name="sync_failed_modern_apps">Modern Apps wurde nicht synchronisiert. Die vorhandenen Apps bleiben unverändert.</string>
@@ -43,20 +36,15 @@
     <string name="search_prompt_message">Modern Apps und F-Droid antworten direkt von diesem Handy; Play Store Ergebnisse folgen einen Moment später.</string>
     <string name="search_no_results_title">Keine Ergebnisse für \"%1$s\"</string>
     <string name="search_no_results_message">Versuche es mit einer kürzeren Suchanfrage oder einem Teil des Paketnamens.</string>
-    <string name="library_title">Bibliothek (%1$d)</string>
     <string name="library_empty_title">Nichts trifft auf diesen Filter zu</string>
     <string name="library_empty_message">Apps die du installierst werden hier aufgelistet, gruppiert nach der Quelle die sie anbietet.</string>
     <string name="update_all">Alle aktualisieren (%1$d)</string>
     <string name="action_check_again">Nochmal prüfen</string>
-    <string name="source_chip_grapheneos">GrapheneOS</string>
     <string name="source_chip_accrescent">Accrescent Store</string>
-    <string name="section_sandboxed_google_play">Google Play in einer Sandbox</string>
-    <string name="section_sandboxed_google_play_subtitle">Googles Play Komponenten als normale Apps, ohne Sonderrechte</string>
     <string name="section_accrescent">Bei Accrescend</string>
     <string name="section_accrescent_subtitle">Entwicklersignierte Apps von der Accrescend Liste signierter Apps</string>
-    <string name="action_install_all">Alle installieren</string>
     <string name="updates_checking">Überprüfe auf Aktualisierungen…</string>
-    <string name="updates_empty_message">Eine Überprüfung der Quellen findet bei Wi-Fi Verbindung alle zwölf Stunden im Hintergund statt.</string>
+    <string name="updates_empty_message">Eine Überprüfung der Quellen findet bei Wi-Fi Verbindung alle zwölf Stunden im Hintergrund statt.</string>
     <string name="updates_last_checked">Letzte Prüfung %1$s</string>
     <string name="updates_notification_body">Öffne den App Store zur Überprüfung und Installation.</string>
     <string name="updates_channel_name">App aktualisierungen</string>

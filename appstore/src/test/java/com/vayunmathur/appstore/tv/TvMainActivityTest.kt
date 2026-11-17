@@ -1,4 +1,5 @@
 package com.vayunmathur.appstore.tv
+import com.vayunmathur.appstore.ui.tv.TvMainActivity
 
 import android.app.Application
 import androidx.compose.ui.test.assertIsDisplayed

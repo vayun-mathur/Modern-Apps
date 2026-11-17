@@ -5,18 +5,14 @@
     <string name="installed">Installeret</string>
     <string name="installed_2">Installerede %1$s</string>
     <string name="uninstall_3">Afinstaller %1$s?</string>
-    <string name="repositories">Kilder</string>
     <string name="nav_home">Hjem</string>
     <string name="nav_search">Søg</string>
     <string name="nav_updates">Opdateringer</string>
     <string name="nav_library">Bibliotek</string>
     <string name="source_chip_fdroid">F-Droid</string>
-    <string name="source_chip_grapheneos">GrapheneOS</string>
     <string name="source_chip_play">Play Butik</string>
     <string name="source_chip_accrescent">Accrescent</string>
     <string name="filter_all">Alle</string>
     <string name="filter_with_count">%1$s (%2$d)</string>
-    <string name="category_all">Alle</string>
-    <string name="action_install_all">Installer alle</string>
     <string name="sync_in_progress">Synkroniserer…</string>
 </resources>

@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="nav_home">Hem</string>
-    <string name="open">Öppna</string>
     <string name="app_name">Appbutik</string>
     <string name="uninstall">Avinstallera</string>
     <string name="view_in_play_store">Visa i Play Butik</string>
@@ -9,38 +8,28 @@
     <string name="installed_2">Installerad %1$s</string>
     <string name="uninstall_3">Avinstallera %1$s?</string>
     <string name="this_will_uninstall_you_can_reinstall_la">%1$s tas bort. Du kan installera appen igen när som helst.</string>
-    <string name="last_sync">Senaste synkronisering: %1$s</string>
-    <string name="repositories">Källor</string>
-    <string name="sources_are_fixed">De här källorna är inbyggda och inga andra kan läggas till. Andra F-Droid-förråd delar bara ut binärfiler som någon annan har byggt, så det finns inget att kontrollera dem mot. Stäng av de källor du inte vill att butiken ska använda.</string>
     <string name="sources_all_disabled">Alla källor är avstängda, så det finns inget att bläddra, söka eller uppdatera från.</string>
     <string name="nav_search">Sök</string>
     <string name="nav_updates">Uppdateringar</string>
     <string name="nav_library">Bibliotek</string>
     <string name="source_chip_fdroid">F-Droid</string>
-    <string name="source_chip_grapheneos">GrapheneOS</string>
     <string name="source_chip_play">Play Butik</string>
     <string name="source_chip_accrescent">Accrescent</string>
     <string name="filter_all">Alla</string>
     <string name="filter_with_count">%1$s (%2$d)</string>
-    <string name="category_all">Alla</string>
     <string name="section_modern_apps">Från Modern Apps</string>
     <string name="section_modern_apps_subtitle">Byggd i samma kodförråd och signerad med samma nyckel som den här butiken</string>
     <string name="section_play_top_charts">Populärt i Play Butik</string>
-    <string name="section_recently_updated">Nya och uppdaterade</string>
-    <string name="section_recently_updated_subtitle">De senaste byggena på F-Droid</string>
     <string name="section_category_subtitle">Appar från offlinekatalogen i den här kategorin</string>
-    <string name="section_sandboxed_google_play">Sandboxat Google Play</string>
-    <string name="section_sandboxed_google_play_subtitle">Googles Play-komponenter som vanliga appar utan privilegier</string>
     <string name="section_accrescent">På Accrescent</string>
     <string name="section_accrescent_subtitle">Utvecklarsignerade appar från Accrescents signerade applista</string>
-    <string name="action_install_all">Installera alla</string>
     <string name="home_empty_title">Inget här ännu</string>
     <string name="home_empty_message">Synkronisera dina källor för att fylla detta, eller sök efter en app med namn.</string>
     <string name="updates_banner_subtitle">Tryck för att granska och installera</string>
     <string name="sync_in_progress">Synkroniserar…</string>
     <string name="sync_step_fdroid">Kontrollerar F-Droid-byggen…</string>
     <string name="sync_step_modern_apps">Kontrollerar Modern Apps…</string>
-    <string name="sync_done">Katalogen har uppdaterats: %1$d appar</string>
+    <plurals name="sync_done"><item quantity="one">Katalogen har uppdaterats: %1$d appar</item><item quantity="other">Katalogen har uppdaterats: %1$d appar</item></plurals>
     <string name="sync_failed_all">Ingen av källorna kunde synkroniseras. Din befintliga katalog är oförändrad.</string>
     <string name="sync_failed_fdroid">F-Droid kunde inte synkroniseras. Dess befintliga appar är oförändrade.</string>
     <string name="sync_failed_modern_apps">Modern Apps kunde inte synkroniseras. Dess befintliga appar är oförändrade.</string>
@@ -52,7 +41,6 @@
     <string name="search_prompt_message">Modern Apps och F-Droid svarar direkt från telefonen; resultat från Play kommer strax efter.</string>
     <string name="search_no_results_title">Inga resultat för ”%1$s”</string>
     <string name="search_no_results_message">Prova en kortare sökning eller en del av paketnamnet.</string>
-    <string name="library_title">Bibliotek (%1$d)</string>
     <string name="library_empty_title">Inget matchar det här filtret</string>
     <string name="library_empty_message">Appar du installerar listas här, grupperade efter källan som erbjuder dem.</string>
     <string name="update_all">Uppdatera alla (%1$d)</string>
@@ -167,7 +155,6 @@
     <string name="trust_modern_apps_check_key">Signerad med appens egen nyckel, läst direkt från telefonen vid installation</string>
     <string name="trust_modern_apps_check_hash">Filen matchar kontrollsumman i kodförrådets signerade index</string>
     <string name="trust_modern_apps_limits">En utvecklare, en nyckel, ingen oberoende granskning och ingen som bygger om källkoden för att bekräfta att appen matchar den. Ingen skanning görs och en dålig release kan inte dras tillbaka från telefoner som redan har hämtat den.</string>
-    <string name="trust_fdroid_title">F-Droid</string>
     <string name="trust_fdroid_summary">Byggd från offentlig källkod. Versioner som en andra maskin oberoende har byggt om till en identisk fil märks som reproducerbara.</string>
     <string name="trust_fdroid_practice_source">Varje app byggs från källkod som F-Droid publicerar, inte från en binärfil som en utvecklare skickat in</string>
     <string name="trust_fdroid_practice_rebuild">En andra byggserver bygger om många appar och jämför resultatet byte för byte</string>
@@ -187,7 +174,6 @@
     <string name="trust_play_check_key">Signerad med nyckeln som Google listar för appen</string>
     <string name="trust_play_check_stamp">Appens utgivarstämpel sparas första gången du installerar den och måste sedan vara densamma</string>
     <string name="trust_play_limits">Ingen källkod och inget andra bygge bevisar därför att appen matchar publicerad källkod. Google tillhandahåller både filen och förväntningen som den kontrolleras mot, så kontrollerna fångar en manipulerad hämtning men inte en dålig uppdatering som Google självt signerar. Butiken når också Play via ett anonymt konto i stället för den officiella klienten och ser därför mindre än Play-appen.</string>
-    <string name="trust_accrescent_title">Accrescent</string>
     <string name="trust_accrescent_summary">Appar signerade av sina egna utvecklare och listade i Accrescents ed25519-signerade tillåtelselista, som låser varje apps signeringsnyckel och lägsta tillåtna version.</string>
     <string name="trust_accrescent_practice_developer_key">Varje app signeras med utvecklarens egen nyckel, inte av Accrescent</string>
     <string name="trust_accrescent_practice_signed_list">Vilka appar som är legitima och varje apps förväntade nyckel kommer från en enda ed25519-signerad lista</string>
@@ -196,24 +182,7 @@
     <string name="trust_accrescent_check_key">Hämtningen är signerad med exakt den nyckel som den signerade listan anger för appen</string>
     <string name="trust_accrescent_check_min_version">Hämtningens version är minst den lägsta version som den signerade listan tillåter</string>
     <string name="trust_accrescent_limits">Accrescent publicerar varken kontrollsummor per fil eller reproducerbara byggen, så garantin är signaturen och lägsta versionen, inte en matchning mot källkod. Listningar och hämtningslänkar kommer från en vanlig server via gRPC; ett dåligt svar kan bara ge en fil som misslyckas med dessa signatur- och versionskontroller. Ingen skannar apparna och en dålig release kan inte dras tillbaka från telefoner.</string>
-    <string name="repos_syncing">Synkroniserar…</string>
-    <string name="repos_sync_sources">Synkronisera källor</string>
-    <string name="source_modern_apps_pin">Fastlåst till den här appens egen signeringsnyckel</string>
-    <string name="source_fdroid">F-Droid</string>
-    <string name="source_fdroid_pin">Fastlåst till F-Droids signeringsnyckel för applistan</string>
     <string name="source_play">Play Butik (anonym)</string>
-    <string name="source_play_pin">Inget att låsa: Google har signeringsnyckeln</string>
-    <string name="source_accrescent">Accrescent</string>
-    <string name="source_accrescent_pin">Fastlåst till Accrescents repodata-signeringsnyckel (ed25519)</string>
-    <string name="trust_grapheneos_title">GrapheneOS</string>
-    <string name="trust_grapheneos_summary">Googles egna signerade byggen av komponenterna i Google Play i sandlåda, som GrapheneOS tillhandahåller genom en signerad lista som anger varje fils hashvärde och signeringsnyckel.</string>
-    <string name="trust_grapheneos_practice_official">Filerna är Googles egna signerade byggen, som omvärdas oförändrade i stället för att byggas om</string>
-    <string name="trust_grapheneos_practice_signed_index">GrapheneOS signerar listan över versioner, filernas hashvärden och förväntade signeringsnycklar med sin release-nyckel</string>
-    <string name="trust_grapheneos_practice_matched">Endast de byggen som stämmer med kompatibilitetslagret som ditt operativsystem levereras med erbjuds</string>
-    <string name="trust_grapheneos_check_index_signed">Den signerade listan kontrolleras mot en nyckel som är inbyggd i den här butiken</string>
-    <string name="trust_grapheneos_check_rollback">En lista som är äldre än den senast sedda avvisas, så att ett gammalt bygge inte kan tvingas på dig igen</string>
-    <string name="trust_grapheneos_check_hash_and_key">Varje hämtad fil stämmer med det hashvärde och den signeringsnyckel som listan anger</string>
-    <string name="trust_grapheneos_limits">Det här är Googles appar med sluten källkod. Ingenting byggs från publicerad källkod och inget bygge går att reproducera, så det som bevisas är att du har fått filen som GrapheneOS listade, inte vad den gör. Källan omfattar bara komponenterna i Google Play i sandlåda, och en felaktig utgåva kan inte dras tillbaka från telefoner.</string>
     <string name="nav_sources">Källor</string>
     <string name="source_chip_proprietary">Proprietära</string>
     <string name="action_browse">Bläddra</string>
@@ -233,5 +202,4 @@
     <string name="trust_proprietary_check_index_signed">Det signerade indexet kontrolleras mot en nyckel inbyggd i butiken</string>
     <string name="trust_proprietary_check_hash_and_key">Varje hämtad fil matchar kontrollsumman och signeringsnyckeln som indexet anger för den</string>
     <string name="trust_proprietary_limits">Det här är appar med stängd källkod som hämtas av operatören. Du måste därför lita på att operatören har hämtat den äkta filen; det finns ingen källkod att granska och inget reproducerbart bygge. Ingen skannar apparna.</string>
-    <string name="source_proprietary_pin">Fastlåst till den här butikens Play-spegelnyckel</string>
 </resources>

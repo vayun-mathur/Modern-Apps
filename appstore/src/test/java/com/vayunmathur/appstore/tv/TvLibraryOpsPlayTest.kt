@@ -1,4 +1,7 @@
 package com.vayunmathur.appstore.tv
+import com.vayunmathur.appstore.platform.SourceFilter
+import com.vayunmathur.appstore.platform.TvStoreViewModel
+import com.vayunmathur.appstore.platform.setLibraryFilter
 
 import android.app.Application
 import android.os.Looper
@@ -75,12 +78,12 @@ class TvLibraryOpsPlayTest {
     @Test
     fun `library filter can be narrowed and reset`() {
         val vm = TvStoreViewModel(app, db)
-        vm.setLibraryFilter(com.vayunmathur.appstore.util.SourceFilter.FDROID)
+        vm.setLibraryFilter(com.vayunmathur.appstore.platform.SourceFilter.FDROID)
         assertEquals(
-            com.vayunmathur.appstore.util.SourceFilter.FDROID,
+            com.vayunmathur.appstore.platform.SourceFilter.FDROID,
             vm.libraryFilterFlow.value,
         )
-        vm.setLibraryFilter(com.vayunmathur.appstore.util.SourceFilter.ALL)
+        vm.setLibraryFilter(com.vayunmathur.appstore.platform.SourceFilter.ALL)
         assertTrue(vm.library.value.apps.all { true })
     }
 }

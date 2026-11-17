@@ -1,12 +1,12 @@
 package com.vayunmathur.appstore.ui
+import com.vayunmathur.appstore.R
+import com.vayunmathur.appstore.platform.UpdateCheckStatus
 
 import android.text.format.DateUtils
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import com.vayunmathur.appstore.R
-import com.vayunmathur.appstore.util.UpdateCheckStatus
 import com.vayunmathur.library.ui.Card
 import com.vayunmathur.library.ui.SettingsRow
 

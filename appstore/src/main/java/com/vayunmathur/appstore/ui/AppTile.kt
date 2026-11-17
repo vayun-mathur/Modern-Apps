@@ -1,4 +1,5 @@
 package com.vayunmathur.appstore.ui
+import com.vayunmathur.appstore.R
 
 import android.graphics.drawable.Drawable
 import androidx.compose.foundation.clickable
@@ -21,7 +22,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.vayunmathur.appstore.R
 import com.vayunmathur.appstore.data.UnifiedApp
 import com.vayunmathur.appstore.data.installer.InstallStage
 import com.vayunmathur.library.ui.MaterialTheme

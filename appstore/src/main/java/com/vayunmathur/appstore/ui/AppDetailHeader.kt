@@ -1,4 +1,7 @@
 package com.vayunmathur.appstore.ui
+import com.vayunmathur.appstore.R
+import com.vayunmathur.appstore.platform.AppDetailUiState
+import com.vayunmathur.appstore.platform.reason
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -35,9 +38,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.vayunmathur.appstore.R
 import com.vayunmathur.appstore.data.UnifiedApp
-import com.vayunmathur.appstore.util.AppDetailUiState
 import com.vayunmathur.library.image.compose.AsyncImage
 import com.vayunmathur.library.image.compose.AsyncImageState
 import com.vayunmathur.library.ui.CircularProgressIndicator

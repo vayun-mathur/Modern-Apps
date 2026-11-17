@@ -1,4 +1,11 @@
 package com.vayunmathur.appstore.util
+import com.vayunmathur.appstore.data.FDroidRepository
+import com.vayunmathur.appstore.platform.AppStoreViewModel
+import com.vayunmathur.appstore.platform.SourceFilter
+import com.vayunmathur.appstore.platform.TvSection
+import com.vayunmathur.appstore.platform.loadBrowse
+import com.vayunmathur.appstore.platform.loadDetail
+import com.vayunmathur.appstore.platform.refreshInstalled
 
 import android.app.Application
 import android.content.Context
@@ -29,7 +36,7 @@ import com.vayunmathur.appstore.data.AppSource
 import com.vayunmathur.appstore.data.UnifiedApp
 import com.vayunmathur.appstore.data.accrescent.AccrescentApi
 import com.vayunmathur.appstore.data.accrescent.AccrescentRepository
-import com.vayunmathur.appstore.tv.TvStoreViewModel
+import com.vayunmathur.appstore.platform.TvStoreViewModel
 import io.grpc.ManagedChannel
 import io.grpc.Server
 import io.grpc.inprocess.InProcessChannelBuilder
@@ -237,7 +244,7 @@ class AccrescentVmOpsW5Test {
         await("package detail") { vm.detail.value.app?.packageName == "app.alpha" }
         vm.refreshInstalled()
         vm.refreshUpdateCheckStatus()
-        vm.setSearchFilter(com.vayunmathur.appstore.util.SourceFilter.ACCRESCENT)
+        vm.setSearchFilter(com.vayunmathur.appstore.platform.SourceFilter.ACCRESCENT)
         vm.setSearch("alpha")
         await("filtered search") { vm.search.value.results.any { it.packageName == "app.alpha" } }
     }
@@ -251,7 +258,7 @@ class AccrescentVmOpsW5Test {
         await("tv home for browse") { !vm.isLoadingFlow.value }
         vm.home.value.categories.firstOrNull()?.let { vm.selectCategory(it) }
         vm.selectCategory(null)
-        val section = vm.home.value.sections.firstOrNull() ?: com.vayunmathur.appstore.tv.TvSection(id = "w5", title = "W5 Picks", apps = listOf(UnifiedApp(packageName = "app.alpha", source = AppSource.ACCRESCENT, name = "Alpha")))
+        val section = vm.home.value.sections.firstOrNull() ?: com.vayunmathur.appstore.platform.TvSection(id = "w5", title = "W5 Picks", apps = listOf(UnifiedApp(packageName = "app.alpha", source = AppSource.ACCRESCENT, name = "Alpha")))
         // Browse loads by route id, so the section must be the home state
         // that produced it (as a real home row would be).
         if (vm.home.value.sections.none { it.id == section.id }) {

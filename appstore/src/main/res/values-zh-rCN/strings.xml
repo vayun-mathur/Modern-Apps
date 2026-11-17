@@ -1,11 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">应用商店</string>
-    <string name="open">打开</string>
     <string name="uninstall">卸载</string>
     <string name="view_in_play_store">在 Play 商店中查看</string>
     <string name="all_apps_up_to_date">一切均为最新版本</string>
-    <string name="repositories">来源</string>
     <string name="installed">已安装</string>
     <string name="installed_2">已安装 %1$s</string>
     <string name="uninstall_3">卸载 %1$s？</string>
@@ -14,7 +12,6 @@
     <plurals name="updates_count">
         <item quantity="other">%1$d 个更新可用</item>
     </plurals>
-    <string name="last_sync">最后同步：%1$s</string>
     <string name="nav_home">首页</string>
     <string name="nav_search">搜索</string>
     <string name="nav_updates">更新</string>
@@ -23,15 +20,13 @@
     <string name="source_chip_play">Play 商店</string>
     <string name="filter_all">全部</string>
     <string name="filter_with_count">%1$s（%2$d）</string>
-    <string name="category_all">全部</string>
     <string name="section_modern_apps">来自 Modern Apps</string>
-    <string name="section_recently_updated_subtitle">F-Droid 上的最新构建</string>
     <string name="home_empty_title">此处尚无内容</string>
     <string name="updates_banner_subtitle">点击查看并安装</string>
     <string name="sync_in_progress">正在同步…</string>
     <string name="sync_step_fdroid">正在检查 F-Droid 构建…</string>
     <string name="sync_step_modern_apps">正在检查 Modern Apps…</string>
-    <string name="sync_done">目录已更新 — %1$d 个应用</string>
+    <plurals name="sync_done"><item quantity="other">目录已更新 — %1$d 个应用</item></plurals>
     <string name="sync_failed_all">两个来源均未同步。您的现有目录未更改。</string>
     <string name="sync_failed_fdroid">F-Droid 未同步。现有应用未更改。</string>
     <string name="sync_failed_modern_apps">Modern Apps 未同步。现有应用未更改。</string>
@@ -41,12 +36,9 @@
     <string name="search_prompt_message">Modern Apps 和 F-Droid 直接从本机返回结果；Play 商店结果稍后显示。</string>
     <string name="search_no_results_title">“%1$s”没有结果</string>
     <string name="search_no_results_message">请尝试更短的查询或包名的一部分。</string>
-    <string name="library_title">应用库（%1$d）</string>
     <string name="library_empty_title">没有符合此筛选的应用</string>
     <string name="library_empty_message">您安装的应用将在此处列出，并按提供来源分组。</string>
-    <string name="sources_are_fixed">这三个来源是内置的，无法更改。其他 F-Droid 仓库只是分发他人构建的二进制文件，因此无法对其进行验证。</string>
     <string name="section_play_top_charts">Play 商店热门应用</string>
-    <string name="section_recently_updated">新应用和更新</string>
     <string name="section_modern_apps_subtitle">在此仓库中构建并使用与此商店相同的密钥签名</string>
     <string name="section_category_subtitle">此类别中来自离线目录的应用</string>
     <string name="home_empty_message">同步您的来源以在此处显示，或按名称搜索应用。</string>
@@ -92,12 +84,6 @@
     <string name="detail_installed_unverified">已安装但未验证：%1$s</string>
     <string name="detail_tap_for_trust">点按查看此来源的验证方式</string>
     <string name="trust_bullet">• %1$s</string>
-    <string name="trust_fdroid_title">F-Droid</string>
     <string name="trust_play_title">Google Play</string>
-    <string name="repos_syncing">正在同步…</string>
-    <string name="repos_sync_sources">同步来源</string>
-    <string name="source_fdroid">F-Droid</string>
     <string name="source_play">Play 商店（匿名）</string>
-    <string name="section_sandboxed_google_play">沙盒化的Google Play</string>
-    <string name="section_sandboxed_google_play_subtitle">让 Google Play 组件以普通非特权应用的形式运行</string>
 </resources>

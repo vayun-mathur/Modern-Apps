@@ -1,4 +1,5 @@
 package com.vayunmathur.appstore.util
+import com.vayunmathur.appstore.data.RemoteImageFetchers
 
 import android.content.Context
 import android.net.Uri

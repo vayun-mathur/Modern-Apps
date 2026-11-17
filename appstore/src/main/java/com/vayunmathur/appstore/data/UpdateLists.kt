@@ -1,4 +1,5 @@
 package com.vayunmathur.appstore.data
+import com.vayunmathur.appstore.platform.merge
 
 /**
  * One update check's candidates, split by what "Update all" may touch (#885).

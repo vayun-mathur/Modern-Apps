@@ -1,4 +1,5 @@
 package com.vayunmathur.appstore.data.installer
+import com.vayunmathur.appstore.platform.reason
 
 import android.app.PendingIntent
 import android.content.Context
@@ -169,9 +170,7 @@ class SessionInstaller(
             // in which case silent commits are allowed for first installs too. The
             // permission check is what makes this degrade gracefully: stock Android
             // never grants it, so the flow there is byte-for-byte the old one.
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-                (isInstalled(packageName) || hasSilentInstallPermission())
-            ) {
+            if (isInstalled(packageName) || hasSilentInstallPermission()) {
                 setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
             }
             setInstallLocation(android.content.pm.PackageInfo.INSTALL_LOCATION_AUTO)

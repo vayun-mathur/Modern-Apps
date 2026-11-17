@@ -1,7 +1,8 @@
 package com.vayunmathur.appstore.data.security
+import com.vayunmathur.appstore.R
+import com.vayunmathur.appstore.data.UnifiedApp
 
 import androidx.annotation.StringRes
-import com.vayunmathur.appstore.R
 import com.vayunmathur.appstore.data.AppProvider
 import com.vayunmathur.appstore.data.AppSource
 

@@ -1,4 +1,8 @@
 package com.vayunmathur.appstore.ui
+import com.vayunmathur.appstore.platform.LibraryActions
+import com.vayunmathur.appstore.platform.LibraryUiState
+import com.vayunmathur.appstore.platform.SourceFilter
+import com.vayunmathur.appstore.platform.setLibraryFilter
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -6,9 +10,6 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.vayunmathur.appstore.data.AppSource
 import com.vayunmathur.appstore.data.UnifiedApp
-import com.vayunmathur.appstore.util.LibraryActions
-import com.vayunmathur.appstore.util.LibraryUiState
-import com.vayunmathur.appstore.util.SourceFilter
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import org.junit.Rule

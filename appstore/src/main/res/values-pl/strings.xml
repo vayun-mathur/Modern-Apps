@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="update_all">Aktualizuj wszystko (%1$d)</string>
-    <string name="last_sync">Ostatnia synchronizacja: %1$s</string>
     <string name="installed">Zainstalowano</string>
     <string name="all_apps_up_to_date">Wszystko jest aktualne</string>
     <string name="uninstall">Odinstaluj</string>
@@ -12,25 +11,19 @@
         <item quantity="many">Dostępne jest %1$d aktualizacji</item>
         <item quantity="other">Dostępne jest %1$d aktualizacji</item>
     </plurals>
-    <string name="open">Otwórz</string>
     <string name="uninstall_3">Odinstalować %1$s?</string>
     <string name="view_in_play_store">Zobacz w Sklepie Play</string>
     <string name="installed_2">Zainstalowano %1$s</string>
-    <string name="repositories">Źródła</string>
     <string name="filter_all">Wszystko</string>
     <string name="section_play_top_charts">Najpopularniejsze w Sklepie Play</string>
     <string name="nav_library">Biblioteka</string>
     <string name="nav_home">Dom</string>
     <string name="source_chip_fdroid">F-Droid</string>
     <string name="nav_search">Szukaj</string>
-    <string name="category_all">Wszystko</string>
     <string name="source_chip_play">Sklep Play</string>
-    <string name="section_recently_updated_subtitle">Najnowsze kompilacje na F-Droid</string>
     <string name="nav_updates">Aktualizacje</string>
     <string name="section_modern_apps">Z Modern Apps</string>
-    <string name="sources_are_fixed">Tylko wbudowane źródła; nie można dodawać innych. Pozostałe repozytoria udostępniają niesprawdzone pliki binarne zbudowane przez inne osoby. Wyłącz te, których nie używasz.</string>
     <string name="section_modern_apps_subtitle">Zbudowano w tym repozytorium i podpisano tym samym kluczem co ten sklep</string>
-    <string name="section_recently_updated">Nowe i zaktualizowane</string>
     <string name="filter_with_count">%1$s (%2$d)</string>
     <string name="section_category_subtitle">Aplikacje z katalogu offline w tej kategorii</string>
     <string name="home_empty_title">Jeszcze nic tu nie ma</string>
@@ -39,7 +32,7 @@
     <string name="sync_in_progress">Synchronizacja…</string>
     <string name="sync_step_fdroid">Sprawdzanie kompilacji F-Droid…</string>
     <string name="sync_step_modern_apps">Sprawdzanie Modern Apps…</string>
-    <string name="sync_done">Katalog zaktualizowany — %1$d aplikacji</string>
+    <plurals name="sync_done"><item quantity="one">Katalog zaktualizowany — %1$d aplikacji</item><item quantity="few">Katalog zaktualizowany — %1$d aplikacji</item><item quantity="many">Katalog zaktualizowany — %1$d aplikacji</item><item quantity="other">Katalog zaktualizowany — %1$d aplikacji</item></plurals>
     <string name="sync_failed_all">Żadne ze źródeł nie zostało zsynchronizowane. Twój obecny katalog pozostał niezmieniony.</string>
     <string name="sync_failed_fdroid">F-Droid nie został zsynchronizowany. Istniejące aplikacje pozostały niezmienione.</string>
     <string name="sync_failed_modern_apps">Modern Apps nie zostało zsynchronizowane. Istniejące aplikacje pozostały niezmienione.</string>
@@ -49,7 +42,6 @@
     <string name="search_prompt_message">Modern Apps i F-Droid odpowiadają bezpośrednio z tego telefonu; wyniki z Google Play pojawią się chwilę później.</string>
     <string name="search_no_results_title">Brak wyników dla „%1$s”</string>
     <string name="search_no_results_message">Spróbuj podać krótsze zapytanie lub część nazwy pakietu.</string>
-    <string name="library_title">Biblioteka (%1$d)</string>
     <string name="library_empty_title">Nic nie pasuje do tego filtra</string>
     <string name="library_empty_message">Tutaj znajdziesz listę instalowanych przez Ciebie aplikacji, pogrupowanych według źródła, z którego pochodzą.</string>
     <string name="action_check_again">Sprawdź ponownie</string>
@@ -130,7 +122,6 @@
     <string name="trust_modern_apps_check_key">Podpisane własnym kluczem tej aplikacji, odczytywanym bezpośrednio z telefonu podczas instalacji</string>
     <string name="trust_modern_apps_check_hash">Plik odpowiada sumie kontrolnej w podpisanym indeksie repozytorium</string>
     <string name="trust_modern_apps_limits">Jeden deweloper, jeden klucz, brak niezależnej weryfikacji i brak możliwości ponownej kompilacji kodu źródłowego, aby potwierdzić, że aplikacja mu odpowiada. Kod nie jest skanowany.</string>
-    <string name="trust_fdroid_title">F-Droid</string>
     <string name="trust_fdroid_summary">Zbudowane z publicznego kodu źródłowego. Wersje, które druga maszyna niezależnie przebudowała do identycznego pliku, są oznaczone jako możliwe do odtworzenia.</string>
     <string name="trust_fdroid_practice_source">Każda aplikacja jest tworzona na podstawie kodu źródłowego publikowanego przez F-Droid, a nie na podstawie pliku binarnego przesłanego przez dewelopera</string>
     <string name="trust_fdroid_practice_rebuild">Drugi serwer kompilacji przebudowuje wiele aplikacji i porównuje wynik bajt po bajcie</string>
@@ -150,20 +141,10 @@
     <string name="trust_play_check_key">Podpisano przez kluczowe listy Google dla tej aplikacji</string>
     <string name="trust_play_check_stamp">Pieczęć wydawcy aplikacji jest zapisywana podczas pierwszej instalacji i musi pozostać taka sama później</string>
     <string name="trust_play_limits">Brak kodu źródłowego i brak niezależnej kompilacji oznacza, że nic nie potwierdza zgodności aplikacji z jakimkolwiek źródłem. Google dostarcza zarówno plik, jak i kryteria weryfikacji – pozwala to wykryć zmodyfikowany plik podczas pobierania, ale nie wadliwą aktualizację, którą Google podpisze samodzielnie. Anonimowe konto w tym sklepie widzi mniej niż aplikacja Google Play.</string>
-    <string name="repos_syncing">Synchronizacja…</string>
-    <string name="repos_sync_sources">Synchronizuj źródła</string>
-    <string name="source_modern_apps_pin">Przypięte do klucza podpisu tej aplikacji</string>
-    <string name="source_fdroid">F-Droid</string>
-    <string name="source_fdroid_pin">Przypięto do klucza podpisu listy aplikacji F-Droid</string>
     <string name="source_play">Sklep Play (anonimowy)</string>
-    <string name="source_play_pin">Nic do przypięcia: Google ma klucz do podpisu</string>
-    <string name="source_chip_grapheneos">GrapheneOS</string>
     <string name="source_chip_accrescent">Accrescent</string>
-    <string name="section_sandboxed_google_play">Google Play w trybie piaskownicy</string>
-    <string name="section_sandboxed_google_play_subtitle">Komponenty Google Play jako zwykłe, nieuprzywilejowane aplikacje</string>
     <string name="section_accrescent">Na Accrescent</string>
     <string name="section_accrescent_subtitle">Aplikacje podpisane przez deweloperów z listy podpisanych aplikacji Accrescent</string>
-    <string name="action_install_all">Zainstaluj wszystko</string>
     <string name="setting_auto_install_updates_title">Automatyczna instalacja aktualizacji</string>
     <string name="setting_auto_install_updates_summary">Po włączeniu aktualizacje są instalowane natychmiast po ich znalezieniu. Po wyłączeniu oczekują na zatwierdzenie. Aplikacje zainstalowane przez ten sklep aktualizują się w tle, a pozostałe wysyłają tylko powiadomienie.</string>
     <plurals name="updates_installing">
@@ -178,7 +159,6 @@
         <item quantity="many">Zainstalowano %1$d aktualizacji</item>
         <item quantity="other">Zainstalowano %1$d aktualizacji</item>
     </plurals>
-    <string name="trust_accrescent_title">Accrescent</string>
     <string name="trust_accrescent_summary">Aplikacje podpisane przez ich własnych deweloperów, umieszczone na liście dozwolonych aplikacji ed25519-signed firmy Accrescent, która przypisuje klucz podpisu każdej aplikacji i najniższą dozwoloną wersję.</string>
     <string name="trust_accrescent_practice_developer_key">Każda aplikacja jest podpisana własnym kluczem dewelopera, a nie kluczem Accrescent</string>
     <string name="trust_accrescent_practice_min_version">Na liście zapisywana jest minimalna wersja każdej aplikacji, więc nie można przywrócić starej wersji</string>
@@ -188,8 +168,6 @@
     <string name="store_rule_modern_android_title">Tylko Modern Android</string>
     <string name="trust_accrescent_practice_signed_list">Lista zaufanych aplikacji oraz klucz oczekiwany dla każdej z nich pochodzą z jednego dokumentu podpisanego kluczem Ed25519.”</string>
     <string name="trust_accrescent_limits">Accrescent nie publikuje sum kontrolnych dla poszczególnych plików ani nie korzysta z powtarzalnych kompilacji, więc gwarancją bezpieczeństwa jest podpis oraz wersja minimalna, a nie kod źródłowy. Wykazy aplikacji pochodzą ze zwykłego serwera za pośrednictwem gRPC – błędna odpowiedź może skutkować jedynie wygenerowaniem pliku, który nie przejdzie tych weryfikacji. Aplikacje nie są przez nikogo skanowane.</string>
-    <string name="source_accrescent">Accrescent</string>
-    <string name="source_accrescent_pin">Przypięto do klucza podpisu repodata Accrescent (ed25519)</string>
     <string name="updates_confirm_notification_body">System Android pozwala sklepowi na aktualizowanie tylko tych aplikacji, które sam zainstalował, dlatego te pozycje wymagają Twojego zatwierdzenia. Otwórz App Store, aby je zainstalować.</string>
     <plurals name="updates_confirm_count">
         <item quantity="one">%1$d aktualizacja wymaga Twojego potwierdzenia</item>
@@ -214,15 +192,6 @@
         <item quantity="other">Zaktualizowano %1$d aplikacji</item>
     </plurals>
     <string name="updates_batch_partial">Zaktualizowano %1$d z %2$d. Reszta nie powiodła się: %3$s</string>
-    <string name="trust_grapheneos_title">GrapheneOS</string>
-    <string name="trust_grapheneos_summary">Oficjalne, podpisane przez Google kompilacje komponentów Sandboxed Google Play, udostępniane ponownie przez GrapheneOS wraz z podpisaną listą zawierającą hashe oraz klucze podpisu dla poszczególnych plików.</string>
-    <string name="trust_grapheneos_practice_official">Pliki te to oryginalne, podpisane kompilacje Google, udostępnione ponownie w niezmienionej postaci – nie zostały one przebudowane</string>
-    <string name="trust_grapheneos_practice_signed_index">GrapheneOS podpisuje swoim kluczem wydania listę wersji, skróty plików oraz oczekiwane klucze podpisu</string>
-    <string name="trust_grapheneos_practice_matched">Oferowane są tylko te kompilacje, które są zgodne z warstwą kompatybilności dostarczaną przez Twój system operacyjny</string>
-    <string name="trust_grapheneos_check_index_signed">Ta podpisana lista jest weryfikowana przy użyciu klucza wbudowanego w ten magazyn</string>
-    <string name="trust_grapheneos_check_rollback">Listy starsze niż ostatnio zarejestrowana są odrzucane, co uniemożliwia wymuszenie instalacji starej wersji</string>
-    <string name="trust_grapheneos_check_hash_and_key">Każdy pobrany plik jest zgodny z sumą kontrolną oraz kluczem podpisu przypisanymi do jego nazwy na liście</string>
-    <string name="trust_grapheneos_limits">Są to aplikacje Google o zamkniętym kodzie źródłowym. Żadna z nich nie powstaje na bazie opublikowanego kodu ani nie jest możliwa do odtworzenia; potwierdzone jest jedynie to, że otrzymano plik wskazany przez GrapheneOS, a nie to, co ten plik faktycznie robi. Kod źródłowy obejmuje wyłącznie komponenty Google Play działające w izolowanym środowisku, a wadliwego wydania nie da się już wycofać z telefonów.</string>
     <string name="source_chip_proprietary">Własnościowe</string>
     <string name="section_modern_apps_recent">Nowości od Modern Apps</string>
     <string name="section_modern_apps_recent_subtitle">Najnowsze wersje z tego repozytorium</string>
@@ -240,14 +209,10 @@
     <string name="trust_proprietary_check_index_signed">Ten podpisany indeks jest weryfikowany przy użyciu klucza wbudowanego w ten sklep</string>
     <string name="trust_proprietary_check_hash_and_key">Każdy pobrany plik odpowiada sumie kontrolnej oraz kluczowi podpisującemu, które zostały dla niego wskazane w tym indeksie</string>
     <string name="trust_proprietary_limits">Są to aplikacje o zamkniętym kodzie źródłowym pobierane przez operatora, więc musisz zaufać, że operator pobrał oryginalny plik. Nie ma tu kodu źródłowego do przeprowadzenia audytu ani powtarzalnej kompilacji. Aplikacje nie są przez nikogo skanowane.</string>
-    <string name="source_proprietary_pin">Przypięty do klucza podpisującego serwera lustrzanego Play tego sklepu</string>
     <string name="nav_sources">Źródła</string>
     <string name="action_browse">Przeglądaj</string>
     <string name="tv_detail_back">Wróć</string>
-    <string name="tv_detail_about">O aplikacji</string>
     <string name="tv_detail_author">Deweloper</string>
-    <string name="tv_compat_declared">Działa na telewizorze — źródło wskazuje wersję na TV</string>
-    <string name="tv_compat_unverified">Zgodność z TV niezweryfikowana — sprawdzane podczas instalacji</string>
     <string name="source_chip_izzy">IzzyOnDroid</string>
     <string name="browse_empty_title">Na razie nic tu nie ma</string>
     <string name="browse_empty_message">Zsynchronizuj swoje źródła, aby wypełnić to miejsce, lub wyszukaj aplikację według nazwy.</string>
@@ -264,12 +229,8 @@
     <string name="trust_izzy_check_reproduced">Uwzględniono tylko te wersje, które niezależny twórca odtworzył w sposób identyczny, bit po bicie</string>
     <string name="trust_izzy_check_hash_and_key">Zarówno suma kontrolna, jak i klucz podpisujący pochodzą z podpisanej listy</string>
     <string name="trust_izzy_limits">Klucz podpisujący należy do dewelopera, więc odtworzona kompilacja nadal ufa procesowi wdrażania tego dewelopera – ponowne skompilowanie udowadnia jedynie, że plik binarny jest zgodny z opublikowanym kodem źródłowym. Wersje, które nie zostały objęte przez żaden system weryfikacji, nie są tutaj oferowane. Nikt nie skanuje tego, co robi aplikacja.</string>
-    <string name="source_izzy_pin">Przypięte do klucza podpisującego listę aplikacji IzzyOnDroid</string>
     <string name="tv_updates_with_count">Aktualizacje · %1$d</string>
-    <string name="tv_searching">Wyszukiwanie…</string>
     <string name="tv_search_prompt_tv">Modern Apps i F-Droid odpowiadają bezpośrednio z poziomu telewizora; wyniki z Play pojawią się za chwilę.</string>
-    <string name="tv_search_results">Wyniki: %1$d</string>
-    <string name="tv_detail_open">Szczegóły</string>
     <string name="tv_detail_screenshots">Zrzuty ekranu</string>
     <string name="updates_foreign_title">Zainstalowane z innych źródeł</string>
     <string name="updates_foreign_subtitle">Funkcja „Aktualizuj wszystkie” pomija te aplikacje – aby zaktualizować wybraną pozycję tutaj, dotknij przy niej „Aktualizuj”.</string>

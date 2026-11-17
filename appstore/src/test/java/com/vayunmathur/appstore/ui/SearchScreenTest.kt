@@ -1,4 +1,7 @@
 package com.vayunmathur.appstore.ui
+import com.vayunmathur.appstore.platform.SearchActions
+import com.vayunmathur.appstore.platform.SearchUiState
+import com.vayunmathur.appstore.platform.SourceFilter
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -7,9 +10,6 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import com.vayunmathur.appstore.data.AppSource
 import com.vayunmathur.appstore.data.UnifiedApp
-import com.vayunmathur.appstore.util.SearchActions
-import com.vayunmathur.appstore.util.SearchUiState
-import com.vayunmathur.appstore.util.SourceFilter
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import org.junit.Rule

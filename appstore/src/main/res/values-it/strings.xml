@@ -1,11 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">App Store</string>
-    <string name="open">Apri</string>
     <string name="uninstall">Disinstalla</string>
     <string name="view_in_play_store">Visualizza nel Play Store</string>
     <string name="all_apps_up_to_date">Tutto è aggiornato</string>
-    <string name="repositories">Fonti</string>
     <string name="installed">Installato</string>
     <string name="installed_2">Installato %1$s</string>
     <string name="uninstall_3">Disinstallare %1$s?</string>
@@ -16,8 +14,6 @@
         <item quantity="many">%1$s aggiornamenti disponibili</item>
         <item quantity="other">%1$s aggiornamenti disponibili</item>
     </plurals>
-    <string name="last_sync">Ultima sincronizzazione: %1$s</string>
-    <string name="sources_are_fixed">Queste tre fonti sono integrate e non possono essere modificate. Altri repository F-Droid distribuiscono solo binari costruiti da qualcun altro, quindi non c\'è nulla con cui verificarli.</string>
     <string name="nav_home">Home</string>
     <string name="nav_search">Cerca</string>
     <string name="nav_updates">Aggiornamenti</string>
@@ -26,7 +22,6 @@
     <string name="source_chip_play">Play Store</string>
     <string name="filter_all">Tutti</string>
     <string name="filter_with_count">%1$s (%2$d)</string>
-    <string name="category_all">Tutti</string>
     <string name="section_modern_apps">Da Modern Apps</string>
     <string name="section_modern_apps_subtitle">Compilato in questo repository e firmato con la stessa chiave di questo store</string>
     <string name="search_prompt_title">Cerca in ogni fonte contemporaneamente</string>
@@ -34,8 +29,6 @@
     <string name="search_no_results_title">Nessun risultato per \"%1$s\"</string>
     <string name="search_no_results_message">Prova una ricerca più breve, o parte del nome del pacchetto.</string>
     <string name="section_play_top_charts">Migliori nel Play Store</string>
-    <string name="section_recently_updated">Novità e aggiornamenti</string>
-    <string name="section_recently_updated_subtitle">Le build più recenti su F-Droid</string>
     <string name="section_category_subtitle">App del catalogo offline in questa categoria</string>
     <string name="home_empty_title">Non c\'è ancora nulla qui</string>
     <string name="home_empty_message">Sincronizza le tue fonti per riempire questa sezione, oppure cerca un\'app per nome.</string>
@@ -43,13 +36,12 @@
     <string name="sync_in_progress">Sincronizzazione…</string>
     <string name="sync_step_fdroid">Verifica delle build di F-Droid…</string>
     <string name="sync_step_modern_apps">Verifica di Modern Apps…</string>
-    <string name="sync_done">Catalogo aggiornato — %1$d app</string>
+    <plurals name="sync_done"><item quantity="one">Catalogo aggiornato — %1$d app</item><item quantity="many">Catalogo aggiornato — %1$d app</item><item quantity="other">Catalogo aggiornato — %1$d app</item></plurals>
     <string name="sync_failed_all">Impossibile sincronizzare le fonti. Il catalogo esistente è rimasto invariato.</string>
     <string name="sync_failed_fdroid">Impossibile sincronizzare F-Droid. Le app esistenti sono rimaste invariate.</string>
     <string name="sync_failed_modern_apps">Impossibile sincronizzare Modern Apps. Le app esistenti sono rimaste invariate.</string>
     <string name="play_unavailable">Risultati del Play Store non disponibili: %1$s</string>
     <string name="search_placeholder">Cerca un\'app</string>
-    <string name="library_title">Libreria (%1$d)</string>
     <string name="library_empty_title">Nessun elemento corrisponde a questo filtro</string>
     <string name="library_empty_message">Le app che installi sono elencate qui, raggruppate in base alla fonte di provenienza.</string>
     <string name="action_check_again">Controlla di nuovo</string>
@@ -92,10 +84,7 @@
     <string name="link_source">Codice sorgente</string>
     <string name="link_privacy">Informativa privacy</string>
     <string name="detail_install_blocked">Installazione bloccata: %1$s</string>
-    <string name="source_fdroid">F-Droid</string>
-    <string name="source_fdroid_pin">Fissato alla chiave di firma dell\'elenco delle app di F-Droid</string>
     <string name="source_play">Play Store (anonimo)</string>
-    <string name="source_play_pin">Nulla da bloccare: la chiave di firma è gestita da Google</string>
     <string name="detail_checked_on_install">Verificato all\'installazione: %1$s</string>
     <string name="detail_installed_unverified">Installata senza verifica: %1$s</string>
     <string name="detail_tap_for_trust">Tocca per vedere come viene verificata questa fonte</string>
@@ -112,9 +101,7 @@
     <string name="store_rule_precheck_title">Verificato prima che Android lo veda</string>
     <string name="store_rule_precheck_detail">Tutto viene verificato prima che il download raggiunga il programma di installazione di sistema. I file rifiutati vengono eliminati.</string>
     <string name="store_rule_fail_blocks_title">Una verifica fallita blocca, una mancante avvisa</string>
-    <string name="source_chip_grapheneos">GrapheneOS</string>
     <string name="source_chip_accrescent">Accrescent</string>
-    <string name="action_install_all">Installa tutto</string>
     <string name="play_rate_limited">Il Play Store sta limitando le richieste — attendere prima di riprovare…</string>
     <string name="setting_auto_install_updates_title">Installa automaticamente gli aggiornamenti</string>
     <plurals name="updates_confirm_count">
@@ -161,7 +148,6 @@
     <string name="trust_own_key_detail">I download delle Modern Apps devono essere firmati con questa chiave. La chiave viene letta dal telefono al momento dell\'installazione, quindi si tratta sempre della chiave con cui quella copia dello store è stata effettivamente firmata.</string>
     <string name="trust_own_key_unreadable">Impossibile leggere la chiave di firma di quest\'app.</string>
     <string name="sources_all_disabled">Tutte le fonti sono disattivate, quindi non c\'è nulla da sfogliare, cercare o aggiornare.</string>
-    <string name="section_sandboxed_google_play">Google Play in modalità sandbox</string>
     <string name="source_chip_proprietary">Proprietario</string>
     <string name="section_modern_apps_recent">Nuovo da Modern Apps</string>
     <string name="section_proprietary_recent_subtitle">Le versioni più recenti dal mirror di Play</string>

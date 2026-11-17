@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="uninstall">הסרת התקנה</string>
-    <string name="open">פתיחה</string>
-    <string name="repositories">מאגרים</string>
     <string name="nav_home">בית</string>
 </resources>

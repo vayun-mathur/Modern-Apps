@@ -1,6 +1,6 @@
 package com.vayunmathur.appstore
+import com.vayunmathur.appstore.ui.tv.TvStoreRoute
 
-import com.vayunmathur.appstore.tv.TvStoreRoute
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs

@@ -1,4 +1,7 @@
 package com.vayunmathur.appstore.tv
+import com.vayunmathur.appstore.platform.reason
+import com.vayunmathur.appstore.ui.tv.TvStoreAppCard
+import com.vayunmathur.appstore.ui.tv.downloadFraction
 
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText

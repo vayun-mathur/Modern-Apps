@@ -1,4 +1,5 @@
 package com.vayunmathur.appstore.ui
+import com.vayunmathur.appstore.R
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -11,7 +12,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.vayunmathur.appstore.R
 import com.vayunmathur.appstore.data.security.ApkCertificates
 import com.vayunmathur.appstore.data.security.StoreGuarantees
 import com.vayunmathur.appstore.data.security.TrustProfile

@@ -1,4 +1,5 @@
 package com.vayunmathur.appstore.data.accrescent
+import com.vayunmathur.appstore.data.toUnifiedApp
 
 import android.content.Context
 import com.vayunmathur.library.log.Log

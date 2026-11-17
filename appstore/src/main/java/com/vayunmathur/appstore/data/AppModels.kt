@@ -1,4 +1,5 @@
 package com.vayunmathur.appstore.data
+import com.vayunmathur.appstore.platform.reason
 
 import com.vayunmathur.appstore.domain.SearchRanking
 

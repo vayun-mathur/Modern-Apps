@@ -1,4 +1,6 @@
 package com.vayunmathur.appstore.util
+import com.vayunmathur.appstore.platform.AppStoreViewModel
+import com.vayunmathur.appstore.platform.reason
 
 import android.app.Application
 import android.os.Looper

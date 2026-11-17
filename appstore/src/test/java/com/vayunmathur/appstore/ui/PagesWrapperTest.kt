@@ -13,7 +13,7 @@ import com.vayunmathur.appstore.data.AppSource
 import com.vayunmathur.appstore.data.DefaultRepos
 import com.vayunmathur.appstore.data.UnifiedApp
 import com.vayunmathur.appstore.data.toEntity
-import com.vayunmathur.appstore.util.AppStoreViewModel
+import com.vayunmathur.appstore.platform.AppStoreViewModel
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertTrue

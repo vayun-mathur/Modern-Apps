@@ -1,4 +1,6 @@
 package com.vayunmathur.appstore.ui
+import com.vayunmathur.appstore.platform.AppDetailActions
+import com.vayunmathur.appstore.platform.AppDetailUiState
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -9,8 +11,6 @@ import androidx.compose.ui.test.performClick
 import com.vayunmathur.appstore.data.AppSource
 import com.vayunmathur.appstore.data.InstalledInfo
 import com.vayunmathur.appstore.data.UnifiedApp
-import com.vayunmathur.appstore.util.AppDetailActions
-import com.vayunmathur.appstore.util.AppDetailUiState
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull

@@ -1,4 +1,16 @@
 package com.vayunmathur.appstore.ui
+import com.vayunmathur.appstore.platform.AppDetailActions
+import com.vayunmathur.appstore.platform.AppDetailUiState
+import com.vayunmathur.appstore.platform.AppSection
+import com.vayunmathur.appstore.platform.HomeActions
+import com.vayunmathur.appstore.platform.HomeUiState
+import com.vayunmathur.appstore.platform.LibraryActions
+import com.vayunmathur.appstore.platform.LibraryUiState
+import com.vayunmathur.appstore.platform.SearchActions
+import com.vayunmathur.appstore.platform.SearchUiState
+import com.vayunmathur.appstore.platform.SectionLayout
+import com.vayunmathur.appstore.platform.UpdatesActions
+import com.vayunmathur.appstore.platform.UpdatesUiState
 
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
@@ -10,18 +22,6 @@ import com.vayunmathur.appstore.data.AppSource
 import com.vayunmathur.appstore.data.InstalledInfo
 import com.vayunmathur.appstore.data.UnifiedApp
 import com.vayunmathur.appstore.data.security.VerificationResult
-import com.vayunmathur.appstore.util.AppDetailActions
-import com.vayunmathur.appstore.util.AppDetailUiState
-import com.vayunmathur.appstore.util.AppSection
-import com.vayunmathur.appstore.util.HomeActions
-import com.vayunmathur.appstore.util.HomeUiState
-import com.vayunmathur.appstore.util.LibraryActions
-import com.vayunmathur.appstore.util.LibraryUiState
-import com.vayunmathur.appstore.util.SearchActions
-import com.vayunmathur.appstore.util.SearchUiState
-import com.vayunmathur.appstore.util.SectionLayout
-import com.vayunmathur.appstore.util.UpdatesActions
-import com.vayunmathur.appstore.util.UpdatesUiState
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.IconDownload
 import com.vayunmathur.library.ui.IconHome

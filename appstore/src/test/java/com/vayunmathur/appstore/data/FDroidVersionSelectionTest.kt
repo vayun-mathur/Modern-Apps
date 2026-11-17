@@ -1,4 +1,5 @@
 package com.vayunmathur.appstore.data
+import com.vayunmathur.appstore.platform.rank
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

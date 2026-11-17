@@ -1,4 +1,7 @@
 package com.vayunmathur.appstore.tv
+import com.vayunmathur.appstore.data.DefaultRepos
+import com.vayunmathur.appstore.data.FDroidRepository
+import com.vayunmathur.appstore.platform.TvStoreViewModel
 
 import android.app.Application
 import android.os.Looper

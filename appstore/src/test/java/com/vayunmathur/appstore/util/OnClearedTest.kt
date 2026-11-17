@@ -1,4 +1,5 @@
 package com.vayunmathur.appstore.util
+import com.vayunmathur.appstore.platform.AppStoreViewModel
 
 import android.app.Application
 import androidx.lifecycle.ViewModelStore
@@ -6,7 +7,7 @@ import androidx.room3.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.appstore.data.AppDatabase
-import com.vayunmathur.appstore.tv.TvStoreViewModel
+import com.vayunmathur.appstore.platform.TvStoreViewModel
 import kotlin.test.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner

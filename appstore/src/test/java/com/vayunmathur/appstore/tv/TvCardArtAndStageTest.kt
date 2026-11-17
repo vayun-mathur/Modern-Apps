@@ -1,4 +1,6 @@
 package com.vayunmathur.appstore.tv
+import com.vayunmathur.appstore.ui.tv.TvStoreAppArt
+import com.vayunmathur.appstore.ui.tv.tvStageLabel
 
 import android.graphics.drawable.ColorDrawable
 import androidx.compose.foundation.layout.Box

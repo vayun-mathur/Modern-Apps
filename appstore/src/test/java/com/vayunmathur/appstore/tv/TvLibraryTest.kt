@@ -1,4 +1,7 @@
 package com.vayunmathur.appstore.tv
+import com.vayunmathur.appstore.platform.SourceFilter
+import com.vayunmathur.appstore.platform.TvStoreViewModel
+import com.vayunmathur.appstore.platform.setLibraryFilter
 
 import android.app.Application
 import android.os.Looper
@@ -10,7 +13,6 @@ import com.vayunmathur.appstore.data.AppSource
 import com.vayunmathur.appstore.data.DefaultRepos
 import com.vayunmathur.appstore.data.UnifiedApp
 import com.vayunmathur.appstore.data.toEntity
-import com.vayunmathur.appstore.util.SourceFilter
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals

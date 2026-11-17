@@ -10,7 +10,7 @@ import androidx.room3.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.appstore.data.AppDatabase
-import com.vayunmathur.appstore.util.AppStoreViewModel
+import com.vayunmathur.appstore.platform.AppStoreViewModel
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals

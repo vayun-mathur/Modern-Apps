@@ -1,4 +1,8 @@
 package com.vayunmathur.appstore.ui
+import com.vayunmathur.appstore.R
+import com.vayunmathur.appstore.platform.AppDetailActions
+import com.vayunmathur.appstore.platform.AppDetailUiState
+import com.vayunmathur.appstore.platform.reason
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -13,15 +17,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.vayunmathur.appstore.R
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.appstore.data.AppSource
 import com.vayunmathur.appstore.data.UnifiedApp
 import com.vayunmathur.appstore.data.installer.InstallStage
 import com.vayunmathur.appstore.data.security.TrustProfile
 import com.vayunmathur.appstore.data.security.VerificationResult
-import com.vayunmathur.appstore.util.AppDetailActions
-import com.vayunmathur.appstore.util.AppDetailUiState
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.Card
 import com.vayunmathur.library.ui.FilledTonalButton

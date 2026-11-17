@@ -1,4 +1,5 @@
 package com.vayunmathur.appstore.data.play
+import com.vayunmathur.appstore.data.toUnifiedApp
 
 import com.aurora.gplayapi.data.models.App
 import com.aurora.gplayapi.data.models.Artwork

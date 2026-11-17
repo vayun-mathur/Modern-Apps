@@ -1,4 +1,11 @@
 package com.vayunmathur.appstore.tv
+import com.vayunmathur.appstore.platform.TvStoreViewModel
+import com.vayunmathur.appstore.ui.tv.TvStoreBrowse
+import com.vayunmathur.appstore.ui.tv.TvStoreHome
+import com.vayunmathur.appstore.ui.tv.TvStoreLibrary
+import com.vayunmathur.appstore.ui.tv.TvStoreSearch
+import com.vayunmathur.appstore.ui.tv.TvStoreSources
+import com.vayunmathur.appstore.ui.tv.TvStoreUpdates
 
 import android.app.Application
 import androidx.compose.ui.test.junit4.createComposeRule

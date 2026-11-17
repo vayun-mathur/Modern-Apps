@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">App Bolt</string>
-    <string name="open">Megnyitás</string>
     <string name="uninstall">Eltávolítás</string>
     <string name="view_in_play_store">Megtekintés a Play Store-ban</string>
     <string name="installed">Telepítve</string>

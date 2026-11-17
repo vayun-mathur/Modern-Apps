@@ -1,4 +1,5 @@
 package com.vayunmathur.appstore.data
+import com.vayunmathur.appstore.R
 
 import android.Manifest
 import android.app.Activity
@@ -25,13 +26,12 @@ import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.vayunmathur.appstore.MainActivity
-import com.vayunmathur.appstore.R
 import com.vayunmathur.appstore.data.accrescent.AccrescentRepository
 import com.vayunmathur.appstore.data.accrescent.DeviceAttributesProvider
 import com.vayunmathur.appstore.data.installer.InstallCoordinator
 import com.vayunmathur.appstore.data.play.PlayRepository
 import com.vayunmathur.appstore.data.security.ApkCertificates
-import com.vayunmathur.appstore.tv.TvMainActivity
+import com.vayunmathur.appstore.ui.tv.TvMainActivity
 import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.library.network.TrustBundle
 import kotlinx.coroutines.CoroutineScope
@@ -368,7 +368,6 @@ class UpdateCheckWorker(
      * can't usefully answer, so those are left to the notification instead.
      */
     private fun canSilentlyUpdate(packageName: String): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return false
         return runCatching {
             val info = context.packageManager.getInstallSourceInfo(packageName)
             val self = context.packageName
@@ -388,15 +387,11 @@ class UpdateCheckWorker(
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            ForegroundInfo(
-                INSTALL_NOTIFICATION_ID,
-                notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
-            )
-        } else {
-            ForegroundInfo(INSTALL_NOTIFICATION_ID, notification)
-        }
+        return ForegroundInfo(
+            INSTALL_NOTIFICATION_ID,
+            notification,
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
+        )
     }
 
     private fun notifyInstalled(count: Int) {
@@ -418,8 +413,12 @@ class UpdateCheckWorker(
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
-        runCatching {
-            NotificationManagerCompat.from(context).notify(INSTALLED_NOTIFICATION_ID, notification)
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        ) {
+            runCatching {
+                NotificationManagerCompat.from(context).notify(INSTALLED_NOTIFICATION_ID, notification)
+            }
         }
     }
 

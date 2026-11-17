@@ -1,16 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Obchod aplikací</string>
-    <string name="open">Otevřít</string>
     <string name="uninstall">Odinstalovat</string>
     <string name="view_in_play_store">Zobrazit v Obchodě Play</string>
     <string name="installed">Nainstalováno</string>
     <string name="installed_2">Nainstalována %1$s</string>
     <string name="uninstall_3">Odinstalovat %1$s?</string>
     <string name="this_will_uninstall_you_can_reinstall_la">Aplikace %1$s bude odinstalována. Kdykoliv jde stáhnout znovu.</string>
-    <string name="last_sync">Poslední synchronizace: %1$s</string>
-    <string name="repositories">Zdroje</string>
-    <string name="sources_are_fixed">Tyto tři zdroje jsou vestavěné a nelze je změnit. Ostatní repozitáře F-Droid pouze poskytují binárky sestavené někým jiným, takže neexistuje nic, proti čemu by se daly ověřit.</string>
     <string name="nav_home">Domov</string>
     <string name="nav_search">Hledat</string>
     <string name="nav_updates">Aktualizace</string>
@@ -19,6 +15,5 @@
     <string name="source_chip_play">Obchod Play</string>
     <string name="filter_all">Vše</string>
     <string name="filter_with_count">%1$s (%2$d)</string>
-    <string name="category_all">Vše</string>
     <string name="section_modern_apps">Z Modern Apps</string>
 </resources>

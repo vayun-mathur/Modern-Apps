@@ -1,4 +1,6 @@
 package com.vayunmathur.appstore.tv
+import com.vayunmathur.appstore.platform.TvSection
+import com.vayunmathur.appstore.platform.TvStoreViewModel
 
 import android.app.Application
 import android.os.Looper

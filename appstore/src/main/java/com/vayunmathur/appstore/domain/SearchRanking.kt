@@ -1,4 +1,5 @@
 package com.vayunmathur.appstore.domain
+import com.vayunmathur.appstore.platform.rank
 
 /**
  * Turns a query and a set of candidate listings into an order.

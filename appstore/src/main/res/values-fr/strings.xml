@@ -3,9 +3,7 @@
     <string name="installed">Installée</string>
     <string name="all_apps_up_to_date">Toutes les applications sont à jour</string>
     <string name="uninstall">Désinstaller</string>
-    <string name="open">Ouvrir</string>
     <string name="view_in_play_store">Voir dans le Play Store</string>
-    <string name="repositories">Dépôts</string>
     <string name="app_name">Magasin</string>
     <string name="action_check_again">Vérifier à nouveau</string>
     <string name="action_dismiss">Ignorer</string>
@@ -13,7 +11,6 @@
     <string name="action_read_more">En savoir plus</string>
     <string name="action_show_less">Afficher moins</string>
     <string name="action_update">Mettre à jour</string>
-    <string name="category_all">Toutes</string>
     <string name="chip_contains_ads">Contient des publicités</string>
     <string name="chip_reproducible">Compilation reproductible</string>
     <string name="detail_checked_on_install">Vérifiée lors de l’installation : %1$s</string>
@@ -40,10 +37,8 @@
     <string name="install_failed">Impossible d’installer %1$s</string>
     <string name="install_started">Installation de %1$s</string>
     <string name="install_started_unverified">Installation de %1$s, sans vérification</string>
-    <string name="last_sync">Dernière synchronisation : %1$s</string>
     <string name="library_empty_message">Les applications que vous installez sont répertoriées ici, regroupées selon la source qui les propose.</string>
     <string name="library_empty_title">Aucun résultat ne correspond à ce filtre</string>
-    <string name="library_title">Bibliothèque (%1$d)</string>
     <string name="link_privacy">Politique de confidentialité</string>
     <string name="link_source">Code source</string>
     <string name="link_website">Site Web</string>
@@ -51,9 +46,7 @@
     <string name="nav_search">Rechercher</string>
     <string name="nav_updates">Mises à jour</string>
     <string name="play_unavailable">Résultats du Play Store indisponibles : %1$s</string>
-    <string name="repos_syncing">Synchronisation…</string>
     <string name="source_chip_play">Play Store</string>
-    <string name="repos_sync_sources">Synchroniser les sources</string>
     <string name="search_no_results_message">Essayez une recherche plus courte ou une partie du nom du paquet.</string>
     <string name="search_no_results_title">Aucun résultat pour « %1$s »</string>
     <string name="search_placeholder">Rechercher une application</string>
@@ -63,16 +56,9 @@
     <string name="section_modern_apps">Depuis Modern Apps</string>
     <string name="section_modern_apps_subtitle">Compilées dans ce dépôt et signées avec la même clé que ce magasin</string>
     <string name="section_play_top_charts">Les plus populaires sur le Play Store</string>
-    <string name="section_recently_updated">Nouveautés et mises à jour</string>
-    <string name="section_recently_updated_subtitle">Les compilations les plus récentes sur F-Droid</string>
     <string name="share_app_text">%1$s — %2$s</string>
     <string name="source_chip_fdroid">F-Droid</string>
-    <string name="source_fdroid">F-Droid</string>
-    <string name="source_fdroid_pin">Épinglé à la clé de signature de la liste d’applications de F-Droid</string>
-    <string name="source_modern_apps_pin">Épinglé à la propre clé de signature de cette application</string>
     <string name="source_play">Play Store (anonyme)</string>
-    <string name="source_play_pin">Rien à épingler : Google détient la clé de signature</string>
-    <string name="sources_are_fixed">Ces trois sources sont intégrées et ne peuvent pas être modifiées. Les autres dépôts F-Droid ne font que distribuer des fichiers binaires compilés par des tiers ; il n’existe donc aucun élément de référence permettant de les vérifier.</string>
     <string name="stage_downloading">Téléchargement : %1$d %%</string>
     <string name="stage_failed">Échec : %1$s</string>
     <string name="stage_installing">Installation…</string>
@@ -96,7 +82,7 @@
     <string name="store_rule_split_key_title">Une seule clé pour toutes les parties</string>
     <string name="store_rule_updates_stay_detail">Aucun autre élément de votre téléphone ne peut remplacer discrètement une application installée depuis ce magasin.</string>
     <string name="store_rule_updates_stay_title">Les mises à jour restent gérées par ce magasin</string>
-    <string name="sync_done">Catalogue mis à jour — %1$d applications</string>
+    <plurals name="sync_done"><item quantity="one">Catalogue mis à jour — %1$d applications</item><item quantity="many">Catalogue mis à jour — %1$d applications</item><item quantity="other">Catalogue mis à jour — %1$d applications</item></plurals>
     <string name="sync_failed_all">Aucune des deux sources n’a pu être synchronisée. Votre catalogue actuel reste inchangé.</string>
     <string name="sync_failed_fdroid">F-Droid n’a pas pu être synchronisé. Les applications déjà répertoriées restent inchangées.</string>
     <string name="sync_failed_modern_apps">Modern Apps n’a pas pu être synchronisé. Les applications déjà répertoriées restent inchangées.</string>
@@ -116,7 +102,6 @@
     <string name="trust_fdroid_practice_rebuild">Un second serveur recompile de nombreuses applications et compare le résultat octet par octet</string>
     <string name="trust_fdroid_practice_source">Chaque application est compilée à partir du code source publié par F-Droid, et non d’un fichier binaire fourni par un développeur</string>
     <string name="trust_fdroid_summary">Compilées à partir d’un code source public. Les versions qu’une seconde machine a recompilées indépendamment pour produire un fichier identique sont signalées comme reproductibles.</string>
-    <string name="trust_fdroid_title">F-Droid</string>
     <string name="trust_heading_source_does">Ce que fait la source</string>
     <string name="trust_heading_weaker">Ses points faibles</string>
     <string name="trust_heading_we_check">Ce que cette application vérifie</string>
@@ -158,8 +143,4 @@
     <string name="updates_notification_body">Ouvrez le Magasin pour les consulter et les installer.</string>
     <string name="nav_home">Accueil</string>
     <string name="trust_modern_apps_check_index_signed">L’index du dépôt est signé et vérifié à l’aide de la clé épinglée propre à ce magasin</string>
-    <string name="source_chip_grapheneos">GrapheneOS</string>
-    <string name="section_sandboxed_google_play">Google Play en bac à sable</string>
-    <string name="section_sandboxed_google_play_subtitle">Les composants Google Play comme applications ordinaires, sans privilèges</string>
-    <string name="action_install_all">Tout installer</string>
 </resources>

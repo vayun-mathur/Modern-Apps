@@ -1,4 +1,6 @@
 package com.vayunmathur.appstore.data.installer
+import com.vayunmathur.appstore.R
+import com.vayunmathur.appstore.platform.reason
 
 import android.Manifest
 import android.app.ActivityManager
@@ -16,7 +18,6 @@ import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.vayunmathur.library.log.Log
-import com.vayunmathur.appstore.R
 import com.vayunmathur.appstore.data.RestrictedPackages
 import com.vayunmathur.appstore.data.TvIncompatiblePackages
 import com.vayunmathur.appstore.data.accrescent.DeviceAttributesProvider

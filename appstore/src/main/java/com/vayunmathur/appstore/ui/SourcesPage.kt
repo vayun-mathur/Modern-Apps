@@ -1,4 +1,6 @@
 package com.vayunmathur.appstore.ui
+import com.vayunmathur.appstore.R
+import com.vayunmathur.library.ui.Scaffold
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -17,16 +19,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.vayunmathur.appstore.R
 import com.vayunmathur.appstore.data.AppSource
 import com.vayunmathur.appstore.data.DefaultRepos
 import com.vayunmathur.appstore.data.ModernAppsRepo
 import com.vayunmathur.appstore.data.accrescent.AccrescentRepo
-import com.vayunmathur.appstore.util.AppStoreViewModel
+import com.vayunmathur.appstore.platform.AppStoreViewModel
 import com.vayunmathur.library.ui.Card
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.OutlinedButton
-import com.vayunmathur.library.ui.Scaffold
+import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.SettingsSwitchRow
 import com.vayunmathur.library.ui.Switch
 import com.vayunmathur.library.ui.Text
@@ -51,7 +52,7 @@ fun SourcesPage(
     // them every time the screen appears rather than polling for them.
     LaunchedEffect(Unit) { viewModel.refreshUpdateCheckStatus() }
 
-    Scaffold { padding ->
+    AppScaffold(topBar = {}) { padding ->
         Column(
             Modifier
                 .fillMaxSize()

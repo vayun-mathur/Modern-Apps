@@ -1,4 +1,15 @@
 package com.vayunmathur.appstore.tv
+import com.vayunmathur.appstore.platform.SourceFilter
+import com.vayunmathur.appstore.platform.TvBrowseUiState
+import com.vayunmathur.appstore.platform.TvDetailUiState
+import com.vayunmathur.appstore.platform.TvLibraryUiState
+import com.vayunmathur.appstore.platform.TvSearchUiState
+import com.vayunmathur.appstore.platform.TvUpdatesUiState
+import com.vayunmathur.appstore.ui.tv.TvStoreBrowseScreen
+import com.vayunmathur.appstore.ui.tv.TvStoreDetailScreen
+import com.vayunmathur.appstore.ui.tv.TvStoreLibraryScreen
+import com.vayunmathur.appstore.ui.tv.TvStoreSearchScreen
+import com.vayunmathur.appstore.ui.tv.TvStoreUpdatesScreen
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasText
@@ -9,7 +20,6 @@ import androidx.compose.ui.test.performClick
 import com.vayunmathur.appstore.data.AppSource
 import com.vayunmathur.appstore.data.InstalledInfo
 import com.vayunmathur.appstore.data.UnifiedApp
-import com.vayunmathur.appstore.util.SourceFilter
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue

@@ -1,4 +1,5 @@
 package com.vayunmathur.appstore.ui
+import com.vayunmathur.appstore.platform.BrowseUiState
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -6,7 +7,6 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.vayunmathur.appstore.data.AppSource
 import com.vayunmathur.appstore.data.UnifiedApp
-import com.vayunmathur.appstore.util.BrowseUiState
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue

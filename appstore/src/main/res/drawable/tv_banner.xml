@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Leanback-row banner (320x180): a dark tile with a white storefront glyph. The launcher
   icon (launcherIcon symbol="store") stays the phone adaptive icon; this is what TV rows show. -->
+<!-- 320x180 is the leanback banner size the launcher requests; this is a two-path tile, so rasterizing it would only add APK size. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:ignore="VectorRaster"
     android:width="320dp"
     android:height="180dp"
     android:viewportWidth="320"

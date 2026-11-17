@@ -1,4 +1,6 @@
 package com.vayunmathur.appstore.tv
+import com.vayunmathur.appstore.platform.TvDetailUiState
+import com.vayunmathur.appstore.ui.tv.TvStoreDetailScreen
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule

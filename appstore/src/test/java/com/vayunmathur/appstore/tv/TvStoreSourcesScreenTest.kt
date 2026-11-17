@@ -1,4 +1,7 @@
 package com.vayunmathur.appstore.tv
+import com.vayunmathur.appstore.platform.TvStoreViewModel
+import com.vayunmathur.appstore.ui.tv.TvStoreSources
+import com.vayunmathur.appstore.ui.tv.TvStoreSourcesScreen
 
 import android.app.Application
 import androidx.compose.ui.test.assertIsDisplayed

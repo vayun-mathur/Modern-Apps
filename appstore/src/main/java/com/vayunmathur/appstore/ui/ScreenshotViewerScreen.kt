@@ -1,4 +1,5 @@
 package com.vayunmathur.appstore.ui
+import com.vayunmathur.appstore.R
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -26,7 +27,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntSize
-import com.vayunmathur.appstore.R
 import com.vayunmathur.library.image.compose.AsyncImage
 import com.vayunmathur.library.image.compose.AsyncImageState
 import com.vayunmathur.library.ui.AppScaffold

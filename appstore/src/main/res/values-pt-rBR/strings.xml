@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="uninstall">Desinstalar</string>
-    <string name="open">Abrir</string>
     <string name="view_in_play_store">Ver na Play Store</string>
 </resources>

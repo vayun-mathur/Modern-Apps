@@ -16,7 +16,8 @@
       grants it to a regularly installed app, so the installer checks at
       runtime (checkSelfPermission) and keeps the user-confirmed session flow
       when it is not held. Declaring it here changes nothing on stock. -->
-    <uses-permission android:name="android.permission.INSTALL_PACKAGES" />
+    <!-- INSTALL_PACKAGES is a signature|privileged permission held only on MAOS, where this store is the system installer; the runtime check above keeps stock Android on the user-confirmed flow, so ProtectedPermissions is a false positive here. -->
+    <uses-permission android:name="android.permission.INSTALL_PACKAGES" tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
     <uses-permission android:name="android.permission.ENFORCE_UPDATE_OWNERSHIP" />
     <!-- Silent background updates: SessionInstaller commits with USER_ACTION_NOT_REQUIRED,
@@ -78,22 +79,22 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="play.google.com" android:pathPrefix="/store/apps/details" />
+                <data android:scheme="https" />
+                <data android:host="play.google.com" />
+                <data android:pathPrefix="/store/apps/details" />
             </intent-filter>
             <intent-filter android:autoVerify="false">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <!-- Plain /packages/<pkg> listing URLs. -->
-                <data
-                    android:scheme="https"
-                    android:host="f-droid.org"
-                    android:pathPrefix="/packages/" />
+                <data android:scheme="https" />
+                <data android:host="f-droid.org" />
+                <data android:pathPrefix="/packages/" />
                 <!-- Localised /<locale>/packages/<pkg>/ listing URLs. -->
-                <data
-                    android:scheme="https"
-                    android:host="f-droid.org"
-                    android:pathPattern="/.*/packages/.*" />
+                <data android:scheme="https" />
+                <data android:host="f-droid.org" />
+                <data android:pathPattern="/.*/packages/.*" />
             </intent-filter>
         </activity>
 
@@ -104,11 +105,10 @@
           entries that confuse launcher resolution (the tvlauncher HOME lesson).
         -->
         <activity
-            android:name=".tv.TvMainActivity"
+            android:name=".ui.tv.TvMainActivity"
             android:configChanges="mcc|mnc|colorMode|density|fontScale|fontWeightAdjustment|keyboard|keyboardHidden|layoutDirection|navigation|orientation|screenLayout|screenSize|smallestScreenSize|touchscreen|uiMode"
             android:exported="true"
             android:launchMode="singleTask"
-            android:screenOrientation="landscape"
             android:theme="@style/Theme.General">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

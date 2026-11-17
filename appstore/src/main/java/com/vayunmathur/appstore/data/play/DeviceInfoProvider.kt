@@ -1,4 +1,5 @@
 package com.vayunmathur.appstore.data.play
+import com.vayunmathur.appstore.R
 
 import android.content.Context
 import android.content.pm.PackageManager
@@ -31,7 +32,7 @@ object DeviceInfoProvider {
      * Falls back to the native profile only if the bundled resource is missing.
      */
     fun auroraProfile(context: Context): Properties = try {
-        val id = context.resources.getIdentifier("gplayapi_px_9a", "raw", context.packageName)
+        val id = com.aurora.gplayapi.R.raw.gplayapi_px_9a
         if (id != 0) {
             context.resources.openRawResource(id).use { input -> Properties().apply { load(input) } }
         } else {

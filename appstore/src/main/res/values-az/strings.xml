@@ -1,45 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">tətbiq mağazası</string>
-    <string name="open">Aç</string>
     <string name="uninstall">Sil</string>
     <string name="view_in_play_store">Play Store baxın</string>
     <string name="installed">Quraşdırılıb</string>
     <string name="installed_2">%1$s quraşdırılıb</string>
     <string name="uninstall_3">%1$s silinsin?</string>
     <string name="this_will_uninstall_you_can_reinstall_la">%1$s silinəcək. Onu istənilən vaxt yenidən quraşdıra bilərsiniz.</string>
-    <string name="last_sync">Son sinxronizasiya: %1$s</string>
-    <string name="repositories">Mənbələr</string>
-    <string name="sources_are_fixed">Yalnız daxili mənbələr mövcuddur; başqalarını əlavə etmək mümkün deyil. Digər repozitoriyalar başqaları tərəfindən hazırlanmış və yoxlanılmamış ikili faylları (binaries) təqdim edir. İstifadə etmədiyiniz mənbələri söndürün.</string>
     <string name="nav_home">Ana səhifə</string>
     <string name="nav_search">Axtarış</string>
     <string name="nav_updates">Yeniləmələr</string>
     <string name="nav_library">Kitabxana</string>
     <string name="source_chip_fdroid">F-Droid</string>
-    <string name="source_chip_grapheneos">GrapheneOS</string>
     <string name="source_chip_play">Play Mağaza</string>
     <string name="source_chip_accrescent">Accrescent</string>
     <string name="filter_all">Hamısı</string>
     <string name="filter_with_count">%1$s (%2$d)</string>
-    <string name="category_all">Hamısı</string>
     <string name="section_modern_apps">Müasir tətbiqlərdən</string>
     <string name="section_modern_apps_subtitle">Bu repozitoriyada yaradılıb və bu mağaza ilə eyni açarla imzalanıb.</string>
     <string name="section_play_top_charts">Play Store ən yaxşılar</string>
-    <string name="section_recently_updated">Yeni və yenilənmiş</string>
-    <string name="section_recently_updated_subtitle">F-Droid-da ən yeni versiyalar</string>
     <string name="section_category_subtitle">Bu kateqoriyadakı oflayn kataloqdan olan tətbiqlər</string>
-    <string name="section_sandboxed_google_play">Sandbox mühitində Google Play</string>
-    <string name="section_sandboxed_google_play_subtitle">Google-un Play komponentləri adi, imtiyazsız tətbiqlər kimi</string>
     <string name="section_accrescent">\"Accrescent\" haqqında</string>
     <string name="section_accrescent_subtitle">Accrescent-in imzalanmış tətbiqlər siyahısından tərtibatçı tərəfindən imzalanmış tətbiqlər</string>
-    <string name="action_install_all">Hamısını quraşdır</string>
     <string name="home_empty_title">Burada hələ heç nə yoxdur</string>
     <string name="home_empty_message">Buranı doldurmaq üçün mənbələrinizi sinxronlaşdırın və ya tətbiqi adı ilə axtarın.</string>
     <string name="updates_banner_subtitle">Baxmaq və quraşdırmaq üçün toxunun</string>
     <string name="sync_in_progress">Sinxronlaşdırılır…</string>
     <string name="sync_step_fdroid">F-Droid qurğuları yoxlanılır…</string>
     <string name="sync_step_modern_apps">Müasir tətbiqlər yoxlanılır…</string>
-    <string name="sync_done">Kataloq yeniləndi — %1$d tətbiq</string>
+    <plurals name="sync_done"><item quantity="one">Kataloq yeniləndi — %1$d tətbiq</item><item quantity="other">Kataloq yeniləndi — %1$d tətbiq</item></plurals>
     <string name="sync_failed_all">Heç bir mənbə sinxronlaşdırılmadı. Mövcud kataloqunuz dəyişməz qalıb.</string>
     <string name="sync_failed_fdroid">F-Droid sinxronizasiya olunmadı. Onun mövcud tətbiqləri dəyişməz qalıb.</string>
     <string name="sync_failed_modern_apps">Müasir tətbiqlər sinxronlaşdırılmadı. Mövcud tətbiqlər dəyişməz qalıb.</string>
@@ -49,7 +38,6 @@
     <string name="search_prompt_message">\"Modern Apps\" və \"F-Droid\" birbaşa bu telefondan cavab verir; \"Play\" nəticələri isə bir az sonra görünür.</string>
     <string name="search_no_results_title">\"%1$s\" üçün nəticə yoxdur</string>
     <string name="search_no_results_message">Daha qısa sorğu və ya paket adının bir hissəsini sınayın.</string>
-    <string name="library_title">Kitabxana (%1$d)</string>
     <string name="library_empty_title">Heç nə bu filtrə uyğun gəlmir.</string>
     <string name="library_empty_message">Quraşdırdığınız tətbiqlər burada onları təqdim edən mənbələrə görə qruplaşdırılmış şəkildə siyahıya alınır.</string>
     <string name="update_all">Hamısını yenilə (%1$d)</string>
@@ -147,7 +135,6 @@
     <string name="trust_modern_apps_check_key">Bu tətbiqin öz açarı ilə imzalanıb və quraşdırma zamanı birbaşa telefonunuzdan oxunur.</string>
     <string name="trust_modern_apps_check_hash">Fayl repozitoriyanın imzalanmış indeksindəki heşlə uyğun gəlir.</string>
     <string name="trust_modern_apps_limits">Bir proqramçı, bir açar, heç bir müstəqil yoxlama yoxdur; tətbiqin mənbə kodu ilə uyğunluğunu təsdiqləmək üçün kodu yenidən tərtib edən (build edən) heç kim yoxdur. Heç bir skanlama aparılmır.</string>
-    <string name="trust_fdroid_title">F-Droid</string>
     <string name="trust_fdroid_summary">İctimai mənbə kodundan hazırlanıb. İkinci bir cihazda müstəqil şəkildə yenidən yığılaraq eyni faylı əldə edən versiyalar reproduksiya edilə bilən kimi işarələnir.</string>
     <string name="trust_fdroid_practice_source">Hər bir tətbiq tərtibatçının göndərdiyi ikili fayldan deyil, F-Droid-un dərc etdiyi mənbə kodundan hazırlanır.</string>
     <string name="trust_fdroid_practice_rebuild">İkinci bir qurma serveri (build server) çoxsaylı tətbiqləri yenidən qurur və nəticələri bayt-bayt müqayisə edir.</string>
@@ -167,7 +154,6 @@
     <string name="trust_play_check_key">Bu tətbiq üçün əsas Google siyahıları tərəfindən imzalanıb</string>
     <string name="trust_play_check_stamp">Tətbiqin naşir möhürü onu ilk dəfə quraşdırdığınız zaman yadda saxlanılır və sonradan dəyişməz qalmalıdır.</string>
     <string name="trust_play_limits">Mənbə kodu və ya ikinci bir qurma (build) mövcud deyil, buna görə də tətbiqin hər hansı bir mənbəyə uyğun olduğunu sübut edən heç nə yoxdur. Google həm faylı, həm də gözlənilən nəticəni təqdim edir; bu, müdaxilə edilmiş yükləmələri aşkar etməyə imkan versə də, Google-un özü tərəfindən imzalanmış zərərli yeniləmələri tuta bilmir. Bu mağazadakı anonim hesab vasitəsilə görünən məzmun, \"Play\" tətbiqindəkindən daha azdır.</string>
-    <string name="trust_accrescent_title">Accrescent</string>
     <string name="trust_accrescent_summary">Hər bir tətbiqin imzalama açarını və icazə verilən ən aşağı versiyasını təsbit edən Accrescent-in ed25519 ilə imzalanmış icazə siyahısında yer alan və öz tərtibatçıları tərəfindən imzalanmış tətbiqlər.</string>
     <string name="trust_accrescent_practice_developer_key">Hər bir tətbiq Accrescent tərəfindən deyil, tərtibatçının öz açarı ilə imzalanır.</string>
     <string name="trust_accrescent_practice_signed_list">Hansı tətbiqlərin etibarlı olduğu və hər birinin gözlənilən açarı barədə məlumatlar vahid, ed25519 ilə imzalanmış siyahıdan əldə edilir.</string>
@@ -176,15 +162,7 @@
     <string name="trust_accrescent_check_key">Yüklənən fayl, bu tətbiq üçün imzalanmış siyahıda göstərilən açarla imzalanıb.</string>
     <string name="trust_accrescent_check_min_version">Yüklənən faylın versiyası imzalanmış siyahıda icazə verilən minimum səviyyədə və ya ondan yuxarıdır.</string>
     <string name="trust_accrescent_limits">Accrescent-də fayl səviyyəsində heç bir heş (hash) dəyəri və ya təkrarlana bilən qurulma (reproducible build) mövcud deyil; buna görə də təhlükəsizlik zəmanəti mənbəyə deyil, rəqəmsal imzaya və minimum versiya tələbinə əsaslanır. Tətbiq siyahıları adi bir serverdən gRPC vasitəsilə əldə edilir; əgər server yanlış cavab qaytararsa, nəticədə alınan fayl sadəcə olaraq yoxlamalardan keçə bilməyəcək. Tətbiqlərin heç biri kənar yoxlamadan (skanerdən) keçirilmir.</string>
-    <string name="repos_syncing">Sinxronlaşdırılır…</string>
-    <string name="repos_sync_sources">Sinxronizasiya mənbələri</string>
-    <string name="source_modern_apps_pin">Bu tətbiqin öz imzalama açarına bağlanıb.</string>
-    <string name="source_fdroid">F-Droid</string>
-    <string name="source_fdroid_pin">F-Droid tətbiq siyahısı imzalama açarına bərkidilib</string>
     <string name="source_play">Play mağaza (anonim)</string>
-    <string name="source_play_pin">Sabitləniləcək heç nə yoxdur: İmzalama açarı Google</string>
-    <string name="source_accrescent">Accrescent</string>
-    <string name="source_accrescent_pin">Accrescent-in repodata imzalama açarına (ed25519) bərkidilib</string>
     <string name="updates_confirm_notification_body">Android yalnız mağazaya quraşdırdığı tətbiqləri yeniləməyə imkan verir, buna görə də bunlara toxunmağınız lazımdır. Onları quraşdırmaq üçün App Store açın.</string>
     <plurals name="updates_confirm_count">
         <item quantity="one">%1$d yeniləmə təsdiqinizi tələb edir</item>
@@ -205,15 +183,6 @@
         <item quantity="other">%1$d tətbiq yeniləndi</item>
     </plurals>
     <string name="updates_batch_partial">%2$d-dən %1$d yeniləndi. Qalanları uğursuz oldu: %3$s</string>
-    <string name="trust_grapheneos_title">GraphaneOS</string>
-    <string name="trust_grapheneos_summary">GrapheneOS tərəfindən, hər bir faylın heş (hash) dəyərini və imzalama açarını göstərən imzalanmış siyahı əsasında yenidən yerləşdirilən, Google-un öz imzası ilə təmin edilmiş \"Sandboxed Google Play\" komponentləri.</string>
-    <string name="trust_grapheneos_practice_official">Fayllar Google-un özü tərəfindən imzalanmış quruluşlardır (tikir); onlar yenidən yaradılmayıb, əksinə, dəyişdirilmədən başqa bir yerdə yerləşdirilib.</string>
-    <string name="trust_grapheneos_practice_signed_index">GrapheneOS versiyalar siyahısını, fayl heşlərini və gözlənilən imzalama açarlarını öz buraxılış açarı ilə imzalayır.</string>
-    <string name="trust_grapheneos_practice_matched">Yalnız əməliyyat sisteminizin təqdim etdiyi uyğunluq təbəqəsinə uyğun gələn qurğular təklif olunur</string>
-    <string name="trust_grapheneos_check_index_signed">Həmin imzalanmış siyahı bu anbara daxil edilmiş açar vasitəsilə yoxlanılır</string>
-    <string name="trust_grapheneos_check_rollback">Əvvəl görülmüş siyahıdan daha köhnə olan siyahı rədd edilir; buna görə də sizə köhnə bir qurğu (build) təkrar təqdim edilə bilməz</string>
-    <string name="trust_grapheneos_check_hash_and_key">Yüklənən hər bir fayl, onun adlarını ehtiva edən siyahıdakı heş (hash) və imzalama açarı ilə uyğunluq təşkil edir</string>
-    <string name="trust_grapheneos_limits">Bunlar Google-un qapalı kodlu tətbiqləridir. Heç bir şey dərc olunmuş mənbə kodundan hazırlanmayıb və heç birini yenidən yaratmaq mümkün deyil; buna görə də sübut olunan yeganə məqam GrapheneOS tərəfindən siyahıya alınmış faylı əldə etməyinizdir, həmin faylın nə iş gördüyü barədə isə heç nə təsdiqlənmir. Mənbə kodu yalnız \"Sandboxed Google Play\" komponentlərini ehtiva edir və telefonlara yüklənmiş zərərli buraxılışı geri qaytarmağın heç bir yolu yoxdur.</string>
     <string name="nav_sources">Mənbələr</string>
     <string name="source_chip_izzy">IzzyOnDroid</string>
     <string name="source_chip_proprietary">Mülkiyyət hüququ ilə qorunan</string>
@@ -249,12 +218,6 @@
     <string name="trust_proprietary_check_index_signed">Həmin imzalanmış indeks, bu anbarda yerləşdirilmiş açarla yoxlanılır</string>
     <string name="trust_proprietary_check_hash_and_key">Yüklənmiş hər bir fayl, onun üçün indeks adlarında göstərilən heş (hash) və imzalama açarı ilə uyğun gəlir</string>
     <string name="trust_proprietary_limits">Bunlar operator tərəfindən əldə edilmiş qapalı kodlu tətbiqlərdir; yəni siz operatorun orijinal faylı əldə etdiyinə etibar edirsiniz, lakin burada nə yoxlanıla biləcək bir mənbə kodu, nə də təkrar yaradıla bilən (reproducible) bir qurulma prosesi mövcuddur. Tətbiqləri heç kim yoxlamır.</string>
-    <string name="source_izzy_pin">IzzyOnDroid tətbiq siyahısı imzalama açarına sancılıb</string>
-    <string name="source_proprietary_pin">Bu mağazanın Play güzgü imzalama açarına təsbit edilib</string>
-    <string name="tv_browse_title">Tətbiq Mağazası</string>
     <string name="tv_detail_back">Geri</string>
-    <string name="tv_detail_about">Haqqında</string>
     <string name="tv_detail_author">Tərtibatçı</string>
-    <string name="tv_compat_declared">Televiziyada nümayiş — mənbədə televiziya versiyası qeyd olunub</string>
-    <string name="tv_compat_unverified">TV uyğunluğu təsdiqlənməyib — quraşdırma zamanı yoxlanılacaq</string>
 </resources>

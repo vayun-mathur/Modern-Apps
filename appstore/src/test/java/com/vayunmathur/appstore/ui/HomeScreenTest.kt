@@ -1,4 +1,8 @@
 package com.vayunmathur.appstore.ui
+import com.vayunmathur.appstore.platform.AppSection
+import com.vayunmathur.appstore.platform.HomeActions
+import com.vayunmathur.appstore.platform.HomeUiState
+import com.vayunmathur.appstore.platform.SectionLayout
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -6,10 +10,6 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.vayunmathur.appstore.data.AppSource
 import com.vayunmathur.appstore.data.UnifiedApp
-import com.vayunmathur.appstore.util.AppSection
-import com.vayunmathur.appstore.util.HomeActions
-import com.vayunmathur.appstore.util.HomeUiState
-import com.vayunmathur.appstore.util.SectionLayout
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import org.junit.Rule

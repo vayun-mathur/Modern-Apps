@@ -1,14 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Magazin aplicații</string>
-    <string name="open">Deschide</string>
     <string name="uninstall">Dezinstalează</string>
     <string name="view_in_play_store">Vezi în Magazin Play</string>
     <string name="installed">Instalat</string>
     <string name="installed_2">Instalat %1$s</string>
     <string name="uninstall_3">Dezinstalezi %1$s?</string>
     <string name="this_will_uninstall_you_can_reinstall_la">%1$s va fi eliminată. O poți instala din nou oricând.</string>
-    <string name="last_sync">Ultima sincronizare: %1$s</string>
-    <string name="repositories">Surse</string>
-    <string name="sources_are_fixed">Aceste surse sunt încorporate și nu se pot adăuga altele — alte depozite F-Droid distribuie doar binare construite de altcineva, deci nu există nimic cu care să le compari. Dezactivează toate sursele pe care nu dorești să le folosească magazinul.</string>
 </resources>

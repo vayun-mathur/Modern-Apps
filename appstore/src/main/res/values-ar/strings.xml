@@ -1,15 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">متجر التطبيقات</string>
-    <string name="open">فتح</string>
     <string name="uninstall">إلغاء التثبيت</string>
     <string name="view_in_play_store">عرض في متجر Play</string>
     <string name="installed">مُثبت</string>
     <string name="installed_2">تم تثبيت %1$s</string>
     <string name="uninstall_3">إلغاء تثبيت %1$s؟</string>
     <string name="this_will_uninstall_you_can_reinstall_la">ستتم إزالة %1$s. يمكنك تثبيته مرة أخرى في أي وقت.</string>
-    <string name="last_sync">آخر مزامنة: %1$s</string>
-    <string name="repositories">المصادر</string>
     <string name="nav_home">الصفحة الرئيسية</string>
     <string name="nav_search">البحث</string>
     <string name="nav_updates">التحديثات</string>
@@ -17,28 +14,21 @@
     <string name="source_chip_play">متجر Play</string>
     <string name="filter_all">الكل</string>
     <string name="filter_with_count">%1$s (%2$d)</string>
-    <string name="category_all">الكل</string>
     <string name="section_modern_apps">من Modern Apps</string>
     <string name="section_play_top_charts">الأعلى في متجر Play</string>
-    <string name="section_recently_updated">جديد ومحدث</string>
-    <string name="section_recently_updated_subtitle">أحدث الإصدارات على F-Droid</string>
-    <string name="sources_are_fixed">هذه المصادر الثلاثة مدمجة ولا يمكن تغييرها. تقوم مستودعات F-Droid الأخرى فقط بتوزيع ملفات ثنائية قام شخص آخر بإنشائها، لذلك لا يوجد شيء للتحقق منها.</string>
     <string name="source_chip_fdroid">F-Droid</string>
-    <string name="source_chip_grapheneos">GrapheneOS</string>
     <string name="source_chip_accrescent">Accrescent</string>
     <string name="section_modern_apps_subtitle">تم إنشاؤه في هذا المستودع وتم توقيعه بنفس مفتاح هذا المتجر</string>
     <string name="section_category_subtitle">تطبيقات من كتالوج غير المتصلة بالإنترنت في هذه الفئة</string>
-    <string name="section_sandboxed_google_play_subtitle">مكونات Google Play كالعادية، تطبيقات غير ممتيزة</string>
     <string name="section_accrescent">على Accrescent</string>
     <string name="section_accrescent_subtitle">التطبيقات الموقعة من المطور من قائمة التطبيقات الموقعة من Accrescent</string>
-    <string name="action_install_all">تثبيت الكل</string>
     <string name="home_empty_title">لا شئ هنا بعد</string>
     <string name="home_empty_message">قم بمزامنة مصادرك لملء هذا، أو ابحث عن تطبيق بالاسم.</string>
     <string name="updates_banner_subtitle">انقر للمراجعة والتثبيت</string>
     <string name="sync_in_progress">جارٍ المزامنة…</string>
     <string name="sync_step_fdroid">جارٍ التحقق من إصدارات F-Droid…</string>
     <string name="sync_step_modern_apps">جارٍ التحقق من Modern Apps…</string>
-    <string name="sync_done">تم تحديث الكتالوج — %1$d من التطبيقات</string>
+    <plurals name="sync_done"><item quantity="one">تم تحديث الكتالوج — %1$d من التطبيقات</item><item quantity="zero">تم تحديث الكتالوج — %1$d من التطبيقات</item><item quantity="two">تم تحديث الكتالوج — %1$d من التطبيقات</item><item quantity="few">تم تحديث الكتالوج — %1$d من التطبيقات</item><item quantity="many">تم تحديث الكتالوج — %1$d من التطبيقات</item><item quantity="other">تم تحديث الكتالوج — %1$d من التطبيقات</item></plurals>
     <string name="sync_failed_all">لم تتم مزامنة أي من المصدرين. لم يتغير كتالوجك الحالي.</string>
     <string name="sync_failed_fdroid">لم تتم مزامنة F-Droid. تطبيقاته الحالية لم تتغير.</string>
     <string name="sync_failed_modern_apps">لم تتم مزامنة Modern Apps. تطبيقاتها الحالية لم تتغير.</string>
@@ -48,7 +38,6 @@
     <string name="search_prompt_message">تجيب Modern Apps وF-Droid مباشرة من هذا الهاتف؛ وتَتبَع نتائج Play بعد لحظة.</string>
     <string name="search_no_results_title">لا نتائج لـ \"%1$s\"</string>
     <string name="search_no_results_message">جرّب استعلامًا أقصر، أو جزءًا من اسم الحزمة.</string>
-    <string name="library_title">المكتبة (%1$d)</string>
     <string name="library_empty_title">لا شيء يطابق هذا الفلتر</string>
     <string name="library_empty_message">يتم إدراج التطبيقات التي تقوم بتثبيتها هنا، مجمعة حسب المصدر الذي يقدمها.</string>
     <string name="update_all">تحديث الكل (%1$d)</string>

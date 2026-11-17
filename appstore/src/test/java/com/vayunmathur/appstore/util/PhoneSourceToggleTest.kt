@@ -1,4 +1,8 @@
 package com.vayunmathur.appstore.util
+import com.vayunmathur.appstore.data.DefaultRepos
+import com.vayunmathur.appstore.platform.AppSection
+import com.vayunmathur.appstore.platform.AppStoreViewModel
+import com.vayunmathur.appstore.platform.refreshInstalled
 
 import android.app.Application
 import android.os.Looper

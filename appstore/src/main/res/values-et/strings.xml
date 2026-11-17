@@ -3,24 +3,19 @@
     <string name="nav_home">Avaleht</string>
     <string name="nav_search">Otsi</string>
     <string name="nav_updates">Tarkvarauuendused</string>
-    <string name="open">Ava</string>
     <string name="uninstall">Eemalda rakendus</string>
     <string name="view_in_play_store">Vaata Play Store\'is</string>
     <string name="installed">Paigaldatud</string>
     <string name="installed_2">Paigaldatud: %1$s</string>
     <string name="uninstall_3">Kas eemaldad „%1$s“ rakenduse?</string>
     <string name="this_will_uninstall_you_can_reinstall_la">„%1$s“ saab järgnevaga eemaldatud. Võid ta alati uuesti paigaldada.</string>
-    <string name="last_sync">Viimane sünkroonimine: %1$s</string>
-    <string name="repositories">Lähtekood</string>
     <string name="search_placeholder">Otsi rakendust</string>
     <string name="filter_all">Kõik</string>
     <string name="updates_checking">Kontrollin uuenduste olemasolu…</string>
     <string name="source_chip_fdroid">F-Droid</string>
-    <string name="category_all">Kõik</string>
     <string name="updates_last_checked">Viimati kontrollitud: %1$s</string>
     <string name="source_chip_play">Play Store</string>
     <string name="search_prompt_title">Otsi korraga igast allikast</string>
-    <string name="section_recently_updated">Uus ja uuendatud</string>
     <string name="filter_with_count">%1$s (%2$d)</string>
     <string name="app_name">Rakendustepood</string>
     <string name="updates_banner_subtitle">Klõpsa ülevaatamiseks ja paigaldamiseks</string>
@@ -64,7 +59,6 @@
     <string name="link_source">Lähtekood</string>
     <string name="link_privacy">Andmekaitsepõhimõtted</string>
     <string name="detail_install_blocked">Paigaldamine on blokeeritud: %1$s</string>
-    <string name="trust_fdroid_title">F-Droid</string>
     <string name="trust_fdroid_practice_source">Iga rakendus on kompileeritud F-Droidi avaldatud lähtekoodist ja pole tegemist programmifailiga, mille arendaja on edastanud</string>
     <string name="trust_fdroid_summary">Kompileeritud avalikult saadaval lähtekoodi alusel. Versioon on märgitud „korratava kompileerimise“ märkega, kui teises serveris õnnestus samast lähtekoodist kompileerida identne programmifail.</string>
     <string name="trust_play_title">Google Play</string>
@@ -75,11 +69,6 @@
     <string name="trust_play_practice_takedown">Pahatahtlik rakendus on mõne tunni jooksul rakendustepoest eemaldatav ja telefonides blokeeritav</string>
     <string name="trust_play_check_hash">Iga alla laaditud fail vastab Google’i poolt sellega kaasasaadetud räsiväärtusele</string>
     <string name="trust_play_check_key">Allkirjastatud võtmega, mida Google on selle rakenduse kohta ülestähendanud</string>
-    <string name="source_chip_grapheneos">GrapheneOS</string>
-    <string name="section_recently_updated_subtitle">Viimased versioonid F-Droidis</string>
-    <string name="section_sandboxed_google_play">Aedikkäituses Google Play</string>
-    <string name="section_sandboxed_google_play_subtitle">Google Play komponendid tavaliste ilma eriõigusteta rakendustena</string>
-    <string name="action_install_all">Paigalda kõik</string>
     <string name="home_empty_title">Siin pole veel midagi</string>
     <string name="updates_channel_name">Rakenduste uuendused</string>
     <string name="updates_channel_description">Saad teada, kui sinu paigaldatud rakendustel on uusi versioone.</string>
@@ -92,9 +81,6 @@
     <string name="trust_heading_we_check">Mida see rakendus kontrollib</string>
     <string name="trust_bullet">• %1$s</string>
     <string name="trust_own_key_title">Selle rakendustepoe allkirjastamisvõti</string>
-    <string name="repos_syncing">Sünkroonimisel…</string>
-    <string name="repos_sync_sources">Sünkrooni tarkvarahoidlad</string>
-    <string name="source_fdroid">F-Droid</string>
     <string name="source_chip_accrescent">Accrescent</string>
     <plurals name="updates_installed">
         <item quantity="one">%1$d uuendus on paigaldatud</item>
@@ -104,7 +90,7 @@
         <item quantity="one">%1$d uuendus on paigaldamisel…</item>
         <item quantity="other">%1$d uuendust on paigaldamisel…</item>
     </plurals>
-    <string name="sync_done">Kataloog on uuendatud - %1$d rakendust</string>
+    <plurals name="sync_done"><item quantity="one">Kataloog on uuendatud - %1$d rakendust</item><item quantity="other">Kataloog on uuendatud - %1$d rakendust</item></plurals>
     <string name="sync_failed_all">Ühestki allikast sünkroonimine ei toiminud. Sinu olemasolev kataloog pole muutunud.</string>
     <string name="sync_failed_fdroid">F-Droidist sünkroonimine ei toiminud. Tema olemasolevad rakendused pole muutunud.</string>
     <string name="sync_failed_modern_apps">Moodsatest Rakendustest sünkroonimine ei toiminud. Tema olemasolevad rakendused pole muutunud.</string>
@@ -120,12 +106,7 @@
     <string name="uninstaller_unavailable">Pakettide eemaldaja avamine ei õnnestunud</string>
     <string name="store_rule_split_key_title">Mitmeosalised rakendused jagavad sama võtit</string>
     <string name="store_rule_split_key_detail">Mõned saavad allalaaditud mitme failina. Nad kõik peavad olema allkirjastatud sama võtmega ja välistab võimaluse, et valesid faile ei saaks vahele kiiluda.</string>
-    <string name="source_modern_apps_pin">Kinnitatud kasutama selle rakenduse oma allkirjastamisvõtit</string>
-    <string name="source_fdroid_pin">Kinnitatud kasutama F-Droidi rakendusekohast allkirjastamisvõtit</string>
     <string name="source_play">Play Store (anonüümne)</string>
-    <string name="source_play_pin">Mitte midagi ei saa kinnitada: allkirjastamisvõtmed on alati Google\'i käes</string>
-    <string name="source_accrescent">Accrescent</string>
-    <string name="source_accrescent_pin">Kinnitatud kasutama Accrescenti tarkvarahoidla allkirjastamisvõtit (ed25519)</string>
     <string name="home_empty_message">Et siin leiduks on teavet, sünkrooni rakendustehoidlaid või otsi rakendust nime alusel.</string>
     <string name="updates_notification_body">Ava ülevaatamiseks rakendustepood ja paigalda nad.</string>
     <string name="library_empty_message">Siin on kirjas sinu paigaldatavad rakendused, grupeeritud tarkvarahoidla alusel, kust nad on leitud.</string>
@@ -153,17 +134,8 @@
     <string name="sync_all_sources_off">Kuna kõik andmeallikad on kasutuselt eemaldatud, siis mitte midagi pole võimalik sünkroonida.</string>
     <string name="search_prompt_message">Modern Apps ja F-Droid vastavad otse sellest nutiseadmest ja Google Play tulemused on saadaval mõni hetk hiljem.</string>
     <string name="tv_detail_screenshots">Ekraanitõmmised</string>
-    <string name="tv_browse_title">Rakendustepood</string>
     <string name="tv_detail_back">Tagasi</string>
-    <string name="tv_detail_about">Teave</string>
     <string name="tv_detail_author">Arendaja</string>
-    <string name="tv_compat_declared">Toimib teleris - allikas on märgitud teleri versiooni olemasolu</string>
-    <string name="tv_compat_unverified">Toimivus teleris pole eelnevalt kontrollitud - see tuvastatakse paigaldamisel</string>
     <string name="tv_updates_with_count">Uuendused · %1$d</string>
-    <string name="tv_searching">Otsin…</string>
     <string name="tv_search_prompt_tv">Modern Apps ja F-Droid vastavad otse sellest telerist ja Google Play tulemused on saadaval mõni hetk hiljem.</string>
-    <string name="tv_search_results">%1$d tulemust</string>
-    <string name="tv_detail_open">Üksikasjad</string>
-    <string name="source_proprietary_pin">Kinnitatud kasutama selle rakendustepoe Google Play peegelserveri allkirjastamisvõtit</string>
-    <string name="source_izzy_pin">Kinnitatud kasutama IzzyOnDroidi rakendusteloendi allkirjastamisvõtit</string>
 </resources>
