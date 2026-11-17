@@ -57,6 +57,7 @@ interface GameActions {
      */
     fun onBackToPacks() {}
 
+    /** Factories for [GameActions]. */
     companion object {
         val Noop: GameActions = object : GameActions {}
     }
@@ -74,6 +75,7 @@ interface SettingsActions {
     fun setReminderEnabled(enabled: Boolean) {}
     fun setReminderTime(hour: Int, minute: Int) {}
 
+    /** Factories for [SettingsActions]. */
     companion object {
         val Noop: SettingsActions = object : SettingsActions {}
     }

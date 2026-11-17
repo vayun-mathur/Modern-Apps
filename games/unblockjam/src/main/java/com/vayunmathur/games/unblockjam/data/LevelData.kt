@@ -8,27 +8,32 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
+/** A cell coordinate on the board. */
 data class Coord(
     val x: Int,
     val y: Int
 )
 
+/** Board size in cells. */
 data class Dimension(
     val width: Int,
     val height: Int
 )
 
+/** A sliding block: its top-left position, size, and whether it is fixed. */
 data class Block(
     val position: Coord, // top left
     val dimension: Dimension,
     val fixed: Boolean
 )
 
+/** A named set of levels with an optional colour scheme. */
 data class LevelPack(
     val name: String,
     val levels: List<LevelData>,
     val colorScheme: PackColorScheme? = null
 ) {
+    /** Shipped pack files and the loaded pack registry. */
     companion object {
         private val PACK_FILES = listOf(
             "original_pack.json",
@@ -59,6 +64,7 @@ data class LevelPack(
     }
 }
 
+/** One puzzle: board size, exit cell, blocks, and solver optimal move count. */
 data class LevelData(
     val id: String,
     val dimension: Dimension,
@@ -68,6 +74,7 @@ data class LevelData(
     val lastMovedBlockIndex: Int? = null
 )
 
+/** Per-pack board colours as ARGB values. */
 data class PackColorScheme(
     val primary: Long,
     val secondary: Long,

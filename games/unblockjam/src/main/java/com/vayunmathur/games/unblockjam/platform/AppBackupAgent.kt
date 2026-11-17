@@ -2,6 +2,7 @@ package com.vayunmathur.games.unblockjam.platform
 
 import com.vayunmathur.library.util.BaseBackupAgent
 
+/** Cloud backup rules for Unblock Jam preferences and DataStore. */
 class AppBackupAgent : BaseBackupAgent() {
     override val prefNames: List<String>
         get() = listOf("level_stats", "daily_stats")

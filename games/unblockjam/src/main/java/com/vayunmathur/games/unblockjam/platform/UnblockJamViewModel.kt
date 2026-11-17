@@ -346,6 +346,7 @@ class UnblockJamViewModel(application: Application) : AndroidViewModel(applicati
         achievementsManager.dismissNotification()
     }
 
+    /** Constants for daily play and reminders in [UnblockJamViewModel]. */
     companion object {
         /** Namespace shared by the daily-challenge store and its reminder. */
         const val DAILY_KEY_PREFIX = "unblockjam_daily"

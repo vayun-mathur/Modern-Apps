@@ -7,6 +7,7 @@ import com.vayunmathur.games.unblockjam.platform.UnblockJamViewModel
 import com.vayunmathur.games.unblockjam.ui.UnblockJamTheme
 import com.vayunmathur.library.ui.MaActivity
 
+/** Entry activity for Unblock Jam; loads level packs and hosts the game navigation. */
 class MainActivity : MaActivity() {
     override fun onCreateBeforeContent() {
         LevelPack.init(this)

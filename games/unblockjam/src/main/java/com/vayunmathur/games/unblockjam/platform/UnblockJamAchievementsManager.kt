@@ -9,6 +9,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
+/** Unlocks Unblock Jam achievements from level stats, moves, undos, and daily streaks. */
 class UnblockJamAchievementsManager(
     context: Context,
     json: String,
