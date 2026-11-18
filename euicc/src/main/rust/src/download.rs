@@ -11,7 +11,7 @@
 //! [`parse_activation_code`], [`hash_confirmation_code`], and
 //! [`es10b::extract_transaction_id`].
 
-use jni::{Env, EnvUnowned, jni_sig, jni_str};
+use jni::Env;
 
 use crate::activation_code::{ActivationCode, hash_confirmation_code, parse_activation_code};
 pub use crate::activation_code::DownloadOptions;
@@ -28,6 +28,124 @@ fn pkid_value(field: &[u8]) -> &[u8] {
 
 /// Whether the server's chosen CI key appears in the eUICC's verification list
 /// (hex of the raw field or of its unwrapped value).
+/// Errors when the eUICC trusts some CI keys but not the server's chosen one.
+fn check_ci_key(info: &es10::EuiccInfo1, field: &[u8]) -> Result<(), String> {
+    if !info.ci_pkid_verification.is_empty() && !ci_key_known(&info.ci_pkid_verification, field) {
+        return Err(format!(
+            "server uses CI key {} unknown to this eUICC (eUICC trusts: {})",
+            es10::hex(&pkid_value(field)),
+            info.ci_pkid_verification.join(", "),
+        ));
+    }
+    Ok(())
+}
+
+/// Builds the session from the two ES9+ replies (metadata + cc flag parsed).
+fn build_session(
+    ac: ActivationCode,
+    r1: es9p::InitiateAuthResult,
+    r2: es9p::AuthenticateClientResult,
+    transaction_id_bin: Vec<u8>,
+    options: &DownloadOptions,
+) -> Result<DownloadSession, String> {
+    let metadata = es10b::parse_profile_metadata(&r2.profile_metadata)?;
+    let cc_required = ac.confirmation_code_required || es10b::cc_required(&r2.smdp_signed2);
+    Ok(DownloadSession {
+        activation: ac,
+        transaction_id: r1.transaction_id,
+        transaction_id_bin,
+        metadata,
+        cc_required,
+        options: options.clone(),
+        server_signed2: r2.smdp_signed2,
+        server_signature2: r2.smdp_signature2,
+        server_certificate2: r2.smdp_certificate,
+    })
+}
+
+/// Explicit (non-empty) code wins over the stored one; a required-but-absent
+/// code is an error naming the remedy.
+fn resolve_confirmation_code<'a>(
+    cc_required: bool,
+    explicit: Option<&'a str>,
+    stored: Option<&'a str>,
+) -> Result<Option<&'a str>, String> {
+    let code = explicit.filter(|c| !c.is_empty()).or(stored);
+    if cc_required && code.is_none() {
+        return Err(
+            "This profile needs a confirmation code (ccRequiredFlag is set) — supply it and retry"
+                .to_string(),
+        );
+    }
+    Ok(code)
+}
+
+/// Streams BPP segments through `transmit`, reporting progress and aborting
+/// on the first typed mid-stream install error. Returns the last response.
+fn install_segments<E, F, P>(
+    env: &mut E,
+    segments: &[Vec<u8>],
+    transmit: &mut F,
+    progress: &mut P,
+) -> Result<Vec<u8>, String>
+where
+    F: FnMut(&mut E, &[u8]) -> Result<Vec<u8>, String>,
+    P: FnMut(&mut E, usize, usize) -> bool,
+{
+    let total = segments.len();
+    let mut last = Vec::new();
+    for (i, segment) in segments.iter().enumerate() {
+        last = transmit(env, segment)
+            .map_err(|e| format!("LoadBoundProfilePackage segment {}/{total}: {e}", i + 1))?;
+        if !progress(env, i + 1, total) {
+            return Err("Download cancelled".to_string());
+        }
+        if i + 1 < total {
+            if let Ok(probe) = es10b::parse_install_result(&last) {
+                if !probe.success && (probe.bpp_command_id.is_some() || probe.error_reason.is_some()) {
+                    return Err(probe.message);
+                }
+            }
+        }
+    }
+    Ok(last)
+}
+
+/// AuthenticateServer request for the server's authentication material.
+fn authenticate_server_request(
+    r1: &es9p::InitiateAuthResult,
+    matching_id: &str,
+    options: &DownloadOptions,
+) -> Vec<u8> {
+    let tac = options.tac.unwrap_or(es10b::DEFAULT_TAC);
+    let ctx = es10b::build_ctx_params1(matching_id, &tac, options.imei.as_deref());
+    es10b::build_authenticate_server(
+        &r1.server_signed1,
+        &r1.server_signature1,
+        &r1.euicc_ci_pkid,
+        &r1.server_certificate,
+        &ctx,
+    )
+}
+
+/// PrepareDownload request, carrying `hashCc` when a code was supplied.
+fn prepare_download_request(session: &DownloadSession, code: Option<&str>) -> Result<Vec<u8>, String> {
+    let tx_bin = es10b::extract_transaction_id(&session.server_signed2)?;
+    let hash = code.map(|c| hash_confirmation_code(c, &tx_bin));
+    let hash_ref = hash.as_ref().map(|h| &h[..]);
+    Ok(es10b::build_prepare_download(
+        &session.server_signed2,
+        &session.server_signature2,
+        hash_ref,
+        &session.server_certificate2,
+    ))
+}
+
+/// Delivery target for a notification: its own address, else the SM-DP+.
+fn notification_target<'a>(address: &'a str, smdp: &'a str) -> &'a str {
+    if address.is_empty() { smdp } else { address }
+}
+
 fn ci_key_known(verification_list: &[String], field: &[u8]) -> bool {
     let raw_hex = es10::hex(field);
     let inner_hex = es10::hex(pkid_value(field));
@@ -142,28 +260,12 @@ pub fn authenticate(
     // public key identifiers, safe to report. Skip the check when the eUICC
     // gave no list (never block a download on a parser gap).
     if let Ok(info) = es10::parse_euicc_info1(&euicc_info1) {
-        if !info.ci_pkid_verification.is_empty()
-            && !ci_key_known(&info.ci_pkid_verification, &r1.euicc_ci_pkid)
-        {
-            return Err(format!(
-                "server uses CI key {} unknown to this eUICC (eUICC trusts: {})",
-                es10::hex(&pkid_value(&r1.euicc_ci_pkid)),
-                info.ci_pkid_verification.join(", "),
-            ));
-        }
+        check_ci_key(&info, &r1.euicc_ci_pkid)?;
     }
 
     // 3. eUICC authenticates the server and signs its own material. TAC
     // defaults to lpac's constant; IMEI is user-supplied and optional.
-    let tac = options.tac.unwrap_or(es10b::DEFAULT_TAC);
-    let ctx = es10b::build_ctx_params1(&ac.matching_id, &tac, options.imei.as_deref());
-    let auth_req = es10b::build_authenticate_server(
-        &r1.server_signed1,
-        &r1.server_signature1,
-        &r1.euicc_ci_pkid,
-        &r1.server_certificate,
-        &ctx,
-    );
+    let auth_req = authenticate_server_request(&r1, &ac.matching_id, options);
     let auth_resp = store_data(env, &auth_req).map_err(|e| format!("AuthenticateServer: {e}"))?;
 
     // Binary transaction id for hashCc / CancelSession (the JSON string form
@@ -173,20 +275,7 @@ pub fn authenticate(
     // 4. SM-DP+ binds the profile to this eUICC.
     let r2 = es9p::authenticate_client(&ac.smdp, &r1.transaction_id, &auth_resp)?;
 
-    let metadata = es10b::parse_profile_metadata(&r2.profile_metadata)?;
-    let cc_required = ac.confirmation_code_required || es10b::cc_required(&r2.smdp_signed2);
-
-    Ok(DownloadSession {
-        activation: ac,
-        transaction_id: r1.transaction_id,
-        transaction_id_bin,
-        metadata,
-        cc_required,
-        options: options.clone(),
-        server_signed2: r2.smdp_signed2,
-        server_signature2: r2.smdp_signature2,
-        server_certificate2: r2.smdp_certificate,
-    })
+    build_session(ac, r1, r2, transaction_id_bin, options)
 }
 
 /// Finishes an authenticated session: PrepareDownload (with `hashCc` when a
@@ -202,24 +291,12 @@ pub fn finish_download(
     progress: &mut dyn ProgressCallback,
 ) -> Result<es10b::InstallResult, String> {
     // 5. eUICC prepares to receive the profile.
-    let code = confirmation_code
-        .filter(|c| !c.is_empty())
-        .or(session.options.confirmation_code.as_deref());
-    if session.cc_required && code.is_none() {
-        return Err(
-            "This profile needs a confirmation code (ccRequiredFlag is set) — supply it and retry"
-                .to_string(),
-        );
-    }
-    let tx_bin = es10b::extract_transaction_id(&session.server_signed2)?;
-    let hash = code.map(|c| hash_confirmation_code(c, &tx_bin));
-    let hash_ref = hash.as_ref().map(|h| &h[..]);
-    let prep_req = es10b::build_prepare_download(
-        &session.server_signed2,
-        &session.server_signature2,
-        hash_ref,
-        &session.server_certificate2,
-    );
+    let code = resolve_confirmation_code(
+        session.cc_required,
+        confirmation_code,
+        session.options.confirmation_code.as_deref(),
+    )?;
+    let prep_req = prepare_download_request(session, code)?;
     let prep_resp = store_data(env, &prep_req).map_err(|e| format!("PrepareDownload: {e}"))?;
 
     // 6. Fetch the (encrypted) Bound Profile Package.
@@ -234,26 +311,11 @@ pub fn finish_download(
     // ProfileInstallationResult — but a mid-stream BF37 error must stop the
     // loop immediately so one failure does not cascade.
     let segments = es10b::segment_bpp(&bpp)?;
-    let total = segments.len();
-    let mut last = Vec::new();
-    for (i, segment) in segments.iter().enumerate() {
-        last = store_data(env, segment)
-            .map_err(|e| format!("LoadBoundProfilePackage segment {}/{total}: {e}", i + 1))?;
-        if !progress.on_progress(env, i + 1, total) {
-            return Err("Download cancelled".to_string());
-        }
-        // Intermediate BF37 error results abort the stream (lpac parity): a
-        // typed mid-stream failure must stop the loop, not cascade.
-        if i + 1 < total {
-            if let Ok(probe) = es10b::parse_install_result(&last) {
-                if !probe.success
-                    && (probe.bpp_command_id.is_some() || probe.error_reason.is_some())
-                {
-                    return Err(probe.message);
-                }
-            }
-        }
-    }
+    // Intermediate BF37 error results abort the stream inside install_segments
+    // (lpac parity): a typed mid-stream failure must not cascade.
+    let mut transmit = |e: &mut Env, segment: &[u8]| store_data(e, segment);
+    let mut prog = |e: &mut Env, done: usize, total: usize| progress.on_progress(e, done, total);
+    let last = install_segments(env, &segments, &mut transmit, &mut prog)?;
     let result = es10b::parse_install_result(&last)?;
 
     // 8. Deliver the install notification (best-effort): retrieve the pending
@@ -276,24 +338,54 @@ fn notification_seq(seq_number: i64) -> Option<u32> {
 }
 
 fn deliver_notification(env: &mut Env, smdp: &str, seq_number: i64, fallback: &[u8]) {
+    let mut retrieve = |e: &mut Env, seq: u32| {
+        store_data(e, &es10b::build_retrieve_notification(seq))
+            .and_then(|resp| es10b::parse_retrieved_notification(&resp))
+    };
+    let mut post_fallback = |addr: &str, blob: &[u8]| es9p::handle_notification(addr, blob);
+    let mut post_at = |addr: &str, blob: &[u8]| es9p::handle_notification_at(addr, blob);
+    let mut remove = |e: &mut Env, seq: u32| {
+        let _ = store_data(e, &es10::build_remove_notification(seq))
+            .and_then(|resp| es10::parse_remove_result(&resp));
+    };
+    deliver_notification_with(
+        env, smdp, seq_number, fallback, &mut retrieve, &mut post_fallback, &mut post_at, &mut remove,
+    );
+}
+
+/// Notification delivery with transport injected (host-testable core of
+/// [`deliver_notification`]).
+#[allow(clippy::too_many_arguments)]
+fn deliver_notification_with<E, R, P, A, D>(
+    env: &mut E,
+    smdp: &str,
+    seq_number: i64,
+    fallback: &[u8],
+    retrieve: &mut R,
+    post_fallback: &mut P,
+    post_at: &mut A,
+    remove: &mut D,
+) where
+    R: FnMut(&mut E, u32) -> Result<(String, Vec<u8>), String>,
+    P: FnMut(&str, &[u8]) -> Result<(), String>,
+    A: FnMut(&str, &[u8]) -> Result<(), String>,
+    D: FnMut(&mut E, u32),
+{
     let Some(seq) = notification_seq(seq_number) else {
         // No sequence to retrieve by: post the raw result to the download
         // server, like the retrieve-failure fallback below, and remove nothing.
-        let _ = es9p::handle_notification(smdp, fallback);
+        let _ = post_fallback(smdp, fallback);
         return;
     };
-    let Ok(retrieved) = store_data(env, &es10b::build_retrieve_notification(seq))
-        .and_then(|resp| es10b::parse_retrieved_notification(&resp))
-    else {
+    let Ok(retrieved) = retrieve(env, seq) else {
         // Fall back to posting the raw result to the download server.
-        let _ = es9p::handle_notification(smdp, fallback);
+        let _ = post_fallback(smdp, fallback);
         return;
     };
     let (address, pending) = retrieved;
-    let target = if address.is_empty() { smdp } else { address.as_str() };
-    if es9p::handle_notification_at(target, &pending).is_ok() {
-        let _ = store_data(env, &es10::build_remove_notification(seq))
-            .and_then(|resp| es10::parse_remove_result(&resp));
+    let target = notification_target(&address, smdp);
+    if post_at(target, &pending).is_ok() {
+        remove(env, seq);
     }
 }
 

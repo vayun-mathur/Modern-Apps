@@ -94,6 +94,21 @@ pub(crate) fn store_data_chunked(
     command: &[u8],
     chunk: usize,
 ) -> Result<Vec<u8>, String> {
+    let mut transmit = |e: &mut Env, apdu: &[u8]| transmit_apdu(e, apdu);
+    store_data_with(env, command, chunk, &mut transmit)
+}
+
+/// [`store_data_chunked`] with the APDU transport injected, so the response
+/// reassembly / status-word rules are host-testable without a JVM.
+pub(crate) fn store_data_with<E, F>(
+    env: &mut E,
+    command: &[u8],
+    chunk: usize,
+    transmit: &mut F,
+) -> Result<Vec<u8>, String>
+where
+    F: FnMut(&mut E, &[u8]) -> Result<Vec<u8>, String>,
+{
     let apdus = build_store_data_apdus(command, chunk);
     let last = apdus.len() - 1;
 
@@ -104,7 +119,7 @@ pub(crate) fn store_data_chunked(
         // per APDU, so intermediate bodies are normally empty — but when a
         // card streams chained reply bytes, only concatenation reassembles
         // them). Fail fast on a non-success status.
-        let mut block_resp = transmit_apdu(env, apdu)?;
+        let mut block_resp = transmit(env, apdu)?;
         if block_resp.len() < 2 {
             return Err("APDU response too short".into());
         }
@@ -145,10 +160,71 @@ pub(crate) fn read_string(env: &Env, s: &JString) -> Option<String> {
 /// Sends a request and parses its INTEGER result, returning the eUICC result
 /// code (0 = success) or -1 on a transport/parse error.
 fn run_result(env: &mut Env, request: &[u8], tag: u32) -> jint {
-    match store_data(env, request).and_then(|resp| es10::parse_result(&resp, tag)) {
+    result_code(store_data(env, request), tag)
+}
+
+/// Maps a STORE DATA reply to the JNI result code: parsed code, or -1.
+fn result_code(result: Result<Vec<u8>, String>, tag: u32) -> jint {
+    match result.and_then(|resp| es10::parse_result(&resp, tag)) {
         Ok(code) => code as jint,
         Err(_) => -1,
     }
+}
+
+/// Maps a remove-notification reply to the JNI result code.
+fn remove_code(result: Result<Vec<u8>, String>) -> jint {
+    match result.and_then(|resp| es10::parse_remove_result(&resp)) {
+        Ok(code) => code as jint,
+        Err(_) => -1,
+    }
+}
+
+/// A negative Kotlin sequence number is invalid; anything else is a seq.
+fn seq_arg(seq: jint) -> Option<u32> {
+    if seq < 0 { None } else { Some(seq as u32) }
+}
+
+fn profiles_json(profiles: &[es10::ProfileInfo]) -> String {
+    let arr: Vec<_> = profiles
+        .iter()
+        .map(|p| {
+            serde_json::json!({
+                "iccid": p.iccid,
+                "iccidDisplay": p.iccid_display,
+                "isdpAid": p.isdp_aid,
+                "state": p.state,
+                "class": p.class,
+                "nickname": p.nickname,
+                "serviceProvider": p.service_provider,
+                "name": p.name,
+            })
+        })
+        .collect();
+    serde_json::Value::Array(arr).to_string()
+}
+
+fn notifications_json(notes: &[es10::NotificationInfo]) -> String {
+    let arr: Vec<_> = notes
+        .iter()
+        .map(|n| {
+            serde_json::json!({
+                "seqNumber": n.seq_number,
+                "operation": n.operation,
+                "address": n.address,
+                "iccidDisplay": n.iccid_display,
+            })
+        })
+        .collect();
+    serde_json::Value::Array(arr).to_string()
+}
+
+fn euicc_info_json(info: &es10::EuiccInfo1) -> String {
+    serde_json::json!({
+        "svn": info.svn,
+        "ciPkIdListForVerification": info.ci_pkid_verification,
+        "ciPkIdListForSigning": info.ci_pkid_signing,
+    })
+    .to_string()
 }
 
 /// `nativeGetProfiles()` — installed profiles as a JSON array, or null on error.
@@ -161,24 +237,7 @@ pub extern "system" fn Java_com_vayunmathur_euicc_EuiccNative_nativeGetProfiles<
         let result = store_data(env, &es10::build_get_profiles())
             .and_then(|resp| es10::parse_profiles(&resp));
         Ok(match result {
-            Ok(profiles) => {
-            let arr: Vec<_> = profiles
-                .iter()
-                .map(|p| {
-                    serde_json::json!({
-                        "iccid": p.iccid,
-                        "iccidDisplay": p.iccid_display,
-                        "isdpAid": p.isdp_aid,
-                        "state": p.state,
-                        "class": p.class,
-                        "nickname": p.nickname,
-                        "serviceProvider": p.service_provider,
-                        "name": p.name,
-                    })
-                })
-                .collect();
-            new_jstring(env, &serde_json::Value::Array(arr).to_string())
-            }
+            Ok(profiles) => new_jstring(env, &profiles_json(&profiles)),
             Err(_) => std::ptr::null_mut(),
         })
     })
@@ -265,20 +324,7 @@ pub extern "system" fn Java_com_vayunmathur_euicc_EuiccNative_nativeListNotifica
         let result = store_data(env, &es10::build_list_notifications())
             .and_then(|resp| es10::parse_notifications(&resp));
         Ok(match result {
-        Ok(notes) => {
-            let arr: Vec<_> = notes
-                .iter()
-                .map(|n| {
-                    serde_json::json!({
-                        "seqNumber": n.seq_number,
-                        "operation": n.operation,
-                        "address": n.address,
-                        "iccidDisplay": n.iccid_display,
-                    })
-                })
-                .collect();
-            new_jstring(env, &serde_json::Value::Array(arr).to_string())
-            }
+            Ok(notes) => new_jstring(env, &notifications_json(&notes)),
             Err(_) => std::ptr::null_mut(),
         })
     })
@@ -293,15 +339,10 @@ pub extern "system" fn Java_com_vayunmathur_euicc_EuiccNative_nativeRemoveNotifi
     seq: jint,
 ) -> jint {
     env.with_env(|env| -> jni::errors::Result<jint> {
-        if seq < 0 {
+        let Some(seq) = seq_arg(seq) else {
             return Ok(-1);
-        }
-        Ok(match store_data(env, &es10::build_remove_notification(seq as u32))
-            .and_then(|resp| es10::parse_remove_result(&resp))
-        {
-            Ok(code) => code as jint,
-            Err(_) => -1,
-        })
+        };
+        Ok(remove_code(store_data(env, &es10::build_remove_notification(seq))))
     })
     .resolve::<jni::errors::LogErrorAndDefault>()
 }
@@ -347,14 +388,7 @@ pub extern "system" fn Java_com_vayunmathur_euicc_EuiccNative_nativeGetEuiccInfo
         let result = store_data(env, &es10::build_get_euicc_info1())
             .and_then(|resp| es10::parse_euicc_info1(&resp));
         Ok(match result {
-        Ok(info) => {
-            let json = serde_json::json!({
-                "svn": info.svn,
-                "ciPkIdListForVerification": info.ci_pkid_verification,
-                "ciPkIdListForSigning": info.ci_pkid_signing,
-            });
-            new_jstring(env, &json.to_string())
-            }
+            Ok(info) => new_jstring(env, &euicc_info_json(&info)),
             Err(_) => std::ptr::null_mut(),
         })
     })

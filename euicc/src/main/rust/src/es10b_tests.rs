@@ -196,3 +196,26 @@ fn retrieve_and_cancel_shapes() {
     );
     assert!(parse_retrieved_notification(&bad37).is_err());
 }
+
+#[test]
+fn bpp_and_error_reason_name_tables() {
+    assert_eq!(bpp_command_name(0), "initialise_secure_channel");
+    assert_eq!(bpp_command_name(1), "configure_isdp");
+    assert_eq!(bpp_command_name(2), "store_metadata");
+    assert_eq!(bpp_command_name(3), "store_metadata2");
+    assert_eq!(bpp_command_name(4), "replace_session_keys");
+    assert_eq!(bpp_command_name(5), "load_profile_elements");
+    assert_eq!(bpp_command_name(6), "unknown");
+    assert_eq!(bpp_command_name(-1), "unknown");
+    let reasons: &[(i64, &str)] = &[
+        (1, "incorrect_input_values"), (2, "invalid_signature"), (3, "invalid_transaction_id"),
+        (4, "unsupported_crt_values"), (5, "unsupported_remote_operation_type"),
+        (6, "unsupported_profile_class"), (7, "scp03t_structure_error"), (8, "scp03t_security_error"),
+        (9, "install_failed_due_to_iccid_already_exists_on_euicc"),
+        (10, "install_failed_due_to_insufficient_memory_for_profile"),
+        (11, "install_failed_due_to_interruption"), (12, "install_failed_due_to_pe_processing_error"),
+        (13, "install_failed_due_to_data_mismatch"), (14, "test_profile_install_failed_due_to_invalid_naa_key"),
+        (15, "ppr_not_allowed"), (127, "install_failed_due_to_unknown_error"), (0, "unknown"), (99, "unknown"),
+    ];
+    for (id, want) in reasons { assert_eq!(error_reason_name(*id), *want, "{id}"); }
+}

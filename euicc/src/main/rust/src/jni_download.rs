@@ -54,6 +54,59 @@ fn session_take(handle: &str) -> Option<download::DownloadSession> {
     Some(guard.remove(pos).1)
 }
 
+/// Invalid activation-code reply for the atomic download entry.
+fn invalid_activation_json() -> serde_json::Value {
+    serde_json::json!({ "success": false, "message": "Invalid activation code" })
+}
+
+/// Atomic download flow with transport injected for host tests.
+fn run_download<E, F>(env: &mut E, code: Option<String>, download_fn: &mut F) -> serde_json::Value
+where F: FnMut(&mut E, &str) -> Result<es10b::InstallResult, String> {
+    let Some(code) = code else { return invalid_activation_json(); };
+    download_result_json(download_fn(env, &code))
+}
+
+/// Authenticate flow: on success stores the session under its handle.
+fn run_authenticate<E, F>(env: &mut E, code: &str, options: &download::DownloadOptions, authenticate_fn: &mut F) -> serde_json::Value
+where F: FnMut(&mut E, &str, &download::DownloadOptions) -> Result<download::DownloadSession, String> {
+    match authenticate_fn(env, code, options) {
+        Ok(session) => {
+            let reply = authenticate_success_json(&session);
+            session_put(session.transaction_id.clone(), session);
+            reply
+        }
+        Err(message) => authenticate_error_json(&message),
+    }
+}
+
+/// Finish flow: consumes the session, applies nickname seeding, replies JSON.
+fn run_finish<E, F, N>(env: &mut E, handle: &str, code: Option<&str>, nickname: Option<&str>, finish_fn: &mut F, apply_nickname: &mut N) -> serde_json::Value
+where
+    F: FnMut(&mut E, &download::DownloadSession, Option<&str>) -> Result<es10b::InstallResult, String>,
+    N: FnMut(&mut E, &[u8]),
+{
+    let Some(session) = session_take(handle) else {
+        return finish_json_value(false, "Download session expired — start again");
+    };
+    let result = finish_fn(env, &session, code);
+    if let Ok(ref ok_result) = result {
+        if let Some(req) = nickname_request(ok_result, nickname) {
+            apply_nickname(env, &req);
+        }
+    }
+    download_result_json(result)
+}
+
+/// Cancel flow: consumes the session if present; `false` only for a bad handle.
+fn run_cancel<E, F>(env: &mut E, handle: Option<String>, reason: jint, cancel_fn: &mut F) -> bool
+where F: FnMut(&mut E, &download::DownloadSession, es10b::CancelReason) {
+    let Some(handle) = handle else { return false; };
+    if let Some(session) = session_take(&handle) {
+        cancel_fn(env, &session, cancel_reason(reason));
+    }
+    true
+}
+
 /// `nativeDownloadProfile(activationCode)` — runs the full SGP.22 download for
 /// an activation code and returns a JSON `{success, message, iccid}` string.
 /// Must be called while the ISD-R channel is open (inside `withIsdrChannel`).
@@ -71,19 +124,9 @@ pub extern "system" fn Java_com_vayunmathur_euicc_EuiccNative_nativeDownloadProf
         // Resolve the HTTP bridge (library:network) once; harmless if already done.
         jni_http::init(env);
 
-        let Some(code) = read_string(env, &activation_code) else {
-            let json = serde_json::json!({ "success": false, "message": "Invalid activation code" });
-            return Ok(new_jstring(env, &json.to_string()));
-        };
-
-        let json = match crate::download::download_profile(env, &code) {
-            Ok(result) => serde_json::json!({
-                "success": result.success,
-                "message": result.message,
-                "iccid": result.installed_iccid,
-            }),
-            Err(message) => serde_json::json!({ "success": false, "message": message }),
-        };
+        let code = read_string(env, &activation_code);
+        let mut download_fn = |e: &mut Env, c: &str| crate::download::download_profile(e, c);
+        let json = run_download(env, code, &mut download_fn);
         Ok(new_jstring(env, &json.to_string()))
     })
     .resolve::<jni::errors::LogErrorAndDefault>()
@@ -113,31 +156,9 @@ pub extern "system" fn Java_com_vayunmathur_euicc_EuiccNative_nativeAuthenticate
             return Ok(auth_error(env, "Invalid activation code"));
         };
         let options = download_options(env, &confirmation_code, &tac_hex, &imei);
-    // Stash the authenticated session for finish/cancel.
-    let json = match crate::download::authenticate(env, &code, &options) {
-        Ok(session) => {
-            let handle = session.transaction_id.clone();
-            let reply = serde_json::json!({
-                "error": serde_json::Value::Null,
-                "transactionId": handle,
-                "carrier": empty_to_null(&session.metadata.service_provider),
-                "profileName": empty_to_null(&session.metadata.profile_name),
-                "iccid": empty_to_null(&session.metadata.iccid_display),
-                "ccRequired": session.cc_required,
-            });
-            session_put(handle, session);
-            reply
-        }
-        Err(message) => serde_json::json!({
-            "error": message,
-            "transactionId": serde_json::Value::Null,
-            "carrier": serde_json::Value::Null,
-            "profileName": serde_json::Value::Null,
-            "iccid": serde_json::Value::Null,
-            "ccRequired": false,
-        }),
-    };
-    Ok(new_jstring(env, &json.to_string()))
+        let mut authenticate_fn = |e: &mut Env, c: &str, o: &download::DownloadOptions| crate::download::authenticate(e, c, o);
+        let json = run_authenticate(env, &code, &options, &mut authenticate_fn);
+        Ok(new_jstring(env, &json.to_string()))
     })
     .resolve::<jni::errors::LogErrorAndDefault>()
 }
@@ -163,41 +184,13 @@ pub extern "system" fn Java_com_vayunmathur_euicc_EuiccNative_nativeFinishDownlo
         let Some(handle) = read_string(env, &transaction_id) else {
             return Ok(finish_json(env, false, "Invalid download session"));
         };
-        let code = read_string(env, &confirmation_code).filter(|c| !c.is_empty());
-        let nickname = read_string(env, &nickname).filter(|c| !c.trim().is_empty());
-        let session = session_take(&handle);
-        let Some(session) = session else {
-            return Ok(finish_json(env, false, "Download session expired — start again"));
-        };
-
-        let mut progress = JniProgress {
-            callback: env.new_global_ref(&callback).ok(),
-        };
-        let json = match crate::download::finish_download(env, &session, code.as_deref(), &mut progress)
-    {
-        Ok(result) => {
-            // Seed the profile nickname from the carrier preview while the
-            // channel is open; best-effort (a rename can always be retried).
-            if result.success {
-                if let Some(name) = nickname.as_deref() {
-                    let iccid = crate::es10::hex_decode(&result.installed_iccid);
-                    if !iccid.is_empty() {
-                        let _ = crate::jni::store_data(
-                            env,
-                            &crate::es10::build_set_nickname(&iccid, name.trim()),
-                        );
-                    }
-                }
-            }
-            serde_json::json!({
-                "success": result.success,
-                "message": result.message,
-                "iccid": result.installed_iccid,
-            })
-        }
-        Err(message) => serde_json::json!({ "success": false, "message": message }),
-    };
-    Ok(new_jstring(env, &json.to_string()))
+        let code = non_empty(read_string(env, &confirmation_code));
+        let nickname = non_blank(read_string(env, &nickname));
+        let mut progress = JniProgress { callback: env.new_global_ref(&callback).ok() };
+        let mut finish_fn = |e: &mut Env, s: &download::DownloadSession, c: Option<&str>| crate::download::finish_download(e, s, c, &mut progress);
+        let mut apply_nickname = |e: &mut Env, req: &[u8]| { let _ = crate::jni::store_data(e, req); };
+        let json = run_finish(env, &handle, code.as_deref(), nickname.as_deref(), &mut finish_fn, &mut apply_nickname);
+        Ok(new_jstring(env, &json.to_string()))
     })
     .resolve::<jni::errors::LogErrorAndDefault>()
 }
@@ -213,14 +206,9 @@ pub extern "system" fn Java_com_vayunmathur_euicc_EuiccNative_nativeCancelDownlo
     reason: jint,
 ) -> jboolean {
     env.with_env(|env| -> jni::errors::Result<jboolean> {
-        let Some(handle) = read_string(env, &transaction_id) else {
-            return Ok(false);
-        };
-        let session = session_take(&handle);
-        if let Some(session) = session {
-            crate::download::cancel_session(env, &session, cancel_reason(reason));
-        }
-        Ok(true)
+        let handle = read_string(env, &transaction_id);
+        let mut cancel_fn = |e: &mut Env, s: &download::DownloadSession, r: es10b::CancelReason| crate::download::cancel_session(e, s, r);
+        Ok(run_cancel(env, handle, reason, &mut cancel_fn))
     })
     .resolve::<jni::errors::LogErrorAndDefault>()
 }
@@ -238,17 +226,88 @@ fn download_options(
     tac_hex: &JString,
     imei: &JString,
 ) -> download::DownloadOptions {
-    let confirmation_code = read_string(env, confirmation_code).filter(|c| !c.trim().is_empty());
-    let imei = read_string(env, imei).filter(|c| !c.trim().is_empty());
-    let tac = read_string(env, tac_hex)
-        .filter(|t| !t.trim().is_empty())
+    download_options_from(
+        read_string(env, confirmation_code),
+        read_string(env, tac_hex),
+        read_string(env, imei),
+    )
+}
+
+fn download_options_from(
+    confirmation_code: Option<String>,
+    tac_hex: Option<String>,
+    imei: Option<String>,
+) -> download::DownloadOptions {
+    let confirmation_code = non_blank(confirmation_code);
+    let imei = non_blank(imei);
+    let tac = non_blank(tac_hex)
         .and_then(|t| parse_tac(&t))
         .or(Some(es10b::DEFAULT_TAC));
-    download::DownloadOptions {
-        confirmation_code,
-        tac,
-        imei,
+    download::DownloadOptions { confirmation_code, tac, imei }
+}
+
+fn non_empty(s: Option<String>) -> Option<String> {
+    s.filter(|c| !c.is_empty())
+}
+
+fn non_blank(s: Option<String>) -> Option<String> {
+    s.filter(|c| !c.trim().is_empty())
+}
+
+/// `{success, message, iccid}` reply shared by both download entries.
+fn download_result_json(result: Result<es10b::InstallResult, String>) -> serde_json::Value {
+    match result {
+        Ok(result) => serde_json::json!({
+            "success": result.success,
+            "message": result.message,
+            "iccid": result.installed_iccid,
+        }),
+        Err(message) => serde_json::json!({ "success": false, "message": message }),
     }
+}
+
+fn authenticate_success_json(session: &download::DownloadSession) -> serde_json::Value {
+    serde_json::json!({
+        "error": serde_json::Value::Null,
+        "transactionId": session.transaction_id,
+        "carrier": empty_to_null(&session.metadata.service_provider),
+        "profileName": empty_to_null(&session.metadata.profile_name),
+        "iccid": empty_to_null(&session.metadata.iccid_display),
+        "ccRequired": session.cc_required,
+    })
+}
+
+fn authenticate_error_json(message: &str) -> serde_json::Value {
+    serde_json::json!({
+        "error": message,
+        "transactionId": serde_json::Value::Null,
+        "carrier": serde_json::Value::Null,
+        "profileName": serde_json::Value::Null,
+        "iccid": serde_json::Value::Null,
+        "ccRequired": false,
+    })
+}
+
+fn finish_json_value(success: bool, message: &str) -> serde_json::Value {
+    serde_json::json!({ "success": success, "message": message })
+}
+
+/// SetNickname request to seed a freshly installed profile, if applicable.
+fn nickname_request(result: &es10b::InstallResult, nickname: Option<&str>) -> Option<Vec<u8>> {
+    if !result.success {
+        return None;
+    }
+    let name = nickname?;
+    let iccid = crate::es10::hex_decode(&result.installed_iccid);
+    if iccid.is_empty() {
+        return None;
+    }
+    Some(crate::es10::build_set_nickname(&iccid, name.trim()))
+}
+
+/// A failed/absent Kotlin progress callback never aborts the install.
+fn progress_decision(result: Option<bool>) -> bool {
+    result.unwrap_or(true)
 }
 
 /// Parses 8 hex digits into a TAC. Malformed input falls back to the default
@@ -285,21 +344,12 @@ fn empty_to_null(s: &str) -> serde_json::Value {
 
 /// Authenticate-path error reply.
 fn auth_error(env: &mut Env, message: &str) -> jstring {
-    let json = serde_json::json!({
-        "error": message,
-        "transactionId": serde_json::Value::Null,
-        "carrier": serde_json::Value::Null,
-        "profileName": serde_json::Value::Null,
-        "iccid": serde_json::Value::Null,
-        "ccRequired": false,
-    });
-    new_jstring(env, &json.to_string())
+    new_jstring(env, &authenticate_error_json(message).to_string())
 }
 
 /// Finish-path `{success, message}` reply.
 fn finish_json(env: &mut Env, success: bool, message: &str) -> jstring {
-    let json = serde_json::json!({ "success": success, "message": message });
-    new_jstring(env, &json.to_string())
+    new_jstring(env, &finish_json_value(success, message).to_string())
 }
 
 /// [`download::ProgressCallback`] that forwards segment counts to Kotlin
@@ -325,80 +375,10 @@ impl download::ProgressCallback for JniProgress {
             .and_then(|v| v.z());
         // Clear a pending Kotlin exception so later JNI calls stay valid.
         let _ = env.exception_clear();
-        result.unwrap_or(true)
+        progress_decision(result.ok())
     }
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// The session store is process-global, so store tests must not run
-    /// concurrently with each other (cargo test defaults to parallel threads).
-    static TEST_LOCK: Mutex<()> = Mutex::new(());
-
-    fn session(id: &str) -> download::DownloadSession {
-        download::DownloadSession::for_test(id)
-    }
-
-    #[test]
-    fn session_survives_take_on_another_thread() {
-        let _guard = TEST_LOCK.lock().unwrap_or_else(|p| p.into_inner());
-        sessions().clear();
-        session_put("tx-cross-thread".to_string(), session("tx-cross-thread"));
-        // Dispatchers.IO does not pin authenticate/finish to one thread; the
-        // take must succeed from a different OS thread than the put.
-        let taken = std::thread::spawn(|| session_take("tx-cross-thread"))
-            .join()
-            .unwrap();
-        assert_eq!(taken.unwrap().transaction_id, "tx-cross-thread");
-        assert!(session_take("tx-cross-thread").is_none());
-    }
-
-    #[test]
-    fn parse_tac_and_cancel_reason_and_empty_to_null() {
-        assert_eq!(parse_tac("35290611"), Some([0x35, 0x29, 0x06, 0x11]));
-        assert_eq!(parse_tac(" 35290611 "), Some(es10b::DEFAULT_TAC));
-        // Malformed TAC (odd, non-hex, wrong length) falls back to None.
-        assert_eq!(parse_tac("3529061"), None);
-        assert_eq!(parse_tac("zz290611"), None);
-        assert_eq!(parse_tac("3529061100"), None);
-        assert_eq!(parse_tac(""), None);
-        assert_eq!(cancel_reason(0), es10b::CancelReason::EndUserRejection);
-        assert_eq!(cancel_reason(1), es10b::CancelReason::Postponed);
-        assert_eq!(cancel_reason(2), es10b::CancelReason::Timeout);
-        assert_eq!(cancel_reason(3), es10b::CancelReason::PprNotAllowed);
-        assert_eq!(cancel_reason(4), es10b::CancelReason::MetadataMismatch);
-        assert_eq!(cancel_reason(5), es10b::CancelReason::LoadBppExecutionError);
-        assert_eq!(cancel_reason(6), es10b::CancelReason::EndUserRejection);
-        assert_eq!(cancel_reason(-1), es10b::CancelReason::EndUserRejection);
-        assert_eq!(empty_to_null(""), serde_json::Value::Null);
-        assert_eq!(empty_to_null("Carrier"), serde_json::Value::String("Carrier".to_string()));
-    }
-
-    #[test]
-    fn session_put_replaces_same_handle_and_take_missing() {
-        let _guard = TEST_LOCK.lock().unwrap_or_else(|p| p.into_inner());
-        sessions().clear();
-        assert!(session_take("nope").is_none());
-        session_put("tx-dup".to_string(), session("tx-dup"));
-        session_put("tx-dup".to_string(), session("tx-dup"));
-        // Re-put must not duplicate the handle (eviction counts once).
-        assert_eq!(sessions().len(), 1);
-        assert!(session_take("tx-dup").is_some());
-        assert!(session_take("tx-dup").is_none());
-    }
-
-    #[test]
-    fn session_eviction_is_oldest_first() {
-        let _guard = TEST_LOCK.lock().unwrap_or_else(|p| p.into_inner());
-        sessions().clear();
-        for i in 0..=MAX_SESSIONS {
-            session_put(format!("tx-{i}"), session(&format!("tx-{i}")));
-        }
-        assert!(session_take("tx-0").is_none(), "oldest must be evicted");
-        for i in 1..=MAX_SESSIONS {
-            assert!(session_take(&format!("tx-{i}")).is_some());
-        }
-    }
-}
+#[path = "jni_download_tests.rs"]
+mod jni_download_tests;

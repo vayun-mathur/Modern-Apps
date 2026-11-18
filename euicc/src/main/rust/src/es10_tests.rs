@@ -142,3 +142,20 @@ fn notifications_event_table_and_defaults() {
     assert!(parse_remove_result(&[]).is_err());
     assert!(parse_remove_result(&asn1::tlv(TAG_REMOVE_NOTIFICATION, &[])).is_err());
 }
+
+#[test]
+fn get_profiles_request_and_non_metadata_notifications() {
+    // build_get_profiles was only exercised via JNI; pin its exact bytes shape.
+    let req = build_get_profiles();
+    assert!(!req.is_empty());
+    let parsed = crate::asn1::parse(&req).unwrap().0;
+    assert_eq!(parsed.tag, TAG_PROFILE_INFO_LIST);
+    // A notification list containing a non-metadata child skips that child.
+    let meta = asn1::tlv(TAG_NOTIFICATION_METADATA, &asn1::tlv(TAG_SEQ_NUMBER, &[0x05]));
+    let mut list_body = asn1::tlv(0x99, &[0x01]);
+    list_body.extend(meta);
+    let resp = asn1::tlv(TAG_LIST_NOTIFICATION, &asn1::tlv(TAG_NOTIFICATION_LIST, &list_body));
+    let notes = parse_notifications(&resp).unwrap();
+    assert_eq!(notes.len(), 1);
+    assert_eq!(notes[0].seq_number, 5);
+}

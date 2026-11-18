@@ -43,18 +43,26 @@ pub fn initiate_authentication(
     euicc_challenge: &[u8],
     euicc_info1: &[u8],
 ) -> Result<InitiateAuthResult, String> {
-    let body = json!({
+    let body = initiate_body(smdp, euicc_challenge, euicc_info1);
+    let v = post("initiateAuthentication", &endpoint(smdp, "initiateAuthentication"), &body, true)?;
+    parse_initiate_response(&v)
+}
+
+fn initiate_body(smdp: &str, euicc_challenge: &[u8], euicc_info1: &[u8]) -> Value {
+    json!({
         "smdpAddress": host_of(smdp),
         "euiccChallenge": base64::encode(euicc_challenge),
         "euiccInfo1": base64::encode(euicc_info1),
-    });
-    let v = post("initiateAuthentication", &endpoint(smdp, "initiateAuthentication"), &body, true)?;
+    })
+}
+
+fn parse_initiate_response(v: &Value) -> Result<InitiateAuthResult, String> {
     Ok(InitiateAuthResult {
-        transaction_id: get_str(&v, "transactionId")?,
-        server_signed1: get_b64(&v, "serverSigned1")?,
-        server_signature1: get_b64(&v, "serverSignature1")?,
-        euicc_ci_pkid: get_b64(&v, "euiccCiPKIdToBeUsed")?,
-        server_certificate: get_b64(&v, "serverCertificate")?,
+        transaction_id: get_str(v, "transactionId")?,
+        server_signed1: get_b64(v, "serverSigned1")?,
+        server_signature1: get_b64(v, "serverSignature1")?,
+        euicc_ci_pkid: get_b64(v, "euiccCiPKIdToBeUsed")?,
+        server_certificate: get_b64(v, "serverCertificate")?,
     })
 }
 
@@ -66,16 +74,24 @@ pub fn authenticate_client(
     transaction_id: &str,
     authenticate_server_response: &[u8],
 ) -> Result<AuthenticateClientResult, String> {
-    let body = json!({
+    let body = authenticate_client_body(transaction_id, authenticate_server_response);
+    let v = post("authenticateClient", &endpoint(smdp, "authenticateClient"), &body, true)?;
+    parse_authenticate_client_response(&v)
+}
+
+fn authenticate_client_body(transaction_id: &str, authenticate_server_response: &[u8]) -> Value {
+    json!({
         "transactionId": transaction_id,
         "authenticateServerResponse": base64::encode(authenticate_server_response),
-    });
-    let v = post("authenticateClient", &endpoint(smdp, "authenticateClient"), &body, true)?;
+    })
+}
+
+fn parse_authenticate_client_response(v: &Value) -> Result<AuthenticateClientResult, String> {
     Ok(AuthenticateClientResult {
-        profile_metadata: get_b64(&v, "profileMetadata")?,
-        smdp_signed2: get_b64(&v, "smdpSigned2")?,
-        smdp_signature2: get_b64(&v, "smdpSignature2")?,
-        smdp_certificate: get_b64(&v, "smdpCertificate")?,
+        profile_metadata: get_b64(v, "profileMetadata")?,
+        smdp_signed2: get_b64(v, "smdpSigned2")?,
+        smdp_signature2: get_b64(v, "smdpSignature2")?,
+        smdp_certificate: get_b64(v, "smdpCertificate")?,
     })
 }
 
@@ -86,10 +102,7 @@ pub fn get_bound_profile_package(
     transaction_id: &str,
     prepare_download_response: &[u8],
 ) -> Result<Vec<u8>, String> {
-    let body = json!({
-        "transactionId": transaction_id,
-        "prepareDownloadResponse": base64::encode(prepare_download_response),
-    });
+    let body = get_bpp_body(transaction_id, prepare_download_response);
     let v = post(
         "getBoundProfilePackage",
         &endpoint(smdp, "getBoundProfilePackage"),
@@ -97,6 +110,13 @@ pub fn get_bound_profile_package(
         true,
     )?;
     get_b64(&v, "boundProfilePackage")
+}
+
+fn get_bpp_body(transaction_id: &str, prepare_download_response: &[u8]) -> Value {
+    json!({
+        "transactionId": transaction_id,
+        "prepareDownloadResponse": base64::encode(prepare_download_response),
+    })
 }
 
 /// ES9+ cancelSession: frees the server-side RSP session identified by
@@ -108,12 +128,16 @@ pub fn cancel_session(
     transaction_id: &str,
     cancel_session_response: &[u8],
 ) -> Result<(), String> {
-    let body = json!({
-        "transactionId": transaction_id,
-        "cancelSessionResponse": base64::encode(cancel_session_response),
-    });
+    let body = cancel_session_body(transaction_id, cancel_session_response);
     let _ = post("cancelSession", &endpoint(smdp, "cancelSession"), &body, false)?;
     Ok(())
+}
+
+fn cancel_session_body(transaction_id: &str, cancel_session_response: &[u8]) -> Value {
+    json!({
+        "transactionId": transaction_id,
+        "cancelSessionResponse": base64::encode(cancel_session_response),
+    })
 }
 /// HandleNotification: delivers a pending notification to the SM-DP+. Best-effort;
 /// the eUICC keeps the notification until acknowledged, so a failure is not fatal.
@@ -122,7 +146,7 @@ pub fn cancel_session(
 /// `notification process` reads it out of RetrieveNotificationsList and posts
 /// there, not to the download's SM-DP+), falling back to the download server.
 pub fn handle_notification_at(address: &str, pending_notification: &[u8]) -> Result<(), String> {
-    let body = json!({ "pendingNotification": base64::encode(pending_notification) });
+    let body = handle_notification_body(pending_notification);
     // A 204/empty body is normal here; ignore the parsed value.
     let _ = post(
         "handleNotification",
@@ -143,6 +167,28 @@ pub fn handle_notification(smdp: &str, pending_notification: &[u8]) -> Result<()
 // HTTP + helpers
 // ---------------------------------------------------------------------------
 
+fn handle_notification_body(pending_notification: &[u8]) -> Value {
+    json!({ "pendingNotification": base64::encode(pending_notification) })
+}
+
+fn handle_response(function: &str, url: &str, status: u16, body: &[u8], expect_body: bool) -> Result<Value, String> {
+    if status < 200 || status >= 300 {
+        return Err(format!("SM-DP+ HTTP {} at {url}", status));
+    }
+    if body.is_empty() {
+        if !expect_body {
+            return Ok(Value::Null);
+        }
+        return Err(format!(
+            "SM-DP+ {function} returned HTTP {} with empty body",
+            status
+        ));
+    }
+    let v: Value = serde_json::from_slice(body).map_err(|e| format!("parse response: {e}"))?;
+    check_function_execution_status(&v)?;
+    Ok(v)
+}
+
 fn post(function: &str, url: &str, body: &Value, expect_body: bool) -> Result<Value, String> {
     let headers = [
         ("Content-Type".to_string(), "application/json".to_string()),
@@ -155,24 +201,9 @@ fn post(function: &str, url: &str, body: &Value, expect_body: bool) -> Result<Va
     let bytes = serde_json::to_vec(body).map_err(|e| format!("encode body: {e}"))?;
     let resp = jni_http::request(jni_http::Method::Post, url, &headers, Some(&bytes))
         .map_err(|e| format!("{e}"))?;
-    if resp.status < 200 || resp.status >= 300 {
-        return Err(format!("SM-DP+ HTTP {} at {url}", resp.status));
-    }
-    if resp.body.is_empty() {
-        // HandleNotification answers 204/empty normally; every other function
-        // must return a JSON body, so an empty reply names the function and
-        // status instead of failing later on a missing field.
-        if !expect_body {
-            return Ok(Value::Null);
-        }
-        return Err(format!(
-            "SM-DP+ {function} returned HTTP {} with empty body",
-            resp.status
-        ));
-    }
-    let v: Value = serde_json::from_slice(&resp.body).map_err(|e| format!("parse response: {e}"))?;
-    check_function_execution_status(&v)?;
-    Ok(v)
+    // HandleNotification answers 204/empty normally; every other function
+    // must return a JSON body (handle_response enforces that).
+    handle_response(function, url, resp.status, &resp.body, expect_body)
 }
 
 /// Surfaces an SM-DP+ ES9+ functionExecutionStatus error, if present.
