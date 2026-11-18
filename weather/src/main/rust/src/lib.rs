@@ -25,6 +25,12 @@ mod om;
 
 #[cfg(test)]
 mod grid_tests;
+#[cfg(test)]
+mod http_range_tests;
+#[cfg(test)]
+mod lib_tests;
+#[cfg(test)]
+mod om_tests;
 
 use crate::om::{OmBackend, OmReader};
 
@@ -150,6 +156,20 @@ struct Window {
 
 impl Grid {
     fn covering_window(&self, west: f64, south: f64, east: f64, north: f64) -> Option<Window> {
+        // Inverted or non-finite bboxes have no covering window; without this
+        // guard the ±1-cell padding (or NaN→0 float-to-int casts) could
+        // manufacture a window for them.
+        if east < west || north < south {
+            return None;
+        }
+        if ![west, south, east, north, self.lon_min, self.lat_min, self.dx, self.dy]
+            .iter()
+            .all(|v| v.is_finite())
+            || self.dx <= 0.0
+            || self.dy <= 0.0
+        {
+            return None;
+        }
         let y0 = ((south - self.lat_min) / self.dy).floor() as i64 - 1;
         let y1 = ((north - self.lat_min) / self.dy).ceil() as i64 + 1;
         let x0 = ((west - self.lon_min) / self.dx).floor() as i64 - 1;
@@ -175,6 +195,11 @@ fn bilinear(
     gy: f64,
     gx: f64,
 ) -> f32 {
+    // A non-finite sample coordinate has no value; without this guard the
+    // NaN-corner fallback below could return a finite corner for NaN input.
+    if !gy.is_finite() || !gx.is_finite() {
+        return f32::NAN;
+    }
     let ly = gy - win.y0 as f64;
     let lx = gx - win.x0 as f64;
     if ly < 0.0 || lx < 0.0 || sub_nx < 2 || sub_ny < 2 {
@@ -425,62 +450,3 @@ mod jni_bindings {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Tests – use in-memory backend now
-// ---------------------------------------------------------------------------
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn dwd_icon() -> Grid {
-        Grid {
-            nx: 2879,
-            ny: 1441,
-            lon_min: -180.0,
-            lat_min: -90.0,
-            dx: 0.125,
-            dy: 0.125,
-        }
-    }
-
-    #[test]
-    fn grid_covering_window_basic() {
-        let grid = dwd_icon();
-        let win = grid.covering_window(5.0, 47.0, 15.0, 55.0).expect("window");
-        assert!(win.x1 > win.x0);
-        assert!(win.y1 > win.y0);
-    }
-
-    #[test]
-    fn bilinear_finite() {
-        let data = vec![1.0f32, 2.0, 3.0, 4.0];
-        let win = Window { y0: 0, y1: 2, x0: 0, x1: 2 };
-        let v = bilinear(&data, 2, 2, &win, 0.5, 0.5);
-        assert!(v > 2.0 && v < 3.0);
-    }
-
-    #[test]
-    fn resample_produces_finite_values() {
-        // Full `.om` decode needs a live file; here we exercise the covering-window +
-        // resample path with a synthetic local grid that exactly spans the bbox, so
-        // the covering window aligns with the data we hand in (unlike a global grid,
-        // where a 2x2 window at the origin would never intersect a mid-latitude bbox).
-        let grid = Grid {
-            nx: 2,
-            ny: 2,
-            lon_min: 5.0,
-            lat_min: 47.0,
-            dx: 10.0,
-            dy: 8.0,
-        };
-        let win = grid.covering_window(5.0, 47.0, 15.0, 55.0).expect("window");
-        let sub_nx = win.x1 - win.x0;
-        let sub_ny = win.y1 - win.y0;
-        let data: Vec<f32> = (0..sub_nx * sub_ny).map(|i| i as f32 * 10.0).collect();
-        let out = resample(data, sub_nx, sub_ny, &win, &grid, 5.0, 47.0, 15.0, 55.0, 4, 4);
-        assert_eq!(out.len(), 16);
-        // Every output pixel falls inside the covered window, so all must be finite.
-        assert!(out.iter().all(|v| v.is_finite()));
-    }
-}

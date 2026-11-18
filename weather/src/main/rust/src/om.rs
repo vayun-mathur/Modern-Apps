@@ -166,6 +166,11 @@ impl<B: OmBackend> OmReader<B> {
     /// `∏ (end-start)`. The C decoder applies scale_factor/add_offset and yields
     /// NaN for missing data.
     pub fn read_f32(&self, ranges: &[Range<u64>]) -> Result<Vec<f32>, String> {
+        // `end - start` below would underflow (panic in debug) on an inverted
+        // range; reject it as a normal error instead.
+        if ranges.iter().any(|r| r.end < r.start) {
+            return Err("invalid range: end < start".to_string());
+        }
         let dims = ranges.len() as u64;
         // These Vecs are referenced by pointer inside the decoder for its whole
         // lifetime, so they must outlive the decode loop (dropped explicitly
