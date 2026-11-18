@@ -8,6 +8,7 @@ license = "GPL-2.0-only"
 name = "appstore_signify"
 crate-type = ["cdylib", "rlib"]
 [dependencies]
+base64.workspace = true
 ed25519-dalek.workspace = true
 jni.workspace = true
 [dev-dependencies]
