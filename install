@@ -512,17 +512,47 @@ built_apk() {
   return 1
 }
 
+# Run one adb command against the target device, riding out a dropped
+# network-adb transport: the forwarded endpoint the phone hangs off
+# (127.0.0.1:15556) loses the device for a few seconds at a time under
+# install load, and without this a single drop fails every remaining app
+# in the run. Combined output goes to stdout; reconnect notes and the
+# final error go to stderr (callers used to discard adb's stderr entirely,
+# which hid exactly this failure).
+adb_dev() {
+  local attempt out
+  for attempt in 1 2 3 4; do
+    out="$("$ADB_BIN" -s "$TARGET_SERIAL" "$@" 2>&1)" && { printf '%s' "$out"; return 0; }
+    if echo "$out" | grep -qiE "device '[^']*' not found|device offline|no devices/emulators"; then
+      echo "  adb: transport to $TARGET_SERIAL lost (attempt $attempt); reconnecting..." >&2
+      "$ADB_BIN" connect "$TARGET_SERIAL" >/dev/null 2>&1
+      # Bounded wait: a tunnel that stays down must fail this app, not
+      # freeze the whole run on wait-for-device.
+      local waited=0
+      while [[ $waited -lt 30 ]]; do
+        [[ "$("$ADB_BIN" -s "$TARGET_SERIAL" get-state 2>/dev/null)" == "device" ]] && break
+        sleep 2; waited=$((waited + 2))
+      done
+      continue
+    fi
+    printf '%s\n' "$out" >&2
+    return 1
+  done
+  printf '%s\n' "$out" >&2
+  return 1
+}
+
 # on-device versionCode for a package, empty when not installed.
 device_version_code() {
   # No `head -1` here: with pipefail, head closing the pipe SIGPIPEs adb and
   # the failing assignment kills the script (set -e) after the first module.
-  "$ADB_BIN" -s "$TARGET_SERIAL" shell pm list packages --show-versioncode "$1" 2>/dev/null \
+  adb_dev shell pm list packages --show-versioncode "$1" \
     | sed -nE "s/^package:${1//./\\.}[[:space:]]+versionCode:([0-9]+).*/\\1/p"
 }
 
 # exit 0 when the package is installed as a system app.
 is_system_app() {
-  "$ADB_BIN" -s "$TARGET_SERIAL" shell pm list packages -s "$1" 2>/dev/null \
+  adb_dev shell pm list packages -s "$1" \
     | tr -d '\r' | grep -qFx "package:$1"
 }
 
@@ -540,15 +570,15 @@ install_apk_via_session() {
   fi
   echo "${prefix}Installing $package_id ($apk_name, ${apk_mb} MB)..."
   echo "  ${prefix}[1/4] Pushing APK to device..."
-  "$ADB_BIN" -s "$TARGET_SERIAL" push "$apk" "$device_apk" >/dev/null 2>&1 || {
+  adb_dev push "$apk" "$device_apk" >/dev/null || {
     echo "  ${prefix}Error: adb push failed for $apk_name."; return 1
   }
   echo "  ${prefix}[2/4] Creating install session..."
-  session="$("$ADB_BIN" -s "$TARGET_SERIAL" shell pm install-create -r 2>&1 \
+  session="$(adb_dev shell pm install-create -r \
     | sed -nE 's/.*created install session \[([0-9]+)\].*/\1/p')"
   if [[ -z "$session" ]]; then
     echo "  ${prefix}Error: could not create install session."
-    "$ADB_BIN" -s "$TARGET_SERIAL" shell rm -f "$device_apk" >/dev/null 2>&1
+    adb_dev shell rm -f "$device_apk" >/dev/null
     return 1
   fi
   # Stage the APK first, then its .idsig sidecar (V4 signature) under the
@@ -556,30 +586,30 @@ install_apk_via_session() {
   # MAOS/GrapheneOS requires for updates to preinstalled system apps. Plain
   # `adb install` never stages the sidecar, so those updates always fail.
   echo "  ${prefix}[3/4] Staging APK into session $session..."
-  "$ADB_BIN" -s "$TARGET_SERIAL" shell pm install-write -S "$apk_size" "$session" base.apk "$device_apk" >/dev/null 2>&1 || {
+  adb_dev shell pm install-write -S "$apk_size" "$session" base.apk "$device_apk" >/dev/null || {
     echo "  ${prefix}Error: failed to stage $apk_name into session $session."
-    "$ADB_BIN" -s "$TARGET_SERIAL" shell pm install-abandon "$session" >/dev/null 2>&1
-    "$ADB_BIN" -s "$TARGET_SERIAL" shell rm -f "$device_apk" >/dev/null 2>&1
+    adb_dev shell pm install-abandon "$session" >/dev/null
+    adb_dev shell rm -f "$device_apk" >/dev/null
     return 1
   }
   idsig="$apk.idsig"
   if [[ -f "$idsig" ]]; then
     device_idsig="$device_apk.idsig"
     echo "  ${prefix}Staging .idsig sidecar..."
-    if "$ADB_BIN" -s "$TARGET_SERIAL" push "$idsig" "$device_idsig" >/dev/null 2>&1; then
-      "$ADB_BIN" -s "$TARGET_SERIAL" shell pm install-write -S "$(wc -c < "$idsig" | tr -d ' ')" \
-        "$session" base.apk.idsig "$device_idsig" >/dev/null 2>&1 || \
+    if adb_dev push "$idsig" "$device_idsig" >/dev/null; then
+      adb_dev shell pm install-write -S "$(wc -c < "$idsig" | tr -d ' ')" \
+        "$session" base.apk.idsig "$device_idsig" >/dev/null || \
         echo "  ${prefix}Warning: could not stage .idsig; system-app updates may fail fs-verity."
     else
       echo "  ${prefix}Warning: could not push .idsig; system-app updates may fail fs-verity."
     fi
-    "$ADB_BIN" -s "$TARGET_SERIAL" shell rm -f "$device_idsig" >/dev/null 2>&1
+    adb_dev shell rm -f "$device_idsig" >/dev/null
   else
     echo "  ${prefix}Warning: no .idsig sidecar next to the APK; system-app updates may fail fs-verity."
   fi
   echo "  ${prefix}[4/4] Committing install session $session..."
-  commit_out="$("$ADB_BIN" -s "$TARGET_SERIAL" shell pm install-commit "$session" 2>&1)"
-  "$ADB_BIN" -s "$TARGET_SERIAL" shell rm -f "$device_apk" >/dev/null 2>&1
+  commit_out="$(adb_dev shell pm install-commit "$session")"
+  adb_dev shell rm -f "$device_apk" >/dev/null
   # `pm install-commit` prints "Success" but exits 0 either way; fail on absence.
   if ! echo "$commit_out" | grep -qi "^Success"; then
     echo "  ${prefix}Error: install failed for $package_id: $commit_out"
