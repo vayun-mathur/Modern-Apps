@@ -568,7 +568,9 @@ object Networking {
 
     /** PQC safety number from a cached peer bundle (no lookup). */
     fun securityCodePqc(user: User): String? {
-        val theirBundle = user.pqcEncryptionKey?.let { Base64.decode(it) } ?: return null
+        // Malformed stored bundle = no usable bundle, not an exception (UI paths read this).
+        val theirBundle = user.pqcEncryptionKey
+            ?.let { runCatching { Base64.decode(it) }.getOrNull() } ?: return null
         if (!pqcReady) return null
         return runCatching { Pqc.securityCode(pqcIdentity.publicBundle, theirBundle) }.getOrNull()
     }
@@ -579,7 +581,9 @@ object Networking {
      */
     private suspend fun peerPqcBundle(user: User): ByteArray? {
         if (!pqcReady) return null
-        user.pqcEncryptionKey?.let { return Base64.decode(it) }
+        // Malformed stored bundle = no usable bundle: callers fail closed with
+        // false, and the heartbeat must never die on a corrupt row.
+        user.pqcEncryptionKey?.let { return runCatching { Base64.decode(it) }.getOrNull() }
         val res = wsGetKey(user.id) ?: return null
         if (res.status == WS_KEY_PQC && res.bundle != null) {
             runCatching { repository.setPqcEncryptionKey(user.id, Base64.encode(res.bundle)) }
