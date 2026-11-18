@@ -79,52 +79,20 @@ fn kind_for(name: &str) -> i32 {
     }
 }
 
-/// JNI: `TreeSitterNative.highlight(languageId, source): int[]` — packed span triples, or null.
+/// Pure highlighting core: parse + query + collect packed `(startByte, endByte, kind)` triples.
 ///
-/// # Safety
-/// Called by the JVM with valid `env`/argument references.
-#[no_mangle]
-pub extern "system" fn Java_com_vayunmathur_code_util_TreeSitterNative_highlight<'local>(
-    mut env: EnvUnowned<'local>,
-    _class: JClass<'local>,
-    language_id: JString<'local>,
-    source: JString<'local>,
-) -> jintArray {
-    env.with_env(|env| -> jni::errors::Result<jintArray> {
-        let null = std::ptr::null_mut();
-
-        let id: String = match language_id.try_to_string(env) {
-            Ok(s) => s,
-            Err(_) => return Ok(null),
-        };
-        let src: String = match source.try_to_string(env) {
-            Ok(s) => s,
-            Err(_) => return Ok(null),
-        };
-
-        let (language, query_src) = match grammar(&id) {
-            Some(g) => g,
-            None => return Ok(null),
-        };
-
-        let mut parser = Parser::new();
-        if parser.set_language(&language).is_err() {
-            return Ok(null);
-        }
-        let tree = match parser.parse(&src, None) {
-            Some(t) => t,
-            None => return Ok(null),
-        };
-        let query = match Query::new(&language, query_src) {
-            Ok(q) => q,
-            Err(_) => return Ok(null),
-        };
-
+/// Returns `None` for an unknown language id or any parser/query failure;
+/// a successful parse (including an empty buffer) yields `Some`, possibly empty.
+pub(crate) fn highlight_source(language_id: &str, source: &str) -> Option<Vec<i32>> {
+    let (language, query_src) = grammar(language_id)?;
+    let mut parser = Parser::new();
+    parser.set_language(&language).ok()?;
+    let tree = parser.parse(source, None)?;
+    let query = Query::new(&language, query_src).ok()?;
     let names = query.capture_names();
-    let bytes = src.as_bytes();
+    let bytes = source.as_bytes();
     let mut cursor = QueryCursor::new();
     let mut out: Vec<i32> = Vec::new();
-
     for m in cursor.matches(&query, tree.root_node(), bytes) {
         for cap in m.captures {
             let name = names[cap.index as usize];
@@ -133,20 +101,36 @@ pub extern "system" fn Java_com_vayunmathur_code_util_TreeSitterNative_highlight
                 continue;
             }
             let node = cap.node;
+            // Error-recovery (missing) nodes are zero-width; colouring one
+            // is a no-op, so skip empty spans rather than emit them.
+            if node.start_byte() >= node.end_byte() {
+                continue;
+            }
             out.push(node.start_byte() as i32);
             out.push(node.end_byte() as i32);
             out.push(kind);
         }
     }
+    Some(out)
+}
 
-    let arr = match env.new_int_array(out.len()) {
-        Ok(a) => a,
-        Err(_) => return Ok(null),
-    };
-    if arr.set_region(env, 0, &out).is_err() {
-        return Ok(null);
-    }
-    Ok(arr.into_raw())
-    })
-    .resolve::<jni::errors::LogErrorAndDefault>()
+#[cfg(test)]
+mod highlight_tests;
+
+/// JNI: `TreeSitterNative.highlight(languageId, source): int[]` — packed span triples, or null.
+///
+/// # Safety
+/// Called by the JVM with valid `env`/argument references.
+#[no_mangle]
+pub extern "system" fn Java_com_vayunmathur_code_util_TreeSitterNative_highlight<'local>(
+    mut env: EnvUnowned<'local>, _class: JClass<'local>, language_id: JString<'local>, source: JString<'local>) -> jintArray {
+    env.with_env(|env| -> jni::errors::Result<jintArray> {
+        let null = std::ptr::null_mut();
+        let Ok(id) = language_id.try_to_string(env) else { return Ok(null) };
+        let Ok(src) = source.try_to_string(env) else { return Ok(null) };
+        let Some(out) = highlight_source(&id, &src) else { return Ok(null) };
+        let Ok(arr) = env.new_int_array(out.len()) else { return Ok(null) };
+        if arr.set_region(env, 0, &out).is_err() { return Ok(null); }
+        Ok(arr.into_raw())
+    }).resolve::<jni::errors::LogErrorAndDefault>()
 }
