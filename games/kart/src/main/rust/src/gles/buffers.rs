@@ -10,6 +10,8 @@
 use crate::gles::renderer::{DYNAMIC_VERT_CAP, TRACK_VERT_CAP};
 use crate::mesh::KartVertex;
 use glow::HasContext as _;
+#[cfg(test)]
+mod buffers_tests;
 
 /// One VAO + VBO pair: vertex layout bound once, store re-sized per upload.
 pub struct MeshBuffer {

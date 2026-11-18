@@ -12,6 +12,26 @@ use std::ffi::CString;
 const KART_VERT_SPV: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/kart.vert.spv"));
 const KART_FRAG_SPV: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/kart.frag.spv"));
 
+/// Convert SPIR-V bytes to aligned words for `create_shader_module`.
+///
+/// `include_bytes!` is align-1; reinterpreting its bytes as `u32` is UB
+/// (misaligned word loads fault on ARM), so copy into an aligned `Vec`
+/// first. Trailing bytes of a non-multiple-of-4 input are dropped, as
+/// SPIR-V is always a whole number of words.
+pub fn spv_words(spv: &[u8]) -> Vec<u32> {
+    let mut words = vec![0u32; spv.len().div_ceil(4)];
+    if !spv.is_empty() {
+        unsafe {
+            std::ptr::copy_nonoverlapping(spv.as_ptr(), words.as_mut_ptr() as *mut u8, spv.len());
+        }
+    }
+    words.truncate(spv.len() / 4);
+    words
+}
+
+#[cfg(test)]
+mod pipeline_tests;
+
 /// Pipeline + layout + the single UBO descriptor set.
 pub struct Pipelines {
     /// Pipeline layout (one UBO set).
@@ -156,10 +176,9 @@ impl Pipelines {
     }
 
     unsafe fn create_module(device: &ash::Device, spv: &[u8]) -> Result<vk::ShaderModule, String> {
-        let code =
-            unsafe { std::slice::from_raw_parts(spv.as_ptr() as *const u32, spv.len() / 4) };
+        let words = spv_words(spv);
         device
-            .create_shader_module(&vk::ShaderModuleCreateInfo::default().code(code), None)
+            .create_shader_module(&vk::ShaderModuleCreateInfo::default().code(&words), None)
             .map_err(|e| format!("mod {e:?}"))
     }
 

@@ -7,6 +7,8 @@ use ash::vk;
 use ash::Entry;
 use std::ffi::{CString, c_char};
 use std::os::raw::c_void;
+#[cfg(test)]
+mod context_tests;
 
 /// Opaque Android window handle, filled in from the JNI surface.
 #[repr(C)]

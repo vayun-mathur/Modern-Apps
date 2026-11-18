@@ -459,6 +459,8 @@ pub fn has_renderer() -> bool {
 #[cfg(test)]
 mod engine_tests;
 #[cfg(test)]
+mod engine_coverage_tests;
+#[cfg(test)]
 mod tests {
     use super::*;
 

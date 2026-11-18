@@ -19,6 +19,8 @@ use glow::HasContext as _;
 
 /// Static track mesh budget: the oval sweep is ~30k verts; 64k leaves margin.
 pub const TRACK_VERT_CAP: usize = 65_536;
+#[cfg(test)]
+mod renderer_tests;
 /// Dynamic mesh budget per frame: 8 karts (~160 verts each) + boxes + shells.
 pub const DYNAMIC_VERT_CAP: usize = 8_192;
 

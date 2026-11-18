@@ -7,6 +7,8 @@
 //! full re-uploads of the dynamic mesh stay comfortably in budget.
 use ash::vk;
 use std::mem;
+#[cfg(test)]
+mod buffers_tests;
 
 /// One vertex: world position + flat RGB. Layout must match `kart.vert`
 /// (`location 0 = pos`, `location 1 = color`).

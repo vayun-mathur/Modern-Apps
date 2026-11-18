@@ -19,6 +19,8 @@ pub const U_VIEW_PROJ: &str = "uViewProj";
 pub const U_SUN_DIR: &str = "uSunDir";
 /// Chase-cam position, the fog origin (mirrors the Vulkan UBO's `camPos`).
 pub const U_CAM_POS: &str = "uCamPos";
+#[cfg(test)]
+mod shaders_tests;
 
 /// Compile `VERT_SRC` + `FRAG_SRC`, link, return the program. On any failure
 /// the returned string carries the shader/program info log from the driver.

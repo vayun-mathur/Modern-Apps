@@ -26,6 +26,19 @@ fn get_string(env: &Env, s: &JString) -> Option<String> {
     s.try_to_string(env).ok()
 }
 
+/// Parse the comma-separated human seat ids from the JNI start-race call:
+/// trims whitespace and drops empty entries (trailing commas, blank csv).
+fn parse_player_ids(csv: &str) -> Vec<String> {
+    csv.split(',')
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_string)
+        .collect()
+}
+
+#[cfg(test)]
+mod lib_tests;
+
 /// Adopt the engine state (idempotent; called once from `KartNative` init).
 #[no_mangle]
 pub extern "system" fn Java_com_vayunmathur_games_kart_util_KartNative_nativeInit<'l>(
@@ -49,12 +62,7 @@ pub extern "system" fn Java_com_vayunmathur_games_kart_util_KartNative_nativeSta
     let ids: Vec<String> = env
         .with_env(|env| -> jni::errors::Result<Vec<String>> {
             match get_string(env, &player_ids_csv) {
-                Some(csv) => Ok(csv
-                    .split(',')
-                    .map(str::trim)
-                    .filter(|s| !s.is_empty())
-                    .map(str::to_string)
-                    .collect()),
+                Some(csv) => Ok(parse_player_ids(&csv)),
                 None => Ok(Vec::new()),
             }
         })
