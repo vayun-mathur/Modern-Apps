@@ -354,3 +354,10 @@ impl Player {
 }
 
 include!("player_part1.rs");
+#[cfg(test)]
+#[path = "player_coverage_tests.rs"]
+mod player_coverage_tests;
+
+#[cfg(test)]
+#[path = "player_tick_tests.rs"]
+mod player_tick_tests;

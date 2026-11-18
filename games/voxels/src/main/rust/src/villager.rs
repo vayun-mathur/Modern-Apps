@@ -343,3 +343,7 @@ mod tests {
         assert_eq!(Profession::from_index(999), Profession::Farmer, "a corrupt save falls back, not panics");
     }
 }
+
+#[cfg(test)]
+#[path = "villager_coverage_tests.rs"]
+mod villager_coverage_tests;

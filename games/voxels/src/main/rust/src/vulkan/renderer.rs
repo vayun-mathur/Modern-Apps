@@ -452,3 +452,7 @@ impl VulkanRenderer {
         if !self.suspended { self.swapchain.cleanup(&self.ctx.device); }
     }
 }
+
+#[cfg(test)]
+#[path = "renderer_tests.rs"]
+mod renderer_tests;

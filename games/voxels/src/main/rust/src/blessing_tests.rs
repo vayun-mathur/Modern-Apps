@@ -49,3 +49,20 @@ fn attunement_edges_are_total() {
     assert_eq!(corrupt.release(0), Some(9999));
     assert!(corrupt.attune(1056), "the freed slot can be bound again");
 }
+
+#[test]
+fn blessing_constructor_at_runtime() {
+    let entry = b(1056, Passive::Traversal, "icon.png", "Name", "Effect");
+    assert_eq!(entry.id, 1056);
+    assert_eq!(entry.passive, Passive::Traversal);
+    assert_eq!(entry.icon, "icon.png");
+    assert_eq!(entry.name, "Name");
+    assert_eq!(entry.effect, "Effect");
+    // Every pantheon entry is findable by its own id.
+    for entry in PANTHEON.iter() {
+        assert_eq!(find(entry.id).map(|f| f.id), Some(entry.id));
+        assert!(is_blessing(entry.id));
+    }
+    assert!(!is_blessing(0));
+    assert!(find(0).is_none());
+}

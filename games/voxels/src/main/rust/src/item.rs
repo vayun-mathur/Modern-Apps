@@ -249,3 +249,7 @@ mod tests {
         assert!(max_durability(1093) > max_durability(1065));
     }
 }
+
+#[cfg(test)]
+#[path = "item_coverage_tests.rs"]
+mod item_coverage_tests;

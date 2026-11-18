@@ -220,3 +220,7 @@ mod tests {
         assert_eq!(inv.slots[5].count, STACK);
     }
 }
+
+#[cfg(test)]
+#[path = "container_coverage_tests.rs"]
+mod container_coverage_tests;

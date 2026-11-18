@@ -287,3 +287,7 @@ include!("inventory_part2.rs");
 #[cfg(test)]
 #[path = "inventory_tests.rs"]
 mod inventory_tests;
+
+#[cfg(test)]
+#[path = "inventory_coverage_tests.rs"]
+mod inventory_coverage_tests;

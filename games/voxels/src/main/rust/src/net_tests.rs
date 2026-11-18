@@ -71,6 +71,7 @@ fn every_netmsg_variant_survives_json() {
 
 #[test]
 fn inbound_json_rejects_garbage_without_panicking() {
+    let _serial = crate::engine::GLOBAL_ENGINE_TEST.lock();
     assert!(!push_inbound_json("not json"));
     assert!(!push_inbound_json(r#"{"type":"NoSuchVariant"}"#));
     assert!(!push_inbound_json(""));
@@ -79,9 +80,10 @@ fn inbound_json_rejects_garbage_without_panicking() {
 
 #[test]
 fn net_globals_move_messages_end_to_end() {
-    // Sequential by construction: role, device, outbox and the remote
-    // player table are process-global, so this is the only test here
-    // that mutates them.
+    // Role, device, outbox and the remote player table are process-global, so
+    // hold the shared test lock used by every other global-state test while
+    // mutating them (test threads run in parallel).
+    let _serial = crate::engine::GLOBAL_ENGINE_TEST.lock();
     let _ = drain_outbound_json(); // drop anything a parallel suite queued
     set_role(ROLE_HOST);
     assert!(is_networked() && is_host() && !is_client());

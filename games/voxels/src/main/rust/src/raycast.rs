@@ -30,6 +30,15 @@ fn ray_box(origin: Vec3, dir: Vec3, min: [f32; 3], max: [f32; 3]) -> Option<(f32
     Some((t_near.max(0.0), axis, positive))
 }
 
+/// Can a pick ray stop on this block? Collision solidity (`is_solid`) is the wrong predicate
+/// here: crops and glass have no collision box (you walk through a crop field, and glass is
+/// excluded from `is_solid` for light/face rules) but both fill their cell for interaction —
+/// a crop that no ray can hit can never be harvested, and glass could never be broken or
+/// built against. Fluids and portals stay untargetable so casts and travel pass through them.
+fn targetable(block: Block) -> bool {
+    block.is_solid() || block.is_crop() || block == Block::Glass
+}
+
 /// The nearest surface of a block within its cell, and the outward normal of the face hit. Cubes
 /// short-circuit; slabs and stairs are tested box by box so you can look through their empty half.
 fn hit_in_cell(chunks: &ChunkMap, cell: (i32, i32, i32), origin: Vec3, dir: Vec3) -> Option<(f32, (i32, i32, i32))> {
@@ -37,11 +46,15 @@ fn hit_in_cell(chunks: &ChunkMap, cell: (i32, i32, i32), origin: Vec3, dir: Vec3
     let id = chunks.get_block_world(x, y, z);
     if id == 0 { return None; }
     let block = Block::from_id(id);
-    if !block.is_solid() { return None; }
+    if !targetable(block) { return None; }
     let meta = chunks.get_meta_world(x, y, z);
     let base = [x as f32, y as f32, z as f32];
+    // Crops and glass have no collision boxes, but for picking they occupy the whole cell.
+    let owned = block.collision_boxes(meta);
+    let cube = [crate::world::block::FULL_CUBE];
+    let boxes: &[crate::world::block::Aabb] = if block.is_crop() || block == Block::Glass { &cube } else { owned.as_slice() };
     let mut best: Option<(f32, (i32, i32, i32))> = None;
-    for b in block.collision_boxes(meta).as_slice() {
+    for b in boxes {
         let min = [base[0] + b.min[0], base[1] + b.min[1], base[2] + b.min[2]];
         let max = [base[0] + b.max[0], base[1] + b.max[1], base[2] + b.max[2]];
         let Some((t, axis, positive)) = ray_box(origin, dir, min, max) else { continue; };
@@ -103,7 +116,7 @@ pub fn raycast(chunks: &ChunkMap, origin: Vec3, dir: Vec3, max_dist: f32) -> Opt
         }
         if dist > max_dist { return None; }
         let id = chunks.get_block_world(x, y, z);
-        if id != 0 && Block::from_id(id).is_solid() {
+        if id != 0 && targetable(Block::from_id(id)) {
             if Block::from_id(id).shape() == Shape::Cube {
                 // A full cube is entered exactly at the DDA boundary we just crossed.
                 let normal = match step_axis {
@@ -202,3 +215,7 @@ mod tests {
         assert!(hit.is_some(), "the stair's tall half must block the ray");
     }
 }
+
+#[cfg(test)]
+#[path = "raycast_coverage_tests.rs"]
+mod raycast_coverage_tests;

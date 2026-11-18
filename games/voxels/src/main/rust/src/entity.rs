@@ -448,3 +448,6 @@ pub fn build_entity_mesh(mobs: &[Mob]) -> (Vec<Vertex>, Vec<u32>) {
 }
 
 include!("entity_part1.rs");
+#[cfg(test)]
+#[path = "entity_coverage_tests.rs"]
+mod entity_coverage_tests;

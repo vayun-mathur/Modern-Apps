@@ -75,6 +75,7 @@ mod tests {
 
     #[test]
     fn push_and_drain() {
+        let _serial = crate::engine::GLOBAL_ENGINE_TEST.lock();
         set_role(ROLE_CLIENT);
         assert!(push_inbound_json(r#"{"type":"MobSnapshot","mobs":[]}"#));
         let drained: Vec<NetMsg> = inbox().lock().map(|mut q| std::mem::take(&mut *q)).unwrap();

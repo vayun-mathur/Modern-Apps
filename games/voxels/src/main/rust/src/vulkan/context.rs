@@ -145,3 +145,7 @@ impl VulkanContext {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "context_tests.rs"]
+mod context_tests;

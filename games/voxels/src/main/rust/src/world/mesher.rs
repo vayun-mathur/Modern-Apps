@@ -386,3 +386,6 @@ pub fn mesh_chunk(chunk: &Chunk, get_neighbor: &Neighbor, grass_tint: &dyn Fn(i3
 }
 
 include!("mesher_part1.rs");
+#[cfg(test)]
+#[path = "mesher_coverage_tests.rs"]
+mod mesher_coverage_tests;

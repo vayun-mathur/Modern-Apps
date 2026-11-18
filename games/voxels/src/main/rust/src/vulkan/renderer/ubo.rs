@@ -83,3 +83,7 @@ impl VulkanRenderer {
         self.ubo_buffer.upload(&self.ctx.device, bytes);
     }
 }
+
+#[cfg(test)]
+#[path = "ubo_tests.rs"]
+mod ubo_tests;

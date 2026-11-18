@@ -430,3 +430,30 @@ include!("engine_part2.rs");
 include!("engine_part3.rs");
 include!("engine_part4.rs");
 include!("engine_part5.rs");include!("engine_part6.rs");
+
+#[cfg(test)]
+#[path = "engine_coverage_tests.rs"]
+mod engine_coverage_tests;
+
+#[cfg(test)]
+#[path = "engine_sim_tests.rs"]
+mod engine_sim_tests;
+#[cfg(test)]
+#[path = "engine_break_tests.rs"]
+mod engine_break_tests;
+
+#[cfg(test)]
+#[path = "engine_combat_tests.rs"]
+mod engine_combat_tests;
+
+#[cfg(test)]
+#[path = "engine_extra_tests.rs"]
+mod engine_extra_tests;
+
+#[cfg(test)]
+#[path = "engine_more_tests.rs"]
+mod engine_more_tests;
+
+#[cfg(test)]
+#[path = "engine_final_tests.rs"]
+mod engine_final_tests;

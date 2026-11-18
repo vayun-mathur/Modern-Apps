@@ -110,3 +110,7 @@ impl AllocatedBuffer {
         device.free_memory(self.memory, None);
     }
 }
+
+#[cfg(test)]
+#[path = "buffers_tests.rs"]
+mod buffers_tests;

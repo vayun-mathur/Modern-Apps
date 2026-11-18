@@ -66,3 +66,7 @@ impl Chunk {
         self.dirty=true; self.mesh_dirty=true;
     }
 }
+
+#[cfg(test)]
+#[path = "chunk_coverage_tests.rs"]
+mod chunk_coverage_tests;

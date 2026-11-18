@@ -444,3 +444,11 @@ include!("net_part1.rs");
 #[cfg(test)]
 #[path = "net_tests.rs"]
 mod net_tests;
+
+#[cfg(test)]
+#[path = "net_coverage_tests.rs"]
+mod net_coverage_tests;
+
+#[cfg(test)]
+#[path = "net_extra_tests.rs"]
+mod net_extra_tests;
