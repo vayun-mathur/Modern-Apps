@@ -72,7 +72,7 @@ pub fn pgp_normalize_key(input: &[u8]) -> Option<String> {
     key.to_armored_string(ArmorOptions::default()).ok()
 }
 
-fn is_probably_armor(input: &[u8]) -> bool {
+pub(crate) fn is_probably_armor(input: &[u8]) -> bool {
     input.starts_with(b"-----BEGIN PGP")
 }
 
@@ -214,7 +214,7 @@ pub fn to_armored_message(raw: &[u8]) -> Option<String> {
 }
 
 /// OpenPGP CRC24 (RFC 9580 §6.1): polynomial 0x1864CFB, init 0xB704CE.
-fn crc24(data: &[u8]) -> [u8; 3] {
+pub(crate) fn crc24(data: &[u8]) -> [u8; 3] {
     let mut crc: u32 = 0xB704CE;
     for &b in data {
         crc ^= (b as u32) << 16;
@@ -237,7 +237,7 @@ pub fn dearmor_any(armored: &str) -> Option<Vec<u8>> {
     Some(bytes)
 }
 
-fn hex_upper(bytes: &[u8]) -> String {
+pub(crate) fn hex_upper(bytes: &[u8]) -> String {
     const HEX: &[u8; 16] = b"0123456789ABCDEF";
     let mut out = String::with_capacity(bytes.len() * 2);
     for b in bytes {
@@ -245,4 +245,41 @@ fn hex_upper(bytes: &[u8]) -> String {
         out.push(HEX[(b & 0x0f) as usize] as char);
     }
     out
+}
+
+// --- JNI-agnostic dispatch helpers (decision logic extracted from pgp_jni) ---
+pub(crate) fn utf8_string(bytes: &[u8]) -> Option<String> { String::from_utf8(bytes.to_vec()).ok() }
+pub(crate) fn signer_option<'a>(secret: &'a str, pw: &'a str) -> Option<(&'a str, &'a str)> {
+    if secret.is_empty() { None } else { Some((secret, pw)) }
+}
+pub(crate) fn verifier_option(verifier: &str) -> Option<&str> {
+    if verifier.is_empty() { None } else { Some(verifier) }
+}
+pub(crate) fn generate_from_bytes(uid: &[u8], pw: &[u8]) -> Option<(String, String, String)> {
+    pgp_generate(&utf8_string(uid)?, &utf8_string(pw)?)
+}
+pub(crate) fn fingerprint_from_bytes(armor: &[u8]) -> Option<String> {
+    pgp_fingerprint(&utf8_string(armor)?)
+}
+pub(crate) fn encrypt_from_bytes(armor: &[u8], plain: &[u8]) -> Option<Vec<u8>> {
+    pgp_encrypt(&utf8_string(armor)?, plain)
+}
+pub(crate) fn decrypt_from_bytes(secret: &[u8], pw: &[u8], ct: &[u8]) -> Option<Vec<u8>> {
+    pgp_decrypt(&utf8_string(secret)?, &utf8_string(pw)?, ct)
+}
+pub(crate) fn armor_from_bytes(raw: &[u8]) -> Option<String> { to_armored_message(raw) }
+pub(crate) fn encrypt_signed_from_bytes(
+    recip: &[u8], secret: &[u8], pw: &[u8], plain: &[u8],
+) -> Option<Vec<u8>> {
+    let (r, s, p) = (utf8_string(recip)?, utf8_string(secret)?, utf8_string(pw)?);
+    pgp_encrypt_signed(&r, signer_option(&s, &p), plain)
+}
+pub(crate) fn sign_detached_from_bytes(secret: &[u8], pw: &[u8], data: &[u8]) -> Option<Vec<u8>> {
+    pgp_sign_detached(&utf8_string(secret)?, &utf8_string(pw)?, data)
+}
+pub(crate) fn decrypt_verify_from_bytes(
+    secret: &[u8], pw: &[u8], ct: &[u8], verifier: &[u8],
+) -> Option<(Vec<u8>, String)> {
+    let (s, p, v) = (utf8_string(secret)?, utf8_string(pw)?, utf8_string(verifier)?);
+    pgp_decrypt_verify(&s, &p, ct, verifier_option(&v))
 }

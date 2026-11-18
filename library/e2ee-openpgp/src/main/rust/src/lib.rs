@@ -17,3 +17,5 @@ mod pgp_jni;
 
 #[cfg(test)]
 mod pgp_tests;
+#[cfg(test)]
+mod pgp_edge_tests;
