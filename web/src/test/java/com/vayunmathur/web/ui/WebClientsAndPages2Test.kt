@@ -72,10 +72,9 @@ class WebClientsAndPages2Test {
         }
     }
 
-    @Test fun searchResultsPageShowsTabsAndFallbackAction() {
-        var fallback: String? = null
+    @Test fun searchResultsPageShowsTabs() {
         rule.setContent {
-            SearchResultsPage(query = "cats", onOpenResult = {}, onOpenFallback = { fallback = it })
+            SearchResultsPage(query = "cats", onOpenResult = {})
         }
         rule.waitForIdle()
         rule.onNodeWithText("Web", substring = true).assertIsDisplayed()
@@ -83,12 +82,11 @@ class WebClientsAndPages2Test {
         // The search itself runs against the real API client, which has no
         // network in tests; its result/error rendering is covered by the
         // text/news list tests, so here only the page chrome is asserted.
-        assertEquals(null, fallback)
     }
 
     @Test fun searchResultsTabsSwitchKinds() {
         rule.setContent {
-            SearchResultsPage(query = "dogs", onOpenResult = {}, onOpenFallback = {})
+            SearchResultsPage(query = "dogs", onOpenResult = {})
         }
         rule.waitForIdle()
         rule.onNodeWithText("News", substring = true).performClick()

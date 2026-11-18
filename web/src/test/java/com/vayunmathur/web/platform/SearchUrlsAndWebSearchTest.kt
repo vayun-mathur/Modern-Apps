@@ -42,13 +42,12 @@ class SearchUrlsAndWebSearchTest {
     @Test fun webSearchResponseDecodesServerShape() {
         val json = Json { ignoreUnknownKeys = true }
         val resp = json.decodeFromString<WebSearchResponse>(
-            """{"type":"images","query":"cats","images":[{"title":"Cat","image_url":"https://i/1.png","thumbnail":"https://i/t.png","source_url":"https://s/1"}],"text":null,"news":null,"fallback_url":"https://ddg.example"}"""
+            """{"type":"images","query":"cats","images":[{"title":"Cat","image_url":"https://i/1.png","thumbnail":"https://i/t.png","source_url":"https://s/1"}],"text":null,"news":null}"""
         )
         assertEquals("images", resp.kind)
         assertEquals("cats", resp.query)
         assertEquals("https://i/1.png", resp.images?.single()?.imageUrl)
         assertEquals("https://s/1", resp.images?.single()?.sourceUrl)
-        assertEquals("https://ddg.example", resp.fallbackUrl)
     }
 
     @Test fun webSearchResponseDefaultsAndError() {

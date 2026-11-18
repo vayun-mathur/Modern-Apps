@@ -3,7 +3,6 @@ package com.vayunmathur.web.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -29,7 +28,6 @@ import com.vayunmathur.library.ui.DesktopMaxWidthContainer
 import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.MaterialTheme
-import com.vayunmathur.library.ui.OutlinedButton
 import com.vayunmathur.library.ui.Tab
 import com.vayunmathur.library.ui.TabRow
 import com.vayunmathur.library.ui.Text
@@ -39,7 +37,6 @@ import com.vayunmathur.web.R
 import com.vayunmathur.web.data.WebSearchKind
 import com.vayunmathur.web.data.WebSearchRepository
 import com.vayunmathur.web.data.WebSearchResponse
-import com.vayunmathur.web.platform.BrowserUtils
 import com.vayunmathur.web.platform.ContentFilters
 import com.vayunmathur.web.platform.SearchEngine
 import kotlinx.coroutines.launch
@@ -61,7 +58,6 @@ import kotlinx.coroutines.launch
 fun SearchResultsPage(
     query: String,
     onOpenResult: (String) -> Unit,
-    onOpenFallback: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -162,31 +158,18 @@ fun SearchResultsPage(
                         failure != null && response == null -> SearchErrorState(
                             message = failure.orEmpty(),
                             onRetry = { load(1) },
-                            onOpenFallback = {
-                                onOpenFallback(
-                                    BrowserUtils.toNavigationUrl(query, SearchEngine.DUCKDUCKGO),
-                                )
-                            },
                         )
 
                         else -> {
                             val resp = response
-                            // Degraded server reply (DDG blocked): lists are empty but
-                            // error/fallback_url are set.
+                            // Degraded server reply: lists are empty and an
+                            // upstream error is set.
                             if (resp?.error != null && resp.text.isNullOrEmpty() &&
                                 resp.images.isNullOrEmpty() && resp.news.isNullOrEmpty()
                             ) {
                                 SearchErrorState(
                                     message = resp.error.orEmpty(),
                                     onRetry = { load(1) },
-                                    onOpenFallback = {
-                                        onOpenFallback(
-                                            resp.fallbackUrl ?: BrowserUtils.toNavigationUrl(
-                                                query,
-                                                SearchEngine.DUCKDUCKGO,
-                                            ),
-                                        )
-                                    },
                                 )
                             } else when (kind) {
                                 WebSearchKind.TEXT -> SearchTextResults(
@@ -198,7 +181,6 @@ fun SearchResultsPage(
                                 WebSearchKind.IMAGES -> SearchImageResults(
                                     query = query,
                                     onOpenResult = onOpenResult,
-                                    onOpenFallback = onOpenFallback,
                                 )
                                 WebSearchKind.NEWS -> SearchNewsResults(
                                     items = resp?.news.orEmpty(),
@@ -217,7 +199,6 @@ fun SearchResultsPage(
 private fun SearchErrorState(
     message: String,
     onRetry: () -> Unit,
-    onOpenFallback: () -> Unit,
 ) {
     Column(
         Modifier.fillMaxSize().padding(24.dp),
@@ -236,12 +217,7 @@ private fun SearchErrorState(
             )
         }
         Spacer(Modifier.height(16.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Button(onClick = onRetry) { Text(stringResource(R.string.retry)) }
-            OutlinedButton(onClick = onOpenFallback) {
-                Text(stringResource(R.string.search_open_classic))
-            }
-        }
+        Button(onClick = onRetry) { Text(stringResource(R.string.retry)) }
     }
 }
 
@@ -256,6 +232,5 @@ private fun appendPage(
         news = (previous.news.orEmpty() + next.news.orEmpty()).ifEmpty { null },
         // Images paginate inside SearchImageResults, which owns its own accumulation.
         error = next.error,
-        fallbackUrl = next.fallbackUrl,
     )
 }

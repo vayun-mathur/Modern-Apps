@@ -120,7 +120,6 @@
     <string name="search_failed">Search failed</string>
     <string name="search_no_results">No results found</string>
     <string name="search_more_results">More results</string>
-    <string name="search_open_classic">Open classic search</string>
     <string name="retry">Retry</string>
     <plurals name="shields_blocked_count">
         <item quantity="one">1 blocked on this page</item>

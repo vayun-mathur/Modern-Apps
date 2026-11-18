@@ -233,7 +233,6 @@ internal fun BrowserContent(
                 SearchResultsPage(
                     query = nativeSearchQuery(activeTab.url),
                     onOpenResult = { url -> onOpenUrl(activeTab, url) },
-                    onOpenFallback = { url -> onOpenUrl(activeTab, url) },
                     modifier = Modifier.fillMaxSize(),
                 )
             }

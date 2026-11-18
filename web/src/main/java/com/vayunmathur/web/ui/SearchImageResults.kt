@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -43,9 +42,7 @@ import com.vayunmathur.web.data.WebSearchImageItem
 import com.vayunmathur.web.data.WebSearchKind
 import com.vayunmathur.web.data.WebSearchRepository
 import com.vayunmathur.web.data.WebSearchResponse
-import com.vayunmathur.web.platform.BrowserUtils
 import com.vayunmathur.web.platform.ContentFilters
-import com.vayunmathur.web.platform.SearchEngine
 import kotlinx.coroutines.launch
 
 /**
@@ -58,7 +55,6 @@ import kotlinx.coroutines.launch
 fun SearchImageResults(
     query: String,
     onOpenResult: (String) -> Unit,
-    onOpenFallback: (String) -> Unit,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -83,7 +79,7 @@ fun SearchImageResults(
                 val fetched = it.images.orEmpty()
                 if (requestedPage == 1) {
                     items = fetched
-                    // Degraded server reply (DDG blocked): empty list + error set.
+                    // Degraded server reply: empty list + upstream error set.
                     degraded = if (fetched.isEmpty() && it.error != null) it else null
                 } else {
                     items = items + fetched
@@ -108,10 +104,7 @@ fun SearchImageResults(
         }
         errorState != null && items.isEmpty() -> SearchImageErrorState(
             message = errorState.error.orEmpty(),
-            fallbackUrl = errorState.fallbackUrl,
-            query = query,
             onRetry = { load(1) },
-            onOpenFallback = onOpenFallback,
         )
         items.isEmpty() -> EmptyState(
             title = stringResource(R.string.search_no_results),
@@ -151,10 +144,7 @@ fun SearchImageResults(
 @Composable
 private fun SearchImageErrorState(
     message: String,
-    fallbackUrl: String?,
-    query: String,
     onRetry: () -> Unit,
-    onOpenFallback: (String) -> Unit,
 ) {
     Column(
         Modifier.fillMaxSize().padding(24.dp),
@@ -173,15 +163,6 @@ private fun SearchImageErrorState(
             )
         }
         Spacer(Modifier.height(16.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Button(onClick = onRetry) { Text(stringResource(R.string.retry)) }
-            OutlinedButton(onClick = {
-                onOpenFallback(
-                    fallbackUrl ?: BrowserUtils.toNavigationUrl(query, SearchEngine.DUCKDUCKGO),
-                )
-            }) {
-                Text(stringResource(R.string.search_open_classic))
-            }
-        }
+        Button(onClick = onRetry) { Text(stringResource(R.string.retry)) }
     }
 }

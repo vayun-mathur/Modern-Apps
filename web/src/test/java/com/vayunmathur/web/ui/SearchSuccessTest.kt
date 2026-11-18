@@ -69,7 +69,7 @@ class SearchSuccessTest {
         }
         var opened: String? = null
         rule.setContent {
-            SearchResultsPage(query = "kotlin", onOpenResult = { opened = it }, onOpenFallback = {})
+            SearchResultsPage(query = "kotlin", onOpenResult = { opened = it })
         }
         awaitNode("Result One")
         rule.onNodeWithText("Result One").assertIsDisplayed()
@@ -89,7 +89,7 @@ class SearchSuccessTest {
             )
         }
         rule.setContent {
-            SearchResultsPage(query = "paging", onOpenResult = {}, onOpenFallback = {})
+            SearchResultsPage(query = "paging", onOpenResult = {})
         }
         awaitNode("Page1Result")
         rule.onNodeWithText("More results", substring = true).performClick()
@@ -112,7 +112,7 @@ class SearchSuccessTest {
         }
         var opened: String? = null
         rule.setContent {
-            SearchResultsPage(query = "headlines", onOpenResult = { opened = it }, onOpenFallback = {})
+            SearchResultsPage(query = "headlines", onOpenResult = { opened = it })
         }
         awaitNode("Web", )
         rule.onNodeWithText("News").performClick()
@@ -134,7 +134,7 @@ class SearchSuccessTest {
             )
         }
         rule.setContent {
-            SearchResultsPage(query = "cats", onOpenResult = {}, onOpenFallback = {})
+            SearchResultsPage(query = "cats", onOpenResult = {})
         }
         awaitNode("Images")
         rule.onNodeWithText("Images").performClick()
@@ -142,19 +142,16 @@ class SearchSuccessTest {
         awaitNode("More results")
     }
 
-    @Test fun degradedResponseShowsErrorWithFallback() {
+    @Test fun degradedResponseShowsErrorWithoutFallback() {
         stubSearch { q, _, _, _ ->
-            WebSearchResponse(kind = "text", query = q, text = emptyList(), error = "upstream blocked", fallbackUrl = "https://fallback.example/?q=$q")
+            WebSearchResponse(kind = "text", query = q, text = emptyList(), error = "upstream blocked")
         }
-        var fallback: String? = null
         rule.setContent {
-            SearchResultsPage(query = "blockedq", onOpenResult = {}, onOpenFallback = { fallback = it })
+            SearchResultsPage(query = "blockedq", onOpenResult = {})
         }
         awaitNode("Search failed")
         awaitNode("upstream blocked")
-        rule.onNode(hasText("Open classic search") and androidx.compose.ui.test.hasClickAction()).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
-        rule.waitForIdle()
-        assertEquals("https://fallback.example/?q=blockedq", fallback)
+        assertTrue(rule.onAllNodes(hasText("Open classic search")).fetchSemanticsNodes().isEmpty())
     }
 
     @Test fun transportFailureShowsErrorAndRetry() {
@@ -165,7 +162,7 @@ class SearchSuccessTest {
             WebSearchResponse(kind = "text", query = q, text = listOf(WebSearchTextItem(title = "Recovered", url = "https://r.example", snippet = "")))
         }
         rule.setContent {
-            SearchResultsPage(query = "flaky", onOpenResult = {}, onOpenFallback = {})
+            SearchResultsPage(query = "flaky", onOpenResult = {})
         }
         awaitNode("Search failed")
         rule.onNode(hasText("Retry") and androidx.compose.ui.test.hasClickAction()).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
@@ -177,7 +174,7 @@ class SearchSuccessTest {
     @Test fun emptyResultsShowEmptyState() {
         stubSearch { q, _, _, _ -> WebSearchResponse(kind = "text", query = q, text = emptyList()) }
         rule.setContent {
-            SearchResultsPage(query = "nothing", onOpenResult = {}, onOpenFallback = {})
+            SearchResultsPage(query = "nothing", onOpenResult = {})
         }
         awaitNode("No results")
     }
@@ -194,7 +191,7 @@ class SearchSuccessTest {
             )
         }
         rule.setContent {
-            SearchImageResults(query = "dogs", onOpenResult = {}, onOpenFallback = {})
+            SearchImageResults(query = "dogs", onOpenResult = {})
         }
         awaitNode("Search failed")
         rule.onNode(hasText("Retry") and androidx.compose.ui.test.hasClickAction()).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)

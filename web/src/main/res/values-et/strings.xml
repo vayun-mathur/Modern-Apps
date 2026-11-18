@@ -121,7 +121,6 @@
     <string name="search_failed">Otsimine ei õnnestunud</string>
     <string name="search_no_results">Tulemusi ei leidu</string>
     <string name="search_more_results">Järgmised tulemused</string>
-    <string name="search_open_classic">Ava klassikaline otsing</string>
     <plurals name="shields_blocked_count">
         <item quantity="one">%1$d on sellel lehel blokeeritud</item>
         <item quantity="other">%1$d on sellel lehel blokeeritud</item>

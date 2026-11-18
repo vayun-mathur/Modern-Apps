@@ -18,7 +18,6 @@ data class WebSearchResponse(
     val images: List<WebSearchImageItem>? = null,
     val news: List<WebSearchNewsItem>? = null,
     val error: String? = null,
-    @SerialName("fallback_url") val fallbackUrl: String? = null,
 )
 
 /** Immutable value describing web search text item. */

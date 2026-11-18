@@ -270,7 +270,7 @@ class BrowserInteractionTest {
 
     @Test fun searchImageResultsComposes() {
         rule.setContent {
-            SearchImageResults(query = "kittens", onOpenResult = {}, onOpenFallback = {})
+            SearchImageResults(query = "kittens", onOpenResult = {})
         }
         rule.waitForIdle()
         // It starts in the loading state while its fetch runs with no network.
