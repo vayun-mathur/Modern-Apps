@@ -16,6 +16,8 @@
 
 use khronos_egl as egl;
 use std::os::raw::c_void;
+#[cfg(test)]
+mod egl_tests;
 
 /// EGL API instance: dynamically loaded `libEGL.so` (EGL 1.4 entry points —
 /// everything this engine needs is 1.0-era core).

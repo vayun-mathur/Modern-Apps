@@ -8,6 +8,8 @@ use crate::avatar::MAX_BONES;
 use crate::gles::renderer::GlesRenderer;
 use crate::mesh::YuuVertex;
 use crate::vulkan::renderer::YuuRenderer;
+#[cfg(test)]
+mod renderer_tests;
 
 /// Which GPU backend drew the frame. `create_renderer` tries Vulkan first,
 /// falls back to GLES, and fails only when both fail.

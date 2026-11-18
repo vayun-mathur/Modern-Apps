@@ -9,6 +9,8 @@ use crate::avatar::MAX_BONES;
 use crate::mesh::YuuVertex;
 use ash::vk;
 use std::mem;
+#[cfg(test)]
+mod buffers_tests;
 
 /// One skinned vertex: position + normal + UV + joints + weights. Layout must
 /// match `yuu_avatar.vert` (locations 0..4).

@@ -206,15 +206,21 @@ fn close_fd(fd: jint) {
 fn close_fd(_fd: jint) {}
 
 /// Pose preset ids as JSON (`["idle","wave",...]`) for the gallery.
+fn poses_json() -> String {
+    serde_json::to_string(&pose::preset_poses().iter().map(|p| &p.id).collect::<Vec<_>>())
+        .unwrap_or_else(|_| "[]".to_string())
+}
+
+#[cfg(test)]
+mod lib_tests;
+
+/// Pose preset ids as JSON (`["idle","wave",...]`) for the gallery.
 #[no_mangle]
 pub extern "system" fn Java_com_vayunmathur_library_avatar_YuuAvatarNative_nativeGetPosesJson<'l>(
     mut env: EnvUnowned<'l>,
     _class: JClass<'l>,
 ) -> jstring {
-    let json = serde_json::to_string(
-        &pose::preset_poses().iter().map(|p| &p.id).collect::<Vec<_>>(),
-    )
-    .unwrap_or_else(|_| "[]".to_string());
+    let json = poses_json();
     env.with_env(|env| -> jni::errors::Result<jstring> {
         let null = std::ptr::null_mut();
         match env.new_string(json) {

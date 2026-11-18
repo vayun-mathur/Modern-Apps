@@ -162,3 +162,5 @@ pub fn ensure_engine() {
 include!("engine_config.rs");
 include!("engine_frame.rs");
 include!("engine_lifecycle.rs");
+#[cfg(test)]
+mod engine_coverage_tests;

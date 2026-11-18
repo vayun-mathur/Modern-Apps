@@ -43,15 +43,72 @@ impl Swapchain {
     /// rotation_radians): whether width/height swap for the aspect ratio, and
     /// the clip-space Z rotation to prepend to the view-projection.
     pub fn pre_rotation(&self) -> (bool, f32) {
-        use vk::SurfaceTransformFlagsKHR as T;
-        match self.pre_transform {
-            t if t == T::ROTATE_90 => (true, std::f32::consts::FRAC_PI_2),
-            t if t == T::ROTATE_180 => (false, std::f32::consts::PI),
-            t if t == T::ROTATE_270 => (true, std::f32::consts::FRAC_PI_2 * 3.0),
-            _ => (false, 0.0),
+        pre_rotation_for(self.pre_transform)
+    }
+}
+
+/// Map a surface pre-transform to (swap_aspect, rotation_radians).
+pub fn pre_rotation_for(pre_transform: vk::SurfaceTransformFlagsKHR) -> (bool, f32) {
+    use vk::SurfaceTransformFlagsKHR as T;
+    match pre_transform {
+        t if t == T::ROTATE_90 => (true, std::f32::consts::FRAC_PI_2),
+        t if t == T::ROTATE_180 => (false, std::f32::consts::PI),
+        t if t == T::ROTATE_270 => (true, std::f32::consts::FRAC_PI_2 * 3.0),
+        _ => (false, 0.0),
+    }
+}
+
+
+/// Choose the surface format: prefer B8G8R8A8_UNORM (Pixel gralloc rejects
+/// SRGB); if the first format is SRGB, fall back to any UNORM offered.
+pub fn choose_format(formats: &[vk::SurfaceFormatKHR]) -> Option<vk::SurfaceFormatKHR> {
+    let mut chosen = formats.first().copied()?;
+    for fmt in formats {
+        if fmt.format == vk::Format::B8G8R8A8_UNORM {
+            chosen = *fmt;
+            break;
+        }
+    }
+    if chosen.format == vk::Format::B8G8R8A8_SRGB {
+        if let Some(&f) = formats.iter().find(|f| {
+            f.format == vk::Format::B8G8R8A8_UNORM || f.format == vk::Format::R8G8B8A8_UNORM
+        }) {
+            chosen = f;
+        }
+    }
+    Some(chosen)
+}
+
+/// Choose the present mode: MAILBOX when available, FIFO otherwise.
+pub fn choose_present_mode(modes: &[vk::PresentModeKHR]) -> vk::PresentModeKHR {
+    if modes.contains(&vk::PresentModeKHR::MAILBOX) {
+        vk::PresentModeKHR::MAILBOX
+    } else {
+        vk::PresentModeKHR::FIFO
+    }
+}
+
+/// Choose the swapchain extent: the surface's current extent when fixed
+/// (width != u32::MAX), else the requested size; always at least 1x1.
+pub fn choose_extent(caps: &vk::SurfaceCapabilitiesKHR, width: u32, height: u32) -> vk::Extent2D {
+    if caps.current_extent.width == u32::MAX {
+        vk::Extent2D { width: width.max(1), height: height.max(1) }
+    } else {
+        vk::Extent2D {
+            width: caps.current_extent.width.max(1),
+            height: caps.current_extent.height.max(1),
         }
     }
 }
+
+/// Choose the image count: min+1, capped by max (0 means unbounded, cap 3).
+pub fn choose_image_count(caps: &vk::SurfaceCapabilitiesKHR) -> u32 {
+    (caps.min_image_count + 1)
+        .min(if caps.max_image_count == 0 { 3 } else { caps.max_image_count })
+}
+
+#[cfg(test)]
+mod swapchain_tests;
 
 impl Swapchain {
     /// Create from a live context at `width` x `height`. Fails cleanly.
@@ -72,36 +129,10 @@ impl Swapchain {
             .surface_loader
             .get_physical_device_surface_present_modes(ctx.physical_device, ctx.surface)
             .map_err(|e| format!("present_modes {e:?}"))?;
-        // Fix black screen: Pixel gralloc rejects SRGB 0x3b, prefer B8G8R8A8_UNORM.
-        let mut chosen_format = formats.first().copied().ok_or("no surface formats")?;
-        for fmt in &formats {
-            if fmt.format == vk::Format::B8G8R8A8_UNORM {
-                chosen_format = *fmt;
-                break;
-            }
-        }
-        if chosen_format.format == vk::Format::B8G8R8A8_SRGB {
-            if let Some(&f) = formats.iter().find(|f| {
-                f.format == vk::Format::B8G8R8A8_UNORM || f.format == vk::Format::R8G8B8A8_UNORM
-            }) {
-                chosen_format = f;
-            }
-        }
-        let extent = if caps.current_extent.width == u32::MAX {
-            vk::Extent2D { width, height }
-        } else {
-            vk::Extent2D {
-                width: caps.current_extent.width.max(1),
-                height: caps.current_extent.height.max(1),
-            }
-        };
-        let present_mode = if present_modes.contains(&vk::PresentModeKHR::MAILBOX) {
-            vk::PresentModeKHR::MAILBOX
-        } else {
-            vk::PresentModeKHR::FIFO
-        };
-        let image_count =
-            (caps.min_image_count + 1).min(if caps.max_image_count == 0 { 3 } else { caps.max_image_count });
+        let chosen_format = choose_format(&formats).ok_or("no surface formats")?;
+        let extent = choose_extent(&caps, width, height);
+        let present_mode = choose_present_mode(&present_modes);
+        let image_count = choose_image_count(&caps);
         let loader = ash::khr::swapchain::Device::new(&ctx.instance, &ctx.device);
         let pre_transform =
             if caps.supported_transforms.contains(vk::SurfaceTransformFlagsKHR::IDENTITY) {

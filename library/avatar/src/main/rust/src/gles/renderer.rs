@@ -17,6 +17,8 @@ use crate::gles::egl::Egl;
 use crate::gles::shaders::{self, U_ALBEDO, U_BONES, U_CAM_POS, U_SUN_DIR, U_VIEW_PROJ};
 use crate::mesh::YuuVertex;
 use glow::HasContext as _;
+#[cfg(test)]
+mod renderer_tests;
 
 /// Static avatar mesh budget: the procedural fallback is ~1k verts; 64k
 /// leaves margin for a detailed glTF base mesh.

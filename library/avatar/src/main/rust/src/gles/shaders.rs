@@ -23,6 +23,8 @@ pub const U_CAM_POS: &str = "uCamPos";
 pub const U_BONES: &str = "uBones";
 /// Albedo sampler.
 pub const U_ALBEDO: &str = "uAlbedo";
+#[cfg(test)]
+mod shaders_tests;
 
 /// Compile `VERT_SRC` + `FRAG_SRC`, link, return the program. On any failure
 /// the returned string carries the shader/program info log from the driver.

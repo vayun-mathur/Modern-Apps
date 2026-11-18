@@ -146,3 +146,5 @@ impl YuuRenderer {
 // files so each file stays under the 500-line Rust limit (same module scope via `include!`).
 include!("renderer_albedo.rs");
 include!("renderer_frame.rs");
+#[cfg(test)]
+mod renderer_tests;
