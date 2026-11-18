@@ -21,3 +21,6 @@ subtle.workspace = true
 rand.workspace = true
 rand_core.workspace = true
 jni.workspace = true
+
+[dev-dependencies]
+jni = { workspace = true, features = ["invocation"] }

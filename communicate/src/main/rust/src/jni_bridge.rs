@@ -426,3 +426,7 @@ fn decrypt_message_inner<'a>(
 
 include!("jni_bridge_part1.rs");
 include!("jni_bridge_part2.rs");
+
+#[cfg(test)]
+#[path = "jni_bridge_tests.rs"]
+mod jni_tests;
