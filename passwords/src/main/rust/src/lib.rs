@@ -72,6 +72,9 @@ fn from_json_std(s: &str) -> Option<Vec<EntryMap>> {
     let mut out: Vec<EntryMap> = Vec::new();
     skip_ws(bytes, &mut i);
     if i < bytes.len() && bytes[i] == b']' {
+        i += 1;
+        skip_ws(bytes, &mut i);
+        if i != bytes.len() { return None; }
         return Some(out);
     }
     loop {
@@ -103,10 +106,12 @@ fn from_json_std(s: &str) -> Option<Vec<EntryMap>> {
         out.push(map);
         skip_ws(bytes, &mut i);
         if i >= bytes.len() { return None; }
-        if bytes[i] == b']' { break; }
+        if bytes[i] == b']' { i += 1; break; }
         if bytes[i] != b',' { return None; }
         i += 1;
     }
+    skip_ws(bytes, &mut i);
+    if i != bytes.len() { return None; }
     Some(out)
 }
 
@@ -139,10 +144,26 @@ fn parse_json_string(bytes: &[u8], pos: &mut usize) -> Option<String> {
                     let hex_slice = &bytes[*pos + 1..*pos + 5];
                     let hex_str = String::from_utf8_lossy(hex_slice);
                     let code = u32::from_str_radix(&hex_str, 16).ok()?;
-                    out.push(std::char::from_u32(code)?);
-                    *pos += 4;
+                    if (0xD800..0xDC00).contains(&code) {
+                        // High surrogate: org.json escapes astral chars as a
+                        // \uXXXX\uXXXX pair; combine into one scalar value.
+                        if *pos + 10 >= bytes.len() { return None; }
+                        if bytes[*pos + 5] != b'\\' || bytes[*pos + 6] != b'u' { return None; }
+                        let lo_slice = &bytes[*pos + 7..*pos + 11];
+                        let lo_str = String::from_utf8_lossy(lo_slice);
+                        let lo = u32::from_str_radix(&lo_str, 16).ok()?;
+                        if !(0xDC00..0xE000).contains(&lo) { return None; }
+                        let c = 0x10000 + ((code - 0xD800) << 10) + (lo - 0xDC00);
+                        out.push(std::char::from_u32(c)?);
+                        *pos += 10;
+                    } else if (0xDC00..0xE000).contains(&code) {
+                        return None;
+                    } else {
+                        out.push(std::char::from_u32(code)?);
+                        *pos += 4;
+                    }
                 }
-                _ => out.push(esc as char),
+                _ => return None,
             }
             *pos += 1;
         } else {
@@ -217,7 +238,21 @@ pub fn export_kdbx(password: &str, entries_json: &str) -> Option<Vec<u8>> {
     Some(buf)
 }
 
+/// Testable dispatch for the JNI import entry point: `None` inputs (failed
+/// JNI string/byte-array conversion) and vault failures both map to `None`,
+/// which the thin JNI wrapper turns into a Java `null`.
+pub(crate) fn import_for_jni(password: Option<String>, data: Option<Vec<u8>>) -> Option<String> {
+    import_kdbx(&password?, &data?)
+}
+
+/// Testable dispatch for the JNI export entry point; see [`import_for_jni`].
+pub(crate) fn export_for_jni(password: Option<String>, entries_json: Option<String>) -> Option<Vec<u8>> {
+    export_kdbx(&password?, &entries_json?)
+}
+
 mod jni_bridge;
 
+#[cfg(test)]
+mod json_tests;
 #[cfg(test)]
 mod tests;
