@@ -25,6 +25,7 @@ mod session;
 mod timers;
 #[cfg(test)] mod tunn_tests;
 #[cfg(test)] mod misc_tests;
+#[cfg(test)] mod coverage_tests;
 
 use rand::{SeedableRng, rngs::StdRng};
 

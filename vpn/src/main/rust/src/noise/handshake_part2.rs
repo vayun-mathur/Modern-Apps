@@ -55,4 +55,143 @@ mod tests {
         aead_chacha20_open(&mut [], &key, counter, &encrypted_nothing, &aad)
             .expect("Should open what we just sealed");
     }
+
+    #[test]
+    fn tai64n_parse_ordering_and_zero() {
+        let mut buf = [0u8; 12];
+        buf[0..8].copy_from_slice(&100u64.to_be_bytes());
+        buf[8..12].copy_from_slice(&5u32.to_be_bytes());
+        let a = Tai64N::parse(&buf).unwrap();
+        let mut buf2 = buf;
+        buf2[8..12].copy_from_slice(&6u32.to_be_bytes());
+        let b = Tai64N::parse(&buf2).unwrap();
+        assert!(b.after(&a));
+        assert!(!a.after(&b));
+        assert!(!a.after(&a));
+        let zero = Tai64N::zero();
+        assert!(a.after(&zero));
+        assert_eq!(format!("{:?}", a).contains("secs"), true);
+    }
+
+    #[test]
+    fn timestamper_stamp_is_12_bytes_and_increasing() {
+        let s = TimeStamper::new();
+        let t1 = s.stamp();
+        let t2 = s.stamp();
+        assert_eq!(t1.len(), 12);
+        // Big-endian secs+nanos encoding is lexicographically non-decreasing.
+        assert!(t2 >= t1);
+    }
+
+    #[test]
+    fn noise_params_debug_redacts_and_key_rotation() {
+        let priv_a = x25519::StaticSecret::from([41u8; 32]);
+        let pub_a = x25519::PublicKey::from(&priv_a);
+        let priv_b = x25519::StaticSecret::from([42u8; 32]);
+        let pub_b = x25519::PublicKey::from(&priv_b);
+        let mut params = NoiseParams::new(priv_a, pub_a, pub_b, None);
+        let dbg = format!("{:?}", params);
+        assert!(dbg.contains("redacted"));
+        params.set_preshared_key(Some([9u8; 32]));
+        assert_eq!(params.preshared_key, Some([9u8; 32]));
+        let new_priv = x25519::StaticSecret::from([43u8; 32]);
+        let new_pub = x25519::PublicKey::from(&new_priv);
+        params.set_static_private(new_priv, new_pub);
+        assert_eq!(params.static_public.as_bytes(), new_pub.as_bytes());
+        // InitSent state Debug also redacts the ephemeral secret.
+        let dbg2 = format!(
+            "{:?}",
+            HandshakeState::InitSent(HandshakeInitSentState {
+                local_index: IndexTable::from_os_rng().new_index(),
+                hash: [0u8; 32],
+                chaining_key: [0u8; 32],
+                ephemeral_private: x25519::ReusableSecret::random_from_rng(&mut crate::os_rng()),
+                time_sent: Instant::now(),
+            })
+        );
+        assert!(dbg2.contains("redacted"));
+    }
+
+    #[test]
+    fn handshake_cookie_reply_flow_and_state_guards() {
+        let a_priv = x25519::StaticSecret::from([51u8; 32]);
+        let b_priv = x25519::StaticSecret::from([52u8; 32]);
+        let a_pub = x25519::PublicKey::from(&a_priv);
+        let b_pub = x25519::PublicKey::from(&b_priv);
+        let mut a = Handshake::new(a_priv, a_pub, b_pub, IndexTable::from_os_rng(), None);
+        let b = Handshake::new(b_priv, b_pub, a_pub, IndexTable::from_os_rng(), None);
+        // No in-flight handshake: response/cookie guards reject.
+        assert!(matches!(
+            a.receive_handshake_response(&WgHandshakeResp::new(1, 2, [0u8; 32])),
+            Err(WireGuardError::UnexpectedPacket)
+        ));
+        assert!(matches!(
+            a.receive_cookie_reply(&WgCookieReply::new()),
+            Err(WireGuardError::UnexpectedPacket)
+        ));
+        // Anonymous parse of A's initiation recovers A's static public key.
+        let init_pkt = a.format_handshake_initiation();
+        let init_ref = <WgHandshakeInit as zerocopy::FromBytes>::ref_from_bytes(init_pkt.as_bytes()).unwrap();
+        let half = parse_handshake_anon(&b.params.static_private, &b.params.static_public, init_ref).unwrap();
+        assert_eq!(half.peer_static_public, a_pub.to_bytes());
+        assert_eq!(half.peer_index, init_ref.sender_idx.get());
+        // Cookie reply with the wrong receiver index is rejected.
+        let mac1 = a.cookies.last_mac1.expect("mac1 stored");
+        let cookie_key = b2s_hash(LABEL_COOKIE, b_pub.as_bytes());
+        let mut reply = WgCookieReply::new();
+        reply.receiver_idx.set(0xFFFF_FFFF);
+        let cipher = <chacha20poly1305::XChaCha20Poly1305 as aead::KeyInit>::new_from_slice(&cookie_key).unwrap();
+        reply.encrypted_cookie.encrypted = [3u8; 16];
+        let tag = {
+            use aead::AeadInOut;
+            use chacha20poly1305::aead::inout::InOutBuf;
+            let iv = chacha20poly1305::XNonce::from(reply.nonce);
+            cipher
+                .encrypt_inout_detached(&iv, &mac1, InOutBuf::from(&mut reply.encrypted_cookie.encrypted[..]))
+                .unwrap()
+        };
+        reply.encrypted_cookie.tag = tag.into();
+        assert!(matches!(a.receive_cookie_reply(&reply), Err(WireGuardError::WrongIndex)));
+        // Correct index stores the cookie; clear_cookie removes it.
+        reply.receiver_idx.set(a.cookies.index);
+        // Re-encrypt for the (unchanged) nonce/mac1: cookie plaintext was altered
+        // in place above, so rebuild cleanly.
+        let mut reply = WgCookieReply::new();
+        reply.receiver_idx.set(a.cookies.index);
+        reply.encrypted_cookie.encrypted = [3u8; 16];
+        let tag = {
+            use aead::AeadInOut;
+            use chacha20poly1305::aead::inout::InOutBuf;
+            let iv = chacha20poly1305::XNonce::from(reply.nonce);
+            cipher
+                .encrypt_inout_detached(&iv, &mac1, InOutBuf::from(&mut reply.encrypted_cookie.encrypted[..]))
+                .unwrap()
+        };
+        reply.encrypted_cookie.tag = tag.into();
+        a.receive_cookie_reply(&reply).unwrap();
+        assert!(a.has_cookie());
+        a.clear_cookie();
+        assert!(!a.has_cookie());
+        // Expiry guards.
+        assert!(!a.is_expired());
+        a.set_expired();
+        assert!(a.is_expired());
+        assert!(!a.is_in_progress());
+        a.reset();
+        assert!(!a.is_expired());
+    }
+
+    #[test]
+    fn aead_open_rejects_wrong_key_and_mac_helpers() {
+        let mut buf = [0u8; 16];
+        aead_chacha20_seal(&mut buf, &[1u8; 32], 0, &[], &[0u8; 32]);
+        assert!(aead_chacha20_open(&mut [], &[2u8; 32], 0, &buf, &[0u8; 32]).is_err());
+        assert_eq!(b2s_keyed_mac_16_2(&[1u8; 32], b"a", b"b").len(), 16);
+        assert_ne!(
+            b2s_keyed_mac_16_2(&[1u8; 32], b"a", b"b"),
+            b2s_keyed_mac_16_2(&[1u8; 32], b"b", b"a")
+        );
+        assert_eq!(b2s_mac_24(&[1u8; 32], b"x").len(), 24);
+        assert_ne!(b2s_mac_24(&[1u8; 32], b"x"), b2s_mac_24(&[1u8; 32], b"y"));
+    }
 }

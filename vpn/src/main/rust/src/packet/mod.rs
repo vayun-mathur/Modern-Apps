@@ -14,6 +14,8 @@ pub use decode::*; pub use ip::*; pub use ipv4::*; pub use ipv6::*; pub use pool
 #[cfg(test)] mod util_tests;
 #[cfg(test)] mod ip_tests;
 #[cfg(test)] mod ipvx_extra_tests;
+#[cfg(test)] mod protocol_tests;
+#[cfg(test)] mod coverage_tests;
 pub use tcp::*; pub use udp::*; pub use util::*; pub use wg::*;
 
 pub struct Packet<Kind: ?Sized = [u8]> {

@@ -235,6 +235,45 @@ mod tests {
     }
 
     #[test]
+    fn b64e_and_os_rng_and_key_edges() {
+        assert_eq!(crate::b64e(&[0u8; 32]).len(), 44);
+        assert_eq!(decode_key(&crate::b64e(&[0u8; 32])), Some([0u8; 32]));
+        assert_eq!(decode_key("===="), None);
+        assert_eq!(decode_key(&hex::encode_upper([7u8; 32])), Some([7u8; 32]));
+        use rand::Rng;
+        let mut rng = crate::os_rng();
+        let a = rng.next_u64();
+        let b = rng.next_u64();
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn mtu_watcher_arithmetic() {
+        let base = crate::tun::MtuWatcher::new(1280);
+        assert_eq!(base.clone().get(), 1280);
+        let bigger = base.clone().increase(100).unwrap();
+        let mut bigger = bigger;
+        assert_eq!(bigger.get(), 1380);
+        let smaller = crate::tun::MtuWatcher::new(1280).decrease(280).unwrap();
+        let mut smaller = smaller;
+        assert_eq!(smaller.get(), 1000);
+        // Overflow of the i16 modifier / oversized step is rejected.
+        assert!(crate::tun::MtuWatcher::new(1280).increase(u16::MAX).is_none());
+        let mut low = crate::tun::MtuWatcher::new(100).decrease(1000).unwrap();
+        assert_eq!(low.get(), 0);
+    }
+
+    #[test]
+    fn sleepy_instant_monotonic() {
+        let t0 = crate::sleepyinstant::Instant::now();
+        let t1 = crate::sleepyinstant::Instant::now();
+        assert!(t1.checked_duration_since(t0).is_some());
+        assert_eq!(t0.checked_duration_since(t1), None);
+        assert_eq!(t0.duration_since(t1), std::time::Duration::ZERO);
+        assert!(t0.elapsed() >= std::time::Duration::ZERO);
+    }
+
+    #[test]
     fn decode_key_unpadded_base64() {
         let key = [1u8; 32];
         let b64 = crate::b64e(&key);
