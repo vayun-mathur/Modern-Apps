@@ -23,3 +23,4 @@ libc.workspace = true
 
 [dev-dependencies]
 rand = { workspace = true, features = ["std_rng"] }
+jni = { workspace = true, features = ["invocation"] }

@@ -262,3 +262,134 @@ fn dict_rejects_bad_geometry() {
     bad[8..12].copy_from_slice(&5u32.to_be_bytes());
     assert!(Dict::new(&bad, 0, bad.len()).is_none());
 }
+
+// ---------------------------------------------------------------------------
+// Whole-database fixture: 3 records in 2 grid cells, in the exact v5 layout
+// `Reader::from_map` walks. Rec 0 is an address, rec 1 a POI in the same
+// cell, rec 2 a place in a neighbouring cell.
+// ---------------------------------------------------------------------------
+
+const REC_COLS: [[i32; 10]; 3] = [
+    [3_777_493, -12_241_942, -1, 0, 0, 0, 0, 0, 0, 1],
+    [3_777_500, -12_241_900, 0, -1, 0, 0, 0, 0, -1, 3],
+    [3_800_000, -12_200_000, 1, -1, 1, 0, 0, 0, 1, 4],
+];
+
+fn cell_of(lat_e5: i32, lon_e5: i32) -> i64 {
+    ((lat_e5 as i64 - MIN_LAT as i64) / CELL) * COLS + (lon_e5 as i64 - MIN_LON as i64) / CELL
+}
+
+fn synthetic_db() -> Vec<u8> {
+    let dicts: [&[&str]; DICTS] = [
+        &["Alpha Cafe", "Beta Park", "Gamma Plaza"],
+        &["10", "20"],
+        &["Main St", "Oak Ave"],
+        &["Springfield"],
+        &["Illinois"],
+        &["US"],
+        &["00001", "00002"],
+    ];
+    let mut bodies: Vec<Vec<u8>> = dicts.iter().map(|d| dict_body(d, 2)).collect();
+    for c in 0..COLUMNS {
+        let vals: Vec<i32> = REC_COLS.iter().map(|r| r[c]).collect();
+        bodies.push(column_body(&vals, DELTA[c]));
+    }
+    let mut grid = Vec::new();
+    push_be32(&mut grid, 2);
+    grid.extend_from_slice(&cell_of(REC_COLS[0][0], REC_COLS[0][1]).to_be_bytes());
+    push_be32(&mut grid, 0);
+    grid.extend_from_slice(&cell_of(REC_COLS[2][0], REC_COLS[2][1]).to_be_bytes());
+    push_be32(&mut grid, 2);
+    bodies.push(grid);
+    bodies.push(column_body(&[0, 1, 2], true));
+    bodies.push(column_body(&[0, 1], true));
+    bodies.push(column_body(&[1, 2], false));
+    assert_eq!(bodies.len(), SECTIONS);
+
+    let mut out = Vec::new();
+    push_be32(&mut out, MAGIC);
+    push_be32(&mut out, VERSION);
+    push_be32(&mut out, REC_COLS.len() as u32);
+    for b in &bodies {
+        push_be32(&mut out, b.len() as u32);
+        out.extend_from_slice(b);
+    }
+    out
+}
+
+fn open_synthetic(bytes: &[u8]) -> Reader {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    static SEQ: AtomicUsize = AtomicUsize::new(0);
+    let path = std::env::temp_dir().join(format!("geocoder-synthetic-{}-{}.db", std::process::id(), SEQ.fetch_add(1, Ordering::Relaxed)));
+    std::fs::write(&path, bytes).expect("write synthetic db");
+    let r = Reader::open_path(&path);
+    let _ = std::fs::remove_file(&path);
+    r.expect("synthetic db parses")
+}
+
+#[test]
+fn synthetic_db_reverse_resolve_and_grid() {
+    let mut r = open_synthetic(&synthetic_db());
+    assert_eq!(r.n, 3);
+    assert_eq!(r.grid_index(cell_of(REC_COLS[0][0], REC_COLS[0][1])), Some(0));
+    assert_eq!(r.grid_index(cell_of(REC_COLS[2][0], REC_COLS[2][1])), Some(1));
+    assert_eq!(r.grid_index(42), None);
+
+    // Exact record position resolves to that record (distance zero wins).
+    assert_eq!(r.reverse(37.77493, -122.41942), Some(0));
+    // A hair east is nearer the POI than the address.
+    assert_eq!(r.reverse(37.775_00, -122.419_00), Some(1));
+    // The far cell's record, and nothing near the Gulf of Guinea.
+    assert_eq!(r.reverse(38.0, -122.0), Some(2));
+    assert_eq!(r.reverse(0.0, 0.0), None);
+
+    let a = r.resolve(0);
+    assert_eq!(a, ["37.77493", "-122.41942", "", "10", "Main St", "Springfield", "Illinois", "US", "00001", "1"]);
+    let b = r.resolve(1);
+    assert_eq!(b[2], "Alpha Cafe");
+    assert_eq!(b[3], "", "missing house id resolves empty");
+    assert_eq!(b[8], "", "missing postcode id resolves empty");
+    assert_eq!(b[9], "3");
+    let c = r.resolve(2);
+    assert_eq!(c[2], "Beta Park");
+    assert_eq!(c[4], "Oak Ave");
+    assert_eq!(c[9], "4");
+}
+
+#[test]
+fn synthetic_db_forward_and_name_search() {
+    let mut r = open_synthetic(&synthetic_db());
+    assert_eq!(r.forward("US", "Illinois", "Springfield", "Main St", 10), vec![0, 1]);
+    assert_eq!(r.forward("US", "Illinois", "Springfield", "Main St", 1), vec![0]);
+    assert_eq!(r.forward("US", "Illinois", "Springfield", "Oak Ave", 10), vec![2]);
+    assert!(r.forward("US", "Illinois", "Springfield", "Nowhere Rd", 10).is_empty());
+    assert!(r.forward("CA", "Illinois", "Springfield", "Main St", 10).is_empty());
+
+    assert_eq!(r.name_prefix_range("Alpha"), (0, 1));
+    assert_eq!(r.name_prefix_range("Beta"), (1, 2));
+    assert_eq!(r.search_name("Alpha", 10), vec![1]);
+    assert_eq!(r.search_name("Beta", 10), vec![2]);
+    assert_eq!(r.search_name("Gamma", 10), Vec::<i32>::new(), "in dict but no record");
+    assert!(r.search_name("", 10).is_empty());
+    assert!(r.search_name("Zzz", 10).is_empty());
+    assert_eq!(r.compare_key(0, [0, 0, 0, 0]), 0);
+    assert!(r.compare_key(2, [0, 0, 0, 0]) > 0);
+    assert!(r.compare_key(0, [0, 0, 0, 1]) < 0);
+}
+
+#[test]
+fn synthetic_db_rejects_bad_headers() {
+    let good = synthetic_db();
+    let mut bad_magic = good.clone();
+    bad_magic[0..4].copy_from_slice(&0xDEAD_BEEFu32.to_be_bytes());
+    let path = std::env::temp_dir().join(format!("geocoder-bad-{}-{}.db", std::process::id(), std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0)));
+    std::fs::write(&path, &bad_magic).expect("write");
+    assert!(Reader::open_path(&path).is_none(), "bad magic rejected");
+    let mut bad_ver = good.clone();
+    bad_ver[4..8].copy_from_slice(&4u32.to_be_bytes());
+    std::fs::write(&path, &bad_ver).expect("write");
+    assert!(Reader::open_path(&path).is_none(), "old version rejected");
+    std::fs::write(&path, &good[..good.len() / 2]).expect("write");
+    assert!(Reader::open_path(&path).is_none(), "truncated db rejected");
+    let _ = std::fs::remove_file(&path);
+}

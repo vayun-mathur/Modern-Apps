@@ -24,6 +24,9 @@ pub mod multilateration;
 pub mod position;
 pub mod wpsdb;
 
+#[cfg(test)]
+mod jni_tests;
+
 /// Estimated position.
 pub struct EstimatedPosition {
     /// estimated position
