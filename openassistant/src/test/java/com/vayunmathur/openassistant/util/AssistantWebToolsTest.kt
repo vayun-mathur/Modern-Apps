@@ -76,10 +76,8 @@ class AssistantWebToolsTest {
         val body = """{"type":"text","query":"q","error":"temporarily unavailable","fallback_url":"https://html.duckduckgo.com/html/?q=q"}"""
         val tools = AssistantWebTools(transport = { body }, nowMillis = { 1_000L })
         val out = tools.webSearch("q")
-        assertEquals(
-            "Error: search unavailable: temporarily unavailable (fallback: https://html.duckduckgo.com/html/?q=q)",
-            out,
-        )
+        assertEquals("Error: search unavailable: temporarily unavailable", out)
+        assertFalse(out.contains("duckduckgo", ignoreCase = true), out)
         assertEquals(null, tools.takeTemplate())
     }
 

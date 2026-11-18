@@ -22,7 +22,6 @@ data class WebSearchResponse(
     val images: List<WebSearchImageItem>? = null,
     val news: List<WebSearchNewsItem>? = null,
     val error: String? = null,
-    @SerialName("fallback_url") val fallbackUrl: String? = null,
 )
 
 /** One text result in a web-search response. */
@@ -124,8 +123,7 @@ class AssistantWebTools(
             return "Error: search unavailable: could not parse search response"
         }
         if (!response.error.isNullOrBlank()) {
-            val fb = response.fallbackUrl?.takeIf { it.isNotBlank() } ?: FALLBACK_URL
-            return "Error: search unavailable: ${response.error} (fallback: $fb)"
+            return "Error: search unavailable: ${response.error}"
         }
         val raw: List<Pair<String, Pair<String, String>>> = when (type) {
             "news" -> response.news.orEmpty().map { it.title to (it.url to it.snippet) }
@@ -209,7 +207,6 @@ class AssistantWebTools(
     companion object {
         const val SEARCH_URL = "https://api.maproj.org/api/search"
         const val READ_URL = "https://api.maproj.org/assistant/v1/read"
-        const val FALLBACK_URL = "https://html.duckduckgo.com/html/"
         const val EXPIRY_MILLIS: Long = 30 * 60_000L
         const val MAX_SEARCH_CHARS = 3000
         const val MAX_READ_CHARS = 6000
