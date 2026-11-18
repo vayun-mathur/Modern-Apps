@@ -251,7 +251,7 @@ fn parse_channel(renderer: &Value) -> std::result::Result<ChannelItem, String> {
     let url = channel_url_from_navigation_endpoint(renderer.obj("navigationEndpoint"))
         .unwrap_or_else(|| crate::parsing::channel_url(channel_id));
 
-    let subscriber_count = text_from_object(renderer.obj("videoCountText"))
+    let subscriber_count = text_from_object(renderer.obj("subscriberCountText"))
         .as_deref()
         .map_or(-1, parse_abbreviated_count);
 
