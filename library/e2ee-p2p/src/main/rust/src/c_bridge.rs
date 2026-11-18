@@ -417,10 +417,10 @@ pub unsafe extern "C" fn pqc_dsa_verify(
     let pub_slice = slice::from_raw_parts(dsa_pub, dsa_pub_len);
     let msg_slice = slice::from_raw_parts(msg, msg_len);
     let sig_slice = slice::from_raw_parts(sig, sig_len);
-    if crate::mldsa_verify_der(pub_slice, msg_slice, sig_slice) {
-        1
-    } else {
-        0
+    match crate::mldsa_verify_checked(pub_slice, msg_slice, sig_slice) {
+        Ok(true) => 1,
+        Ok(false) => 0,
+        Err(()) => -1,
     }
 }
 

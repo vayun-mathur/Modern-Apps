@@ -221,20 +221,19 @@ pub fn mldsa_sign_der(priv_der: &[u8], msg: &[u8]) -> Option<Vec<u8>> {
     Some(sig.to_vec())
 }
 
+/// Checked verify: `Err(())` is a parse error (bad key/signature encoding),
+/// `Ok` carries the cryptographic validity. Distinguishes the C ABI's -1 from 0.
+pub(crate) fn mldsa_verify_checked(pub_der: &[u8], msg: &[u8], sig: &[u8]) -> Result<bool, ()> {
+    let raw = spki_raw(pub_der, DSA_PK).ok_or(())?;
+    let pk = to_arr::<DSA_PK>(raw)
+        .and_then(|a| ml_dsa_65::PublicKey::try_from_bytes(a).ok())
+        .ok_or(())?;
+    let sig_arr: [u8; DSA_SIG] = sig.try_into().map_err(|_| ())?;
+    Ok(pk.verify(msg, &sig_arr, &[]))
+}
+
 pub fn mldsa_verify_der(pub_der: &[u8], msg: &[u8], sig: &[u8]) -> bool {
-    let raw = match spki_raw(pub_der, DSA_PK) {
-        Some(r) => r,
-        None => return false,
-    };
-    let pk = match to_arr::<DSA_PK>(raw).and_then(|a| ml_dsa_65::PublicKey::try_from_bytes(a).ok()) {
-        Some(p) => p,
-        None => return false,
-    };
-    let sig_arr: [u8; DSA_SIG] = match sig.try_into() {
-        Ok(a) => a,
-        Err(_) => return false,
-    };
-    pk.verify(msg, &sig_arr, &[])
+    mldsa_verify_checked(pub_der, msg, sig).unwrap_or(false)
 }
 
 mod jni_bridge;
@@ -242,3 +241,7 @@ mod c_bridge;
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod c_bridge_tests;
+#[cfg(test)]
+mod lib_tests;
