@@ -305,6 +305,10 @@ internal fun CameraViewModel.applyAntiBanding() {
         )
     } catch (e: IllegalArgumentException) {
         Log.status("SloMo", "Could not set anti-banding", e)
+    } catch (e: NullPointerException) {
+        // No bound camera (or a control with no Camera2 implementation):
+        // anti-banding is best-effort, never a crash of the slo-mo session.
+        Log.status("SloMo", "Could not set anti-banding", e)
     }
 }
 

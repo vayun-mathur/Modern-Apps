@@ -94,6 +94,9 @@ private fun CameraViewModel.buildSingleCapturePlan(pending: PendingStill): Singl
     } catch (e: IllegalArgumentException) {
         Log.status("CameraViewModel", "Camera2 control unavailable", e)
         null
+    } catch (e: NullPointerException) {
+        Log.status("CameraViewModel", "Camera2 control unavailable", e)
+        null
     }
     return SingleCapturePlan(
         capture = capture,
@@ -315,6 +318,14 @@ fun CameraViewModel.capturePhotoForResult(onSaved: (Bitmap?) -> Unit, onError: (
                 val mirror = mirrorCaptures
                 val thumbnail = try {
                     downscaledThumbnail(image, mirror)
+                } catch (e: IllegalStateException) {
+                    Log.error("CameraViewModel", "IMAGE_CAPTURE thumbnail decode failed", e)
+                    onError()
+                    return
+                } catch (e: IllegalArgumentException) {
+                    Log.error("CameraViewModel", "IMAGE_CAPTURE thumbnail decode failed", e)
+                    onError()
+                    return
                 } finally {
                     image.close()
                 }

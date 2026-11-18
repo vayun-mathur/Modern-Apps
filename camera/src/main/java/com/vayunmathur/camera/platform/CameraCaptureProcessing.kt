@@ -67,7 +67,11 @@ internal fun uprightCopy(src: Bitmap, rotationDegrees: Int, maxSide: Int): Bitma
  * for the result "data" thumbnail.
  */
 internal fun downscaledThumbnail(image: ImageProxy, mirror: Boolean): Bitmap {
-    val raw = image.toBitmap()
+    // toBitmap() is a platform type: a frame that fails YUV->RGB conversion
+    // comes back null, which must surface as a decode failure (the caller
+    // routes it to onError), not as an intrinsic-null NPE crash.
+    val raw: Bitmap? = image.toBitmap()
+    requireNotNull(raw) { "captured frame did not decode to a bitmap" }
     val matrix = Matrix().apply {
         postRotate(image.imageInfo.rotationDegrees.toFloat())
         if (mirror) postScale(-1f, 1f)

@@ -25,6 +25,11 @@ internal fun CameraViewModel.camera2ControlOrNull(): androidx.camera.camera2.int
 } catch (e: IllegalArgumentException) {
     Log.status("CameraViewModel", "Camera2 control unavailable", e)
     null
+} catch (e: NullPointerException) {
+    // The interop null-checks its implementation internally; a control with
+    // no Camera2 implementation is "unavailable", not a crash.
+    Log.status("CameraViewModel", "Camera2 control unavailable", e)
+    null
 }
 
 /** The manual ISO for the current index, or null when set to Auto. */

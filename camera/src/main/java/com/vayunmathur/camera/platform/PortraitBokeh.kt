@@ -298,6 +298,11 @@ class StillBokehRenderer(private val context: Context) : AutoCloseable {
         } catch (e: IllegalArgumentException) {
             Log.error("StillBokeh", "segmentation failed", e)
             null
+        } catch (e: LinkageError) {
+            // Native entry point cannot link (ABI/JVM harness without the full
+            // modelrunner build): degrade to "no mask", never a crash.
+            Log.error("StillBokeh", "segmentation unavailable", e)
+            null
         }
     }
 

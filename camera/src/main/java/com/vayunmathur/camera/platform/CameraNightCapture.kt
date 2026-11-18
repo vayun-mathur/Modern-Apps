@@ -211,6 +211,9 @@ internal fun CameraViewModel.camera2ControlQuietly():
     } catch (e: IllegalArgumentException) {
         Log.status("CameraViewModel", "Camera2 control unavailable", e)
         null
+    } catch (e: NullPointerException) {
+        Log.status("CameraViewModel", "Camera2 control unavailable", e)
+        null
     }
 }
 
@@ -230,6 +233,10 @@ private class NightBurstDriver(
 ) {
     private val collected = mutableListOf<Bitmap>()
     private var alreadyDone = false
+    // Captures attempted (successes + failures). Failures skip a frame, but
+    // without this bound a persistently failing capture would retry forever
+    // and the burst (and its locked exposure) would never finish.
+    private var attempted = 0
 
     fun start() {
         if (cam2Control != null) {
@@ -270,10 +277,11 @@ private class NightBurstDriver(
     }
 
     private fun takeNext() {
-        if (collected.size >= NightCaptureEngine.NIGHT_BURST_COUNT) {
+        if (attempted >= NightCaptureEngine.NIGHT_BURST_COUNT) {
             finish()
             return
         }
+        attempted++
         val cap = viewModel.imageCapture ?: run {
             finish()
             return
@@ -312,6 +320,10 @@ private class NightBurstDriver(
         } catch (e: IllegalStateException) {
             Log.status("CameraViewModel", "Failed to convert night frame", e)
         } catch (e: IllegalArgumentException) {
+            Log.status("CameraViewModel", "Failed to convert night frame", e)
+        } catch (e: NullPointerException) {
+            // toBitmap() platform-null on an undecodable frame: skip the
+            // frame (the attempt bound in takeNext still ends the burst).
             Log.status("CameraViewModel", "Failed to convert night frame", e)
         } finally {
             image.close()

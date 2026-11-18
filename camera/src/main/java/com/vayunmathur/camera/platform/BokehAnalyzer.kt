@@ -38,8 +38,14 @@ class BokehAnalyzer(
     private var lastSegmentMs: Long = 0L
     @Volatile private var closed = false
     // GPU-only: null-returning rather than throwing when the device has no Vulkan fp16
-    // compute, in which case the preview simply stays sharp.
-    private var segmenter: SelfieSegmenter? = SelfieSegmenter(context)
+    // compute, in which case the preview simply stays sharp. A LinkageError from the
+    // native entry point (library present but unlinkable) degrades the same way.
+    private var segmenter: SelfieSegmenter? = try {
+        SelfieSegmenter(context)
+    } catch (e: LinkageError) {
+        Log.error("BokehAnalyzer", "segmentation unavailable", e)
+        null
+    }
 
     @androidx.annotation.OptIn(androidx.camera.core.ExperimentalGetImage::class)
     override fun analyze(imageProxy: ImageProxy) {
@@ -69,6 +75,10 @@ class BokehAnalyzer(
         } catch (e: IllegalStateException) {
             Log.error("BokehAnalyzer", "segmentation failed", e)
         } catch (e: IllegalArgumentException) {
+            Log.error("BokehAnalyzer", "segmentation failed", e)
+        } catch (e: NullPointerException) {
+            // A frame with no decodable bitmap (null platform return from
+            // toBitmap) is a dropped frame, not a crash of the preview path.
             Log.error("BokehAnalyzer", "segmentation failed", e)
         } finally {
             imageProxy.close()
