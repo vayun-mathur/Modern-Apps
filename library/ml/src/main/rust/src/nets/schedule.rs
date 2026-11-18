@@ -399,3 +399,7 @@ mod tests {
         is_sound(&p, &s).expect("sound");
     }
 }
+
+#[cfg(test)]
+#[path = "schedule_tests.rs"]
+mod schedule_tests;

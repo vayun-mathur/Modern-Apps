@@ -452,3 +452,6 @@ pub fn f32_to_f16(value: f32) -> u16 {
 }
 
 include!("preprocess_part1.rs");
+#[cfg(test)]
+#[path = "preprocess_tests.rs"]
+mod preprocess_tests;

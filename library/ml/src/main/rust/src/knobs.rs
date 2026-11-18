@@ -59,3 +59,7 @@ fn property(name: &str) -> Option<String> {
 fn property(_name: &str) -> Option<String> {
     None
 }
+
+#[cfg(test)]
+#[path = "knobs_tests.rs"]
+mod knobs_tests;

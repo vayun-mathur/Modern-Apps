@@ -440,3 +440,56 @@
         );
         assert_usable_mask("modnet", &plan, weights.data());
     }
+
+    #[test]
+    fn a_synthetic_mask_net_passes_the_usable_mask_check() {
+        // The shipped-net assertion, exercised on a one-layer stand-in:
+        // a 1x1 identity conv under a sigmoid is a usable mask (finite,
+        // in 0..1) and answers its two synthetic inputs differently.
+        let given = crate::nets::reference::Given::new(&[
+            (vec![1, 1, 1, 1], vec![1.0]),
+            (vec![1], vec![0.0]),
+        ])
+        .expect("tensors");
+        let mut builder = crate::nets::Builder::new(&given);
+        let x = builder.input(Shape::new(1, 4, 4));
+        let conv = builder.conv(x, 0, 1, (1, 1), (1, 1), (1, 1), (0, 0, 0, 0), 1, crate::nets::Act::None);
+        let out = builder.activate(conv, crate::nets::Act::Sigmoid);
+        let plan = builder.finish(&[out]).expect("builds");
+        assert_usable_mask("synthetic", &plan, given.data());
+        // The asset walk finds the workspace root beside this crate.
+        assert!(asset("settings.gradle.kts").is_some());
+        assert!(asset("no/such/asset.bin").is_none());
+    }
+
+    #[test]
+    fn synthetic_ramp_and_blob_have_the_documented_values() {
+        let ramped = ramp(Shape::new(2, 2, 2));
+        let want = [
+            0.0, 0.5 / 2.2, 0.5 / 2.2, 1.0 / 2.2,
+            0.1 / 2.2, 0.6 / 2.2, 0.6 / 2.2, 1.1 / 2.2,
+        ];
+        assert_eq!(ramped.len(), want.len());
+        for (got, want) in ramped.iter().zip(want) {
+            assert!((got - want).abs() < 1e-6, "ramp {ramped:?}");
+        }
+
+        let blobbed = blob(Shape::new(1, 4, 4));
+        assert_eq!(blobbed.iter().filter(|&&v| (v - 0.9).abs() < 1e-6).count(), 5);
+        assert_eq!(blobbed.iter().filter(|&&v| (v - 0.05).abs() < 1e-6).count(), 11);
+        assert!((blobbed[2 * 4 + 2] - 0.9).abs() < 1e-6, "centre is inside");
+        assert!((blobbed[0] - 0.05).abs() < 1e-6, "corner is outside");
+    }
+
+    #[test]
+    fn written_values_are_little_endian_f32() {
+        let path = std::env::temp_dir()
+            .join(format!("modelrunner-reference-write-{}.f32", std::process::id()));
+        write(&path, &[1.0, -2.5]);
+        let bytes = std::fs::read(&path).expect("the written file");
+        std::fs::remove_file(&path).expect("cleanup");
+        let mut want = Vec::new();
+        want.extend_from_slice(&1.0f32.to_le_bytes());
+        want.extend_from_slice(&(-2.5f32).to_le_bytes());
+        assert_eq!(bytes, want);
+    }

@@ -434,3 +434,6 @@ pub(crate) fn fft(data: &mut [[f32; 2]], twiddles: &[[f32; 2]], reversed: &[u32]
 }
 
 include!("microfrontend_part1.rs");
+#[cfg(test)]
+#[path = "microfrontend_tests.rs"]
+mod microfrontend_tests;

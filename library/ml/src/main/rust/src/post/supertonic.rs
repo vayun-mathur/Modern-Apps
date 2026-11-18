@@ -455,3 +455,7 @@ include!("supertonic_part2.rs");
 #[cfg(test)]
 #[path = "supertonic_tests.rs"]
 mod supertonic_tests;
+
+#[cfg(test)]
+#[path = "supertonic_host_tests.rs"]
+mod supertonic_host_tests;

@@ -423,3 +423,6 @@ pub fn bytes_payload(id: i64, body: &[u8]) -> Vec<Vec<u8>> {
 }
 
 include!("payload_part1.rs");
+#[cfg(test)]
+#[path = "payload_extra_tests.rs"]
+mod payload_extra_tests;

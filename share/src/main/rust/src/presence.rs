@@ -88,7 +88,11 @@ pub fn parse_presence_advert_name(advert_bytes: &[u8]) -> Option<String> {
     match v0 {
         np_adv::legacy::V0AdvertisementContents::Plaintext(p) => {
             for de in p.data_elements() {
-                if let Ok(np_adv::legacy::deserialize::DeserializedDataElement::DeviceInfo(di)) = de {
+                // Stop at the first undecodable element: the iterator
+                // re-yields it without consuming input, so skipping an
+                // error here spun forever on a truncated advert.
+                let de = de.ok()?;
+                if let np_adv::legacy::deserialize::DeserializedDataElement::DeviceInfo(di) = de {
                     let name = String::from_utf8_lossy(di.device_info.device_name())
                         .trim_end()
                         .to_string();
@@ -140,6 +144,10 @@ pub fn parse_presence_advert_json(advert_bytes: &[u8]) -> Option<Vec<u8>> {
                     Ok(np_adv::legacy::deserialize::DeserializedDataElement::TxPower(tp)) => {
                         tx_power = Some(tp.tx_power.as_i8() as i32);
                     }
+                    // As in `parse_presence_advert_name`: an undecodable
+                    // element is re-yielded forever if skipped, so the
+                    // advert is simply unusable.
+                    Err(_) => return None,
                     _ => {}
                 }
             }

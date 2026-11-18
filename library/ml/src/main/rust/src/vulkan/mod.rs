@@ -30,3 +30,7 @@ pub mod segment_extra;
 
 #[cfg(test)]
 mod parity;
+
+#[cfg(test)]
+#[path = "segment_tests.rs"]
+mod segment_tests;

@@ -493,3 +493,7 @@ mod tests {
         assert!(error.contains("10 probabilities"), "{error}");
     }
 }
+
+#[cfg(test)]
+#[path = "dbnet_regions_tests.rs"]
+mod dbnet_regions_tests;

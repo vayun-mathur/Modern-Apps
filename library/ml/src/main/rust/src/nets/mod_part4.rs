@@ -7,6 +7,7 @@ impl<'a> Builder<'a> {
             shapes: Vec::new(),
             nodes: Vec::new(),
             pinned: Vec::new(),
+            persistent: Vec::new(),
             error: None,
             inputs: Vec::new(),
             pad_edge: false,

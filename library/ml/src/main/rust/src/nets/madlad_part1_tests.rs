@@ -116,3 +116,36 @@ fn embedding_refuses_a_token_past_the_vocabulary_before_reading() {
     assert!(embed_positions(reader, &[256_000], 0).is_err(), "past the vocabulary");
     assert!(embed_positions(reader, &[u32::MAX], 0).is_err());
 }
+
+#[test]
+fn embedding_gathers_a_q2k_row_channel_major() {
+    // Split 0's kernel: every lane of rows 0 and 63999 is (lo=0, hi=2)
+    // with all q = 0 and (d, dmin) = (1, 1), so every tap dequantises
+    // to -(dmin * d) * hi = -2. Both tokens must read as -2.0 across
+    // all 1024 channels.
+    let rows = CLASSES_PER_SPLIT as usize;
+    let stride = (D_MODEL as usize / 256) * 84;
+    let mut payload = vec![0u8; rows * stride];
+    for row in [0, rows - 1] {
+        for block in 0..D_MODEL as usize / 256 {
+            let base = row * stride + block * 84;
+            payload[base..base + 16].fill(0x20);
+        }
+    }
+    let blob = crate::weights::write_mixed(
+        crate::weights::graph::SUPERTONIC_VE,
+        &[
+            crate::weights::Fixture::Q2K(vec![CLASSES_PER_SPLIT, D_MODEL], payload),
+            crate::weights::Fixture::F16(
+                vec![CLASSES_PER_SPLIT * (D_MODEL / 256) * 2],
+                vec![1.0; (CLASSES_PER_SPLIT * (D_MODEL / 256) * 2) as usize],
+            ),
+        ],
+    );
+    let weights = crate::weights::Weights::parse(&blob, crate::weights::graph::SUPERTONIC_VE)
+        .expect("the embed fixture parses");
+    let out = embed_positions(weights.reader(), &[0, 63_999], 0).expect("embeds");
+    assert_eq!(out.len(), 2 * D_MODEL as usize);
+    assert!(out.iter().all(|&v| (v + 2.0).abs() < 1e-3), "every channel is -2.0");
+    assert!(embed_positions(weights.reader(), &[], 0).expect("empty").is_empty());
+}

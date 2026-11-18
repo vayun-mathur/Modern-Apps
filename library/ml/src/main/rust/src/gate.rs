@@ -437,3 +437,6 @@ pub struct Latch {
 }
 
 include!("gate_part1.rs");
+#[cfg(test)]
+#[path = "gate_tests.rs"]
+mod gate_tests;

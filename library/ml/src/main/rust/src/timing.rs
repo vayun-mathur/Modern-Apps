@@ -69,3 +69,7 @@ fn write(message: &str) {
 fn write(message: &str) {
     eprintln!("{message}");
 }
+
+#[cfg(test)]
+#[path = "timing_tests.rs"]
+mod timing_tests;

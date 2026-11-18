@@ -223,6 +223,54 @@ fn spread(count: usize, seed: f32) -> Vec<f32> {
 }
 
 #[test]
+fn spread_is_deterministic_bounded_and_asymmetric() {
+    let values = spread(4, 0.0);
+    let want = [0.1, 0.615_374, 0.888_360, 0.790_568];
+    for (got, want) in values.iter().zip(want) {
+        assert!((got - want).abs() < 1e-4, "spread {values:?}");
+    }
+    assert!(spread(64, 0.35).iter().all(|v| (-0.7..=0.9).contains(v)));
+    assert_ne!(spread(4, 0.0), spread(4, 0.35), "the seed moves the values");
+}
+
+#[test]
+fn matches_accepts_agreement_at_fp16_scale() {
+    // Identical outputs, and outputs a half-ulp apart, both agree;
+    // the helper is the parity gate every device test funnels into.
+    matches("same", &[vec![1.0, -2.0]], &[vec![1.0, -2.0]]);
+    matches("close", &[vec![1.0, -2.0]], &[vec![1.001, -2.001]]);
+}
+
+#[test]
+#[should_panic(expected = "on the device and")]
+fn matches_refuses_a_real_disagreement() {
+    matches("far", &[vec![1.0, -2.0]], &[vec![1.0, 2.0]]);
+}
+
+#[test]
+#[should_panic(expected = "output count")]
+fn matches_refuses_a_missing_output() {
+    matches("short", &[vec![1.0], vec![2.0]], &[vec![1.0]]);
+}
+
+#[test]
+#[should_panic(expected = "all zeros")]
+fn matches_refuses_an_all_zero_reference() {
+    matches("zero", &[vec![0.0, 0.0]], &[vec![0.0, 0.0]]);
+}
+
+#[test]
+fn run_invented_runs_a_plan_on_the_interpreter_alone() {
+    // The self-consistency path (no device): two inputs added.
+    let got = run_invented(
+        &[Shape::new(1, 1, 2), Shape::new(1, 1, 2)],
+        &[&[1.0, 2.0], &[10.0, 20.0]],
+        |b, ids| b.add(ids[0], ids[1]),
+    );
+    assert_eq!(got, vec![11.0, 22.0]);
+}
+
+#[test]
 #[ignore = "needs a Vulkan device"]
 fn the_cnn_spine_agrees_with_the_reference() {
     // Conv with a fused activation, the squeeze-excite pair, max pool, bilinear resize, add,

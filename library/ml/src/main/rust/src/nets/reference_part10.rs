@@ -265,3 +265,10 @@
         }
         Some(dir)
     }
+
+    #[test]
+    fn repo_root_finds_the_workspace_marker() {
+        let root = repo_root().expect("this crate is checked out in the workspace");
+        assert!(root.join("settings.gradle.kts").is_file());
+        assert!(root.join("library/ml/src/main/rust").is_dir());
+    }

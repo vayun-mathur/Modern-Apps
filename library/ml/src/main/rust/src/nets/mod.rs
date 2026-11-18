@@ -495,3 +495,5 @@ include!("mod_part12.rs");
 include!("mod_part13.rs");
 include!("mod_part14.rs");
 include!("mod_part15.rs");
+#[cfg(test)] #[path = "kind_reads_tests.rs"] mod kind_reads_tests;
+#[cfg(test)] #[path = "builder_validation_tests.rs"] mod builder_validation_tests;

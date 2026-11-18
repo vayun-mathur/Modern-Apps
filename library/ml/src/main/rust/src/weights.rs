@@ -485,6 +485,11 @@ pub struct Offsets {
 #[path = "weights_tests.rs"]
 mod weights_tests;
 
+#[cfg(test)] #[path = "weights_reader_tests.rs"] mod weights_reader_tests;
+#[cfg(test)] #[path = "weights_graph_tests.rs"] mod weights_graph_tests;
+#[cfg(test)] #[path = "weights_graph_edge_tests.rs"] mod weights_graph_edge_tests;
+#[cfg(test)] #[path = "weights_emit_edge_tests.rs"] mod weights_emit_edge_tests;
+
 include!("weights_part1.rs");
 include!("weights_part2.rs");
 include!("weights_part3.rs");

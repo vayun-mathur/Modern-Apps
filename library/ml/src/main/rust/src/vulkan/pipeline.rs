@@ -477,3 +477,7 @@ impl Drop for Cleanup<'_> {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "pipeline_tests.rs"]
+mod pipeline_tests;

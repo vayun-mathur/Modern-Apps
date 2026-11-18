@@ -232,6 +232,8 @@ fn argmax(logits: &[f32], suppress: &[u32], also: &[u32]) -> Option<u32> {
     best.map(|(index, _)| index as u32)
 }
 
+#[cfg(test)] #[path = "whisper_check_tests.rs"] mod whisper_check_tests;
+
 #[cfg(test)]
 mod tests {
     use super::*;

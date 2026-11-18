@@ -231,3 +231,7 @@ impl LogMel {
     }
 }
 
+
+#[cfg(test)]
+#[path = "logmel_tests.rs"]
+mod logmel_tests;

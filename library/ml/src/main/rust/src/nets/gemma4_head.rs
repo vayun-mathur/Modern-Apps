@@ -301,6 +301,8 @@ pub fn dims_of(index: usize) -> Vec<u32> {
     }
 }
 
+#[cfg(test)] #[path = "gemma4_head_tests.rs"] mod gemma4_head_tests;
+
 #[cfg(test)]
 mod tests {
     use super::*;

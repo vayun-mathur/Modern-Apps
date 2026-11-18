@@ -422,3 +422,7 @@ pub fn embed_positions(weights: Reader<'_>, ids: &[u32]) -> Result<Vec<f32>, Str
 }
 
 include!("tinyclip_part1.rs");
+
+#[cfg(test)]
+#[path = "tinyclip_embed_tests.rs"]
+mod tinyclip_embed_tests;

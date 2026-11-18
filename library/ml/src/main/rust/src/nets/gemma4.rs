@@ -439,3 +439,9 @@ include!("gemma4_part7.rs");
 include!("gemma4_part8.rs");
 include!("gemma4_part9.rs");
 include!("gemma4_part10.rs");
+
+#[cfg(test)]
+#[path = "gemma4_tier_tests.rs"]
+mod gemma4_tier_tests;
+#[cfg(test)] #[path = "gemma4_gather_host_tests.rs"] mod gemma4_gather_host_tests;
+#[cfg(test)] #[path = "gemma4_build_tests.rs"] mod gemma4_build_tests;

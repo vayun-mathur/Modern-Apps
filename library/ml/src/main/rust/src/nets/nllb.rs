@@ -445,3 +445,5 @@ pub(crate) fn split_of(id: u32) -> (usize, u32) {
     }
 }
 include!("nllb_part1.rs");
+
+#[cfg(test)] #[path = "nllb_embed_tests.rs"] mod nllb_embed_tests;

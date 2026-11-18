@@ -297,6 +297,8 @@ fn head_branch(b: &mut Builder, l: &mut Layers, x: Id) -> Id {
     residual_excite(b, l, narrowed, 6)
 }
 
+#[cfg(test)] #[path = "ppocr_det_tests.rs"] mod ppocr_det_tests;
+
 #[cfg(test)]
 mod tests {
     use super::super::tests::Shapes;

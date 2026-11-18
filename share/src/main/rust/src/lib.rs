@@ -304,74 +304,6 @@ pub extern "system" fn Java_com_vayunmathur_share_protocol_ShareNative_nativeQue
     .resolve::<jni::errors::LogErrorAndDefault>()
 }
 
-// ---------------------------------------------------------------------------
-// File-list JSON (PROTOCOL_CONTRACT.md §6)
-// ---------------------------------------------------------------------------
-
-fn json_escape(s: &str) -> String {
-    s.replace('\\', "\\\\").replace('"', "\\\"")
-}
-
-fn file_list_json(files: &[payload::FileMeta]) -> String {
-    let mut json = String::from("[");
-    for (i, f) in files.iter().enumerate() {
-        if i > 0 {
-            json.push(',');
-        }
-        json.push_str(&format!(
-            "{{\"name\":\"{}\",\"sizeBytes\":{},\"mimeType\":\"{}\"}}",
-            json_escape(&f.name),
-            f.size_bytes,
-            json_escape(&f.mime_type),
-        ));
-    }
-    json.push(']');
-    json
-}
-
-/// Parse the fixed `[{name,sizeBytes,mimeType}]` shape produced by `ShareSession`.
-///
-/// Hand-rolled rather than adding `serde_json` to this crate: the shape is fixed by
-/// `PROTOCOL_CONTRACT.md` §6 and both sides of it live in this repository.
-fn parse_file_list_json(text: &str) -> Option<Vec<payload::FileMeta>> {
-    fn string_field(obj: &str, key: &str) -> Option<String> {
-        let after_key = obj.split_once(&format!("\"{key}\""))?.1;
-        let after_colon = after_key.split_once(':')?.1;
-        let open = after_colon.find('"')?;
-        let rest = after_colon.get(open + 1..)?;
-        let close = rest.find('"')?;
-        rest.get(..close).map(str::to_string)
-    }
-    fn number_field(obj: &str, key: &str) -> Option<u64> {
-        let after_key = obj.split_once(&format!("\"{key}\""))?.1;
-        let after_colon = after_key.split_once(':')?.1;
-        let digits: String = after_colon
-            .trim_start()
-            .chars()
-            .take_while(char::is_ascii_digit)
-            .collect();
-        digits.parse().ok()
-    }
-
-    let inner = text
-        .trim()
-        .strip_prefix('[')
-        .and_then(|s| s.strip_suffix(']'))?
-        .trim();
-    if inner.is_empty() {
-        return Some(Vec::new());
-    }
-    let mut out = Vec::new();
-    for obj in inner.split("},") {
-        out.push(payload::FileMeta {
-            name: string_field(obj, "name")?,
-            size_bytes: number_field(obj, "sizeBytes")?,
-            mime_type: string_field(obj, "mimeType").unwrap_or_default(),
-            payload_id: 0,
-        });
-    }
-    Some(out)
-}
 
 // ---------------------------------------------------------------------------
 // Nearby Connections BleAdvertisement + service-id derivation (ble_adv.rs).
@@ -447,3 +379,11 @@ pub extern "system" fn Java_com_vayunmathur_share_protocol_ShareNative_nativeDes
 
 include!("lib_part1.rs");
 include!("lib_part2.rs");
+include!("lib_part3.rs");
+
+#[cfg(test)]
+#[path = "lib_tests.rs"]
+mod lib_tests;
+#[cfg(test)]
+#[path = "discovery_tests.rs"]
+mod discovery_tests;

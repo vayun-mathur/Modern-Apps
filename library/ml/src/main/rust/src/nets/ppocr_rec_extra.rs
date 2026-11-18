@@ -130,3 +130,7 @@ fn chain(b: &mut Builder, input: Id) -> Result<Id, String> {
     }
     Ok(logits)
 }
+
+#[cfg(test)]
+#[path = "ppocr_rec_batch_tests.rs"]
+mod ppocr_rec_batch_tests;

@@ -204,3 +204,12 @@ fn byte_piece_spelling_is_strict() {
     assert_eq!(byte_piece(b"a"), None);
     assert_eq!(byte_piece(b""), None);
 }
+
+#[test]
+fn the_unigram_encoder_falls_back_to_byte_pieces_for_uncovered_text() {
+    let bytes = latin_with_bytes();
+    let table = Table::parse(&bytes).expect("the table parses");
+    // `z` has no piece of its own: the dummy prefix piece, then the
+    // byte-fallback piece for 0x7A (ids 10..266 in byte order).
+    assert_eq!(table.encode_unigram("z"), vec![4, 10 + 0x7A]);
+}

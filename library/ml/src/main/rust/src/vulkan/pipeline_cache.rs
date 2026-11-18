@@ -94,3 +94,7 @@ pub(crate) unsafe fn close(device: &ash::Device, cache: vk::PipelineCache, seed:
     }
     device.destroy_pipeline_cache(cache, None);
 }
+
+#[cfg(test)]
+#[path = "pipeline_cache_tests.rs"]
+mod pipeline_cache_tests;

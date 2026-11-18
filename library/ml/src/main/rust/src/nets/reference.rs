@@ -191,3 +191,11 @@ include!("reference_part10.rs");
 #[cfg(test)]
 #[path = "reference_tests.rs"]
 mod reference_tests;
+
+#[cfg(test)]
+#[path = "reference_ops_tests.rs"]
+mod reference_ops_tests;
+
+#[cfg(test)]
+#[path = "reference_ops_mutated_tests.rs"]
+mod reference_ops_mutated_tests;

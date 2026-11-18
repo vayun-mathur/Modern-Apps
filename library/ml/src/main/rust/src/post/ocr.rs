@@ -352,6 +352,40 @@ mod tests {
     }
 
     #[test]
+    fn the_batched_pipeline_skips_failed_and_undecodable_strips() {
+        // Three bands: the first decodes, the second's recognition
+        // fails outright, the third returns logits no decode can read.
+        let map = 64u32;
+        let mut probability = blob(map, 8, 4, 56, 12);
+        for band in [blob(map, 8, 24, 56, 32), blob(map, 8, 44, 56, 52)] {
+            for (i, v) in band.iter().enumerate() {
+                if *v > 0.0 {
+                    probability[i] = *v;
+                }
+            }
+        }
+        let fit = Letterbox::square(map, map, map).expect("a 1:1 letterbox");
+        let pixels = vec![0xffff_ffffu32 as i32; (map * map) as usize];
+        let steps = (REC_WIDTH / ppocr_rec::WIDTH_MULTIPLE) as usize;
+        let got = lines_batched(
+            &Detection { probability: &probability, width: map, height: map, fit: &fit },
+            &Source { pixels: &pixels, width: map, height: map },
+            &dictionary(),
+            |strips| {
+                assert_eq!(strips.len(), 3, "every strip is handed over at once");
+                vec![
+                    Ok(logits(&[1, 2, 3], steps)),
+                    Err("this strip failed".to_string()),
+                    Ok(vec![0.0; 10]),
+                ]
+            },
+        )
+        .expect("the pipeline runs");
+        assert_eq!(got.len(), 1, "{got:?}");
+        assert_eq!(got[0].text, "abc");
+    }
+
+    #[test]
     fn a_blank_recognition_contributes_no_line() {
         // A region whose logits are all blank is a false positive from detection, not an
         // empty string in the output.

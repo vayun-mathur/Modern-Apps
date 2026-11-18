@@ -412,3 +412,7 @@ include!("session_part1.rs");
 include!("session_part2.rs");
 include!("session_part3.rs");
 include!("session_part4.rs");
+
+#[cfg(test)]
+#[path = "session_state_tests.rs"]
+mod session_state_tests;

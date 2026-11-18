@@ -130,6 +130,7 @@ impl<'a> Builder<'a> {
     pub fn persistent(&mut self, shape: Shape) -> Id {
         let id = self.tensor(shape);
         self.pinned.push(id);
+        self.persistent.push(id);
         id
     }
 
@@ -166,7 +167,7 @@ impl<'a> Builder<'a> {
         if ss != sd {
             self.fail(format!("copying {ss:?} into {sd:?}"));
         }
-        if !self.pinned.contains(&dst) {
+        if !self.persistent.contains(&dst) {
             self.fail("copying into a tensor that is not persistent".into());
         }
         self.nodes.push(Node::Concat { parts: vec![src], out: dst });

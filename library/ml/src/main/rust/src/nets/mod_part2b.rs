@@ -6,6 +6,11 @@ pub struct Builder<'a> {
     /// Tensors that must keep a stable offset for the whole pass: the inputs and the
     /// outputs. Everything else is free to be reused once its last reader has run.
     pinned: Vec<Id>,
+    /// The subset of `pinned` declared through [`Builder::persistent`]: tensors whose
+    /// contents survive between executions. Inputs are pinned too, but they are
+    /// re-uploaded every execution, so only these may be a [`Builder::copy_into`]
+    /// destination.
+    persistent: Vec<Id>,
     error: Option<String>,
     inputs: Vec<Id>,
     /// One flag per tensor in the file, set when the pass reads it. See

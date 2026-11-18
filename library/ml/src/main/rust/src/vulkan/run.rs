@@ -346,3 +346,7 @@ include!("run_part3.rs");
 include!("run_part4.rs");
 include!("run_part5.rs");
 include!("run_part8.rs");
+
+#[cfg(test)]
+#[path = "run_tests.rs"]
+mod run_tests;

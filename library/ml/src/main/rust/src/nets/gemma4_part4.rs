@@ -424,6 +424,44 @@ mod combine_cache_tests {
     }
 
     #[test]
+    fn the_cached_wrapper_agrees_with_the_reread_path() {
+        // Same fixture shape as above; the wrapper under test is the
+        // one the bridge calls, flag and all.
+        const PROJ: usize = LAYERS * PER_LAYER as usize * D_MODEL as usize;
+        let blob = crate::weights::write_mixed(
+            crate::weights::graph::GEMMA4_EMBED,
+            &[
+                crate::weights::Fixture::F16(vec![1], vec![0.0]),
+                crate::weights::Fixture::F16(vec![1], vec![0.0]),
+                crate::weights::Fixture::F16(vec![1], vec![0.0]),
+                crate::weights::Fixture::I8(
+                    vec![LAYERS as u32 * PER_LAYER, D_MODEL, 1, 1],
+                    (0..PROJ).map(|i| (i % 15) as i8 - 7).collect(),
+                ),
+                crate::weights::Fixture::F16(
+                    vec![LAYERS as u32 * PER_LAYER],
+                    vec![1.0; LAYERS * PER_LAYER as usize],
+                ),
+                crate::weights::Fixture::F16(vec![1], vec![0.0]),
+                crate::weights::Fixture::F16(vec![PER_LAYER], vec![1.0; PER_LAYER as usize]),
+            ],
+        );
+        let weights = crate::weights::Weights::parse(&blob, crate::weights::graph::GEMMA4_EMBED)
+            .expect("the combine fixture parses");
+        let reader = weights.reader();
+        let hidden: Vec<f32> = (0..D_MODEL as usize).map(|i| (i % 7) as f32 * 0.125).collect();
+        let embedded: Vec<f32> =
+            (0..LAYERS * PER_LAYER as usize).map(|i| (i % 11) as f32 * 0.0625).collect();
+        let want = combine_timed(&reader, &hidden, &embedded, false).expect("reread").0;
+        let got = combine_cached(&reader, &hidden, &embedded).expect("the wrapper runs");
+        assert_eq!(got, want);
+        // A second call through the wrapper serves the same bytes
+        // (a cache hit whenever the flag is on, a re-read otherwise).
+        let again = combine_cached(&reader, &hidden, &embedded).expect("the wrapper runs again");
+        assert_eq!(again, want);
+    }
+
+    #[test]
     fn a_slim_embed_keeps_every_index_and_carries_neither_combine_nor_head() {
         assert_eq!(embed::SLIM_TENSORS, 112);
         assert_eq!(embed::table(LAYERS - 1) + 3, embed::SLIM_TENSORS);
