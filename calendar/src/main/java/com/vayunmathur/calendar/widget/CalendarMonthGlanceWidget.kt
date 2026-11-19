@@ -1,4 +1,5 @@
 package com.vayunmathur.calendar.widget
+import com.vayunmathur.library.widgets.MaWidgetReceiver
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -405,3 +406,11 @@ private fun MonthEventChip(title: String, color: Int) {
         )
     }
 }
+
+/** Widget receiver that registers the month-grid widget and refreshes it when the date changes. */
+class CalendarMonthGlanceWidgetReceiver : MaWidgetReceiver<CalendarMonthGlanceWidget>(
+    widgetClass = CalendarMonthGlanceWidget::class,
+    receiverClass = CalendarMonthGlanceWidgetReceiver::class,
+    dateTriggers = true,
+    widgetFactory = ::CalendarMonthGlanceWidget,
+)

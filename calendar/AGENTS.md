@@ -77,11 +77,11 @@ _Install: ./install calendar (dev by default)._
 - com/vayunmathur/calendar/ui/dialogs/SettingsDeleteCalendarDialog.kt
 - com/vayunmathur/calendar/ui/dialogs/SettingsRenameCalendarDialog.kt
 - com/vayunmathur/calendar/ui/dialogs/TimezonePickerDialog.kt
-### widget/ + intents/ — widgets and assistant IPC
-- com/vayunmathur/calendar/widget/CalendarGlanceWidget.kt
-- com/vayunmathur/calendar/widget/CalendarGlanceWidgetReceiver.kt
-- com/vayunmathur/calendar/widget/CalendarMonthGlanceWidget.kt
-- com/vayunmathur/calendar/widget/CalendarMonthGlanceWidgetReceiver.kt
+### glance/ + intents/ — widgets and assistant IPC
+- com/vayunmathur/calendar/glance/CalendarGlanceWidget.kt
+- com/vayunmathur/calendar/glance/CalendarGlanceWidgetReceiver.kt
+- com/vayunmathur/calendar/glance/CalendarMonthGlanceWidget.kt
+- com/vayunmathur/calendar/glance/CalendarMonthGlanceWidgetReceiver.kt
 - com/vayunmathur/calendar/intents/GetIntent.kt
 - com/vayunmathur/calendar/intents/InsertIntent.kt
 
