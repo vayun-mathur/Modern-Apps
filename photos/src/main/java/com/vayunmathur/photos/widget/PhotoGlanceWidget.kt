@@ -28,6 +28,7 @@ import com.vayunmathur.photos.data.PhotoScanRepository
 import java.io.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.vayunmathur.library.widgets.MaWidgetReceiver
 
 /** Photo Glance Widget: a ma widget implementation for photo glance widget. */
 class PhotoGlanceWidget : MaWidget<List<String>>() {
@@ -126,3 +127,10 @@ private fun calculateInSampleSize(options: BitmapFactory.Options, reqWidth: Int,
     }
     return inSampleSize
 }
+
+/** Photo Glance Widget Receiver: a ma widget receiver implementation for photo glance widget receiver. */
+class PhotoGlanceWidgetReceiver : MaWidgetReceiver<PhotoGlanceWidget>(
+    widgetClass = PhotoGlanceWidget::class,
+    receiverClass = PhotoGlanceWidgetReceiver::class,
+    widgetFactory = ::PhotoGlanceWidget,
+)
