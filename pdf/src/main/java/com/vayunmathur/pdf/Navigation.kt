@@ -7,17 +7,13 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import com.vayunmathur.library.util.DetailPage
-import com.vayunmathur.library.util.FullscreenPage
 import com.vayunmathur.library.util.ListPage
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.rememberNavBackStack
-import com.vayunmathur.pdf.ui.CapturePdfScreen
-import com.vayunmathur.pdf.ui.CropScreen
 import com.vayunmathur.pdf.ui.CutGlueScreen
 import com.vayunmathur.pdf.ui.SafePdfViewerScreen
+import com.vayunmathur.pdf.ui.captureEntries
 import com.vayunmathur.pdf.platform.PdfViewModel
 
 /**
@@ -88,61 +84,3 @@ fun Navigation(
 }
 
 
-/** Capture, captured-page and crop destinations. */
-private fun com.vayunmathur.library.util.EntryProviderScope<Route>.captureEntries(
-    viewModel: PdfViewModel,
-    backStack: com.vayunmathur.library.util.NavBackStack<Route>,
-    leaveCapture: () -> Unit,
-) {
-        entry<Route.Capture>(metadata = DetailPage()) {
-            CapturePdfScreen(
-                viewModel = viewModel,
-                selectedIndex = null,
-                onBack = { leaveCapture() },
-                onPdfCreated = { uri ->
-                    viewModel.clearCapturedImages()
-                    backStack.reset(Route.Home, Route.Viewer(uri.toString()))
-                },
-                onSelectPage = { index ->
-                    if (index != null) backStack.add(Route.CapturePage(index))
-                },
-                onOpenCrop = { index -> backStack.add(Route.Crop(index)) },
-            )
-        }
-        entry<Route.CapturePage>(metadata = DetailPage()) { route ->
-            CapturePdfScreen(
-                viewModel = viewModel,
-                selectedIndex = route.index,
-                onBack = { backStack.pop() },
-                onPdfCreated = { uri ->
-                    viewModel.clearCapturedImages()
-                    backStack.reset(Route.Home, Route.Viewer(uri.toString()))
-                },
-                onSelectPage = { index ->
-                    if (index == null) {
-                        backStack.pop()
-                    } else if (index != route.index) {
-                        backStack.setLast(Route.CapturePage(index))
-                    }
-                },
-                onOpenCrop = { index -> backStack.add(Route.Crop(index)) },
-            )
-        }
-        entry<Route.Crop>(metadata = FullscreenPage()) { route ->
-            val images by viewModel.capturedImages.collectAsState()
-            val image = images.getOrNull(route.index)
-            if (image != null) {
-                CropScreen(
-                    uri = image.uri,
-                    initialQuadrilateral = image.quadrilateral,
-                    onCropDone = { newQuadrilateral ->
-                        viewModel.updateQuadrilateral(route.index, newQuadrilateral)
-                        backStack.pop()
-                    },
-                    onBack = { backStack.pop() },
-                )
-            } else {
-                LaunchedEffect(route.index) { backStack.pop() }
-            }
-        }
-}
