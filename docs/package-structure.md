@@ -100,6 +100,17 @@ forbidden:
 boundary. A widget receiver, widget class, action callback, and immutable
 widget snapshot all belong directly in `widget`.
 
+One widget, one file: each widget lives in exactly one file directly in
+`widget`, and that file declares the widget class (a `MaWidget` subclass)
+at top level together with its receiver. Every file in `widget` must
+declare such a widget class at top level — there are no helper-only
+files in `widget`. Widget helper code (snapshot types, action
+callbacks, private composables, formatting helpers) is nested inside
+the widget class or kept in the same widget file; helpers that serve
+app (non-Glance) concerns do not belong in `widget` at all and move to
+the canonical root for that concern (`ui`, `data`, `domain`,
+`platform`).
+
 ### 3.3 App-root files
 
 When the base package `com.vayunmathur.<app>` is not empty, it may contain

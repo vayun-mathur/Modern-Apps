@@ -59,6 +59,18 @@ class PackageStructureDetector : Detector(), SourceCodeScanner {
                                 context.getLocation(node),
                                 subpackageViolation,
                             )
+                            return
+                        }
+                        if (segment == "widget" && segments.size == 1) {
+                            val widgetViolation = validateWidgetFile(node, packageName)
+                            if (widgetViolation != null) {
+                                context.report(
+                                    ISSUE,
+                                    node,
+                                    context.getLocation(node),
+                                    widgetViolation,
+                                )
+                            }
                         }
                         return
                     }
@@ -202,6 +214,34 @@ class PackageStructureDetector : Detector(), SourceCodeScanner {
             "screens", "util", "utils", "view", "views", "viewmodel",
             "viewmodels", "widget", "widgets",
         )
+
+        /**
+         * One widget, one file: every file directly in the `widget` root must
+         * declare a widget class (a `MaWidget` / `GlanceAppWidget` subclass,
+         * not merely its receiver) at top level. Helper-only files in
+         * `widget` are violations; widget helpers nest inside the widget
+         * class or its file, and non-Glance app helpers belong to their
+         * own canonical root. See docs/package-structure.md §3.2.
+         */
+        private fun validateWidgetFile(node: UFile, packageName: String): String? {
+            val ktFile = node.sourcePsi as? KtFile ?: return null
+            val hasWidgetClass = ktFile.declarations
+                .filterIsInstance<KtClass>()
+                .any { clazz ->
+                    clazz.superTypeListEntries.any { entry ->
+                        val text = entry.text
+                        text.contains(Regex("""\bMaWidget\s*[<(]""")) ||
+                            text.contains(Regex("""\bGlanceAppWidget\s*\("""))
+                    }
+                }
+            if (hasWidgetClass) return null
+            return "File in widget package `$packageName` declares no widget class at " +
+                "top level. One widget, one file: every file in `widget` must declare " +
+                "its `MaWidget` subclass (with its receiver) at top level; helper-only " +
+                "files are forbidden — nest helpers inside the widget or move " +
+                "non-Glance app helpers to their canonical root. " +
+                "See docs/package-structure.md §3.2."
+        }
 
         private fun validateSubpackages(packageName: String, segments: List<String>): String? {
             val root = segments.firstOrNull() ?: return null
