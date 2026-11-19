@@ -82,8 +82,10 @@ fun NewAlarmDialog(
                 onClick = {
                     val time = LocalTime(timePickerState.hour, timePickerState.minute)
                     var daysMask = 0
+                    // Only Calendar.SUNDAY..SATURDAY (1..7) are weekdays;
+                    // other values arriving via the SET_ALARM intent are ignored.
                     initialDays?.forEach { day ->
-                        daysMask = daysMask or (1 shl (day - 1))
+                        if (day in 1..7) daysMask = daysMask or (1 shl (day - 1))
                     }
                     val newAlarm = clockViewModel.buildDefaultAlarm(time, nameState.text, daysMask)
                     clockViewModel.upsert(newAlarm) { id ->

@@ -245,8 +245,11 @@ class ClockViewModel(
         intent ?: return null
         return when (intent.action) {
             AlarmClock.ACTION_SET_ALARM -> {
-                val hour = intent.getIntExtra(AlarmClock.EXTRA_HOUR, -1).takeIf { it != -1 }
-                val minutes = intent.getIntExtra(AlarmClock.EXTRA_MINUTES, -1).takeIf { it != -1 }
+                // Extras come from an exported intent, so a sender can put
+                // any Int in them: LocalTime / the time picker throw on
+                // out-of-range values, so treat those as absent instead.
+                val hour = intent.getIntExtra(AlarmClock.EXTRA_HOUR, -1).takeIf { it in 0..23 }
+                val minutes = intent.getIntExtra(AlarmClock.EXTRA_MINUTES, -1).takeIf { it in 0..59 }
                 val message = intent.getStringExtra(AlarmClock.EXTRA_MESSAGE)
                 val days = intent.getIntegerArrayListExtra(AlarmClock.EXTRA_DAYS)
                 val skipUi = intent.getBooleanExtra(AlarmClock.EXTRA_SKIP_UI, false)
@@ -254,7 +257,9 @@ class ClockViewModel(
                 if (skipUi && hour != null && minutes != null) {
                     val time = LocalTime(hour, minutes)
                     var daysMask = 0
-                    days?.forEach { day -> daysMask = daysMask or (1 shl (day - 1)) }
+                    // Calendar.SUNDAY..SATURDAY are 1..7; anything else from
+                    // the sender is not a weekday and must not set a bit.
+                    days?.forEach { day -> if (day in 1..7) daysMask = daysMask or (1 shl (day - 1)) }
                     val alarm = buildDefaultAlarm(time, message ?: "", daysMask)
                     val ctx = getApplication<Application>()
                     viewModelScope.launch(Dispatchers.IO) {
