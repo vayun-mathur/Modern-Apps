@@ -27,6 +27,11 @@ import org.junit.runner.RunWith
  * app-bar title both read "Note", so that literal is the stable first-paint
  * marker regardless of microphone state.
  *
+ * Strengthened launch-e2e: clears the target package data before the
+ * grant/launch pass so the journey starts from clean state, then performs
+ * one small deterministic core interaction (see the test body) and returns
+ * to the launch surface. Still a single @Test for this app.
+ *
  * UiDevice polling, not compose-test: compose's Espresso idle-sync reflects on
  * hidden InputManager APIs that no longer exist on current releases, so every
  * compose-rule test dies before its first line. Text polling works for Compose
@@ -41,6 +46,10 @@ class LaunchNoCrashTest {
         val device = UiDevice.getInstance(instrumentation)
         val targetContext = instrumentation.targetContext
         val packageName = targetContext.packageName
+
+        // Clean state first (fresh-install journey); grants follow the clear
+        // because a clear can drop runtime-grant state on some releases.
+        clearAppData(instrumentation.uiAutomation, packageName)
 
         grantAllRequestedPermissions(instrumentation.uiAutomation, targetContext.packageManager, packageName)
 
@@ -59,8 +68,33 @@ class LaunchNoCrashTest {
             "note tab never appeared; the app may have crashed on launch",
             device.wait(Until.findObject(By.text(NOTE_TAB_TITLE)), CONTENT_TIMEOUT_MS),
         )
+        // Core interaction: Note -> Chord -> Note. Emulator silence is
+        // deterministic: the Note tab settles on a listening state and the
+        // Chord headline is "Play a chord" (LISTENING presentation).
+        waitForAnyText(device, NOTE_STATES)
+        val chord = device.wait(Until.findObject(By.text(CHORD_TAB)), CONTENT_TIMEOUT_MS)
+        assertNotNull("Chord tab never appeared", chord)
+        chord!!.click()
+        assertNotNull(
+            "chord prompt never appeared",
+            device.wait(Until.findObject(By.text(CHORD_PROMPT)), CONTENT_TIMEOUT_MS),
+        )
+        val note = device.wait(Until.findObject(By.text(NOTE_TAB_TITLE)), CONTENT_TIMEOUT_MS)
+        assertNotNull("Note tab never reappeared", note)
+        note!!.click()
+        waitForAnyText(device, NOTE_STATES)
         // Still alive in front: the process did not crash after painting content.
         assertEquals(packageName, device.currentPackageName)
+    }
+
+    private fun clearAppData(uiAutomation: UiAutomation, packageName: String) {
+        try {
+            uiAutomation.executeShellCommand("pm clear $packageName").close()
+        } catch (ignored: SecurityException) {
+            // Clear refused: the journey assertions below still report state.
+        } catch (ignored: IOException) {
+            // Shell pipe failed: the content assertions below report it.
+        }
     }
 
     private fun grantAllRequestedPermissions(
@@ -94,11 +128,23 @@ class LaunchNoCrashTest {
         }
     }
 
+    private fun waitForAnyText(device: UiDevice, texts: List<String>) {
+        val deadline = System.currentTimeMillis() + CONTENT_TIMEOUT_MS
+        while (System.currentTimeMillis() < deadline) {
+            if (texts.any { device.findObject(By.text(it)) != null }) return
+            Thread.sleep(250L)
+        }
+        throw AssertionError("none of $texts ever appeared")
+    }
+
     private companion object {
         private const val CONTENT_TIMEOUT_MS = 15_000L
         private const val GATE_TIMEOUT_MS = 5_000L
         private const val NOTE_TAB_TITLE = "Note"
         private const val PERMISSION_GATE_TITLE = "Grant Required Permissions"
+        private const val CHORD_TAB = "Chord"
+        private const val CHORD_PROMPT = "Play a chord"
+        private val NOTE_STATES = listOf("Listening", "Not listening", "The microphone could not be opened")
 
         /**
          * Special access behind some apps' gates: exact alarms + full-screen intent
