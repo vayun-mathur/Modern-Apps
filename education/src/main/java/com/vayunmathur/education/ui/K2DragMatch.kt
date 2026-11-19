@@ -116,7 +116,7 @@ fun K2DragMatch(question: MatchingQuestion, enabled: Boolean, onSolved: () -> Un
                                     }
                                     if (hit != null &&
                                         !assigned.containsKey(hit) &&
-                                        question.correctRightForLeft[hit] == ri
+                                        question.correctRightForLeft.getOrNull(hit) == ri
                                     ) {
                                         assigned[hit] = ri
                                         if (assigned.size == question.left.size) onSolved()
