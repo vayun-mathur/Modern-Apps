@@ -1,15 +1,9 @@
 package com.vayunmathur.shop
 
-import android.Manifest
-import android.content.pm.PackageManager
-import android.os.Build
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.core.content.ContextCompat
 import com.vayunmathur.library.ui.IconPerson
 import com.vayunmathur.library.ui.IconReceipt
 import com.vayunmathur.library.ui.IconSearch
@@ -19,9 +13,10 @@ import com.vayunmathur.library.ui.TabbedPagerScaffold
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.shop.platform.ShopViewModel
-import com.vayunmathur.shop.ui.applyShopPendingRoute
 import com.vayunmathur.shop.ui.applyShopProfileGate
 import com.vayunmathur.shop.ui.shopEntries
+import com.vayunmathur.shop.ui.ShopLinkEffect
+import com.vayunmathur.shop.ui.ShopNotificationPermissionEffect
 import com.vayunmathur.shop.ui.shopStartRoute
 
 @Composable
@@ -89,37 +84,3 @@ fun Navigation(
     }
 }
 
-/** Merchant links resolve in the ViewModel; a gated link stays unconsumed. */
-@Composable
-private fun ShopLinkEffect(
-    viewModel: ShopViewModel,
-    backStack: com.vayunmathur.library.util.NavBackStack<Route>,
-    linkRequest: Pair<Int, String>?,
-) {
-    LaunchedEffect(linkRequest, backStack.backStack.lastOrNull()) {
-        val url = linkRequest?.second ?: return@LaunchedEffect
-        if (backStack.backStack.lastOrNull() == Route.ProfileSetup) return@LaunchedEffect
-        viewModel.openLink(url) { route ->
-            if (route is Route.ProductDetail || route == Route.Search) {
-                applyShopPendingRoute(backStack, route, profileComplete = true)
-            } else {
-                backStack.reset(route)
-            }
-        }
-    }
-}
-
-/** Asks for the notification permission when the ViewModel requests it. */
-@Composable
-private fun ShopNotificationPermissionEffect(viewModel: ShopViewModel, context: android.content.Context) {
-    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
-    LaunchedEffect(viewModel.notificationPermissionRequest) {
-        if (viewModel.notificationPermissionRequest > 0 &&
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
-            PackageManager.PERMISSION_GRANTED
-        ) {
-            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-        }
-    }
-}
