@@ -2,6 +2,8 @@ package com.vayunmathur.madeveloper
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
+import com.vayunmathur.library.ui.ExternalIntents
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.madeveloper.platform.MaDevViewModel
@@ -10,6 +12,8 @@ import com.vayunmathur.madeveloper.ui.CommitScreen
 import com.vayunmathur.madeveloper.ui.CommitsScreen
 import com.vayunmathur.madeveloper.ui.FileScreen
 import com.vayunmathur.madeveloper.ui.HomeScreen
+import com.vayunmathur.madeveloper.ui.IssuesScreen
+import com.vayunmathur.madeveloper.ui.PullRequestsScreen
 import com.vayunmathur.madeveloper.ui.PushScreen
 import com.vayunmathur.madeveloper.ui.RepoScreen
 import com.vayunmathur.madeveloper.ui.TestsScreen
@@ -18,6 +22,7 @@ import com.vayunmathur.madeveloper.ui.TestsScreen
 @Composable
 fun Navigation(viewModel: MaDevViewModel) {
     val backStack = rememberNavBackStack<Route>(Route.Home)
+    val context = LocalContext.current
     LaunchedEffect(Unit) { viewModel.loadHome() }
     MainNavigation(backStack) {
         entry<Route.Home> {
@@ -28,6 +33,28 @@ fun Navigation(viewModel: MaDevViewModel) {
                 onOpenTests = { backStack.add(Route.Tests) },
                 onOpenCatalog = { backStack.add(Route.Catalog) },
                 onOpenPush = { backStack.add(Route.Push) },
+                onOpenIssues = { backStack.add(Route.Issues) },
+                onOpenPrs = { backStack.add(Route.Prs) },
+            )
+        }
+        entry<Route.Issues> {
+            IssuesScreen(
+                state = viewModel.state,
+                onOpenIssue = { issue -> ExternalIntents.openUrl(context, issue.webUrl) },
+                onBack = { backStack.pop() },
+            )
+        }
+        entry<Route.Prs> {
+            PullRequestsScreen(
+                state = viewModel.state,
+                onOpenPr = { pr ->
+                    if (viewModel.repoByName(pr.hostRepo) != null) {
+                        backStack.add(Route.Repo(pr.hostRepo))
+                    } else {
+                        ExternalIntents.openUrl(context, pr.webUrl)
+                    }
+                },
+                onBack = { backStack.pop() },
             )
         }
         entry<Route.Repo> { route ->

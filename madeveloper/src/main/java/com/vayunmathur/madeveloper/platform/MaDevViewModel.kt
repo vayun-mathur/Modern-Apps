@@ -35,6 +35,8 @@ import com.vayunmathur.madeveloper.domain.RepoDetail
 import com.vayunmathur.madeveloper.domain.TestsStatus
 import com.vayunmathur.madeveloper.domain.TreeEntry
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -95,12 +97,18 @@ class MaDevViewModel(app: Application) : AndroidViewModel(app) {
         state = state.copy(loading = true, error = null)
         viewModelScope.launch {
             try {
-                val repos = repo.repos()
-                val tests = repo.tests()
-                state = state.copy(
-                    loading = false, repos = repos, tests = tests,
-                    issues = repo.issues(), prs = repo.prs(),
-                )
+                // All four host fetches run concurrently; any IOException
+                // cancels the rest and lands in the same error state.
+                coroutineScope {
+                    val repos = async { repo.repos() }
+                    val tests = async { repo.tests() }
+                    val issues = async { repo.issues() }
+                    val prs = async { repo.prs() }
+                    state = state.copy(
+                        loading = false, repos = repos.await(), tests = tests.await(),
+                        issues = issues.await(), prs = prs.await(),
+                    )
+                }
             } catch (e: java.io.IOException) {
                 state = state.copy(loading = false, error = e.message ?: "Could not reach git.maproj.org")
             }

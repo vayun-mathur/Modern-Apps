@@ -20,7 +20,6 @@ import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Spacing
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.madeveloper.platform.MaDevViewModel
 
 /** Paged commit list for one repository branch. */

@@ -56,10 +56,19 @@ data class GitFile(
 data class GitIssue(
     val repo: String, val number: Int, val title: String, val author: String,
     val comments: Int, val labels: List<String>, val updatedAt: String,
-)
+) {
+    /** GitHub page for this issue; [repo] is the `owner/name` slug issues are mirrored from. */
+    val webUrl: String get() = "https://github.com/$repo/issues/$number"
+}
 
 /** One pull request as served by `/prs.json`. */
-data class GitPr(val repo: String, val number: Int, val title: String, val author: String)
+data class GitPr(val repo: String, val number: Int, val title: String, val author: String) {
+    /** Hosted repository name for this PR (`Modern-Apps.git` or an `owner/name` slug). */
+    val hostRepo: String get() = repo.substringAfterLast('/').removeSuffix(".git")
+
+    /** Git host page for this PR's repository. */
+    val webUrl: String get() = "https://git.maproj.org/$hostRepo"
+}
 
 /** One CI run from `/tests.json`. */
 data class TestRun(

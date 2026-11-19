@@ -258,6 +258,8 @@ class MaDevRouteTest {
             com.vayunmathur.madeveloper.Route.Commits("Modern-Apps", "main"),
             com.vayunmathur.madeveloper.Route.Commit("Modern-Apps", "main", "abc123"),
             com.vayunmathur.madeveloper.Route.File("Modern-Apps", "src/Main.kt", "dev"),
+            com.vayunmathur.madeveloper.Route.Issues,
+            com.vayunmathur.madeveloper.Route.Prs,
             com.vayunmathur.madeveloper.Route.Tests,
             com.vayunmathur.madeveloper.Route.Catalog,
             com.vayunmathur.madeveloper.Route.Push,

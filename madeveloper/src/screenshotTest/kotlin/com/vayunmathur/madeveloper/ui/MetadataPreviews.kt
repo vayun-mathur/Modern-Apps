@@ -20,6 +20,7 @@ class MetadataPreviews {
             HomeScreen(
                 state = MaDevUiState(repos = listOf(GitRepo("Modern-Apps", "main", "abc12345", "Demo commit", "2026-11-16T00:00:00Z")), pairingCode = "ABC234"),
                 onRefresh = {}, onOpenRepo = {}, onOpenTests = {}, onOpenCatalog = {}, onOpenPush = {},
+                onOpenIssues = {}, onOpenPrs = {},
             )
         }
     }

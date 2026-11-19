@@ -27,6 +27,14 @@ sealed interface Route : NavKey {
     data class File(val repo: String, val path: String, val branch: String) : Route
 
     @Serializable
+    /** Open issues across hosted repos, from the git host issues page. */
+    data object Issues : Route
+
+    @Serializable
+    /** Open pull requests across hosted repos, from the git host PR page. */
+    data object Prs : Route
+
+    @Serializable
     /** Full CI history from the git host tests page. */
     data object Tests : Route
 

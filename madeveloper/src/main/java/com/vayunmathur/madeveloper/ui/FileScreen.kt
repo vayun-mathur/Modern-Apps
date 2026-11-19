@@ -28,7 +28,6 @@ import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Spacing
 import com.vayunmathur.library.ui.Surface
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.madeveloper.domain.DevPresentation
 import com.vayunmathur.madeveloper.domain.GitFile
 import com.vayunmathur.madeveloper.platform.MaDevViewModel

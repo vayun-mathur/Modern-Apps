@@ -15,6 +15,8 @@ import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.madeveloper.data.GitHostRepository
 import com.vayunmathur.madeveloper.domain.CatalogApp
+import com.vayunmathur.madeveloper.domain.GitIssue
+import com.vayunmathur.madeveloper.domain.GitPr
 import com.vayunmathur.madeveloper.domain.InstallPhase
 import com.vayunmathur.madeveloper.domain.PendingInstall
 import com.vayunmathur.madeveloper.domain.TestRun
@@ -104,6 +106,12 @@ class MaDevScreensTest {
         catalog = listOf(
             CatalogApp("com.example.app", "Example", "Demo app", "1.0", 1L, 2048L, "/a_1.apk"),
         ),
+        issues = listOf(
+            GitIssue("vayun-mathur/Modern-Apps", 7, "Bug one", "vayun", 3, listOf("bug"), "2026-01-01"),
+        ),
+        prs = listOf(
+            GitPr("Modern-Apps", 12, "Add thing", "vayun"),
+        ),
     )
 
     @Test fun homeShowsCiReposAndFiresNavigation() {
@@ -111,6 +119,8 @@ class MaDevScreensTest {
         var testsOpened = 0
         var catalogOpened = 0
         var pushOpened = 0
+        var issuesOpened = 0
+        var prsOpened = 0
         var refreshes = 0
         rule.setContent {
             HomeScreen(
@@ -120,6 +130,8 @@ class MaDevScreensTest {
                 onOpenTests = { testsOpened++ },
                 onOpenCatalog = { catalogOpened++ },
                 onOpenPush = { pushOpened++ },
+                onOpenIssues = { issuesOpened++ },
+                onOpenPrs = { prsOpened++ },
             )
         }
         rule.onNodeWithText("Developer").assertIsDisplayed()
@@ -132,20 +144,51 @@ class MaDevScreensTest {
         clickRow("Pushed installs")
         clickRow("Test history")
         clickRow("Available builds")
+        clickRow("Issues")
+        clickRow("Pull requests")
         rule.onNodeWithContentDescription("Refresh").performClick()
         clickRow("Modern-Apps")
         assertEquals("Modern-Apps", openedRepo)
         assertEquals(1, testsOpened)
         assertEquals(1, catalogOpened)
         assertEquals(1, pushOpened)
+        assertEquals(1, issuesOpened)
+        assertEquals(1, prsOpened)
         assertEquals(1, refreshes)
+    }
+
+    @Test fun issuesAndPullRequestsScreensFireRowClicks() {
+        var openedIssue: GitIssue? = null
+        var openedPr: GitPr? = null
+        var page by androidx.compose.runtime.mutableStateOf(0)
+        rule.setContent {
+            when (page) {
+                0 -> IssuesScreen(state(), onOpenIssue = { openedIssue = it }, onBack = {})
+                1 -> PullRequestsScreen(state(), onOpenPr = { openedPr = it }, onBack = {})
+                2 -> IssuesScreen(MaDevUiState(), onOpenIssue = {}, onBack = {})
+                else -> PullRequestsScreen(MaDevUiState(), onOpenPr = {}, onBack = {})
+            }
+        }
+        rule.onNodeWithText("Bug one").assertIsDisplayed()
+        clickRow("Bug one")
+        assertEquals(7, openedIssue?.number)
+        assertEquals("Bug one", openedIssue?.title)
+        rule.runOnIdle { page = 1 }
+        rule.onNodeWithText("Add thing").assertIsDisplayed()
+        clickRow("Add thing")
+        assertEquals(12, openedPr?.number)
+        assertEquals("Add thing", openedPr?.title)
+        rule.runOnIdle { page = 2 }
+        rule.onNodeWithText("No open issues loaded yet.").assertIsDisplayed()
+        rule.runOnIdle { page = 3 }
+        rule.onNodeWithText("No open pull requests loaded yet.").assertIsDisplayed()
     }
 
     @Test fun homeLoadingAndErrorStatesRender() {
         rule.setContent {
             HomeScreen(
                 MaDevUiState(loading = true, error = "HTTP 404 for repos"),
-                {}, {}, {}, {}, {},
+                {}, {}, {}, {}, {}, {}, {},
             )
         }
         rule.onNode(androidx.compose.ui.test.hasScrollAction())
@@ -155,7 +198,7 @@ class MaDevScreensTest {
 
     @Test fun homeEmptyAndLanguageChipRender() {
         rule.setContent {
-            HomeScreen(MaDevUiState(pairingCode = "ABC234"), {}, {}, {}, {}, {})
+            HomeScreen(MaDevUiState(pairingCode = "ABC234"), {}, {}, {}, {}, {}, {}, {})
         }
         rule.onNode(androidx.compose.ui.test.hasScrollAction())
             .performScrollToNode(androidx.compose.ui.test.hasText("No repositories"))

@@ -43,7 +43,6 @@ import com.vayunmathur.library.ui.Spacing
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.library.ui.TextField
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.madeveloper.domain.DevPresentation
 import com.vayunmathur.madeveloper.domain.FileKind
 import com.vayunmathur.madeveloper.domain.TreeEntry

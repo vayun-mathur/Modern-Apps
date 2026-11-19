@@ -35,7 +35,6 @@ import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Spacing
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.madeveloper.domain.CiStatus
 import com.vayunmathur.madeveloper.domain.DevPresentation
 import com.vayunmathur.madeveloper.domain.GitRepo
@@ -50,6 +49,8 @@ fun HomeScreen(
     onOpenTests: () -> Unit,
     onOpenCatalog: () -> Unit,
     onOpenPush: () -> Unit,
+    onOpenIssues: () -> Unit,
+    onOpenPrs: () -> Unit,
 ) {
     AppScaffold(
         title = "Developer",
@@ -95,7 +96,7 @@ fun HomeScreen(
                         }
                     }
                 }
-                item { QuickLinksSection(state, onOpenTests, onOpenCatalog, onOpenPush) }
+                item { QuickLinksSection(state, onOpenTests, onOpenCatalog, onOpenPush, onOpenIssues, onOpenPrs) }
                 if (state.loading && state.repos.isEmpty()) {
                     item { LoadingState(message = "Loading repositories…", modifier = Modifier.fillMaxWidth().height(160.dp)) }
                 }
@@ -130,7 +131,7 @@ fun HomeScreen(
                     }
                 }
                 if (state.issues.isNotEmpty() || state.prs.isNotEmpty()) {
-                    item { ActivitySection(state) }
+                    item { ActivitySection(state, onOpenIssues, onOpenPrs) }
                 }
             }
         }
@@ -176,6 +177,8 @@ private fun QuickLinksSection(
     onOpenTests: () -> Unit,
     onOpenCatalog: () -> Unit,
     onOpenPush: () -> Unit,
+    onOpenIssues: () -> Unit,
+    onOpenPrs: () -> Unit,
 ) {
     DashboardSection(
         title = "Quick links",
@@ -188,11 +191,11 @@ private fun QuickLinksSection(
         QuickLinkRow("Pushed installs", "Pairing and pending installs", onOpenPush) { IconInstall() }
         if (state.issues.isNotEmpty()) {
             DashboardSectionDivider()
-            QuickLinkRow("Issues", "${state.issues.size} open across hosted repos", {}) { IconBugReport() }
+            QuickLinkRow("Issues", "${state.issues.size} open across hosted repos", onOpenIssues) { IconBugReport() }
         }
         if (state.prs.isNotEmpty()) {
             DashboardSectionDivider()
-            QuickLinkRow("Pull requests", "${state.prs.size} open across hosted repos", {}) { IconMerge() }
+            QuickLinkRow("Pull requests", "${state.prs.size} open across hosted repos", onOpenPrs) { IconMerge() }
         }
     }
 }
@@ -214,7 +217,7 @@ private fun QuickLinkRow(
 }
 
 @Composable
-private fun ActivitySection(state: MaDevUiState) {
+private fun ActivitySection(state: MaDevUiState, onOpenIssues: () -> Unit, onOpenPrs: () -> Unit) {
     DashboardSection(title = "Recent activity") {
         state.issues.take(3).forEach { issue ->
             ListItem(
@@ -223,6 +226,7 @@ private fun ActivitySection(state: MaDevUiState) {
                     Text("${issue.repo} #${issue.number} · ${issue.author}")
                 },
                 leadingContent = { IconBugReport() },
+                modifier = Modifier.clickable(onClick = onOpenIssues),
             )
         }
         state.prs.take(3).forEach { pr ->
@@ -230,6 +234,7 @@ private fun ActivitySection(state: MaDevUiState) {
                 headlineContent = { Text(pr.title, maxLines = 1) },
                 supportingContent = { Text("${pr.repo} #${pr.number} · ${pr.author}") },
                 leadingContent = { IconMerge() },
+                modifier = Modifier.clickable(onClick = onOpenPrs),
             )
         }
     }

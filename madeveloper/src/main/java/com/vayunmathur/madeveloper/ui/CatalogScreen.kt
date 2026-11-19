@@ -16,7 +16,6 @@ import com.vayunmathur.library.ui.ListItem
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Spacing
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.madeveloper.platform.MaDevUiState
 
 /** Read-only catalog of available builds; installs arrive by server push. */
