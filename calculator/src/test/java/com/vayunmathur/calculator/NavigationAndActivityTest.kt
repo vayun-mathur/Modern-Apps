@@ -2,7 +2,7 @@ package com.vayunmathur.calculator
 
 import android.content.Intent
 import androidx.test.core.app.ApplicationProvider
-import com.vayunmathur.calculator.widget.CalculatorWidgetSettingsActivity
+import com.vayunmathur.calculator.ui.CalculatorWidgetSettingsActivity
 import android.appwidget.AppWidgetManager
 import kotlinx.serialization.json.Json
 import org.junit.Before

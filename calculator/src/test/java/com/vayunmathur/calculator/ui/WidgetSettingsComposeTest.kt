@@ -7,7 +7,7 @@ import androidx.compose.ui.test.junit4.AndroidComposeTestRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.rules.ActivityScenarioRule
-import com.vayunmathur.calculator.widget.CalculatorWidgetSettingsActivity
+import com.vayunmathur.calculator.ui.CalculatorWidgetSettingsActivity
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner

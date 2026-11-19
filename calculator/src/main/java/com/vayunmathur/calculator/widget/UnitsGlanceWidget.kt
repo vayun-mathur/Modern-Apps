@@ -48,6 +48,10 @@ import com.vayunmathur.calculator.platform.unitsFromKey
 import com.vayunmathur.calculator.platform.unitsToKey
 import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.library.widgets.MaWidget
+import androidx.glance.action.ActionParameters
+import androidx.glance.appwidget.action.ActionCallback
+import androidx.glance.appwidget.state.updateAppWidgetState
+import com.vayunmathur.library.widgets.MaWidgetReceiver
 
 /** What the widget draws: the category it is on and the conversion for that category's unit pair. */
 data class UnitsWidgetState(val categoryName: String, val conversion: String)
@@ -277,3 +281,55 @@ class UnitsGlanceWidget : MaWidget<UnitsWidgetData>() {
         }
     }
 }
+
+/**
+ * Opens and closes the inline category list. Glance state survives widget updates, so the list
+ * stays open across the recomposition this triggers.
+ */
+class ToggleUnitsCategoryListAction : ActionCallback {
+    override suspend fun onAction(
+        context: Context,
+        glanceId: GlanceId,
+        parameters: ActionParameters,
+    ) {
+        updateAppWidgetState(context, glanceId) { prefs ->
+            prefs[UnitsGlanceWidget.EXPANDED] = prefs[UnitsGlanceWidget.EXPANDED] != true
+        }
+        UnitsGlanceWidget().update(context, glanceId)
+    }
+}
+
+/** Switches the widget to a category and collapses the list again. */
+class SelectUnitsCategoryAction : ActionCallback {
+    override suspend fun onAction(
+        context: Context,
+        glanceId: GlanceId,
+        parameters: ActionParameters,
+    ) {
+        val name = parameters[CATEGORY_NAME] ?: return
+        // The preference the app restores on launch, so the converter reopens on this category too.
+        DataStoreUtils.getInstance(context)
+            .setString(KEY_UNITS_CATEGORY, name)
+        updateAppWidgetState(context, glanceId) { prefs ->
+            prefs[UnitsGlanceWidget.EXPANDED] = false
+        }
+        UnitsGlanceWidget().update(context, glanceId)
+    }
+
+    /** Action parameter keys for the units widget actions. */
+    companion object {
+        val CATEGORY_NAME = ActionParameters.Key<String>("categoryName")
+    }
+}
+
+/**
+ * No periodic update is scheduled: a conversion only changes when the user changes it, and both
+ * sides push an update when they do — the converter through `CalculatorViewModel`, the widget
+ * through its own action callbacks.
+ */
+class UnitsGlanceWidgetReceiver : MaWidgetReceiver<UnitsGlanceWidget>(
+    widgetClass = UnitsGlanceWidget::class,
+    receiverClass = UnitsGlanceWidgetReceiver::class,
+    hourly = false,
+    widgetFactory = ::UnitsGlanceWidget,
+)

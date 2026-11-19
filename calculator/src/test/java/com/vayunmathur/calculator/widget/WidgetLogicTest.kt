@@ -1,6 +1,7 @@
 package com.vayunmathur.calculator.widget
 
 import android.content.Context
+import com.vayunmathur.calculator.ui.CalculatorWidgetSettingsActivity
 import androidx.test.core.app.ApplicationProvider
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric

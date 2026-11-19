@@ -1,4 +1,4 @@
-package com.vayunmathur.calculator.widget
+package com.vayunmathur.calculator.ui
 
 import android.appwidget.AppWidgetManager
 import android.content.Intent
@@ -20,6 +20,9 @@ import androidx.glance.appwidget.state.getAppWidgetState
 import androidx.glance.appwidget.state.updateAppWidgetState
 import androidx.glance.state.PreferencesGlanceStateDefinition
 import com.vayunmathur.calculator.R
+import com.vayunmathur.calculator.widget.CalculatorGlanceWidget
+import com.vayunmathur.calculator.widget.CalculatorGlanceWidgetReceiver
+import com.vayunmathur.calculator.widget.CalculatorTransparentKey
 import com.vayunmathur.library.ui.DetailScaffold
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.SettingsSection
