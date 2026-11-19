@@ -15,6 +15,7 @@ import androidx.glance.layout.fillMaxSize
 import com.vayunmathur.clock.MainActivity
 import com.vayunmathur.clock.R
 import com.vayunmathur.library.widgets.MaWidget
+import com.vayunmathur.library.widgets.MaWidgetReceiver
 
 /**
  * Material You analog clock widget. The dial, the hands and the orbiting second-hand dot are
@@ -58,3 +59,18 @@ private fun AnalogClockContent() {
         AndroidRemoteViews(RemoteViews(context.packageName, R.layout.analog_clock_widget))
     }
 }
+
+/**
+ * Receiver for [AnalogClockGlanceWidget]. Keeps the `...WidgetProvider` name (rather than the
+ * `...GlanceWidgetReceiver` the other apps use) because the launcher keys placed widgets by
+ * component name: renaming it would silently drop every clock widget already on a home screen.
+ */
+class AnalogClockWidgetProvider : MaWidgetReceiver<AnalogClockGlanceWidget>(
+    widgetClass = AnalogClockGlanceWidget::class,
+    receiverClass = AnalogClockWidgetProvider::class,
+    // No periodic refresh (the framework AnalogClock ticks itself) and no composed
+    // picker preview (the preview comes from `previewLayout` XML in the widget info).
+    hourly = false,
+    previews = false,
+    widgetFactory = ::AnalogClockGlanceWidget,
+)
