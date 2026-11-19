@@ -26,7 +26,7 @@ import java.io.File
  *    (`// ---- TODO / FIXME ----`)
  *
  * The base ban stays blocking in detekt; these evasion shapes land here as a
- * warning first and join the ban at promotion (Phase 4). Comment-only via
+ * an error like the rest of the ban. Comment-only via
  * [CommentOnlyMatcher]: an identifier or string literal that happens to
  * contain `TODO` must not trip this check.
  */
@@ -117,7 +117,7 @@ class TodoEvasionDetector : Detector(), SourceCodeScanner {
                 """.trimIndent(),
             category = Category.PRODUCTIVITY,
             priority = 5,
-            severity = Severity.WARNING,
+            severity = Severity.ERROR,
             implementation = Implementation(
                 TodoEvasionDetector::class.java,
                 Scope.JAVA_FILE_SCOPE,

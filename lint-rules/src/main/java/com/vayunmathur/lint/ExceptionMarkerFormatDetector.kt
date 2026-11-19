@@ -40,9 +40,8 @@ import java.io.File
  * Comment-only via [CommentOnlyMatcher]: a marker inside a string literal must
  * neither opt a file out nor trip this check.
  *
- * Warn-then-error: WARNING now, promote to ERROR once the owning slices are
- * green (a bare `// RAW SCAFFOLD EXCEPTION` with no reason is the one known
- * live shape this will surface first).
+ * Blocking: every finding is an error (a bare `// RAW SCAFFOLD EXCEPTION`
+ * with no reason is one live shape this surfaces).
  */
 class ExceptionMarkerFormatDetector : Detector(), SourceCodeScanner {
 
@@ -224,7 +223,7 @@ class ExceptionMarkerFormatDetector : Detector(), SourceCodeScanner {
                 """.trimIndent(),
             category = Category.CORRECTNESS,
             priority = 6,
-            severity = Severity.WARNING,
+            severity = Severity.ERROR,
             implementation = Implementation(
                 ExceptionMarkerFormatDetector::class.java,
                 Scope.JAVA_FILE_SCOPE,

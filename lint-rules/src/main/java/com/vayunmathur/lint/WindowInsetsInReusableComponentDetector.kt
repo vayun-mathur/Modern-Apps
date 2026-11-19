@@ -72,7 +72,7 @@ class WindowInsetsInReusableComponentDetector : Detector(), SourceCodeScanner {
                 """.trimIndent(),
             category = Category.CORRECTNESS,
             priority = 6,
-            severity = Severity.WARNING,
+            severity = Severity.ERROR,
             implementation = Implementation(
                 WindowInsetsInReusableComponentDetector::class.java,
                 Scope.JAVA_FILE_SCOPE,

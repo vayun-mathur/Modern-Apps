@@ -183,15 +183,6 @@ configure<com.android.build.api.dsl.ApplicationExtension> {
         // as warnings; they promote to fatal with the rest at promotion.
         warning += listOf(
             "HardcodedText",
-            // Repo rules from :lint-rules. Only the three gates below are not advisory.
-            "DirectBuildDatabase",
-            "OneComposablePerFile",
-            "PackageStructure",
-            "RawScaffoldInApp",
-            "Room2Usage",
-            "ExceptionMarkerFormat",
-            "TodoEvasion",
-            "CommentedOutCode",
             // Built-in checks.
             "ContextCastToActivity",
             "ExtraTranslation",
@@ -214,14 +205,27 @@ configure<com.android.build.api.dsl.ApplicationExtension> {
             "UnsafeOptInUsageError",
             "WrongConstant",
         )
-        // Toast is banned repo-wide; this one fails the build even though
-        // everything else is advisory. See :lint-rules.
-        // DirectComposeAnimation keeps motion in the shared helpers, so the same
-        // interaction cannot pick up a different duration on every screen.
-        // FileLength caps Kotlin file size (350 ui / 800 elsewhere): oversized
-        // screen files hide brace-imbalance breakage and rot into helper
-        // grab-bags. Split first — the build fails until each file fits.
-        fatal += listOf("ToastUsage", "DirectComposeAnimation", "FileLength", "DirectAndroidLog")
+        // Every Modern-Apps lint issue is blocking. A finding must be fixed in
+        // code; it may not be demoted, suppressed, or baselined to land.
+        // Toast is banned repo-wide, DirectComposeAnimation keeps motion in
+        // the shared helpers, and FileLength caps Kotlin file size (350 ui /
+        // 800 elsewhere): oversized screen files hide brace-imbalance
+        // breakage and rot into helper grab-bags. Split first.
+        fatal += listOf(
+            "ToastUsage",
+            "DirectAndroidLog",
+            "DirectBuildDatabase",
+            "DirectComposeAnimation",
+            "FileLength",
+            "OneComposablePerFile",
+            "PackageStructure",
+            "RawScaffoldInApp",
+            "Room2Usage",
+            "WindowInsetsInReusableComponent",
+            "ExceptionMarkerFormat",
+            "TodoEvasion",
+            "CommentedOutCode",
+        )
     }
 
     // Every app declares the same res/resources.properties (unqualifiedResLocale) for

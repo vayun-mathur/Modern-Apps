@@ -24,7 +24,9 @@ import org.jetbrains.uast.UFile
  * Each app's `src/main/java/com/vayunmathur/<app>/` may only contain the
  * closed set of roots; anything else is a violation. The check derives
  * `<app>` from the file's `package` declaration (source of truth, not file
- * path) and inspects the first segment after `com.vayunmathur.<app>`.
+ * path) and inspects the full segment path after `com.vayunmathur.<app>`:
+ * the first segment must be an allowed root, descendant segments must name
+ * features/capabilities rather than generic buckets, and `widget` is flat.
  *
  * Files whose package is exactly `com.vayunmathur.<app>` (no sub-package) are
  * further gated to the closed file allow-list: MainActivity.kt, Route.kt,
@@ -44,10 +46,22 @@ class PackageStructureDetector : Detector(), SourceCodeScanner {
                 if (isExcluded(packageName)) return
                 if (!packageName.startsWith("com.vayunmathur.")) return
 
-                val result = deriveAppBaseAndSegment(packageName) ?: return
-                val segment = result.second
+                val result = deriveAppBaseAndSegments(packageName) ?: return
+                val segments = result.second
+                val segment = segments.firstOrNull()
                 if (segment != null) {
-                    if (segment in ALLOWED_ROOTS) return
+                    if (segment in ALLOWED_ROOTS) {
+                        val subpackageViolation = validateSubpackages(packageName, segments)
+                        if (subpackageViolation != null) {
+                            context.report(
+                                ISSUE,
+                                node,
+                                context.getLocation(node),
+                                subpackageViolation,
+                            )
+                        }
+                        return
+                    }
 
                     // Unknown root — report.
                     val suggestion = aliasSuggestion(segment)
@@ -152,13 +166,11 @@ class PackageStructureDetector : Detector(), SourceCodeScanner {
         }
 
         /**
-         * Derives the app base package and the first segment after it.
+         * Derives the app base package and every segment after it.
          * Returns null if the package does not start with `com.vayunmathur.`.
-         * Returns Pair(base, null) for root files (no extra segment).
-         *
-         * Source: plan §5.3 normative snippet.
+         * Returns Pair(base, emptyList()) for root files (no extra segment).
          */
-        private fun deriveAppBaseAndSegment(packageName: String): Pair<String, String?>? {
+        private fun deriveAppBaseAndSegments(packageName: String): Pair<String, List<String>>? {
             if (!packageName.startsWith("com.vayunmathur.")) return null
             val remainder = packageName.removePrefix("com.vayunmathur.")
             if (remainder.isEmpty()) return null
@@ -167,20 +179,48 @@ class PackageStructureDetector : Detector(), SourceCodeScanner {
             // as app `cast` with a root segment `tv`, which is not in the allow-list and never
             // could be.
             for (base in NESTED_APP_BASES) {
-                if (remainder == base) return Pair("com.vayunmathur.$base", null)
+                if (remainder == base) return Pair("com.vayunmathur.$base", emptyList())
                 if (remainder.startsWith("$base.")) {
-                    val segment = remainder.removePrefix("$base.").substringBefore('.')
-                    return Pair("com.vayunmathur.$base", segment)
+                    val segments = remainder.removePrefix("$base.").split('.')
+                    return Pair("com.vayunmathur.$base", segments)
                 }
             }
             val dot = remainder.indexOf('.')
             return if (dot == -1) {
-                Pair("com.vayunmathur.$remainder", null)
+                Pair("com.vayunmathur.$remainder", emptyList())
             } else {
                 val app = remainder.substring(0, dot)
-                val segment = remainder.substring(dot + 1).substringBefore('.')
-                Pair("com.vayunmathur.$app", segment)
+                val segments = remainder.substring(dot + 1).split('.')
+                Pair("com.vayunmathur.$app", segments)
             }
+        }
+
+        private val BANNED_DESCENDANT_SEGMENTS = setOf(
+            "api", "apis", "base", "common", "core", "feature", "features",
+            "glance", "helper", "helpers", "impl", "manager", "managers",
+            "misc", "presentation", "repository", "repositories", "screen",
+            "screens", "util", "utils", "view", "views", "viewmodel",
+            "viewmodels", "widget", "widgets",
+        )
+
+        private fun validateSubpackages(packageName: String, segments: List<String>): String? {
+            val root = segments.firstOrNull() ?: return null
+            if (root == "widget" && segments.size > 1) {
+                return "Package `$packageName` fragments widget code below `widget`. " +
+                    "Widget code must be directly in the flat `widget` root; Glance is an " +
+                    "implementation detail, not a package boundary. Move the file to " +
+                    "`${packageName.substringBefore(".widget")}.widget`. " +
+                    "See docs/package-structure.md §3.2."
+            }
+            val banned = segments.drop(1).firstOrNull { it in BANNED_DESCENDANT_SEGMENTS }
+            if (banned != null) {
+                return "Package `$packageName` uses banned package segment `$banned` below " +
+                    "root `$root`. Package segments name a responsibility, feature, provider, " +
+                    "or protocol—not a generic bucket, class type, synonym, or UI toolkit. " +
+                    "Move the file under the closest canonical responsibility in " +
+                    "docs/package-structure.md §2–§4."
+            }
+            return null
         }
 
         /**
@@ -448,7 +488,8 @@ class PackageStructureDetector : Detector(), SourceCodeScanner {
             "api" to "network/",
             "model" to "data/ (or data/model/ subpackage)",
             "viewmodel" to "platform/",
-            "glance" to "widget/ (move glance/Foo → widget/glance/Foo)",
+            "widgets" to "widget/ (singular and flat)",
+            "glance" to "widget/ (flat; Glance is an implementation detail, not a package)",
             "composer" to "ui/composer/",
             "shields" to "domain/shields/",
             "syntax" to "domain/syntax/",
@@ -478,7 +519,12 @@ class PackageStructureDetector : Detector(), SourceCodeScanner {
                 Each app's `src/main/java/com/vayunmathur/<app>/` may only contain the closed \
                 set of roots: [ui, data, domain, platform, network, intents, service, provider, \
                 widget, notifications, auth, sync, telephony]. Any other top-level segment is a \
-                violation. Additionally, files whose package is exactly `com.vayunmathur.<app>` \
+                violation. Descendant segments must name a responsibility, feature, provider, \
+                or protocol; generic buckets and synonyms (`util`, `common`, `helper`, \
+                `manager`, `api`, `viewmodel`, `widgets`, …) are violations. `widget` is \
+                singular and flat: `widget.glance` and every other `widget.<child>` are \
+                violations because Glance is an implementation detail, not a package boundary. \
+                Additionally, files whose package is exactly `com.vayunmathur.<app>` \
                 (app root) are restricted to a closed file allow-list: [MainActivity.kt (only \
                 class MainActivity), Route.kt (only sealed interface Route : NavKey), \
                 Navigation.kt (only @Composable fun Navigation(...)), *Application.kt (only the \

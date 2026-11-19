@@ -33,7 +33,7 @@ import java.io.File
  *
  * Comment-only via [CommentOnlyMatcher]: string literals are never scanned.
  *
- * Warn-then-error: WARNING now (zero-today baseline), promote once green.
+ * Blocking: every finding is an error.
  */
 class CommentedOutCodeDetector : Detector(), SourceCodeScanner {
 
@@ -177,7 +177,7 @@ class CommentedOutCodeDetector : Detector(), SourceCodeScanner {
                 """.trimIndent(),
             category = Category.PRODUCTIVITY,
             priority = 4,
-            severity = Severity.WARNING,
+            severity = Severity.ERROR,
             implementation = Implementation(
                 CommentedOutCodeDetector::class.java,
                 Scope.JAVA_FILE_SCOPE,
