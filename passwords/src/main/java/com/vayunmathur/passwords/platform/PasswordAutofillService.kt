@@ -114,24 +114,30 @@ class PasswordAutofillService : AutofillService() {
         val password = parser.passwordText
 
         if (!username.isNullOrBlank() && !password.isNullOrBlank()) {
-            runBlocking {
-                val candidates = repository.getAllPasswords()
-                val existing = candidates.firstOrNull { it.username == username || it.email == username }
-                if (existing != null) {
-                    repository.upsertPassword(existing.copy(password = password))
-                } else {
-                    val looksLikeEmail = username.contains("@")
-                    repository.upsertPassword(
-                        Password(
-                            name = "Saved Login",
-                            username = if (looksLikeEmail) "" else username,
-                            email = if (looksLikeEmail) username else "",
-                            password = password,
-                            totpSecret = null,
-                            websites = listOfNotNull(parser.webDomain)
+            try {
+                runBlocking {
+                    val candidates = repository.getAllPasswords()
+                    val existing = candidates.firstOrNull { it.username == username || it.email == username }
+                    if (existing != null) {
+                        repository.upsertPassword(existing.copy(password = password))
+                    } else {
+                        val looksLikeEmail = username.contains("@")
+                        repository.upsertPassword(
+                            Password(
+                                name = "Saved Login",
+                                username = if (looksLikeEmail) "" else username,
+                                email = if (looksLikeEmail) username else "",
+                                password = password,
+                                totpSecret = null,
+                                websites = listOfNotNull(parser.webDomain)
+                            )
                         )
-                    )
-                }
+                    }
+            }
+            } catch (expected: IllegalStateException) {
+                Log.error(tag, "Error in onSaveRequest", expected)
+                callback.onFailure("Unable to open vault")
+                return
             }
         }
         callback.onSuccess()

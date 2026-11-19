@@ -256,6 +256,11 @@ class PasswordsViewModel(
                     "Imported ${result.inserted} rows, skipped ${result.skipped} rows"
             } catch (expected: IllegalStateException) {
                 _importMessage.value = "Import failed: ${expected.message}"
+            } catch (expected: java.io.IOException) {
+                // Provider deleted/revoked the picked document mid-import.
+                _importMessage.value = "Import failed: ${expected.message}"
+            } catch (expected: SecurityException) {
+                _importMessage.value = "Import failed: ${expected.message}"
             } finally {
                 _importing.value = false
             }

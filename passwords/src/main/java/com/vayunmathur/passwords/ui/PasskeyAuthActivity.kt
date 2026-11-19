@@ -71,6 +71,18 @@ class PasskeyAuthActivity : FragmentActivity() {
         } catch (expected: IllegalStateException) {
             Log.error(TAG, "Error in passkey $flow flow", expected)
             setResult(RESULT_CANCELED)
+        } catch (expected: org.json.JSONException) {
+            // Calling app supplied malformed requestJson; cancel, don't crash.
+            Log.error(TAG, "Malformed passkey request JSON in $flow flow", expected)
+            setResult(RESULT_CANCELED)
+        } catch (expected: IllegalArgumentException) {
+            // Bad Base64url user handle / stored credential id from the calling app or import.
+            Log.error(TAG, "Malformed passkey data in $flow flow", expected)
+            setResult(RESULT_CANCELED)
+        } catch (expected: java.security.GeneralSecurityException) {
+            // Corrupt imported private key cannot sign; cancel the assertion.
+            Log.error(TAG, "Passkey signing failed in $flow flow", expected)
+            setResult(RESULT_CANCELED)
         }
         finish()
     }

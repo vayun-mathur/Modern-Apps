@@ -31,7 +31,8 @@ suspend fun buildGetCredentialResponse(
     for (option in options) {
         when (option) {
             is BeginGetPublicKeyCredentialOption -> {
-                val rpId = JSONObject(option.requestJson).optString("rpId", "")
+                // requestJson comes from the calling app; skip malformed options.
+                val rpId = runCatching { JSONObject(option.requestJson).optString("rpId", "") }.getOrNull() ?: continue
                 if (rpId.isBlank()) continue
                 for (passkey in passkeyDao.getByRpId(rpId)) {
                     val intent = Intent(context, PasskeyAuthActivity::class.java).apply {

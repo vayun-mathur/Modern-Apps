@@ -31,6 +31,7 @@ import androidx.core.net.toUri
 import com.vayunmathur.library.ui.Card
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.library.util.sharedText
+import com.vayunmathur.library.util.tryOrDefault
 import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.ExternalIntents
@@ -218,8 +219,9 @@ fun PasswordScreen(
                         Text(stringResource(R.string.totp_not_configured))
                     } else {
                         val timeStep = state.now() / 1000 / 30
+                        // Imported/synced secrets may not decode to a key; show placeholder, not a crash.
                         val currentCode = remember(secret, timeStep) {
-                            TOTP.generate(secret, timeStep * 30)
+                            tryOrDefault("----") { TOTP.generate(secret, timeStep * 30) }
                         }
                         val secondsRemaining = ((30000 - state.now() % 30000) / 1000).toInt()
 
