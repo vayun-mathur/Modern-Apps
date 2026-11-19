@@ -24,6 +24,11 @@ import org.junit.runner.RunWith
  * at runtime and issues headless `pm grant`s, so the gate clears without
  * touching system UI.
  *
+ * Strengthened launch-e2e: clears the target package data before the
+ * grant/launch pass so the journey starts from clean state, then performs
+ * one small deterministic core interaction (see the test body) and returns
+ * to the launch surface. Still a single @Test for this app.
+ *
  * UiDevice polling, not compose-test: compose's Espresso idle-sync reflects on
  * hidden InputManager APIs that no longer exist on current releases, so every
  * compose-rule test dies before its first line. Text polling works for Compose
@@ -38,6 +43,10 @@ class LaunchNoCrashTest {
         val device = UiDevice.getInstance(instrumentation)
         val targetContext = instrumentation.targetContext
         val packageName = targetContext.packageName
+
+        // Clean state first (fresh-install journey); grants follow the clear
+        // because a clear can drop runtime-grant state on some releases.
+        clearAppData(instrumentation.uiAutomation, packageName)
 
         grantAllRequestedPermissions(instrumentation.uiAutomation, targetContext.packageManager, packageName)
 
@@ -56,8 +65,29 @@ class LaunchNoCrashTest {
             "messages tab never appeared; the app may have crashed on launch",
             device.wait(Until.findObject(By.text(MESSAGES_TAB_LABEL)), CONTENT_TIMEOUT_MS),
         )
+        // Core interaction: visit Dialer and Call logs, then return to
+        // Messages. A fresh emulator is neither default SMS/phone app and
+        // has no SIM or history, so each tab deterministically shows its
+        // default-app gate or its empty state (verified literals).
+        waitForAnyText(device, MESSAGES_SURFACES)
+        tapTab(device, DIALER_TAB)
+        waitForAnyText(device, DIALER_SURFACES)
+        tapTab(device, CALL_LOGS_TAB)
+        waitForAnyText(device, CALL_LOG_SURFACES)
+        tapTab(device, MESSAGES_TAB_LABEL)
+        waitForAnyText(device, MESSAGES_SURFACES)
         // Still alive in front: the process did not crash after painting content.
         assertEquals(packageName, device.currentPackageName)
+    }
+
+    private fun clearAppData(uiAutomation: UiAutomation, packageName: String) {
+        try {
+            uiAutomation.executeShellCommand("pm clear $packageName").close()
+        } catch (ignored: SecurityException) {
+            // Clear refused: the journey assertions below still report state.
+        } catch (ignored: IOException) {
+            // Shell pipe failed: the content assertions below report it.
+        }
     }
 
     private fun grantAllRequestedPermissions(
@@ -91,11 +121,40 @@ class LaunchNoCrashTest {
         }
     }
 
+    private fun tapTab(device: UiDevice, label: String) {
+        val tab = device.wait(Until.findObject(By.text(label)), CONTENT_TIMEOUT_MS)
+        assertNotNull("tab $label never appeared", tab)
+        tab!!.click()
+    }
+
+    private fun waitForAnyText(device: UiDevice, texts: List<String>) {
+        val deadline = System.currentTimeMillis() + CONTENT_TIMEOUT_MS
+        while (System.currentTimeMillis() < deadline) {
+            if (texts.any { device.findObject(By.text(it)) != null }) return
+            Thread.sleep(250L)
+        }
+        throw AssertionError("none of $texts ever appeared")
+    }
+
     private companion object {
         private const val CONTENT_TIMEOUT_MS = 15_000L
         private const val GATE_TIMEOUT_MS = 5_000L
         private const val MESSAGES_TAB_LABEL = "Messages"
         private const val PERMISSION_GATE_TITLE = "Grant Required Permissions"
+        private const val DIALER_TAB = "Dialer"
+        private const val CALL_LOGS_TAB = "Call logs"
+        private val MESSAGES_SURFACES = listOf(
+            "No conversations yet",
+            "Set Communicate as your default SMS app to read and manage messages here.",
+        )
+        private val DIALER_SURFACES = listOf(
+            "No contacts found",
+            "Set Communicate as your default phone app to use the dialer and call history here.",
+        )
+        private val CALL_LOG_SURFACES = listOf(
+            "No recent calls found",
+            "Set Communicate as your default phone app to use the dialer and call history here.",
+        )
 
         /**
          * Special access behind some apps' gates: exact alarms + full-screen intent
