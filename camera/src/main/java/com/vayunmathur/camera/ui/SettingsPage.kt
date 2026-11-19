@@ -15,6 +15,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.DropdownMenu
@@ -163,6 +164,7 @@ fun <T : NavKey> SettingsPage(backStack: NavBackStack<T>, viewModel: CameraViewM
                                 modifier = Modifier.weight(1f),
                                 textAlign = TextAlign.Start,
                                 maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                             )
                             IconArrowDropDown()
                         }
@@ -213,6 +215,7 @@ fun <T : NavKey> SettingsPage(backStack: NavBackStack<T>, viewModel: CameraViewM
                             modifier = Modifier.weight(1f),
                             textAlign = TextAlign.Start,
                             maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                         IconArrowDropDown()
                     }
@@ -313,6 +316,7 @@ private fun SaveLocationSection(
                         .weight(1f)
                         .padding(horizontal = 12.dp),
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
             Row(modifier = Modifier.fillMaxWidth()) {

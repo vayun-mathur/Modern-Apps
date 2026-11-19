@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.camera.R
 import com.vayunmathur.camera.platform.MotionPhotoDuration
@@ -76,6 +77,7 @@ fun CameraPostProcessingSettings(
                         modifier = Modifier.weight(1f),
                         textAlign = TextAlign.Start,
                         maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                     IconArrowDropDown()
                 }

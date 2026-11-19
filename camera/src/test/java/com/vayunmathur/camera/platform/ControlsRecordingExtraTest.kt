@@ -101,6 +101,23 @@ class ControlsRecordingExtraTest {
         viewModel.onSessionBound()
     }
 
+    @Test fun focusWithoutBoundCameraAndOnThrowFallsBack() {
+        val viewModel = vm()
+        val factory = SurfaceOrientedMeteringPointFactory(100f, 100f)
+        val action = FocusMeteringAction.Builder(factory.createPoint(0.5f, 0.5f)).build()
+        // No bound camera: must report failure, not silently no-op.
+        assertFalse(viewModel.startFocusAndMetering(action))
+        assertFalse(viewModel.lockFocusAndMetering(action))
+        assertFalse(viewModel.focusLockedMutable.value)
+        // Synchronous throw from the control: caught, lock cleared, reported.
+        viewModel.boundCamera = fakeCamera()
+        Mockito.`when`(viewModel.boundCamera!!.cameraControl.startFocusAndMetering(action))
+            .thenThrow(IllegalStateException("camera closed"))
+        assertFalse(viewModel.lockFocusAndMetering(action))
+        assertFalse(viewModel.focusLockedMutable.value)
+        viewModel.clearFocusLock()
+    }
+
     @Test fun recordingTogglesWithoutRecording() {
         val viewModel = vm()
         // Countdown cancellation arm.

@@ -104,24 +104,95 @@ fun CameraViewModel.updateZoomLevels(minZoom: Float, maxZoom: Float) {
     availableZoomLevelsMutable.value = levels
 }
 
-fun CameraViewModel.startFocusAndMetering(action: FocusMeteringAction) {
+fun CameraViewModel.startFocusAndMetering(action: FocusMeteringAction): Boolean {
     // A fresh tap clears any existing AE/AF lock.
     focusLockedMutable.value = false
-    boundCamera?.cameraControl?.startFocusAndMetering(action)
+    return runFocusAndMetering(action, locked = false)
 }
 
 /**
  * Locks focus + exposure at the metered point by disabling auto-cancel, so 3A stays put until
  * the user taps again (long-press-to-lock). Sets [focusLocked] for the on-screen indicator.
  */
-fun CameraViewModel.lockFocusAndMetering(action: FocusMeteringAction) {
-    val cam = boundCamera ?: return
-    cam.cameraControl.startFocusAndMetering(action)
-    focusLockedMutable.value = true
+fun CameraViewModel.lockFocusAndMetering(action: FocusMeteringAction): Boolean {
+    val submitted = runFocusAndMetering(action, locked = true)
+    if (submitted) focusLockedMutable.value = true
+    return submitted
+}
+
+/**
+ * Shared tap/long-press metering dispatch. Returns false (after logging) when
+ * there is no bound camera or the control throws synchronously — the silent
+ * `boundCamera?.` no-op this replaces gave the user no focus and no signal.
+ *
+ * The returned future is observed, not discarded: an asynchronous failure
+ * (unsupported metering point, camera closed mid-tap) falls back to the
+ * default continuous AF/AE via [fallbackToDefaultMetering] instead of leaving
+ * metering in whatever half-applied state the failure stopped at. A focus
+ * attempt that completes but does not converge ([androidx.camera.core
+ * .FocusMeteringResult.isFocusSuccessful] false) is NOT a failure: metering
+ * was still applied at the point, so it is only logged. Cancellation is the
+ * normal superseded-by-the-next-tap case and needs no fallback either.
+ */
+internal fun CameraViewModel.runFocusAndMetering(action: FocusMeteringAction, locked: Boolean): Boolean {
+    val cam = boundCamera
+    if (cam == null) {
+        Log.status("TapToFocus", "focus requested with no bound camera (locked=$locked); tap dropped")
+        return false
+    }
+    val future: com.google.common.util.concurrent.ListenableFuture<androidx.camera.core.FocusMeteringResult>? = try {
+        cam.cameraControl.startFocusAndMetering(action)
+    } catch (e: Exception) {
+        Log.status("TapToFocus", "startFocusAndMetering threw (locked=$locked); falling back to default metering", e)
+        if (locked) focusLockedMutable.value = false
+        fallbackToDefaultMetering()
+        return false
+    }
+    // Real CameraX never returns null; fakes/mocks in unit tests may.
+    if (future == null) return true
+    com.google.common.util.concurrent.Futures.addCallback(
+        future,
+        object : com.google.common.util.concurrent.FutureCallback<androidx.camera.core.FocusMeteringResult> {
+            override fun onSuccess(result: androidx.camera.core.FocusMeteringResult?) {
+                if (result != null && !result.isFocusSuccessful) {
+                    Log.dev("TapToFocus", "focus did not converge at metered point (locked=$locked)")
+                }
+            }
+
+            override fun onFailure(t: Throwable) {
+                if (t is androidx.camera.core.CameraControl.OperationCanceledException) {
+                    Log.dev("TapToFocus", "focus superseded by a newer request (locked=$locked)")
+                    return
+                }
+                Log.status("TapToFocus", "focus metering failed (locked=$locked); falling back to default metering", t)
+                if (locked) focusLockedMutable.value = false
+                fallbackToDefaultMetering()
+            }
+        },
+        ContextCompat.getMainExecutor(app),
+    )
+    return true
+}
+
+/**
+ * Returns metering to the camera's default continuous AF/AE (the centre-
+ * weighted behaviour a plain `cancelFocusAndMetering` restores) after a
+ * failed tap. Best-effort: a dead camera must not crash the tap path.
+ */
+internal fun CameraViewModel.fallbackToDefaultMetering() {
+    try {
+        boundCamera?.cameraControl?.cancelFocusAndMetering()
+    } catch (e: Exception) {
+        Log.status("TapToFocus", "fallback cancelFocusAndMetering threw", e)
+    }
 }
 
 fun CameraViewModel.clearFocusLock() {
-    boundCamera?.cameraControl?.cancelFocusAndMetering()
+    try {
+        boundCamera?.cameraControl?.cancelFocusAndMetering()
+    } catch (e: Exception) {
+        Log.status("TapToFocus", "cancelFocusAndMetering threw while clearing lock", e)
+    }
     focusLockedMutable.value = false
 }
 

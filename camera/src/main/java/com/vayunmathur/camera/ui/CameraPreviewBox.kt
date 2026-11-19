@@ -25,7 +25,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,8 +48,10 @@ import com.vayunmathur.camera.platform.CameraMode
 import com.vayunmathur.camera.platform.CameraViewModel
 import com.vayunmathur.camera.platform.bokehBlurScale
 import com.vayunmathur.camera.platform.buildColorAdjustmentMatrix
+import com.vayunmathur.camera.platform.fallbackToDefaultMetering
 import com.vayunmathur.camera.platform.lockFocusAndMetering
 import com.vayunmathur.camera.platform.onViewfinderZoomRatio
+import com.vayunmathur.camera.platform.startFocusAndMetering
 import com.vayunmathur.camera.data.setBlurStrength
 import com.vayunmathur.camera.data.setExposureCompensation
 import com.vayunmathur.camera.platform.setExposureTimeIndex
@@ -70,6 +77,36 @@ private fun currentLensFacing(selectorInt: Int): com.vayunmathur.camera.domain.L
 internal fun previewRatioForWindow(baseRatio: Float, maxWidth: Float, maxHeight: Float): Float {
     val isLandscape = maxWidth > maxHeight
     return if (isLandscape && baseRatio > 0f) 1f / baseRatio else baseRatio
+}
+
+/** Minimum gap between two tap-to-focus requests; faster repeats are one gesture, not two. */
+private const val FOCUS_TAP_DEBOUNCE_MS = 120L
+
+/** How long the focus ring stays up (its own fade runs inside [FocusIndicator]). */
+private const val FOCUS_INDICATOR_LIFETIME_MS = 1_350L
+
+/**
+ * Normalises a coordinate-transformer output (surface-buffer pixels) into the
+ * 0..1 range [androidx.camera.core.MeteringPoint] expects, clamped to the
+ * surface. Pure so it stays unit-testable.
+ *
+ * The clamp matters: with `ContentScale.Crop` a tap at the box edge can map
+ * just outside the buffer, and CameraX rejects an out-of-range point — the
+ * future then fails and, before this fix, was discarded unread, so the tap
+ * silently did nothing. A non-finite transform (matrix not populated yet) or
+ * a degenerate surface falls back to the centre rather than dropping the tap.
+ */
+internal fun normalizedMeteringCoordinates(
+    transformedX: Float,
+    transformedY: Float,
+    surfaceWidth: Float,
+    surfaceHeight: Float,
+): Pair<Float, Float> {
+    if (!transformedX.isFinite() || !transformedY.isFinite() || surfaceWidth <= 0f || surfaceHeight <= 0f) {
+        return 0.5f to 0.5f
+    }
+    return (transformedX / surfaceWidth).coerceIn(0f, 1f) to
+        (transformedY / surfaceHeight).coerceIn(0f, 1f)
 }
 
 /**
@@ -107,6 +144,18 @@ internal fun BoxWithConstraintsScope.CameraPreviewBox(
         null
     }
     val coordinateTransformer = remember { MutableCoordinateTransformer() }
+    // Tap-to-focus indicator: small in-screen sub-state (deliberately NOT
+    // navigation — a focus point is transient state of this one screen).
+    var focusPoint by remember { mutableStateOf<Offset?>(null) }
+    var focusTapId by remember { mutableIntStateOf(0) }
+    var focusPointLocked by remember { mutableStateOf(false) }
+    var lastFocusTapMs by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(focusTapId) {
+        if (focusTapId > 0) {
+            kotlinx.coroutines.delay(FOCUS_INDICATOR_LIFETIME_MS)
+            focusPoint = null
+        }
+    }
     val previewModifier = previewSize
         // CameraX mirrors the front-camera preview by default; counter it when the
         // user turns selfie mirroring off so the preview matches the saved image (#632).
@@ -172,24 +221,85 @@ internal fun BoxWithConstraintsScope.CameraPreviewBox(
                 }
             }
         )
-            // Tap-to-focus and pinch-to-zoom are handled by CameraXViewfinder's
-            // built-in gestures (below). Long-press to lock AE/AF isn't built in, so
-            // keep just that here.
-            .pointerInput(state.activeSetting) {
-                fun meteringPoint(tapOffset: Offset) = surfaceRequest?.let { request ->
-                    val transformed = with(coordinateTransformer) { tapOffset.transform() }
-                    val factory = SurfaceOrientedMeteringPointFactory(
-                        request.resolution.width.toFloat(),
-                        request.resolution.height.toFloat()
-                    )
-                    factory.createPoint(transformed.x, transformed.y)
+            // Tap-to-focus is handled HERE, on the preview surface itself, in
+            // the same single detector as long-press-to-lock. CameraXViewfinder's
+            // built-in tap gesture is disabled below: it raced this detector,
+            // gave no tap indicator (its onTapToFocus callback was never wired),
+            // silently returned when the transformed point left 0..1, and its
+            // result was invisible to the app. Pinch-to-zoom stays built-in.
+            //
+            // Keyed on surfaceRequest + mirrorPreview, NOT only on
+            // activeSetting as before: with the old key the block captured the
+            // first-composed surfaceRequest (null before the session binds)
+            // for as long as the settings pane stayed closed, so every
+            // long-press metering point came back null and was dropped.
+            .pointerInput(surfaceRequest, state.mirrorPreview) {
+                fun meteringPoint(tapOffset: Offset): androidx.camera.core.MeteringPoint? {
+                    val request = surfaceRequest ?: return null
+                    return try {
+                        val transformed = with(coordinateTransformer) { tapOffset.transform() }
+                        val width = request.resolution.width.toFloat()
+                        val height = request.resolution.height.toFloat()
+                        val (nx, ny) = normalizedMeteringCoordinates(transformed.x, transformed.y, width, height)
+                        val factory = if (width > 0f && height > 0f) {
+                            SurfaceOrientedMeteringPointFactory(width, height)
+                        } else {
+                            SurfaceOrientedMeteringPointFactory(1f, 1f)
+                        }
+                        val surfaceW = if (width > 0f) width else 1f
+                        val surfaceH = if (height > 0f) height else 1f
+                        factory.createPoint(nx * surfaceW, ny * surfaceH)
+                    } catch (e: Exception) {
+                        Log.status("TapToFocus", "metering-point conversion failed; using centre point", e)
+                        try {
+                            SurfaceOrientedMeteringPointFactory(1f, 1f).createPoint(0.5f, 0.5f)
+                        } catch (_: Exception) {
+                            null
+                        }
+                    }
+                }
+
+                fun showIndicator(tapOffset: Offset, locked: Boolean) {
+                    // tapOffset is in the (possibly extra-mirrored) preview
+                    // layer's coordinates; the indicator is drawn by a sibling
+                    // outside that layer, so flip back into visual coordinates.
+                    focusPoint = if (state.mirrorPreview) {
+                        Offset(size.width - tapOffset.x, tapOffset.y)
+                    } else {
+                        tapOffset
+                    }
+                    focusPointLocked = locked
+                    focusTapId++
                 }
                 detectTapGestures(
+                    onTap = { tapOffset ->
+                        val now = android.os.SystemClock.uptimeMillis()
+                        if (now - lastFocusTapMs < FOCUS_TAP_DEBOUNCE_MS) return@detectTapGestures
+                        lastFocusTapMs = now
+                        // Indicator first, regardless of AF outcome: it proves
+                        // the tap registered even if metering then fails.
+                        showIndicator(tapOffset, locked = false)
+                        val point = meteringPoint(tapOffset)
+                        if (point == null) {
+                            Log.status("TapToFocus", "tap with no surface request; falling back to default metering")
+                            viewModel.fallbackToDefaultMetering()
+                        } else {
+                            viewModel.startFocusAndMetering(
+                                FocusMeteringAction.Builder(point).build()
+                            )
+                        }
+                    },
                     onLongPress = { tapOffset ->
-                        val point = meteringPoint(tapOffset) ?: return@detectTapGestures
-                        viewModel.lockFocusAndMetering(
-                            FocusMeteringAction.Builder(point).disableAutoCancel().build()
-                        )
+                        showIndicator(tapOffset, locked = true)
+                        val point = meteringPoint(tapOffset)
+                        if (point == null) {
+                            Log.status("TapToFocus", "long-press with no surface request; cannot lock metering")
+                            viewModel.fallbackToDefaultMetering()
+                        } else {
+                            viewModel.lockFocusAndMetering(
+                                FocusMeteringAction.Builder(point).disableAutoCancel().build()
+                            )
+                        }
                     }
                 )
             }
@@ -225,10 +335,14 @@ internal fun BoxWithConstraintsScope.CameraPreviewBox(
             // selected aspect ratio (1:1 / 3:2 / 16:9 / 4:3). Fit letterboxed the native
             // 4:3 frame inside the box, making the preview shrink instead of reshape.
             contentScale = ContentScale.Crop,
-            // Built-in tap-to-focus and pinch-to-zoom (1.7.0-alpha02). The viewfinder
-            // applies focus/zoom on the SurfaceRequest's camera; we just sync the
-            // displayed zoom ratio so the zoom bar stays in step.
-            isTapToFocusEnabled = true,
+            // Pinch-to-zoom stays built-in (1.7.0-alpha02); we just sync the
+            // displayed zoom ratio so the zoom bar stays in step. Tap-to-focus
+            // is DISABLED here — it is handled by the pointerInput on
+            // previewModifier above, which shows the focus ring and observes
+            // (and falls back from) the metering result. Leaving both enabled
+            // double-metered every tap and let the built-in detector swallow
+            // taps the app never saw.
+            isTapToFocusEnabled = false,
             isPinchToZoomEnabled = true,
             onZoomRatioChanged = { ratio -> viewModel.onViewfinderZoomRatio(ratio) },
         )
@@ -258,6 +372,18 @@ internal fun BoxWithConstraintsScope.CameraPreviewBox(
         photoSessionActive = state.photoSessionActive,
         analysisStreamActive = state.analysisStreamActive,
     )
+
+    // Above the grid/level overlays so the ring is never drawn under them;
+    // below the settings column so its controls stay visually on top. The
+    // Canvas carries no pointer input, so it never eats the next tap.
+    focusPoint?.let { point ->
+        FocusIndicator(
+            point = point,
+            tapId = focusTapId,
+            locked = focusPointLocked,
+            modifier = previewSize,
+        )
+    }
 
     CameraSettingsColumn(
         activeSetting = state.activeSetting,
