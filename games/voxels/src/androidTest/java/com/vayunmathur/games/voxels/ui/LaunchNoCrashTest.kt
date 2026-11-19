@@ -24,6 +24,11 @@ import org.junit.runner.RunWith
  * is stable, while world rows carry dynamic names and timestamps. The content
  * wait is 60s: cold start provisions the sync identity and reads the world list.
  *
+ * Strengthened launch-e2e: clears the target package data before the
+ * grant/launch pass so the journey starts from clean state, then performs
+ * one small deterministic core interaction (see the test body) and returns
+ * to the launch surface. Still a single @Test for this app.
+ *
  * UiDevice polling, not compose-test: compose's Espresso idle-sync reflects on
  * hidden InputManager APIs that no longer exist on current releases, so every
  * compose-rule test dies before its first line. Text polling works for Compose
@@ -38,6 +43,10 @@ class LaunchNoCrashTest {
         val device = UiDevice.getInstance(instrumentation)
         val targetContext = instrumentation.targetContext
         val packageName = targetContext.packageName
+
+        // Clean state first (fresh-install journey); grants follow the clear
+        // because a clear can drop runtime-grant state on some releases.
+        clearAppData(instrumentation.uiAutomation, packageName)
 
         grantAllRequestedPermissions(instrumentation.uiAutomation, targetContext.packageManager, packageName)
 
@@ -57,8 +66,44 @@ class LaunchNoCrashTest {
             "voxels world menu never appeared; the app may have crashed on launch",
             device.wait(Until.findObject(By.text(MENU_SUBTITLE)), CONTENT_TIMEOUT_MS),
         )
+        // Core interaction: open the Create New World form, verify its
+        // labels, then Cancel back to the menu. Create & Play is not tapped:
+        // it launches the Vulkan game, whose first frame is not a
+        // deterministic emulator assertion.
+        val create = device.wait(Until.findObject(By.text(CREATE_WORLD_BUTTON)), CONTENT_TIMEOUT_MS)
+        assertNotNull("Create New World button never appeared", create)
+        create!!.click()
+        assertNotNull(
+            "create-world form never appeared",
+            device.wait(Until.findObject(By.text(CREATE_FORM_TITLE)), CONTENT_TIMEOUT_MS),
+        )
+        assertNotNull(
+            "world-name field never appeared",
+            device.wait(Until.findObject(By.text(WORLD_NAME_LABEL)), CONTENT_TIMEOUT_MS),
+        )
+        assertNotNull(
+            "game-mode picker never appeared",
+            device.wait(Until.findObject(By.text(GAME_MODE_LABEL)), CONTENT_TIMEOUT_MS),
+        )
+        val cancel = device.wait(Until.findObject(By.text(CANCEL_LABEL)), CONTENT_TIMEOUT_MS)
+        assertNotNull("Cancel button never appeared on the create form", cancel)
+        cancel!!.click()
+        assertNotNull(
+            "world menu never reappeared after Cancel",
+            device.wait(Until.findObject(By.text(MENU_SUBTITLE)), CONTENT_TIMEOUT_MS),
+        )
         // Still alive in front: the process did not crash after painting content.
         assertEquals(packageName, device.currentPackageName)
+    }
+
+    private fun clearAppData(uiAutomation: UiAutomation, packageName: String) {
+        try {
+            uiAutomation.executeShellCommand("pm clear $packageName").close()
+        } catch (ignored: SecurityException) {
+            // Clear refused: the journey assertions below still report state.
+        } catch (ignored: IOException) {
+            // Shell pipe failed: the content assertions below report it.
+        }
     }
 
     private fun grantAllRequestedPermissions(
@@ -97,6 +142,11 @@ class LaunchNoCrashTest {
         private const val GATE_TIMEOUT_MS = 5_000L
         private const val MENU_SUBTITLE = "Select a world"
         private const val PERMISSION_GATE_TITLE = "Grant Required Permissions"
+        private const val CREATE_WORLD_BUTTON = "Create New World"
+        private const val CREATE_FORM_TITLE = "Create World"
+        private const val WORLD_NAME_LABEL = "World name"
+        private const val GAME_MODE_LABEL = "Game mode"
+        private const val CANCEL_LABEL = "Cancel"
 
         /**
          * Special access behind some apps' gates: exact alarms + full-screen intent
