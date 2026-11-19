@@ -19,7 +19,7 @@ import com.vayunmathur.everysync.data.sink.TodoListIpcSink
 import com.vayunmathur.everysync.network.remote.RelaySync
 import com.vayunmathur.everysync.provider.DataType
 import com.vayunmathur.everysync.provider.SyncDirection
-import com.vayunmathur.everysync.provider.impl.E2eeProvider
+import com.vayunmathur.everysync.provider.E2eeProvider
 import com.vayunmathur.everysync.sync.NoteRelayStore
 import com.vayunmathur.everysync.sync.PasswordRelayStore
 import com.vayunmathur.everysync.sync.RelaySnapshot
@@ -133,7 +133,7 @@ class E2eeDriveTest {
         relay.transportDown = true
         // init is already done, so the abort comes from the pull instead
         val ex = runCatching { provider.sync(ctx, config(DataType.NOTES), SyncDirection.BOTH) }.exceptionOrNull()
-        assertTrue(ex is com.vayunmathur.everysync.provider.impl.VaultSyncAbort, "$ex")
+        assertTrue(ex is com.vayunmathur.everysync.provider.VaultSyncAbort, "$ex")
         relay.transportDown = false
         assertTrue(NoteSink.listLocal(ctx, meta.vaultId).any { it.uid == "n2" })
     } }

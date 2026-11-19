@@ -27,7 +27,7 @@ import com.vayunmathur.everysync.network.remote.RelaySync
 import com.vayunmathur.everysync.provider.DataType
 import com.vayunmathur.everysync.provider.SyncDirection
 import com.vayunmathur.everysync.provider.SyncState
-import com.vayunmathur.everysync.provider.impl.E2eeProvider
+import com.vayunmathur.everysync.provider.E2eeProvider
 import com.vayunmathur.everysync.sync.SnapshotKeyStore
 import com.vayunmathur.everysync.sync.SnapshotStore
 import com.vayunmathur.everysync.sync.adapters.ContactKind

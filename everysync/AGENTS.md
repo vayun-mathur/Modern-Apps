@@ -44,7 +44,7 @@ Host: `api.maproj.org` (Cloudflare FIRST_PARTY pins). Server checkout: `../locat
 - com/vayunmathur/everysync/provider/SyncProvider.kt
 - com/vayunmathur/everysync/provider/SyncState.kt
 - com/vayunmathur/everysync/provider/DataType.kt
-- com/vayunmathur/everysync/provider/impl/E2eeProvider.kt
+- com/vayunmathur/everysync/provider/E2eeProvider.kt
 ### sync/ — engine, scheduling, relay merge, vault crypto
 - com/vayunmathur/everysync/sync/SyncEngine.kt
 - com/vayunmathur/everysync/sync/SyncScheduler.kt

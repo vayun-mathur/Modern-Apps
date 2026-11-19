@@ -1,7 +1,5 @@
 package com.vayunmathur.everysync.provider
 
-import com.vayunmathur.everysync.provider.impl.E2eeProvider
-
 /** The only provider EverySync ships: personal E2EE vaults. Drives the "Add account" grid. */
 object ProviderRegistry {
     val all: List<SyncProvider> = listOf(

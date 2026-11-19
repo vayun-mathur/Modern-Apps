@@ -1,4 +1,4 @@
-package com.vayunmathur.everysync.provider.impl
+package com.vayunmathur.everysync.provider
 
 import android.content.Context
 import androidx.compose.runtime.Composable
@@ -17,11 +17,6 @@ import com.vayunmathur.everysync.data.sink.ContactsSink
 import com.vayunmathur.everysync.network.remote.RelayCursorStore
 import com.vayunmathur.everysync.network.remote.RelayRoles
 import com.vayunmathur.everysync.network.remote.RelaySync
-import com.vayunmathur.everysync.provider.AuthType
-import com.vayunmathur.everysync.provider.DataType
-import com.vayunmathur.everysync.provider.SyncDirection
-import com.vayunmathur.everysync.provider.SyncProvider
-import com.vayunmathur.everysync.provider.SyncState
 import com.vayunmathur.everysync.sync.CalendarRelayStore
 import com.vayunmathur.everysync.sync.ContactRelayStore
 import com.vayunmathur.everysync.sync.EntityKind

@@ -17,8 +17,8 @@ import com.vayunmathur.everysync.provider.AuthType
 import com.vayunmathur.everysync.provider.DataType
 import com.vayunmathur.everysync.provider.ProviderRegistry
 import com.vayunmathur.everysync.provider.SyncDirection
-import com.vayunmathur.everysync.provider.impl.E2eeProvider
-import com.vayunmathur.everysync.provider.impl.E2eeProvider.Companion.relayType
+import com.vayunmathur.everysync.provider.E2eeProvider
+import com.vayunmathur.everysync.provider.E2eeProvider.Companion.relayType
 import com.vayunmathur.everysync.sync.CalendarRelayStore
 import com.vayunmathur.everysync.sync.ContactRelayStore
 import com.vayunmathur.everysync.sync.NoteRelayStore
