@@ -17,7 +17,6 @@ import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.DesktopMaxWidthContainer
 import com.vayunmathur.library.ui.OutlinedTextField
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.uniflix.domain.MediaItem
 import com.vayunmathur.uniflix.platform.SearchUiState
 

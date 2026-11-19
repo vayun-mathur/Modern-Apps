@@ -28,7 +28,6 @@ import com.vayunmathur.passwords.domain.TOTP
 import com.vayunmathur.passwords.domain.mergeCredentials
 import com.vayunmathur.passwords.platform.MenuUiState
 import com.vayunmathur.passwords.platform.PasswordsActions
-import com.vayunmathur.library.ui.appBarScrollBehavior
 
 @Composable
 fun MenuScreen(

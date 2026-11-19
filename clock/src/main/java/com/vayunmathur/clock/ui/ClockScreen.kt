@@ -37,7 +37,6 @@ import com.vayunmathur.library.ui.ListItemDefaults
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.ReorderableItem
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.animatedDp
 import com.vayunmathur.library.ui.draggableHandle
 import com.vayunmathur.library.ui.rememberReorderableLazyListState

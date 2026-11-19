@@ -25,7 +25,6 @@ import com.vayunmathur.library.ui.OutlinedTextField
 import com.vayunmathur.library.ui.SetupAction
 import com.vayunmathur.library.ui.SetupScaffold
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.NavBackStack
 
 /**

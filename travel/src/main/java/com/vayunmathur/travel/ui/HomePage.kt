@@ -33,7 +33,6 @@ import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.OutlinedCard
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.BottomNavBar
 import com.vayunmathur.library.util.BottomNavBarItem
 import com.vayunmathur.library.util.NavBackStack

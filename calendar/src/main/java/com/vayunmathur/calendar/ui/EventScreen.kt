@@ -52,7 +52,6 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.minus
 import com.vayunmathur.library.ui.DateString
-import com.vayunmathur.library.ui.appBarScrollBehavior
 
 /** Binds [CalendarViewModel] to the stateless [EventScreen]. */
 @Composable

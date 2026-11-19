@@ -21,7 +21,6 @@ import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.FloatingActionButton
 import com.vayunmathur.library.ui.IconAdd
 import com.vayunmathur.library.ui.LazyListScaffold
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.isExpandedWidth
 
 /**

@@ -55,7 +55,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import com.vayunmathur.library.ui.ReorderableItem
 import com.vayunmathur.library.ui.draggableHandle
 import com.vayunmathur.library.ui.rememberReorderableLazyListState
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.animatedDp
 
 /**

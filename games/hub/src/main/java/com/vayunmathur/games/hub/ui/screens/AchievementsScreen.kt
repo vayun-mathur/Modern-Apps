@@ -26,7 +26,6 @@ import com.vayunmathur.library.ui.FilterChip
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import androidx.compose.ui.res.stringResource
 import com.vayunmathur.games.hub.R
 

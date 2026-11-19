@@ -46,7 +46,6 @@ import com.vayunmathur.library.ui.SelectableDropdownMenuItem
 import com.vayunmathur.library.ui.Spacing
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.ToggleButton
-import com.vayunmathur.library.ui.appBarScrollBehavior
 
 /** Binds [CalculatorViewModel] to the stateless [UnitConverterScreen]. */
 @Composable

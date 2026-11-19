@@ -17,7 +17,6 @@ import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.OutlinedButton
 import com.vayunmathur.library.ui.SettingsSwitchRow
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.everysync.R
 import com.vayunmathur.everysync.Route
 import com.vayunmathur.everysync.provider.DataType

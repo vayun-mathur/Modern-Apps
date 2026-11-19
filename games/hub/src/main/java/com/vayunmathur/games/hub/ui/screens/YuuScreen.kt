@@ -41,7 +41,6 @@ import com.vayunmathur.library.ui.IconMoreVert
 import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.R as UiR
 
 /**

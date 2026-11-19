@@ -53,7 +53,6 @@ import com.vayunmathur.education.domain.ModuleType
 import com.vayunmathur.education.platform.EducationViewModel
 import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.IconNavigation
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.NavBackStack
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.pluralStringResource

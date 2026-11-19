@@ -33,7 +33,6 @@ import com.vayunmathur.library.ui.SettingsRow
 import com.vayunmathur.library.ui.SettingsSection
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
-import com.vayunmathur.library.ui.appBarScrollBehavior
 
 
 /** The editor: picked identity, medical fields, a Health Connect prompt, contacts add/remove. */

@@ -16,7 +16,6 @@ import com.vayunmathur.library.ui.SetupScaffold
 import com.vayunmathur.library.ui.Spacing
 import com.vayunmathur.library.ui.Switch
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.setupwizard.R
 import com.vayunmathur.setupwizard.platform.SetupUiState
 

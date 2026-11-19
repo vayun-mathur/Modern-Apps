@@ -38,7 +38,6 @@ import com.vayunmathur.library.ui.IconShare
 import com.vayunmathur.library.ui.IconUpload
 import com.vayunmathur.library.ui.IconVisibilityOff
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.rememberSelectionState
 import com.vayunmathur.library.util.sharedText
 

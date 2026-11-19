@@ -20,7 +20,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.vayunmathur.communicate.data.whatsapp.backup.BackupImporter
 import com.vayunmathur.library.ui.DetailScaffold
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext

@@ -26,7 +26,6 @@ import com.vayunmathur.education.domain.VideoRef
 import com.vayunmathur.education.platform.EducationViewModel
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.ui.IconPlay
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.sharedText
 import androidx.compose.ui.res.stringResource

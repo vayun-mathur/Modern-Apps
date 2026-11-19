@@ -30,7 +30,6 @@ import com.vayunmathur.health.platform.MainPageMetrics
 import com.vayunmathur.library.ui.IconAdd
 import com.vayunmathur.library.ui.IconBodySystem
 import com.vayunmathur.library.ui.IconClose
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.sharedText
 import com.vayunmathur.library.util.round

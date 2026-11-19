@@ -32,7 +32,6 @@ import com.vayunmathur.games.solitaire.platform.SolitaireActions
 import com.vayunmathur.games.solitaire.platform.canKlondikeAutoComplete
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.DesktopMaxWidthContainer
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.isExpandedWidth
 import com.vayunmathur.library.ui.game.formatDuration
 

@@ -28,7 +28,6 @@ import com.vayunmathur.library.ui.IconSettings
 import com.vayunmathur.library.ui.SnackbarHost
 import com.vayunmathur.library.ui.SnackbarHostState
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.openassistant.R
 import com.vayunmathur.openassistant.domain.a2uiSurfaceId
 import com.vayunmathur.openassistant.ui.ChatActions

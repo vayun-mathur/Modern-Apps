@@ -27,7 +27,6 @@ import com.vayunmathur.library.ui.SettingsSelectRow
 import com.vayunmathur.library.ui.SettingsSwitchRow
 import com.vayunmathur.library.ui.Slider
 import com.vayunmathur.library.ui.Spacing
-import com.vayunmathur.library.ui.appBarScrollBehavior
 
 /**
  * Launcher settings, and the only route to the wallpaper chooser and the widget picker.

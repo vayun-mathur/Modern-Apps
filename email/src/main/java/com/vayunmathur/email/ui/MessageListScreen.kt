@@ -67,7 +67,6 @@ import com.vayunmathur.library.ui.SnackbarHost
 import com.vayunmathur.library.ui.SnackbarHostState
 import com.vayunmathur.library.ui.Surface
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.sharedText
 
 @OptIn(ExperimentalMaterial3Api::class)

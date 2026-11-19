@@ -64,7 +64,6 @@ import com.vayunmathur.library.ui.OutlinedTextField
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.ToggleButton
 import com.vayunmathur.library.ui.VerticalDivider
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.isCompactHeight
 import com.vayunmathur.library.ui.isExpandedWidth
 import kotlin.math.abs

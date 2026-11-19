@@ -40,7 +40,6 @@ import com.vayunmathur.library.ui.OdfMarkdownEditorToolbar
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextField
 import com.vayunmathur.library.ui.TextFieldDefaults
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.rememberOdfMarkdownEditorController
 import com.vayunmathur.library.util.sharedContainer
 import com.vayunmathur.todo.R

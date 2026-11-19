@@ -27,7 +27,6 @@ import com.vayunmathur.communicate.data.markVoicemailRead
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.ui.IconVoicemail
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.rememberPermissionRequest
 import com.vayunmathur.library.util.AppMessages
 import kotlinx.coroutines.Dispatchers

@@ -24,7 +24,6 @@ import com.vayunmathur.library.ui.LabeledTextField
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.ResultEffect
 import kotlinx.datetime.LocalDate

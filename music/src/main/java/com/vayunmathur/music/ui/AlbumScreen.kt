@@ -15,7 +15,6 @@ import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.sharedContainer
 import com.vayunmathur.library.util.sharedText
 import com.vayunmathur.library.ui.ListPage
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.music.ui.components.ShufflePlayFab
 import com.vayunmathur.music.platform.AlbumArt
 import com.vayunmathur.music.platform.MusicViewModel

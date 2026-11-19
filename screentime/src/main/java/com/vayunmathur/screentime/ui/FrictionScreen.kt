@@ -24,7 +24,6 @@ import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.screentime.R
 import com.vayunmathur.screentime.platform.Coordinator
 import kotlinx.coroutines.Dispatchers

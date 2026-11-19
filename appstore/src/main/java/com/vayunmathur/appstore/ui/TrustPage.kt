@@ -23,7 +23,6 @@ import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.LazyListScaffold
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 
 /**
  * How each source is checked, side by side and deliberately not ranked.

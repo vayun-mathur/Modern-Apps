@@ -25,7 +25,6 @@ import com.vayunmathur.emergency.platform.EmergencyViewModel
 import com.vayunmathur.library.ui.Card
 import com.vayunmathur.library.ui.LazyListScaffold
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.verticalShape
 
 /** The read-only info + contacts view. Stateless; the activity wires the ViewModel. */

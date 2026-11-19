@@ -69,7 +69,6 @@ import com.vayunmathur.library.ui.Motion
 import com.vayunmathur.library.ui.itemMotion
 import com.vayunmathur.library.ui.rememberReorderableLazyGridState
 import com.vayunmathur.library.ui.reorderGridDragHandle
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import androidx.compose.ui.res.stringResource
 
 /**

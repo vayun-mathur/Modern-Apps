@@ -59,7 +59,6 @@ import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Surface
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.rememberPermissionRequest
 import com.vayunmathur.library.ui.game.DailyChallengeCard
 import com.vayunmathur.library.ui.game.GameTopBarActions

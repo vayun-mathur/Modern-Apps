@@ -16,7 +16,6 @@ import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.DesktopMaxWidthContainer
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.uniflix.data.ContinueWatchingEntry
 import com.vayunmathur.uniflix.data.UniflixRepository
 import com.vayunmathur.uniflix.domain.MediaItem

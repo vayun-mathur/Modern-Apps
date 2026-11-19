@@ -49,7 +49,6 @@ import com.vayunmathur.library.ui.SnackbarHost
 import com.vayunmathur.library.ui.SnackbarHostState
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TopAppBar
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.passwords.R
 import com.vayunmathur.passwords.data.Password
 import com.vayunmathur.passwords.data.Passkey

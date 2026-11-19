@@ -15,7 +15,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vayunmathur.games.hub.MainRoute
 import com.vayunmathur.games.hub.network.PlayOnTvSession
 import com.vayunmathur.library.ui.AppScaffold
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.rememberPermissionRequest
 import com.vayunmathur.library.util.NavBackStack
 

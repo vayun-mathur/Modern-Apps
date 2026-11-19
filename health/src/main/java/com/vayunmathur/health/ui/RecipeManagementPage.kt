@@ -40,7 +40,6 @@ import com.vayunmathur.library.ui.PrimaryTabRow
 import com.vayunmathur.library.ui.Tab
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions

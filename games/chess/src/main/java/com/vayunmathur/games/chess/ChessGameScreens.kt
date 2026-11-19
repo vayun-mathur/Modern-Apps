@@ -59,7 +59,6 @@ import com.vayunmathur.library.ui.SegmentedButton
 import com.vayunmathur.library.ui.SegmentedButtonDefaults
 import com.vayunmathur.library.ui.SingleChoiceSegmentedButtonRow
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.isExpandedWidth
 import com.vayunmathur.library.util.AchievementsManager
 import com.vayunmathur.library.util.DataStoreUtils

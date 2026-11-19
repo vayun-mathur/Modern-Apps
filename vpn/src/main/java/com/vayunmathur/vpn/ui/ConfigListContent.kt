@@ -33,7 +33,6 @@ import com.vayunmathur.library.ui.LazyListScaffold
 import com.vayunmathur.library.ui.SnackbarHost
 import com.vayunmathur.library.ui.SnackbarHostState
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.sharedText
 import com.vayunmathur.vpn.R
 import com.vayunmathur.vpn.data.VpnConfig

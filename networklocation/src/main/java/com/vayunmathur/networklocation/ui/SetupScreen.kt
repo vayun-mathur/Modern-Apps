@@ -12,7 +12,6 @@ import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.DesktopMaxWidthContainer
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.networklocation.ui.OfflineDatabaseSection
 
 /** First-run screen: what the app does, and the offline-database download it cannot work without. */

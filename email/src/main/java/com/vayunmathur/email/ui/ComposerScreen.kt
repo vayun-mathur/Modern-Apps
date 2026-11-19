@@ -50,7 +50,6 @@ import com.vayunmathur.library.ui.IconSend
 import com.vayunmathur.library.ui.LabeledTextField
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.AppMessages
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch

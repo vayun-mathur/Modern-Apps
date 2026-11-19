@@ -32,7 +32,6 @@ import com.vayunmathur.library.ui.IconSearch
 import com.vayunmathur.library.ui.IconSettings
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.AppScaffold
 
 /** The tab strip / toolbar / editor column shared by the drawer and Expanded layouts. */

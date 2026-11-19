@@ -35,7 +35,6 @@ import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TopAppBar
 import com.vayunmathur.library.ui.animatedColor
 import com.vayunmathur.library.ui.animatedDp
-import com.vayunmathur.library.ui.appBarScrollBehavior
 
 /**
  * Pricing: searchable per-country rate list with the search field in the

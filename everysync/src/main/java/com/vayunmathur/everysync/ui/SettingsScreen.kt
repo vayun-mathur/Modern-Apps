@@ -11,7 +11,6 @@ import com.vayunmathur.library.ui.OutlinedTextField
 import com.vayunmathur.library.ui.RadioButton
 import com.vayunmathur.library.ui.Switch
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf

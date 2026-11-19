@@ -35,7 +35,6 @@ import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.IconEdit
 import com.vayunmathur.library.ui.IconSave
 import com.vayunmathur.library.ui.IconVisible
-import com.vayunmathur.library.ui.appBarScrollBehavior
 
 /** Built-in text editor for a single file Uri, with view/edit toggling and save-on-exit from edit mode. */
 class TextEditorActivity : ComponentActivity() {

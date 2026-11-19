@@ -58,7 +58,6 @@ import com.vayunmathur.pdf.platform.PdfViewModel
 import com.vayunmathur.library.ui.ReorderableItem
 import com.vayunmathur.library.ui.rememberReorderableLazyListState
 import com.vayunmathur.library.ui.longPressDraggableHandle
-import com.vayunmathur.library.ui.appBarScrollBehavior
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

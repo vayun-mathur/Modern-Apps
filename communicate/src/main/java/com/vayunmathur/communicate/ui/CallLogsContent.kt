@@ -33,7 +33,6 @@ import com.vayunmathur.library.ui.ListItemDefaults
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.communicate.R
 import com.vayunmathur.communicate.data.CommunicateCallLogEntry
 import com.vayunmathur.communicate.data.CommunicateCallType

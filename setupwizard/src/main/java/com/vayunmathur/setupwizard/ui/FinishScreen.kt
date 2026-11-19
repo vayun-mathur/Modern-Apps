@@ -9,7 +9,6 @@ import androidx.compose.ui.res.stringResource
 import com.vayunmathur.library.ui.IconCheckCircle
 import com.vayunmathur.library.ui.SetupAction
 import com.vayunmathur.library.ui.SetupScaffold
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.setupwizard.R
 import com.vayunmathur.setupwizard.platform.SetupUiState
 import com.vayunmathur.setupwizard.ui.components.SetupCheckboxRow

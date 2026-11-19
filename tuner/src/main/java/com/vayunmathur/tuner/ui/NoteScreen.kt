@@ -16,7 +16,6 @@ import com.vayunmathur.library.ui.DesktopMaxWidthContainer
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Spacing
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.tuner.R
 import com.vayunmathur.tuner.domain.TuningBand
 import com.vayunmathur.tuner.platform.TunerUiState

@@ -27,7 +27,6 @@ import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Surface
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.rememberIs24Hour
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalTime

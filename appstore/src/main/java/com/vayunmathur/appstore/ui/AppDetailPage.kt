@@ -20,7 +20,6 @@ import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.IconShare
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.appstore.platform.loadDetail
 
 import androidx.compose.runtime.Composable

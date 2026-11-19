@@ -33,7 +33,6 @@ import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.IconCheck
 import com.vayunmathur.library.ui.IconStar
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.LevelStats
 import com.vayunmathur.library.util.NavBackStack
 

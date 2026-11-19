@@ -11,7 +11,6 @@ import com.vayunmathur.library.ui.AppBarAlignment
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.ErrorState
 import com.vayunmathur.library.ui.R as UiR
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.game.GameTopBarActions
 
 /**

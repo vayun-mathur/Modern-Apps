@@ -21,7 +21,6 @@ import com.vayunmathur.library.ui.HorizontalDivider
 import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.IconRuler
 import com.vayunmathur.library.ui.VerticalDivider
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.isCompactHeight
 import com.vayunmathur.library.ui.isExpandedWidth
 

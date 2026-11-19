@@ -25,7 +25,6 @@ import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Spacing
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.tuner.R
 import com.vayunmathur.tuner.data.InstrumentKind
 import com.vayunmathur.tuner.domain.ChordLabel

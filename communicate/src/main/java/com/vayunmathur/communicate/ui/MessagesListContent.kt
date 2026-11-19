@@ -42,7 +42,6 @@ import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.IconPerson
 import com.vayunmathur.library.ui.IconSms
 import com.vayunmathur.library.ui.AppScaffold
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.AppMessages
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

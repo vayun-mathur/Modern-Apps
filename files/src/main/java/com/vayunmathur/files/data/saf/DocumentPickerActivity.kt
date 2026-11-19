@@ -60,7 +60,6 @@ import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.library.ui.TextField
 import com.vayunmathur.library.ui.R as UiR
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import androidx.compose.ui.graphics.Color
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

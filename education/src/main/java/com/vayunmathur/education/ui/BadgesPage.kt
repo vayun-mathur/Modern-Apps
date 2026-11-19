@@ -33,7 +33,6 @@ import com.vayunmathur.education.domain.Band
 import com.vayunmathur.education.platform.EducationAchievements
 import com.vayunmathur.education.platform.EducationViewModel
 import com.vayunmathur.library.ui.IconNavigation
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.AchievementStatus
 import com.vayunmathur.library.util.NavBackStack
 import androidx.compose.ui.res.stringResource

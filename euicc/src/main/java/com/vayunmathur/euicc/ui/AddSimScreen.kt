@@ -7,7 +7,6 @@ import com.vayunmathur.euicc.Route
 import com.vayunmathur.library.ui.IconSim
 import com.vayunmathur.library.ui.SetupAction
 import com.vayunmathur.library.ui.SetupScaffold
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.NavBackStack
 
 /**

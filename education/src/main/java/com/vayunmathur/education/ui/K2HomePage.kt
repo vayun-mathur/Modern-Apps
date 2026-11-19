@@ -31,7 +31,6 @@ import com.vayunmathur.education.domain.Lesson
 import com.vayunmathur.education.platform.EducationViewModel
 import com.vayunmathur.education.platform.LocalNarrator
 import com.vayunmathur.library.ui.IconSettings
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.NavBackStack
 import androidx.compose.ui.res.stringResource
 

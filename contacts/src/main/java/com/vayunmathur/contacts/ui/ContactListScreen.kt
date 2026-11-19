@@ -51,7 +51,6 @@ import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.library.ui.TopAppBar
 import com.vayunmathur.library.ui.R as UiR
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.itemMotion
 
 /**

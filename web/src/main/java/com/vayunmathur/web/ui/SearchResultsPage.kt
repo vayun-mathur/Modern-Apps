@@ -31,7 +31,6 @@ import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Tab
 import com.vayunmathur.library.ui.TabRow
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.rememberMessenger
 import com.vayunmathur.web.R
 import com.vayunmathur.web.data.WebSearchKind

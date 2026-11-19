@@ -40,7 +40,6 @@ import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.ui.CommonSearchBar
-import com.vayunmathur.library.ui.appBarScrollBehavior
 
 /**
  * Shown for ACTION_INSERT_OR_EDIT / SHOW_OR_CREATE_CONTACT (Fossify dialer "Add number to contact").

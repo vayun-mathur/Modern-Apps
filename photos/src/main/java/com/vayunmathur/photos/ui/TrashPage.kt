@@ -41,7 +41,6 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.IconUnarchive
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.photos.ui.LocalColumnCount
 import com.vayunmathur.photos.Route

@@ -23,7 +23,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vayunmathur.education.Route
 import com.vayunmathur.education.platform.EducationViewModel
 import com.vayunmathur.library.ui.IconNavigation
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.NavBackStack
 import androidx.compose.ui.res.stringResource
 import com.vayunmathur.education.R

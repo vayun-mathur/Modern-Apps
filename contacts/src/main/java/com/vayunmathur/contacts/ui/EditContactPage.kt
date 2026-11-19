@@ -45,7 +45,6 @@ import com.vayunmathur.contacts.platform.refreshNewContactRestriction
 import com.vayunmathur.contacts.platform.saveEditDraft
 import com.vayunmathur.contacts.platform.setLastSelectedAccount
 import com.vayunmathur.contacts.platform.updateEditDraft
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.isCompactHeight
 import com.vayunmathur.library.util.NavBackStack
 

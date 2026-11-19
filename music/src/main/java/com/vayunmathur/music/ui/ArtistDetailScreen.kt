@@ -36,7 +36,6 @@ import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.sharedContainer
 import com.vayunmathur.library.util.sharedText
 import com.vayunmathur.library.ui.IconPlay
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.music.ui.components.PlayShuffleRow
 import com.vayunmathur.music.ui.components.PlayingBottomBar
 import com.vayunmathur.music.ui.components.TrackListItem

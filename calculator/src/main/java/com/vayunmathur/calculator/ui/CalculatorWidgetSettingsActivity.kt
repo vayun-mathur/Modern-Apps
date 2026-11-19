@@ -27,7 +27,6 @@ import com.vayunmathur.library.ui.DetailScaffold
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.SettingsSection
 import com.vayunmathur.library.ui.SettingsSwitchRow
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import kotlinx.coroutines.launch
 
 /**

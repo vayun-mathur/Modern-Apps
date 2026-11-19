@@ -13,7 +13,6 @@ import com.vayunmathur.library.ui.DailyReminderSettingsSection
 import com.vayunmathur.library.ui.DetailScaffold
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.R as UiR
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.rememberPermissionRequest
 
 /** Binds [NonogramViewModel] to the stateless [SettingsScreen]. */

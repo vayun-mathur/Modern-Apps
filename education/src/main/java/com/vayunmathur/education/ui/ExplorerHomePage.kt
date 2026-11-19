@@ -40,7 +40,6 @@ import com.vayunmathur.education.domain.Course
 import com.vayunmathur.education.domain.Subject
 import com.vayunmathur.education.platform.EducationViewModel
 import com.vayunmathur.library.ui.IconSettings
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.NavBackStack
 import androidx.compose.ui.res.stringResource
 import com.vayunmathur.education.R

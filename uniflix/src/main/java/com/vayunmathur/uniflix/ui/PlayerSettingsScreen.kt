@@ -13,7 +13,6 @@ import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.DesktopMaxWidthContainer
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 
 /** Player preferences shell. Skip-intro stays local-only and off by default. */
 @Composable

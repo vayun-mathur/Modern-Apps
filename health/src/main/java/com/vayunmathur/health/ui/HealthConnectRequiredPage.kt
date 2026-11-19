@@ -13,7 +13,6 @@ import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.SetupAction
 import com.vayunmathur.library.ui.SetupScaffold
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 
 /**
  * The blocking setup step shown when Health Connect is missing or too old to use.

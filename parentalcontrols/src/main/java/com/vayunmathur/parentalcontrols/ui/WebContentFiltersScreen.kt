@@ -11,7 +11,6 @@ import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.LazyListScaffold
 import com.vayunmathur.library.ui.SettingsSection
 import com.vayunmathur.library.ui.SettingsSwitchRow
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.parentalcontrols.R
 import com.vayunmathur.parentalcontrols.platform.WebContentFilters
 

@@ -42,7 +42,6 @@ import com.vayunmathur.library.ui.PrimaryScrollableTabRow
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.library.ui.Tab
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.vpn.R
 import com.vayunmathur.vpn.data.AppUsageSummary
 import com.vayunmathur.vpn.data.DomainBytesSummary

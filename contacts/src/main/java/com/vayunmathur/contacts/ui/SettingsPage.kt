@@ -39,7 +39,6 @@ import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.OverflowMenu
 import com.vayunmathur.library.ui.Switch
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.isCompactHeight
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier

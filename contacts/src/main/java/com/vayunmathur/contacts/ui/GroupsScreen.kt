@@ -39,7 +39,6 @@ import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.library.ui.TextField
 import com.vayunmathur.library.ui.animatedColor
 import com.vayunmathur.library.ui.animatedDp
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip

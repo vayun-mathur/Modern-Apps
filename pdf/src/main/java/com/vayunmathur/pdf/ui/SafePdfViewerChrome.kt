@@ -46,7 +46,6 @@ import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.SmallFloatingActionButton
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextField
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.isExpandedWidth
 import com.vayunmathur.pdf.R
 import com.vayunmathur.pdf.platform.SafePdfDocument

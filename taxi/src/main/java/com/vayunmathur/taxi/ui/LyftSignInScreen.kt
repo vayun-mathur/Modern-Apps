@@ -22,7 +22,6 @@ import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.OutlinedTextField
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.taxi.R
 import com.vayunmathur.taxi.network.lyft.LyftAuth
 import com.vayunmathur.taxi.network.lyft.LyftAuthResult

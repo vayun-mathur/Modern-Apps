@@ -49,7 +49,6 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.image.compose.AsyncImage
 import com.vayunmathur.library.ui.IconSave
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.pdf.R
 import com.vayunmathur.pdf.data.Quadrilateral
 import com.vayunmathur.pdf.platform.AutoFrameDetector

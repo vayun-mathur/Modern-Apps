@@ -41,7 +41,6 @@ import com.vayunmathur.library.ui.OdfMarkdownEditorField
 import com.vayunmathur.library.ui.OdfMarkdownEditorToolbar
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.rememberOdfMarkdownEditorController
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ink.deserialize
 import com.vayunmathur.notes.R
 import com.vayunmathur.notes.data.NoteBlock

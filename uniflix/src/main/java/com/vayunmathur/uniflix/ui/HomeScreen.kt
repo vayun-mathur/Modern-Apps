@@ -20,7 +20,6 @@ import com.vayunmathur.library.ui.IconList
 import com.vayunmathur.library.ui.IconSearch
 import com.vayunmathur.library.ui.IconWidgets
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.uniflix.domain.MediaItem
 import com.vayunmathur.uniflix.platform.HomeUiState
 

@@ -19,7 +19,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.vayunmathur.communicate.R
 import com.vayunmathur.communicate.data.googlevoice.GoogleVoiceSession
 import com.vayunmathur.library.ui.AppScaffold
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.AppMessages
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean

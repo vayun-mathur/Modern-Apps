@@ -22,7 +22,6 @@ import com.vayunmathur.library.ui.IconFavorite
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.translate.R
 import com.vayunmathur.translate.data.TranslationRecord
 import com.vayunmathur.translate.domain.Languages

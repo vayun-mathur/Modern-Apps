@@ -58,7 +58,6 @@ import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import com.vayunmathur.library.ui.DateString
-import com.vayunmathur.library.ui.appBarScrollBehavior
 
 // Result keys for the date/time pickers
 private const val KEY_START_DATE = "EditEvent.startDate"

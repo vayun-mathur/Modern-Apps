@@ -22,7 +22,6 @@ import com.vayunmathur.library.ui.ExtendedFloatingActionButton
 import com.vayunmathur.library.ui.LazyListScaffold
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TopAppBar
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.contacts.domain.ContactSorting.groupKey
 import com.vayunmathur.library.ui.R as UiR
 

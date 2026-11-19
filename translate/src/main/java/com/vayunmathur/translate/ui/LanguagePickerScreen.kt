@@ -21,7 +21,6 @@ import com.vayunmathur.library.ui.IconHistory
 import com.vayunmathur.library.ui.ListItem
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.translate.R
 import com.vayunmathur.translate.domain.Language
 import com.vayunmathur.translate.domain.Languages

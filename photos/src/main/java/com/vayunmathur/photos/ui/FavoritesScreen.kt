@@ -25,7 +25,6 @@ import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.photos.ui.LocalColumnCount
 import com.vayunmathur.photos.R

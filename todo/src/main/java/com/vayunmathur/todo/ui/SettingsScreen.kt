@@ -8,7 +8,6 @@ import com.vayunmathur.library.ui.SettingsDivider
 import com.vayunmathur.library.ui.SettingsSection
 import com.vayunmathur.library.ui.SettingsSelectRow
 import com.vayunmathur.library.ui.SettingsSwitchRow
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.todo.R
 import com.vayunmathur.todo.data.TodoList
 import com.vayunmathur.todo.domain.SortMode

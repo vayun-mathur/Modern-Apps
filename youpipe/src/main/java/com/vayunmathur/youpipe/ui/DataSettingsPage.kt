@@ -23,7 +23,6 @@ import com.vayunmathur.library.ui.ConfirmDialog
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.SettingsRow
 import com.vayunmathur.library.ui.SettingsSection
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.youpipe.R

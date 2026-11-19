@@ -24,7 +24,6 @@ import com.vayunmathur.library.ui.IconVolumeUp
 import com.vayunmathur.library.ui.SettingsSection
 import com.vayunmathur.library.ui.SettingsSelectRow
 import com.vayunmathur.library.ui.SettingsSwitchRow
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.maps.R
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.maps.Route

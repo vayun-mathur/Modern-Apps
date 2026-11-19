@@ -58,7 +58,6 @@ import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.IconDownload
 import com.vayunmathur.library.ui.IconEdit
 import com.vayunmathur.library.ui.IconSchedule
-import com.vayunmathur.library.ui.appBarScrollBehavior
 
 /** Binds [CalendarViewModel] to the stateless [SettingsScreen]. */
 @Composable

@@ -10,7 +10,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.DesktopMaxWidthContainer
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.networklocation.ui.OfflineDatabaseSection
 
 /** Home once the databases are installed: the live GPS / network-location / geocoder check. */

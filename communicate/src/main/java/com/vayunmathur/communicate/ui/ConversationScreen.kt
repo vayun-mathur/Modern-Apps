@@ -34,7 +34,6 @@ import com.vayunmathur.communicate.data.sendPoll
 import com.vayunmathur.communicate.data.shareContact
 import com.vayunmathur.communicate.data.signalPendingIdentityChange
 import com.vayunmathur.library.ui.AppScaffold
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.AppMessages
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

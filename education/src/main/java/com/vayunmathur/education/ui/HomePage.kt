@@ -34,7 +34,6 @@ import com.vayunmathur.education.platform.HomeUiState
 import com.vayunmathur.library.ui.IconChevronRight
 import com.vayunmathur.library.ui.IconEmojiEvents
 import com.vayunmathur.library.ui.IconSettings
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.sharedText
 import androidx.compose.ui.res.stringResource

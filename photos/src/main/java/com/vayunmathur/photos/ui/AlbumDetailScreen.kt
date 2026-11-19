@@ -25,7 +25,6 @@ import com.vayunmathur.library.ui.OutlinedTextField
 import com.vayunmathur.library.ui.AppPullToRefreshBox
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.AppScaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue

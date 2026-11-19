@@ -67,7 +67,6 @@ import kotlinx.coroutines.delay
 import kotlin.time.Instant
 import com.vayunmathur.library.ui.DateString
 import com.vayunmathur.library.ui.rememberIs24Hour
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import kotlin.math.max
 import kotlin.math.min
 

@@ -43,7 +43,6 @@ import com.vayunmathur.library.ui.Spacing
 import com.vayunmathur.library.ui.Surface
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.openAppSettings
 import com.vayunmathur.library.ui.rememberMessenger
 import com.vayunmathur.library.ui.rememberPermissionRequest

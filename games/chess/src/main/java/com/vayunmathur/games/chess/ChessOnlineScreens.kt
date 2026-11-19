@@ -45,7 +45,6 @@ import com.vayunmathur.library.ui.Messenger
 import com.vayunmathur.library.ui.OutlinedButton
 import com.vayunmathur.library.ui.OutlinedTextField
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.rememberMessenger
 import com.vayunmathur.library.util.OfflineAware
 import com.vayunmathur.library.util.rememberIsOnline

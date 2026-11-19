@@ -25,7 +25,6 @@ import com.vayunmathur.communicate.data.googlevoice.call.GoogleVoiceCallManager
 import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.ui.IconContacts
 import com.vayunmathur.library.ui.AppScaffold
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 

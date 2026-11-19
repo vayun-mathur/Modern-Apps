@@ -29,7 +29,6 @@ import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.IconShare
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 
 /**
  * One app's page: what it is, what it looks like, and what installing it would mean.

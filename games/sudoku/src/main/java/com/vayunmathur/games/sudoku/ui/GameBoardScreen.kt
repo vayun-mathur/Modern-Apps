@@ -46,7 +46,6 @@ import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.library.ui.Spacing
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.game.GameResultOverlay
 import com.vayunmathur.library.ui.game.HeartsRow
 import com.vayunmathur.library.ui.game.formatDuration

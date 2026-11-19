@@ -46,7 +46,6 @@ import com.vayunmathur.web.platform.PwaHelper
 import com.vayunmathur.web.platform.WebViewModel
 import com.vayunmathur.web.platform.removeInstalledSite
 
-import com.vayunmathur.library.ui.appBarScrollBehavior
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

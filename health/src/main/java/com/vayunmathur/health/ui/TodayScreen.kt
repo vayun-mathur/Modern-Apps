@@ -9,7 +9,6 @@ import com.vayunmathur.library.ui.IconFire
 import com.vayunmathur.library.ui.IconLocationOn
 import com.vayunmathur.library.ui.IconRain
 import com.vayunmathur.library.ui.LazyListScaffold
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource

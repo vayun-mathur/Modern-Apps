@@ -38,7 +38,6 @@ import com.vayunmathur.library.ui.SettingsSwitchRow
 import com.vayunmathur.library.ui.SingleChoiceSegmentedButtonRow
 import com.vayunmathur.library.ui.Spacing
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.game.GameTopBarActions
 import com.vayunmathur.library.ui.game.formatDuration
 import com.vayunmathur.library.util.NavBackStack

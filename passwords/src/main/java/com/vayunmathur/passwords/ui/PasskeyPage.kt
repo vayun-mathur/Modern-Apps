@@ -33,7 +33,6 @@ import com.vayunmathur.library.util.sharedText
 import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.IconLink
 import com.vayunmathur.library.ui.IconLinkOff
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.passwords.R
 import com.vayunmathur.passwords.Route
 import com.vayunmathur.passwords.domain.PasskeyLink

@@ -27,7 +27,6 @@ import com.vayunmathur.library.ui.HorizontalDivider
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.rememberIs24Hour
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.sharedContainer
 import com.vayunmathur.library.util.sharedText

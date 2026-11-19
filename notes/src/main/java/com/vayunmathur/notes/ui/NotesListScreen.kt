@@ -48,7 +48,6 @@ import com.vayunmathur.library.ui.TopAppBar
 import com.vayunmathur.library.ui.ReorderableItem
 import com.vayunmathur.library.ui.rememberReorderableLazyListState
 import com.vayunmathur.library.ui.reorderDragHandle
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.animatedDp
 import com.vayunmathur.notes.R
 import com.vayunmathur.notes.data.Note

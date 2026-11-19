@@ -40,7 +40,6 @@ import com.vayunmathur.calendar.platform.CalendarViewModel
 import com.vayunmathur.calendar.platform.HolidayCalendarManager
 import com.vayunmathur.calendar.data.HolidayData
 import com.vayunmathur.library.ui.IconNavigation
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.NavBackStack
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

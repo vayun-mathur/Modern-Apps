@@ -11,7 +11,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.SettingsRow
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.vpn.R
 import com.vayunmathur.vpn.Route

@@ -26,7 +26,6 @@ import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.IconSettings
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.measure.R
 import com.vayunmathur.measure.data.model.UnitSystem
 import com.vayunmathur.measure.domain.Units

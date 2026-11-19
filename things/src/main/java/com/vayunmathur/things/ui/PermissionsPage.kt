@@ -23,7 +23,6 @@ import com.vayunmathur.library.ui.IconHealth
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.things.R
 
 /** Whether a permission the app needs has been granted, and if not, what can be done about it. */

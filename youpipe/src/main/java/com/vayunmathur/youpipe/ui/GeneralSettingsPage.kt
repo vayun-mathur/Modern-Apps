@@ -25,7 +25,6 @@ import com.vayunmathur.library.ui.ListItem
 import com.vayunmathur.library.ui.SettingsSection
 import com.vayunmathur.library.ui.SettingsSwitchRow
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.youpipe.platform.DEFAULT_PAGE_OPTIONS
 import com.vayunmathur.youpipe.R

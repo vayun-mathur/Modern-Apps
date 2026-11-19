@@ -14,7 +14,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.DetailScaffold
-import com.vayunmathur.library.ui.appBarScrollBehavior
 
 /**
  * Chrome shared by every Signal registration step destination: the

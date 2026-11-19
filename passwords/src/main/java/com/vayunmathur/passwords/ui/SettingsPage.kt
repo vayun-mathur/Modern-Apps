@@ -28,7 +28,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.passwords.R
 import com.vayunmathur.library.ui.BackupButtons
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.passwords.domain.ImportSource
 import com.vayunmathur.passwords.platform.PasswordsViewModel
 

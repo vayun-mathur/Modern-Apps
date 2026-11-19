@@ -25,7 +25,6 @@ import com.vayunmathur.library.ui.Switch
 import com.vayunmathur.backup.ui.components.BackendSection
 import com.vayunmathur.backup.ui.components.destinationLabel
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 
 /** Main screen once set up: status, per-category toggles, run-now, and restore. */
 @Composable

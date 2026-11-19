@@ -19,7 +19,6 @@ import com.vayunmathur.library.ui.SettingsDivider
 import com.vayunmathur.library.ui.SettingsRow
 import com.vayunmathur.library.ui.SettingsSection
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.measure.R
 import com.vayunmathur.measure.platform.DiagnosticsActions
 import com.vayunmathur.measure.platform.DiagnosticsUiState

@@ -47,7 +47,6 @@ import com.vayunmathur.library.ui.SecondaryTabRow
 import com.vayunmathur.library.ui.Tab
 import com.vayunmathur.library.ui.TabRowDefaults
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.DateNameStyle
 import com.vayunmathur.library.util.localizedMonthNames
 import com.vayunmathur.library.util.round

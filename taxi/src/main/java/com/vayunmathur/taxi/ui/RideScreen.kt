@@ -21,7 +21,6 @@ import com.vayunmathur.library.map.GeoPoint
 import com.vayunmathur.library.map.RouteOverlay
 import com.vayunmathur.library.map.rememberCameraState
 import com.vayunmathur.library.ui.AppScaffold
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.isExpandedWidth
 import com.vayunmathur.taxi.R
 import com.vayunmathur.taxi.data.BookingTrip

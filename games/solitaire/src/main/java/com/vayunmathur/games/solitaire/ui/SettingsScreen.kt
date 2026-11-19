@@ -8,7 +8,6 @@ import com.vayunmathur.library.ui.DetailScaffold
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.SettingsSection
 import com.vayunmathur.library.ui.SettingsSelectRow
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.R as UiR
 
 @OptIn(ExperimentalMaterial3Api::class)

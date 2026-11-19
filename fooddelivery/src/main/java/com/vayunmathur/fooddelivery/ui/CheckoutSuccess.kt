@@ -19,7 +19,6 @@ import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.IconCheck
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 
 @Composable
 internal fun CheckoutSuccess(onContinue: () -> Unit = {}) {

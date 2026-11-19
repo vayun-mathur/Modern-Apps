@@ -55,7 +55,6 @@ import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.IconSettings
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.game.GameTopBarActions
 import com.vayunmathur.library.util.AchievementsManager
 import com.vayunmathur.games.wordmaker.ui.components.CrosswordBoard

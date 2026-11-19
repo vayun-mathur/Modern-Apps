@@ -30,7 +30,6 @@ import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.IconSave
 import com.vayunmathur.library.ui.LoadingIndicator
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.photos.R
 import com.vayunmathur.photos.data.VideoTool
 import com.vayunmathur.photos.platform.VideoEditViewModel

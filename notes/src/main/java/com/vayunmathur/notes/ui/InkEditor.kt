@@ -43,7 +43,6 @@ import com.vayunmathur.library.ui.IconDraw
 import com.vayunmathur.library.ui.IconEraser
 import com.vayunmathur.library.ui.IconForward
 import com.vayunmathur.library.ui.IconUndo
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ink.InkCanvasView
 import com.vayunmathur.library.ink.SerializedStroke
 import com.vayunmathur.library.ink.deserialize

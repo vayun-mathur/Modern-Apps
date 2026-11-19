@@ -18,7 +18,6 @@ import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.SettingsRow
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.measure.R
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.measure.data.model.MeasurementKind

@@ -22,7 +22,6 @@ import com.vayunmathur.library.ui.IconAdd
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Spacing
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.game.GameTopBarActions
 
 /** The player's components under their group names, with a button to start a new one. */

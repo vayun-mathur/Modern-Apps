@@ -25,7 +25,6 @@ import com.vayunmathur.library.ui.SetupAction
 import com.vayunmathur.library.ui.SetupScaffold
 import com.vayunmathur.library.ui.Spacing
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.setupwizard.R
 import com.vayunmathur.setupwizard.platform.SetupUiState
 import com.vayunmathur.setupwizard.ui.dialogs.LanguagePickerDialog

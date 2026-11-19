@@ -26,7 +26,6 @@ import com.vayunmathur.library.ui.Card
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.OutlinedButton
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.shop.R
 import com.vayunmathur.shop.data.Money
 import com.vayunmathur.shop.data.OrderShipment

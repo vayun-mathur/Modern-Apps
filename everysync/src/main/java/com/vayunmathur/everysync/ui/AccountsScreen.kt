@@ -41,7 +41,6 @@ import com.vayunmathur.everysync.platform.EverySyncViewModel
 import com.vayunmathur.library.ui.PermissionsChecker
 import com.vayunmathur.library.ui.DateString
 import com.vayunmathur.library.ui.is24Hour
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.sharedText
 import kotlin.time.Instant

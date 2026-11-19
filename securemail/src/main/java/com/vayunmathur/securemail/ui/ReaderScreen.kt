@@ -37,7 +37,6 @@ import com.vayunmathur.library.ui.ModalBottomSheet
 import com.vayunmathur.library.ui.OutlinedButton
 import com.vayunmathur.library.ui.Surface
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.rememberModalBottomSheetState
 import com.vayunmathur.securemail.data.MailFolder
 import com.vayunmathur.securemail.data.StoredMessage

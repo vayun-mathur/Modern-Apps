@@ -67,7 +67,6 @@ import com.vayunmathur.education.platform.QuizActions
 import com.vayunmathur.education.platform.QuizUiState
 import com.vayunmathur.library.ui.IconKeyboardArrowDown
 import com.vayunmathur.library.ui.IconKeyboardArrowUp
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.NavBackStack
 import androidx.compose.ui.res.stringResource
 import com.vayunmathur.education.R

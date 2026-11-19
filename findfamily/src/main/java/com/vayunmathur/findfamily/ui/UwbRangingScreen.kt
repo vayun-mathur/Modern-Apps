@@ -41,7 +41,6 @@ import com.vayunmathur.findfamily.platform.RangingSample
 import com.vayunmathur.findfamily.platform.FindFamilyViewModel
 import com.vayunmathur.findfamily.platform.UwbSessionManager
 import com.vayunmathur.library.ui.IconNavigationArrow
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.NavBackStack
 
 /**

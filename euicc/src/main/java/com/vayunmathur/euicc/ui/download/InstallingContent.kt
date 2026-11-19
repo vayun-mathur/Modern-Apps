@@ -8,7 +8,6 @@ import com.vayunmathur.euicc.R
 import com.vayunmathur.library.ui.IconSim
 import com.vayunmathur.library.ui.LinearProgressIndicator
 import com.vayunmathur.library.ui.SetupScaffold
-import com.vayunmathur.library.ui.appBarScrollBehavior
 
 /**
  * The eUICC is being written to.

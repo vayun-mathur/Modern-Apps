@@ -24,7 +24,6 @@ import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.ui.IconSearch
-import com.vayunmathur.library.ui.appBarScrollBehavior
 
 /**
  * One home section's full catalogue as a vertical list.

@@ -37,7 +37,6 @@ import com.vayunmathur.library.ui.SingleChoiceSegmentedButtonRow
 import com.vayunmathur.library.ui.SegmentedButton
 import com.vayunmathur.library.ui.Surface
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.screentime.R
 import com.vayunmathur.screentime.platform.ScreenTimeUiState
 import com.vayunmathur.screentime.platform.TimedApp

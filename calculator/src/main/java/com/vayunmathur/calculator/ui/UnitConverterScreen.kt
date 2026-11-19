@@ -45,7 +45,6 @@ import com.vayunmathur.library.ui.SelectableDropdownMenuItem
 import com.vayunmathur.library.ui.Spacing
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.ToggleButton
-import com.vayunmathur.library.ui.appBarScrollBehavior
 
 /**
  * The units tab: a plain from/to converter with no equations. The twenty-odd categories are picked

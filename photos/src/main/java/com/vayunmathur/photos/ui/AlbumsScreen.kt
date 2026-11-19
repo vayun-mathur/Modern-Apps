@@ -33,7 +33,6 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import com.vayunmathur.library.image.ImageRequest
 import com.vayunmathur.library.image.compose.AsyncImage
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.invisibleClickable
 import com.vayunmathur.library.util.NavBackStack
