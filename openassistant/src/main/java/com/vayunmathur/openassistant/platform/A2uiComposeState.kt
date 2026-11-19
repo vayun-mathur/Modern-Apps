@@ -72,6 +72,9 @@ class ComposeDataModel : A2uiCoreDataModel {
         val key = segments[at]
         val index = key.toIntOrNull()
         if (node is List<*> && index != null && index >= 0) {
+            // Model-authored paths can name a huge index; growing the list to it OOMs.
+            // Only the single append slot past the end may be materialized.
+            if (index > node.size) return node
             val list = node.toMutableList()
             while (list.size <= index) list.add(null)
             list[index] = setAt(list[index], segments, at + 1, value)

@@ -204,7 +204,8 @@ private class SurfaceRenderer(
                 // is dispatched on change with the new value in its context.
                 val current = (evaluate(id, dataPath, props["value"]) as? Number)?.toDouble() ?: 0.0
                 val min = (props["min"] as? Number)?.toDouble() ?: 0.0
-                val max = (props["max"] as? Number)?.toDouble() ?: current.coerceAtLeast(min)
+                // Model may emit min > max; coerceIn on an empty range throws.
+                val max = ((props["max"] as? Number)?.toDouble() ?: current.coerceAtLeast(min)).coerceAtLeast(min)
                 fun step(delta: Double) {
                     if (!enabled) return
                     val next = (current + delta).coerceIn(min, max)
