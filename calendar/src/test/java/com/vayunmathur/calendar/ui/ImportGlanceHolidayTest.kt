@@ -19,15 +19,15 @@ import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.calendar.CalendarTestData as D
 import com.vayunmathur.calendar.FakeCalendarData
 import com.vayunmathur.calendar.Route
-import com.vayunmathur.calendar.widget.glance.CalendarGlanceWidget
-import com.vayunmathur.calendar.widget.glance.CalendarGlanceWidgetReceiver
-import com.vayunmathur.calendar.widget.glance.CalendarMonthGlanceWidget
-import com.vayunmathur.calendar.widget.glance.CalendarMonthGlanceWidgetReceiver
-import com.vayunmathur.calendar.widget.glance.cappedForCell
-import com.vayunmathur.calendar.widget.glance.computeMonthGrid
-import com.vayunmathur.calendar.widget.glance.contrastingTextOn
-import com.vayunmathur.calendar.widget.glance.maxChipsForSize
-import com.vayunmathur.calendar.widget.glance.sortedForMonthCell
+import com.vayunmathur.calendar.widget.CalendarGlanceWidget
+import com.vayunmathur.calendar.widget.CalendarGlanceWidgetReceiver
+import com.vayunmathur.calendar.widget.CalendarMonthGlanceWidget
+import com.vayunmathur.calendar.widget.CalendarMonthGlanceWidgetReceiver
+import com.vayunmathur.calendar.widget.cappedForCell
+import com.vayunmathur.calendar.widget.computeMonthGrid
+import com.vayunmathur.calendar.widget.contrastingTextOn
+import com.vayunmathur.calendar.widget.maxChipsForSize
+import com.vayunmathur.calendar.widget.sortedForMonthCell
 import com.vayunmathur.calendar.platform.CalendarViewModel
 import com.vayunmathur.library.util.NavBackStack
 import kotlinx.coroutines.runBlocking

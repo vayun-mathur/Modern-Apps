@@ -13,7 +13,7 @@ import com.vayunmathur.weather.data.WeatherRepository
 import com.vayunmathur.weather.network.WxStatic
 import com.vayunmathur.weather.platform.WeatherViewModel
 import com.vayunmathur.weather.platform.WeatherViewModelFactory
-import com.vayunmathur.weather.widget.glance.WeatherGlanceWidgetReceiver
+import com.vayunmathur.weather.widget.WeatherGlanceWidgetReceiver
 
 /** Main Activity: a ma activity implementation for main activity. */
 class MainActivity : MaActivity() {

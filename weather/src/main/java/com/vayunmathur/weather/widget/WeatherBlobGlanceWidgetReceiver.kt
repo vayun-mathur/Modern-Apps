@@ -1,4 +1,4 @@
-package com.vayunmathur.weather.widget.glance
+package com.vayunmathur.weather.widget
 
 import android.content.Context
 import com.vayunmathur.library.widgets.MaWidgetReceiver

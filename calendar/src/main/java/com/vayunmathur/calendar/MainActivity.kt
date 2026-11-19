@@ -15,7 +15,7 @@ import com.vayunmathur.calendar.platform.editEventFromIntent
 import com.vayunmathur.calendar.platform.isTimeEpochIntent
 import com.vayunmathur.calendar.ui.CalendarAppContent
 import com.vayunmathur.calendar.ui.parseICSFile
-import com.vayunmathur.calendar.widget.glance.CalendarGlanceWidgetReceiver
+import com.vayunmathur.calendar.widget.CalendarGlanceWidgetReceiver
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.MaActivity

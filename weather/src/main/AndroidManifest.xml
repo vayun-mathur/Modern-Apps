@@ -76,7 +76,7 @@
             android:value="1" />
 
         <receiver
-            android:name=".widget.glance.WeatherGlanceWidgetReceiver"
+            android:name=".widget.WeatherGlanceWidgetReceiver"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -86,7 +86,7 @@
                 android:resource="@xml/weather_glance_widget_info" />
         </receiver>
         <receiver
-            android:name=".widget.glance.WeatherBlobGlanceWidgetReceiver"
+            android:name=".widget.WeatherBlobGlanceWidgetReceiver"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />

@@ -14,7 +14,7 @@ import com.vayunmathur.weather.domain.roundCoord
 import com.vayunmathur.weather.network.ForecastResponse
 import com.vayunmathur.weather.network.WeatherApi
 import com.vayunmathur.weather.network.WxStatic
-import com.vayunmathur.weather.widget.glance.loadWeatherSnapshot
+import com.vayunmathur.weather.widget.loadWeatherSnapshot
 import kotlinx.coroutines.test.runTest
 import org.junit.runner.RunWith
 import kotlin.test.AfterTest

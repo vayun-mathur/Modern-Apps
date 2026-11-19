@@ -4,8 +4,8 @@ import android.content.ContentValues
 import android.provider.CalendarContract
 import androidx.glance.appwidget.updateAll
 import com.vayunmathur.calendar.data.Calendar
-import com.vayunmathur.calendar.widget.glance.CalendarGlanceWidget
-import com.vayunmathur.calendar.widget.glance.CalendarMonthGlanceWidget
+import com.vayunmathur.calendar.widget.CalendarGlanceWidget
+import com.vayunmathur.calendar.widget.CalendarMonthGlanceWidget
 import com.vayunmathur.library.intents.calendar.EventData
 import com.vayunmathur.library.util.AssistantIntent
 import kotlinx.datetime.TimeZone

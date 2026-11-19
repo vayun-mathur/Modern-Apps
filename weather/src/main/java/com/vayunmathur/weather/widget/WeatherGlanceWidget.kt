@@ -1,4 +1,4 @@
-package com.vayunmathur.weather.widget.glance
+package com.vayunmathur.weather.widget
 
 import com.vayunmathur.library.util.DateNameStyle
 import android.content.Context

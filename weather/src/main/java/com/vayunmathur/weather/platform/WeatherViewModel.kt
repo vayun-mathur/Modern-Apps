@@ -13,7 +13,7 @@ import com.vayunmathur.weather.data.WeatherRefreshWorker
 import com.vayunmathur.weather.data.weatherJson
 import com.vayunmathur.weather.domain.SelectedDateOrTime
 import com.vayunmathur.weather.domain.roundCoord
-import com.vayunmathur.weather.widget.glance.WeatherGlanceWidget
+import com.vayunmathur.weather.widget.WeatherGlanceWidget
 import com.vayunmathur.weather.network.AirQualityResponse
 import com.vayunmathur.weather.network.ForecastResponse
 import com.vayunmathur.weather.network.WeatherApi

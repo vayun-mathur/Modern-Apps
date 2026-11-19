@@ -3,8 +3,8 @@ package com.vayunmathur.weather.ui
 import androidx.glance.appwidget.AppWidgetId
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import com.vayunmathur.weather.widget.glance.WeatherBlobGlanceWidget
-import com.vayunmathur.weather.widget.glance.WeatherGlanceWidget
+import com.vayunmathur.weather.widget.WeatherBlobGlanceWidget
+import com.vayunmathur.weather.widget.WeatherGlanceWidget
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertTrue
 import org.junit.Test

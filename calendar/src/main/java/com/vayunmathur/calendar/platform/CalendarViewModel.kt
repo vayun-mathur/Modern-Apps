@@ -9,8 +9,8 @@ import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.vayunmathur.calendar.R
-import com.vayunmathur.calendar.widget.glance.CalendarGlanceWidget
-import com.vayunmathur.calendar.widget.glance.CalendarMonthGlanceWidget
+import com.vayunmathur.calendar.widget.CalendarGlanceWidget
+import com.vayunmathur.calendar.widget.CalendarMonthGlanceWidget
 import com.vayunmathur.calendar.ui.parseICSFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow

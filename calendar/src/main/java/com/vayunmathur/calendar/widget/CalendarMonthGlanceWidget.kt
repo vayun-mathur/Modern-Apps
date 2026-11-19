@@ -1,4 +1,4 @@
-package com.vayunmathur.calendar.widget.glance
+package com.vayunmathur.calendar.widget
 
 import android.annotation.SuppressLint
 import android.content.Context

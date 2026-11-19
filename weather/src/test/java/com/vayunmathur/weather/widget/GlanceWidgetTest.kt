@@ -3,9 +3,9 @@ package com.vayunmathur.weather.widget
 import androidx.compose.runtime.Composable
 import androidx.glance.appwidget.testing.unit.runGlanceAppWidgetUnitTest
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.vayunmathur.weather.widget.glance.WeatherBlobGlanceWidget
-import com.vayunmathur.weather.widget.glance.WeatherGlanceWidget
-import com.vayunmathur.weather.widget.glance.WidgetWeather
+import com.vayunmathur.weather.widget.WeatherBlobGlanceWidget
+import com.vayunmathur.weather.widget.WeatherGlanceWidget
+import com.vayunmathur.weather.widget.WidgetWeather
 import androidx.test.core.app.ApplicationProvider
 import org.junit.runner.RunWith
 import kotlin.test.Test

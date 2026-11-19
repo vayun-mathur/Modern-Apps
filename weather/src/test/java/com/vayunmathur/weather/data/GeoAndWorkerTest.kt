@@ -104,8 +104,8 @@ class WeatherWorkerDoWorkTest {
         // onEnabledExtra schedules hourly refresh via WorkManager.
         val config = Configuration.Builder().setExecutor(SynchronousExecutor()).build()
         WorkManagerTestInitHelper.initializeTestWorkManager(ctx, config)
-        com.vayunmathur.weather.widget.glance.WeatherGlanceWidgetReceiver().onEnabled(ctx)
-        com.vayunmathur.weather.widget.glance.WeatherBlobGlanceWidgetReceiver().onEnabled(ctx)
+        com.vayunmathur.weather.widget.WeatherGlanceWidgetReceiver().onEnabled(ctx)
+        com.vayunmathur.weather.widget.WeatherBlobGlanceWidgetReceiver().onEnabled(ctx)
         val infos = WorkManager.getInstance(ctx).getWorkInfosForUniqueWork("WeatherHourlyRefresh").get()
         assertTrue(infos.isNotEmpty())
     }

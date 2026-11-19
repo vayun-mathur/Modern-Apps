@@ -1,4 +1,4 @@
-package com.vayunmathur.calendar.widget.glance
+package com.vayunmathur.calendar.widget
 
 import com.vayunmathur.library.widgets.MaWidgetReceiver
 

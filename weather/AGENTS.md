@@ -99,12 +99,12 @@ _Install: ./install weather (dev by default)._
 - com/vayunmathur/weather/ui/components/blocks/CloudCoverBlock.kt
 - com/vayunmathur/weather/ui/components/blocks/SunBlock.kt
 - com/vayunmathur/weather/ui/components/blocks/MoonBlock.kt
-### widget/glance/ — Glance widgets (cache-fed only)
-- com/vayunmathur/weather/widget/glance/WeatherGlanceWidget.kt
-- com/vayunmathur/weather/widget/glance/WeatherGlanceWidgetReceiver.kt
-- com/vayunmathur/weather/widget/glance/WeatherBlobGlanceWidget.kt
-- com/vayunmathur/weather/widget/glance/WeatherBlobGlanceWidgetReceiver.kt
-- com/vayunmathur/weather/widget/glance/WidgetWeather.kt — shared widget model
+### widget/ — Glance widgets (cache-fed only)
+- com/vayunmathur/weather/widget/WeatherGlanceWidget.kt
+- com/vayunmathur/weather/widget/WeatherGlanceWidgetReceiver.kt
+- com/vayunmathur/weather/widget/WeatherBlobGlanceWidget.kt
+- com/vayunmathur/weather/widget/WeatherBlobGlanceWidgetReceiver.kt
+- com/vayunmathur/weather/widget/WidgetWeather.kt — shared widget model
 
 ## Verify (this module only)
 ```

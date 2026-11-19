@@ -1,11 +1,11 @@
 package com.vayunmathur.calendar.widget
 
 import com.vayunmathur.calendar.data.Instance
-import com.vayunmathur.calendar.widget.glance.cappedForCell
-import com.vayunmathur.calendar.widget.glance.computeMonthGrid
-import com.vayunmathur.calendar.widget.glance.contrastingTextOn
-import com.vayunmathur.calendar.widget.glance.maxChipsForSize
-import com.vayunmathur.calendar.widget.glance.sortedForMonthCell
+import com.vayunmathur.calendar.widget.cappedForCell
+import com.vayunmathur.calendar.widget.computeMonthGrid
+import com.vayunmathur.calendar.widget.contrastingTextOn
+import com.vayunmathur.calendar.widget.maxChipsForSize
+import com.vayunmathur.calendar.widget.sortedForMonthCell
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import kotlinx.datetime.LocalDate
