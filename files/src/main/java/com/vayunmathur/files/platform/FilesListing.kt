@@ -92,6 +92,9 @@ internal fun queryMediaItems(
             }
         }
     } catch (_: IllegalArgumentException) {
+    } catch (_: SecurityException) {
+        // MediaStore denies the query outright when media permission is
+        // revoked; an empty category beats crashing the home screen.
     }
     return out
 }
