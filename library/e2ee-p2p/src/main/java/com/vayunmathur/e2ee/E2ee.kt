@@ -31,6 +31,7 @@ object E2ee {
 
     /** Decrypts data produced by [aesEncrypt] (IV prepended). */
     fun aesDecrypt(key: ByteArray, data: ByteArray): ByteArray {
+        require(data.size >= IV_LEN) { "ciphertext too short: ${data.size}" }
         val iv = data.copyOfRange(0, IV_LEN)
         val ct = data.copyOfRange(IV_LEN, data.size)
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")

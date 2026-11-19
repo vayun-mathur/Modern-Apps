@@ -107,10 +107,16 @@ object Pqc {
     private const val BYTE_THIRD_INDEX = 3
 
     private fun unLenPrefix(x: ByteArray): Pair<ByteArray, ByteArray> {
+        // Bundles/ciphertexts arrive from peers and storage; a truncated or
+        // lying length prefix must fail as IllegalArgumentException (the
+        // failure type callers already handle for bad crypto input), not as
+        // an IndexOutOfBoundsException from a raw array read.
+        require(x.size >= LEN_PREFIX_BYTES) { "length-prefixed data too short: ${x.size}" }
         val len = ((x[0].toInt() and BYTE_MASK) shl BYTE_THIRD_SHIFT) or
             ((x[1].toInt() and BYTE_MASK) shl BYTE_SECOND_SHIFT) or
             ((x[BYTE_SECOND_INDEX].toInt() and BYTE_MASK) shl BYTE_BITS) or
             (x[BYTE_THIRD_INDEX].toInt() and BYTE_MASK)
+        require(len >= 0 && LEN_PREFIX_BYTES + len <= x.size) { "length prefix $len exceeds size ${x.size}" }
         return x.copyOfRange(LEN_PREFIX_BYTES, LEN_PREFIX_BYTES + len) to
             x.copyOfRange(LEN_PREFIX_BYTES + len, x.size)
     }
