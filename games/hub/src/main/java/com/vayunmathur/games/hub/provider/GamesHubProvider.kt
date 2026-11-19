@@ -106,6 +106,11 @@ open class GamesHubProvider : ContentProvider() {
             } catch (e: IllegalArgumentException) {
                 Log.error("GamesHubProvider", "insert failed $uri", e)
                 null
+            } catch (e: IllegalStateException) {
+                // Converters fail missing IDs via error(); malformed IPC
+                // from another game must not crash this provider.
+                Log.error("GamesHubProvider", "insert failed $uri", e)
+                null
             } catch (e: android.database.SQLException) {
                 Log.error("GamesHubProvider", "insert failed $uri", e)
                 null
@@ -127,6 +132,9 @@ open class GamesHubProvider : ContentProvider() {
                     else -> 0
                 }
             } catch (e: IllegalArgumentException) {
+                Log.error("GamesHubProvider", "update failed $uri", e)
+                0
+            } catch (e: IllegalStateException) {
                 Log.error("GamesHubProvider", "update failed $uri", e)
                 0
             } catch (e: android.database.SQLException) {
@@ -160,6 +168,9 @@ open class GamesHubProvider : ContentProvider() {
                     else -> null
                 }
             } catch (e: IllegalArgumentException) {
+                Log.error("GamesHubProvider", "query failed $uri", e)
+                null
+            } catch (e: IllegalStateException) {
                 Log.error("GamesHubProvider", "query failed $uri", e)
                 null
             } catch (e: android.database.SQLException) {
