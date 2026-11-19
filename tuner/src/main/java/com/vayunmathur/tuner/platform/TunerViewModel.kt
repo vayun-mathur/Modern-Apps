@@ -7,8 +7,11 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.vayunmathur.library.util.DataStoreUtils
+import com.vayunmathur.tuner.data.AnalysisRange
+import com.vayunmathur.tuner.data.Instrument
 import com.vayunmathur.tuner.data.InstrumentCatalog
 import com.vayunmathur.tuner.data.InstrumentKind
+import com.vayunmathur.tuner.data.StringSpec
 import com.vayunmathur.tuner.domain.CentsSmoother
 import com.vayunmathur.tuner.domain.ChordDetector
 import com.vayunmathur.tuner.domain.ChordDisplay
@@ -90,9 +93,15 @@ class TunerViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun initialState(): TunerUiState {
-        val catalog = InstrumentCatalog.parse(
-            getApplication<Application>().assets.open(ASSET).bufferedReader().use { it.readText() },
-        )
+        // This runs during ViewModel construction, so a missing/corrupt
+        // bundled asset (or one decoding to an empty catalogue, whose
+        // first() below would throw) must not crash every launch. Fall
+        // back to a built-in guitar so the tuner still opens.
+        val catalog = runCatching {
+            InstrumentCatalog.parse(
+                getApplication<Application>().assets.open(ASSET).bufferedReader().use { it.readText() },
+            )
+        }.getOrNull()?.takeIf { it.instruments.isNotEmpty() } ?: FALLBACK_CATALOG
         val savedId = store.getString(KEY_INSTRUMENT)
         val instrument = savedId?.let { catalog.byId(it) } ?: catalog.instruments.first()
         return TunerUiState(
@@ -292,6 +301,24 @@ class TunerViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private companion object {
+        /** Built-in guitar used only when the bundled catalogue cannot be read. */
+        val FALLBACK_CATALOG = InstrumentCatalog(
+            listOf(
+                Instrument(
+                    id = "guitar-standard",
+                    familyId = "guitar",
+                    kind = InstrumentKind.FRETTED,
+                    strings = listOf(
+                        StringSpec(40, "E"), StringSpec(45, "A"), StringSpec(50, "D"),
+                        StringSpec(55, "G"), StringSpec(59, "B"), StringSpec(64, "E"),
+                    ),
+                    fretCount = 15,
+                    analysis = AnalysisRange(70.0, 1400.0),
+                    isDefaultForFamily = true,
+                ),
+            ),
+        )
+
         const val ASSET = "instruments.json"
         const val KEY_INSTRUMENT = "tuner_instrument"
 
