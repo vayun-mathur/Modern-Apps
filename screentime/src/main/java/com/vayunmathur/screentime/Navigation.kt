@@ -10,10 +10,10 @@ import com.vayunmathur.library.util.ListPage
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.screentime.platform.ScreenTimeViewModel
-import com.vayunmathur.screentime.ui.AppDetailsScreen
 import com.vayunmathur.screentime.ui.DashboardActions
+import com.vayunmathur.screentime.ui.AppDetailsEntry
 import com.vayunmathur.screentime.ui.DashboardScreen
-import com.vayunmathur.screentime.ui.WindDownScreen
+import com.vayunmathur.screentime.ui.WindDownEntry
 
 /** Navigation host for Screen Time: the dashboard and everything it opens. */
 @Composable
@@ -64,44 +64,3 @@ fun Navigation(
     }
 }
 
-/** App-details destination: opens the route's package, then wires its controls. */
-@Composable
-private fun AppDetailsEntry(
-    viewModel: ScreenTimeViewModel,
-    backStack: com.vayunmathur.library.util.NavBackStack<Route>,
-    route: Route.AppDetails,
-) {
-    LaunchedEffect(route.packageName) {
-        viewModel.openDetail(route.packageName.ifBlank { null })
-    }
-    val state by viewModel.detailState.collectAsStateWithLifecycle()
-    AppDetailsScreen(
-        state = state,
-        onBack = { backStack.pop() },
-        onSetPeriod = viewModel::setPeriod,
-        onStep = viewModel::stepAnchor,
-        onTimerChange = { minutes ->
-            state.packageName?.let { viewModel.setTimer(it, minutes) }
-        },
-        onPausedChange = { paused ->
-            state.packageName?.let { viewModel.setAppPaused(it, paused) }
-        },
-    )
-}
-
-/** Wind-down destination and its schedule controls. */
-@Composable
-private fun WindDownEntry(viewModel: ScreenTimeViewModel) {
-    val state by viewModel.state.collectAsStateWithLifecycle()
-    WindDownScreen(
-        state = state,
-        onEnabledChange = { viewModel.setWindDown(enabled = it) },
-        onStartChange = { h, m -> viewModel.setWindDown(startMinute = h * 60 + m) },
-        onEndChange = { h, m -> viewModel.setWindDown(endMinute = h * 60 + m) },
-        onToggleDay = { day ->
-            viewModel.setWindDown(daysMask = state.windDown.daysMask xor (1 shl day))
-        },
-        onGrayscaleChange = { viewModel.setWindDown(grayscale = it) },
-        onDndChange = { viewModel.setWindDown(doNotDisturb = it) },
-    )
-}
