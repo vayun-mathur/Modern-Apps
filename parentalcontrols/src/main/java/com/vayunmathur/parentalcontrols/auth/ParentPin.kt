@@ -62,7 +62,8 @@ class ParentPin(context: Context) : DatabaseHelper(context.applicationContext) {
         if (!isSet()) return false
         if (isLockedOut()) return false
         val saltB64 = prefs().getString(KEY_SALT_B64, null) ?: return false
-        val salt = Base64.decode(saltB64, Base64.NO_WRAP)
+        // Persisted salt may be corrupt (bad prefs restore); decode failure means no match, not a crash.
+        val salt = runCatching { Base64.decode(saltB64, Base64.NO_WRAP) }.getOrNull() ?: return false
         val expected = runCatching { getPassphrase() }.getOrNull() ?: return false
         val actual = verifierFor(salt, pin)
         return if (MessageDigest.isEqual(expected.toByteArray(), actual.toByteArray())) {
