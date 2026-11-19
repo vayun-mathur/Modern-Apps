@@ -43,6 +43,7 @@ import com.vayunmathur.library.widgets.MaWidget
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.vayunmathur.email.R
+import com.vayunmathur.library.widgets.MaWidgetReceiver
 
 /** Home-screen widget showing recent email previews. */
 class EmailWidget : MaWidget<List<EmailPreview>>() {
@@ -223,3 +224,10 @@ class EmailWidget : MaWidget<List<EmailPreview>>() {
         }
     }
 }
+
+/** AppWidget receiver that binds EmailWidget to the launcher. */
+class EmailWidgetReceiver : MaWidgetReceiver<EmailWidget>(
+    widgetClass = EmailWidget::class,
+    receiverClass = EmailWidgetReceiver::class,
+    widgetFactory = ::EmailWidget,
+)
