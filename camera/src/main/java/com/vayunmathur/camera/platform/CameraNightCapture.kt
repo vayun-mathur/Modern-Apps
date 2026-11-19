@@ -322,8 +322,6 @@ private class NightBurstDriver(
         } catch (e: IllegalArgumentException) {
             Log.status("CameraViewModel", "Failed to convert night frame", e)
         } catch (e: NullPointerException) {
-            // toBitmap() platform-null on an undecodable frame: skip the
-            // frame (the attempt bound in takeNext still ends the burst).
             Log.status("CameraViewModel", "Failed to convert night frame", e)
         } finally {
             image.close()
