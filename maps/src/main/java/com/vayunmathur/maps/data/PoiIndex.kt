@@ -700,8 +700,13 @@ object PoiIndex {
     fun attributesAt(ordinal: Int): PoiAttributes? {
         val m = mapped ?: return null
         val buf = m.attrs ?: return null
-        val at = attrBodyAt(m, buf, ordinal) ?: return null
-        return decodeAttrRecord(buf, at.first, at.second)
+        // A planet5 block-compressed section inflates on first touch, so a
+        // corrupt block only fails here, at tap time, not when the file was
+        // validated. That must read as "no attributes", not throw.
+        return runCatching {
+            val at = attrBodyAt(m, buf, ordinal) ?: return null
+            decodeAttrRecord(buf, at.first, at.second)
+        }.getOrElse { bufferFailure(it, ATTRS_FILE) }
     }
 
     /** (bodyStart, bodyEnd) of the [ordinal]th record's attribute blob, or null. */

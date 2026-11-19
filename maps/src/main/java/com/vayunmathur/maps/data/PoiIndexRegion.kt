@@ -31,8 +31,20 @@ internal const val REGION_ID_BYTES = 8
 internal const val REGION_NONE = 0L
 
 /** Tagged OSM boundary id for record [i], or 0 when the region sidecar is absent. */
-internal fun PoiIndex.Mapped.regionId(i: Int): Long =
-    region?.getLong(REGION_HEADER_BYTES + i * REGION_ID_BYTES) ?: REGION_NONE
+internal fun PoiIndex.Mapped.regionId(i: Int): Long {
+    val bytes = region ?: return REGION_NONE
+    if (i !in 0 until count) return REGION_NONE
+    // A planet5 block-compressed section inflates on first touch, so a corrupt
+    // block only fails here, at query time, not when the file was validated.
+    // That must read as "no boundary", not throw out of a search or tap.
+    return runCatching { bytes.getLong(REGION_HEADER_BYTES + i * REGION_ID_BYTES) }
+        .getOrElse { cause ->
+            when (cause) {
+                is IndexOutOfBoundsException, is IllegalArgumentException -> REGION_NONE
+                else -> throw cause
+            }
+        }
+}
 
 /**
  * Buffer core of the region sidecar, reused by the single-archive path. A planet5 archive
