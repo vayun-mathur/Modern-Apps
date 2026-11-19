@@ -113,7 +113,13 @@ class OnlineChessViewModel(application: Application) : AndroidViewModel(applicat
     fun signIn() {
         if (uiStateFlow.value.auth is OnlineAuth.SigningIn) return
         uiStateFlow.update { it.copy(auth = OnlineAuth.SigningIn, authError = null) }
-        authManager.startSignIn()
+        // No Custom Tab/browser provider (minimal devices) must fail the
+        // sign-in, not crash the Online tab.
+        try {
+            authManager.startSignIn()
+        } catch (_: android.content.ActivityNotFoundException) {
+            failAuth(OnlineAuth.Error.SignInFailed)
+        }
     }
 
     fun signOut() {

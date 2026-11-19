@@ -29,8 +29,15 @@ private const val MOVE_END = 4
 private const val PROMOTION_INDEX = 4
 
 /** `e2` → [Position]: row 0 is rank 8 (matches [com.vayunmathur.games.chess.data.Board]). */
-internal fun squareFromUci(square: String): Position =
-    Position(RANK_COUNT - (square[1] - '0'), square[0] - 'a')
+internal fun squareFromUci(square: String): Position {
+    // Server-supplied squares outside a1..h8 are a protocol violation,
+    // rejected here so parseUci's callers can skip the token instead of
+    // indexing the board out of bounds.
+    require(square.length == 2 && square[0] in 'a'..'h' && square[1] in '1'..'8') {
+        "Bad UCI square: $square"
+    }
+    return Position(RANK_COUNT - (square[1] - '0'), square[0] - 'a')
+}
 
 /** [Position] → `e2`. */
 internal fun Position.toUciSquare(): String =
