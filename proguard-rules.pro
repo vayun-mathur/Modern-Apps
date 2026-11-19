@@ -1,4 +1,3 @@
--dontwarn com.google.re2j.**
 -dontwarn java.beans.**
 -dontobfuscate
 
@@ -58,18 +57,6 @@
     public static byte[] transmitApdu(byte[]);
 }
 
-# Stockfish (com.github.vayun-mathur:Stockfish-Library, used by :games:chess) — the
-# native libstockfish.so calls back into Kotlin via JNI. nativeSetOutputCallback looks
-# up Stockfish$OutputCallback.onOutput(String) by name via GetMethodID, and the lambda
-# passed to Stockfish.init { } is compiled to a Stockfish$init$1 OutputCallback SAM.
-# R8 optimization (horizontal class merging) reroutes that SAM into an unrelated class,
-# so the JNI lookup fails with "NoSuchMethodError: no non-static method
-# Lkotlin/time/Duration$Companion;.onOutput(Ljava/lang/String;)V". Keep the whole
-# Stockfish API + callback interface so the JNI callback resolves.
--keep class com.vayunmathur.stockfish.** { *; }
--keep interface com.vayunmathur.stockfish.** { *; }
--dontwarn com.vayunmathur.stockfish.**
-
 # gRPC + okhttp + protobuf-lite (:appstore Accrescent source). grpc-okhttp is the first
 # okhttp in the repo. grpc looks up its transport/name-resolver providers via reflection and
 # META-INF/services; okhttp/okio and grpc reference optional compile-time deps (Conscrypp,
@@ -87,13 +74,6 @@
 -dontwarn org.conscrypt.**
 # Accrescent's generated protobuf-lite messages (app.accrescent.appstore.v1, com.android.bundle)
 # are covered by the GeneratedMessageLite keep above; grpc service descriptors are under io.grpc.
-
-# logback-classic (transitive via KeePassJava2-dom, used by :passwords) is a
-# server-side SLF4J backend that references the Servlet API. javax.servlet.*
-# doesn't exist on Android, so R8 flags the dangling reference. logback's
-# servlet integration is never used on Android; suppress the missing refs.
--dontwarn javax.servlet.**
--dontwarn ch.qos.logback.classic.servlet.**
 
 # JGit (org.eclipse.jgit, used by :code) is a desktop/server Java library. It references JVM
 # APIs absent on Android — JMX (java.lang.management / javax.management), GSS-API/Kerberos
