@@ -89,7 +89,8 @@ object VoxelsSync {
     /** Fetches a peer's public bundle by device id (needed to seal invites / verify their signatures). */
     suspend fun getKey(id: String): ByteArray? {
         val r = raw("/getkey", IdReq(id)) ?: return null
-        return if (r.status == HTTP_OK) Base64.decode(r.body) else null
+        // The relay is untrusted: a non-Base64 200 body is no key, not a crash.
+        return if (r.status == HTTP_OK) runCatching { Base64.decode(r.body) }.getOrNull() else null
     }
 
     fun newWorldKey(): ByteArray = E2ee.newContentKey()
