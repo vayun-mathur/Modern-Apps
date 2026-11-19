@@ -31,8 +31,12 @@ class SolitaireStatsRepository(context: Context) {
     private fun key(mode: GameMode, variant: String) = "stats_${mode.name}__$variant"
     private fun modePrefix(mode: GameMode) = "stats_${mode.name}"
 
+    // The prefs file is backup-restored, so a corrupt or cross-version
+    // value must read as "no record" instead of crash-looping at startup.
     private fun readKey(key: String): GameStats? =
-        prefs.getString(key, null)?.let { json.decodeFromString<GameStats>(it) }
+        prefs.getString(key, null)?.let {
+            runCatching { json.decodeFromString<GameStats>(it) }.getOrNull()
+        }
 
     /** Stats for one specific variant of a mode. */
     fun getStats(mode: GameMode, variant: String): GameStats =
