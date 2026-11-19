@@ -26,3 +26,22 @@ class NativeLoaderTest {
         }
     }
 }
+
+/**
+ * The regression this guards: consumer modules run plain host-JVM unit
+ * tests WITHOUT Robolectric, where `android.util.Log` is an unmocked
+ * stub that throws on every call. Routing the wrappers through
+ * [NativeLoader] in 086ec10fa put `Log.error` on that path, so a failed
+ * load threw out of `load()` and poisoned each wrapper's class init
+ * (`ExceptionInInitializerError`, then `NoClassDefFoundError`).
+ * Without the Robolectric runner this class runs against the stub
+ * android.jar, reproducing that environment: logging does fail here,
+ * and `load()` must still return false without throwing.
+ */
+class NativeLoaderHostJvmTest {
+
+    @Test
+    fun missingLibraryReturnsFalseEvenWhenLoggingThrows() {
+        assertFalse(NativeLoader.load("definitely_not_a_real_library_zzz", "NativeLoaderHostJvmTest"))
+    }
+}

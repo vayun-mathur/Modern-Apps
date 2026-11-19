@@ -18,6 +18,11 @@ package com.vayunmathur.library.log
  * through [Log], and returns whether the library is usable, so a
  * wrapper becomes `val available = NativeLoader.load("pdf_render",
  * "PdfNative")` and its callers can fall back instead of crashing.
+ * The logging itself is guarded too: on a plain host JVM (unit tests
+ * without Robolectric) `android.util.Log` is an unmocked stub that
+ * throws, and a logger failure must never escape [load] — otherwise
+ * the very call meant to stop `ExceptionInInitializerError` in a
+ * wrapper's class init becomes its cause.
  *
  * Lives in `:library:log` because that is the one module every app
  * and library module already depends on; JNI-frozen wrapper classes
@@ -34,15 +39,28 @@ object NativeLoader {
      */
     fun load(name: String, tag: String): Boolean = try {
         System.loadLibrary(name)
-        Log.status(tag, "lib$name loaded")
+        logStatus(tag, "lib$name loaded")
         true
     } catch (failure: Throwable) {
         if (failure.message?.contains("already loaded", ignoreCase = true) == true) {
-            Log.status(tag, "lib$name already loaded")
+            logStatus(tag, "lib$name already loaded")
             true
         } else {
-            Log.error(tag, "System.loadLibrary($name) failed", failure)
+            logError(tag, "System.loadLibrary($name) failed", failure)
             false
         }
+    }
+
+    // Logging must never throw out of [load]: `Log` delegates to
+    // `android.util.Log`, which throws on a host JVM without Robolectric
+    // (and could throw for other stub/shadow reasons). Swallowing the
+    // logger's failure keeps the load outcome — the return value — as
+    // the only signal a wrapper's class init depends on.
+    private fun logStatus(tag: String, content: String) {
+        runCatching { Log.status(tag, content) }
+    }
+
+    private fun logError(tag: String, content: String, failure: Throwable) {
+        runCatching { Log.error(tag, content, failure) }
     }
 }
