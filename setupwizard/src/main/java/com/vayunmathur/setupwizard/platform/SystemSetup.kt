@@ -210,7 +210,14 @@ class SystemSetup(context: Context) {
     private fun oemLockManager(): Any? = appContext.getSystemService("oem_lock")
 
     fun rebootToBootloader() {
-        appContext.getSystemService(PowerManager::class.java)?.reboot("bootloader")
+        // REBOOT is signature|privileged: a build that misses the priv-app grant
+        // throws SecurityException here, which must not break first boot (see the
+        // class contract above: nothing here throws).
+        try {
+            appContext.getSystemService(PowerManager::class.java)?.reboot("bootloader")
+        } catch (e: SecurityException) {
+            Log.status(TAG, "reboot to bootloader not permitted on this build", e)
+        }
     }
 
     // ---- location -------------------------------------------------------------------------

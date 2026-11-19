@@ -1,6 +1,7 @@
 package com.vayunmathur.setupwizard.ui
 
 import android.app.Activity
+import android.content.ActivityNotFoundException
 import android.content.Context
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult
@@ -29,7 +30,15 @@ internal fun MigrationStep(
             if (it.resultCode != Activity.RESULT_CANCELED) onAdvance(Route.Migration)
         }
         MigrationScreen(
-            onRestore = { launcher.launch(restore) },
+            onRestore = {
+                // The intent was resolved at composition time; the handler can be
+                // disabled or removed before the tap, and launch then throws.
+                try {
+                    launcher.launch(restore)
+                } catch (_: ActivityNotFoundException) {
+                    // No restore handler anymore; Skip remains available.
+                }
+            },
             onSkip = { onAdvance(Route.Migration) },
         )
     }
