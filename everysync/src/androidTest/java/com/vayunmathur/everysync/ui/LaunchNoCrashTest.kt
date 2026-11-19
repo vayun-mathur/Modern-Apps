@@ -22,6 +22,11 @@ import org.junit.runner.RunWith
  * A fresh install has no accounts, so the marker asserts the accounts-list
  * empty state rather than any account row.
  *
+ * Strengthened launch-e2e: clears the target package data before the
+ * grant/launch pass so the journey starts from clean state, then performs
+ * one small deterministic core interaction (see the test body) and returns
+ * to the launch surface. Still a single @Test for this app.
+ *
  * UiDevice polling, not compose-test: compose's Espresso idle-sync reflects on
  * hidden InputManager APIs that no longer exist on current releases, so every
  * compose-rule test dies before its first line. Text polling works for Compose
@@ -36,6 +41,10 @@ class LaunchNoCrashTest {
         val device = UiDevice.getInstance(instrumentation)
         val targetContext = instrumentation.targetContext
         val packageName = targetContext.packageName
+
+        // Clean state first (fresh-install journey); grants follow the clear
+        // because a clear can drop runtime-grant state on some releases.
+        clearAppData(instrumentation.uiAutomation, packageName)
 
         grantAllRequestedPermissions(instrumentation.uiAutomation, targetContext.packageManager, packageName)
 
@@ -54,8 +63,41 @@ class LaunchNoCrashTest {
             "accounts list never appeared; the app may have crashed on launch",
             device.wait(Until.findObject(By.text(NO_ACCOUNTS_TEXT)), CONTENT_TIMEOUT_MS),
         )
+        // Core interaction: open Settings from the accounts list, verify
+        // its fixed fields, then return. Nothing is edited, so no sync,
+        // network or account state is touched.
+        val settings = device.wait(Until.findObject(By.desc(SETTINGS_DESC)), CONTENT_TIMEOUT_MS)
+        assertNotNull("Settings action never appeared on the accounts list", settings)
+        settings!!.click()
+        assertNotNull(
+            "settings screen never appeared",
+            device.wait(Until.findObject(By.text(SETTINGS_TITLE)), CONTENT_TIMEOUT_MS),
+        )
+        assertNotNull(
+            "sync-interval field never appeared",
+            device.wait(Until.findObject(By.text(INTERVAL_LABEL)), CONTENT_TIMEOUT_MS),
+        )
+        assertNotNull(
+            "conflict-policy section never appeared",
+            device.wait(Until.findObject(By.text(CONFLICT_LABEL)), CONTENT_TIMEOUT_MS),
+        )
+        device.pressBack()
+        assertNotNull(
+            "accounts list never reappeared after Back",
+            device.wait(Until.findObject(By.text(NO_ACCOUNTS_TEXT)), CONTENT_TIMEOUT_MS),
+        )
         // Still alive in front: the process did not crash after painting content.
         assertEquals(packageName, device.currentPackageName)
+    }
+
+    private fun clearAppData(uiAutomation: UiAutomation, packageName: String) {
+        try {
+            uiAutomation.executeShellCommand("pm clear $packageName").close()
+        } catch (ignored: SecurityException) {
+            // Clear refused: the journey assertions below still report state.
+        } catch (ignored: IOException) {
+            // Shell pipe failed: the content assertions below report it.
+        }
     }
 
     private fun grantAllRequestedPermissions(
@@ -94,6 +136,10 @@ class LaunchNoCrashTest {
         private const val GATE_TIMEOUT_MS = 5_000L
         private const val NO_ACCOUNTS_TEXT = "No accounts yet. Tap + to add one."
         private const val PERMISSION_GATE_TITLE = "Grant Required Permissions"
+        private const val SETTINGS_DESC = "Settings"
+        private const val SETTINGS_TITLE = "Settings"
+        private const val INTERVAL_LABEL = "Sync interval (minutes)"
+        private const val CONFLICT_LABEL = "Conflict resolution"
 
         /**
          * Special access behind some apps' gates: exact alarms + full-screen intent
