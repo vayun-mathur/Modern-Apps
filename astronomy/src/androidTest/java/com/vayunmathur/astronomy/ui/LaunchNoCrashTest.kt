@@ -25,6 +25,11 @@ import org.junit.runner.RunWith
  * map itself is a canvas with icon-button chrome, so the test keys on the
  * Search action's content description.
  *
+ * Strengthened launch-e2e: clears the target package data before the
+ * grant/launch pass so the journey starts from clean state, then performs
+ * one small deterministic core interaction (see the test body) and returns
+ * to the launch surface. Still a single @Test for this app.
+ *
  * UiDevice polling, not compose-test: compose's Espresso idle-sync reflects on
  * hidden InputManager APIs that no longer exist on current releases, so every
  * compose-rule test dies before its first line. Content-description polling
@@ -39,6 +44,10 @@ class LaunchNoCrashTest {
         val device = UiDevice.getInstance(instrumentation)
         val targetContext = instrumentation.targetContext
         val packageName = targetContext.packageName
+
+        // Clean state first (fresh-install journey); grants follow the clear
+        // because a clear can drop runtime-grant state on some releases.
+        clearAppData(instrumentation.uiAutomation, packageName)
 
         grantAllRequestedPermissions(instrumentation.uiAutomation, targetContext.packageManager, packageName)
 
@@ -57,8 +66,44 @@ class LaunchNoCrashTest {
             "sky map never appeared; the app may have crashed on launch",
             device.wait(Until.findObject(By.desc(SEARCH_ACTION)), CONTENT_TIMEOUT_MS),
         )
+        // Core interaction: Search -> "Mars" -> detail -> back. Fully
+        // offline (bundled catalogs), so the planet row is deterministic.
+        // The row is keyed by its "Planet" subtitle because the typed
+        // query itself also reads "Mars" inside the search field.
+        device.findObject(By.desc(SEARCH_ACTION))!!.click()
+        assertNotNull(
+            "search field never appeared",
+            device.wait(Until.findObject(By.text(SEARCH_LABEL)), CONTENT_TIMEOUT_MS),
+        )
+        val fields = device.wait(Until.findObjects(By.clazz("android.widget.EditText")), CONTENT_TIMEOUT_MS)
+        assertNotNull("search edit field never appeared", fields)
+        val field = fields!!.first()
+        field.click()
+        field.setText(QUERY)
+        val result = device.wait(Until.findObject(By.text(RESULT_SUBTITLE)), CONTENT_TIMEOUT_MS)
+        assertNotNull("Mars result never appeared (bundled catalog search failed)", result)
+        result!!.click()
+        assertNotNull(
+            "Mars detail never appeared",
+            device.wait(Until.findObject(By.text(DETAIL_SECTION)), CONTENT_TIMEOUT_MS),
+        )
+        device.pressBack()
+        assertNotNull(
+            "sky map never reappeared after Back",
+            device.wait(Until.findObject(By.desc(SEARCH_ACTION)), CONTENT_TIMEOUT_MS),
+        )
         // Still alive in front: the process did not crash after painting content.
         assertEquals(packageName, device.currentPackageName)
+    }
+
+    private fun clearAppData(uiAutomation: UiAutomation, packageName: String) {
+        try {
+            uiAutomation.executeShellCommand("pm clear $packageName").close()
+        } catch (ignored: SecurityException) {
+            // Clear refused: the journey assertions below still report state.
+        } catch (ignored: IOException) {
+            // Shell pipe failed: the content assertions below report it.
+        }
     }
 
     private fun grantAllRequestedPermissions(
@@ -97,6 +142,10 @@ class LaunchNoCrashTest {
         private const val GATE_TIMEOUT_MS = 5_000L
         private const val SEARCH_ACTION = "Search"
         private const val PERMISSION_GATE_TITLE = "Grant Required Permissions"
+        private const val SEARCH_LABEL = "Search stars, planets, Messier"
+        private const val QUERY = "Mars"
+        private const val RESULT_SUBTITLE = "Planet"
+        private const val DETAIL_SECTION = "Rise / Transit / Set"
 
         /**
          * Special access behind some apps' gates: exact alarms + full-screen intent
