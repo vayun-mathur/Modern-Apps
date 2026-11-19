@@ -23,6 +23,11 @@ import org.junit.runner.RunWith
  * marker wait covers that load. A fresh install has a blank learner name, so
  * the home title reads Learn.
  *
+ * Strengthened launch-e2e: clears the target package data before the
+ * grant/launch pass so the journey starts from clean state, then performs
+ * one small deterministic core interaction (see the test body) and returns
+ * to the launch surface. Still a single @Test for this app.
+ *
  * UiDevice polling, not compose-test: compose's Espresso idle-sync reflects on
  * hidden InputManager APIs that no longer exist on current releases, so every
  * compose-rule test dies before its first line. Text polling works for Compose
@@ -37,6 +42,10 @@ class LaunchNoCrashTest {
         val device = UiDevice.getInstance(instrumentation)
         val targetContext = instrumentation.targetContext
         val packageName = targetContext.packageName
+
+        // Clean state first (fresh-install journey); grants follow the clear
+        // because a clear can drop runtime-grant state on some releases.
+        clearAppData(instrumentation.uiAutomation, packageName)
 
         grantAllRequestedPermissions(instrumentation.uiAutomation, targetContext.packageManager, packageName)
 
@@ -55,8 +64,42 @@ class LaunchNoCrashTest {
             "learn catalog never appeared; the app may have crashed on launch",
             device.wait(Until.findObject(By.text(LEARN_TITLE)), CONTENT_TIMEOUT_MS),
         )
+        // Core interaction: with no PIN on a fresh install the Settings
+        // action opens Parent settings directly (openParentArea); verify it,
+        // then return to the catalog. Verified labels: Math is a bundled
+        // subject header; Parent settings / Name are the parent surface.
+        assertNotNull(
+            "bundled Math subject never appeared on the catalog",
+            device.wait(Until.findObject(By.text(MATH_SUBJECT)), CONTENT_TIMEOUT_MS),
+        )
+        val settings = device.wait(Until.findObject(By.desc(SETTINGS_DESC)), CONTENT_TIMEOUT_MS)
+        assertNotNull("Settings action never appeared on the catalog", settings)
+        settings!!.click()
+        assertNotNull(
+            "parent settings never appeared",
+            device.wait(Until.findObject(By.text(PARENT_TITLE)), CONTENT_TIMEOUT_MS),
+        )
+        assertNotNull(
+            "learner Name field never appeared in parent settings",
+            device.wait(Until.findObject(By.text(NAME_LABEL)), CONTENT_TIMEOUT_MS),
+        )
+        device.pressBack()
+        assertNotNull(
+            "learn catalog never reappeared after Back",
+            device.wait(Until.findObject(By.text(LEARN_TITLE)), CONTENT_TIMEOUT_MS),
+        )
         // Still alive in front: the process did not crash after painting content.
         assertEquals(packageName, device.currentPackageName)
+    }
+
+    private fun clearAppData(uiAutomation: UiAutomation, packageName: String) {
+        try {
+            uiAutomation.executeShellCommand("pm clear $packageName").close()
+        } catch (ignored: SecurityException) {
+            // Clear refused: the journey assertions below still report state.
+        } catch (ignored: IOException) {
+            // Shell pipe failed: the content assertions below report it.
+        }
     }
 
     private fun grantAllRequestedPermissions(
@@ -95,6 +138,10 @@ class LaunchNoCrashTest {
         private const val GATE_TIMEOUT_MS = 5_000L
         private const val LEARN_TITLE = "Learn"
         private const val PERMISSION_GATE_TITLE = "Grant Required Permissions"
+        private const val MATH_SUBJECT = "Math"
+        private const val SETTINGS_DESC = "Settings"
+        private const val PARENT_TITLE = "Parent settings"
+        private const val NAME_LABEL = "Name"
 
         /**
          * Special access behind some apps' gates: exact alarms + full-screen intent
