@@ -36,8 +36,12 @@ class MinesweeperStatsRepository(context: Context) {
 
     private fun key(size: BoardSize, difficulty: Difficulty) = "stats_${size.name}__${difficulty.name}"
 
+    // The prefs file is backup-restored, so a corrupt or cross-version
+    // value must read as "no record" instead of crash-looping at startup.
     private fun readKey(key: String): GameStats? =
-        prefs.getString(key, null)?.let { json.decodeFromString<GameStats>(it) }
+        prefs.getString(key, null)?.let {
+            runCatching { json.decodeFromString<GameStats>(it) }.getOrNull()
+        }
 
     fun getStats(size: BoardSize, difficulty: Difficulty): GameStats =
         readKey(key(size, difficulty)) ?: GameStats()
