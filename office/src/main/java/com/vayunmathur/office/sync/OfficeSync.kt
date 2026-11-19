@@ -76,7 +76,8 @@ object OfficeSync {
 
     suspend fun getKey(id: String): ByteArray? {
         val r = raw("/getkey", IdReq(id)) ?: return null
-        return if (r.status == HTTP_OK) Base64.decode(r.body) else null
+        // Relay stores registrations verbatim; a malformed bundle must not crash the caller.
+        return if (r.status == HTTP_OK) runCatching { Base64.decode(r.body) }.getOrNull() else null
     }
 
     fun newDocumentKey(): ByteArray = E2ee.newContentKey()

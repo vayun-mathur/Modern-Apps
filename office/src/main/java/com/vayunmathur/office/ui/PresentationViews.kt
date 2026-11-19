@@ -185,6 +185,8 @@ private fun SlideshowDialog(
     onSlideChange: (Int) -> Unit,
     onDismiss: () -> Unit) {
     var index by remember { mutableIntStateOf(startIndex.coerceIn(0, slides.size - 1)) }
+    // Slides may shrink via a live merge while the slideshow is open.
+    if (slides.isNotEmpty()) index = index.coerceIn(0, slides.size - 1)
     Dialog(
         onDismissRequest = { onSlideChange(index); onDismiss() },
         properties = DialogProperties(usePlatformDefaultWidth = false)) {

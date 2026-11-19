@@ -19,6 +19,17 @@ interface SpreadsheetValues {
 
 @Composable
 fun rememberNativeSpreadsheetValues(doc: OdfDocument.Spreadsheet): SpreadsheetValues {
+    if (!OfficeNative.isAvailable) {
+        // No native engine on this ABI: show literal cell text instead of crashing.
+        return remember(doc) {
+            object : SpreadsheetValues {
+                override fun display(sheet: Int, row: Int, col: Int): String =
+                    doc.sheets.getOrNull(sheet)?.rows?.getOrNull(row)?.cells?.getOrNull(col)?.text ?: ""
+
+                override fun isNumeric(sheet: Int, row: Int, col: Int): Boolean = false
+            }
+        }
+    }
     val handle = remember(doc) {
         OfficeNative.createWorkbook(doc.sheets, System.currentTimeMillis(), doc.namedRanges)
     }

@@ -85,8 +85,10 @@ internal object ExcelFormula {
         val rowAbs = m.groupValues[REF_COL_ABS] == "$"
         val col = if (colAbs) m.groupValues[REF_COL] else indexToCol(
             (colToIndex(m.groupValues[REF_COL]) + dCol).coerceAtLeast(0))
-        val row = if (rowAbs) m.groupValues[REF_ROW].toInt() else {
-            (m.groupValues[REF_ROW].toInt() + dRow).coerceAtLeast(1)
+        // Row digits are unbounded in the regex; an overflowing row is left unshifted.
+        val rowNum = m.groupValues[REF_ROW].toIntOrNull() ?: return@replace m.value
+        val row = if (rowAbs) rowNum else {
+            (rowNum + dRow).coerceAtLeast(1)
         }
         "${m.groupValues[REF_SHEET]}$col${m.groupValues[REF_COL_ABS]}$row"
     }

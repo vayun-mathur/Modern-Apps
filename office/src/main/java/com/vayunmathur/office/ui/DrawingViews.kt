@@ -48,6 +48,8 @@ fun DrawingView(doc: OdfDocument.Drawing) {
         stringResource(R.string.empty_drawing),
         modifier = Modifier.padding(16.dp)); return }
     var currentPage by remember { mutableIntStateOf(0) }
+    // A live merge may replace the drawing with fewer pages while paged to the end.
+    currentPage = currentPage.coerceIn(0, doc.pages.size - 1)
     Column(modifier = Modifier.fillMaxSize()) {
         LazyColumn(modifier = Modifier.weight(1f).padding(8.dp)) { item { SlideCard(doc.pages[currentPage]) } }
         if (doc.pages.size > 1) Surface(tonalElevation = 3.dp) {

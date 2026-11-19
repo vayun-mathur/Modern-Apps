@@ -134,7 +134,8 @@ private fun OdfParser.applyInlineStyleTag(
             acc.currentHref = getAttr(parser, "href")
         }
         "tab" -> acc.textBuffer.append("\t")
-        "s" -> acc.textBuffer.append(" ".repeat((getAttr(parser, "c")?.toIntOrNull() ?: 1)))
+        // Cap like OdfParserSheet: a hostile text:c must not OOM the parser.
+        "s" -> acc.textBuffer.append(" ".repeat((getAttr(parser, "c")?.toIntOrNull() ?: 1).coerceIn(0, MAX_SPACES)))
         "line-break" -> acc.textBuffer.append("\n")
         "frame" -> {
             acc.pendingFrameW = parseDimension(getAttr(parser, "width"))

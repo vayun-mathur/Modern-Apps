@@ -155,7 +155,9 @@ internal suspend fun OfficeViewModel.applySignedOp(tree: DocumentTreeCrdt, plain
         OfficeRoles.canEdit(currentMembers[so.author] ?: OfficeRoles.VIEWER)
     if (!allowed) return false
     val authorKey = memberKey(so.author) ?: return false
-    if (!OfficeSync.verify(authorKey, so.ops.encodeToByteArray(), Base64.decode(so.sig))) return false
+    // Collaborator-supplied sig may not be Base64; a bad sig is a reject, not a crash.
+    val sigBytes = runCatching { Base64.decode(so.sig) }.getOrNull() ?: return false
+    if (!OfficeSync.verify(authorKey, so.ops.encodeToByteArray(), sigBytes)) return false
     tree.applyJson(so.ops)
     return true
 }

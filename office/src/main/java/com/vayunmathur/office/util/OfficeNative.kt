@@ -35,8 +35,12 @@ import kotlinx.serialization.json.Json
  * number with no workbook (XLSX cell display).
  */
 object OfficeNative {
-    init {
+    /** False when the native lib is absent for this ABI; callers must fall back, not crash. */
+    val isAvailable: Boolean = try {
         System.loadLibrary("office_engine")
+        true
+    } catch (expected: UnsatisfiedLinkError) {
+        false
     }
 
     // ---- Document tree CRDT ----
@@ -101,7 +105,7 @@ object OfficeNative {
         sheets: List<OdfSheet>,
         nowMillis: Long = System.currentTimeMillis(),
         namedRanges: List<OdfNamedRange> = emptyList(),
-    ): Long = nativeCreateWorkbook(buildWorkbookJson(sheets, namedRanges), nowMillis)
+    ): Long = if (isAvailable) nativeCreateWorkbook(buildWorkbookJson(sheets, namedRanges), nowMillis) else 0
 
     // ---- Workbook serialization (must agree with the serde schema in formula.rs) ----
 

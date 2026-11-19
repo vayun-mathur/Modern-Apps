@@ -18,7 +18,7 @@ import org.xmlpull.v1.XmlPullParser
 private const val MAX_REPEATED_ROWS = 200
 private const val MAX_REPEATED_COLS = 1000
 private const val MAX_REPEATED_CELLS = 100
-private const val MAX_SPACES = 4096
+internal const val MAX_SPACES = 4096
 
 internal fun OdfParser.parseSpreadsheet(
     xml: String, styles: Map<String, StyleInfo>, numberStyles: Map<String, OdfNumberFormat>,
