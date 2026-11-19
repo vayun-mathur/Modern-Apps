@@ -32,6 +32,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.games.logicgate.R
 import com.vayunmathur.games.logicgate.domain.levels.Chapter
@@ -171,7 +172,7 @@ private fun ChipCard(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(chipLabel(chip.id), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge, maxLines = 1, softWrap = false)
+            Text(chipLabel(chip.id), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
             Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
                 Text(
                     chip.nandCost.toString(),
@@ -179,6 +180,7 @@ private fun ChipCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     softWrap = false,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 if (widest > 1) {
                     Text(
@@ -187,6 +189,7 @@ private fun ChipCard(
                         maxLines = 1,
                         softWrap = false,
                         color = if (widest == 4) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }

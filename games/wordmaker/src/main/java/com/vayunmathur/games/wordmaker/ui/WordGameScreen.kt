@@ -10,14 +10,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -56,6 +54,7 @@ import com.vayunmathur.library.ui.IconSettings
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.game.GameTopBarActions
+import com.vayunmathur.library.ui.isCompactHeight
 import com.vayunmathur.library.util.AchievementsManager
 import com.vayunmathur.games.wordmaker.ui.components.CrosswordBoard
 import com.vayunmathur.games.wordmaker.ui.components.WordMakerModeChooser
@@ -63,6 +62,9 @@ import kotlinx.coroutines.delay
 
 /** Room above the wheel for the formed-word box and its padding. */
 private val WHEEL_HEADROOM = 70.dp
+
+/** Width of the two side columns LetterChooser keeps beside the wheel (56.dp each). */
+private val WHEEL_SIDE_COLUMNS = 112.dp
 
 /** Longest single wait of the competitive timer before it re-reads the wall clock. */
 private const val MAX_TIMER_WAIT_MS = 1_000L
@@ -169,7 +171,14 @@ fun WordGameScreen(
         // instead of stretching the crossword across the window; the board
         // itself never splits. Bars stay full-bleed — only the body is capped.
         DesktopMaxWidthContainer(modifier = Modifier.padding(innerPadding)) {
-        Box(
+        // Short windows (landscape phones, under 480.dp tall) cannot stack the
+        // board over the wheel: wheelHeight alone is 320-410.dp, so reserving it
+        // as bottom padding left the board ~0.dp and it collapsed. There the
+        // board and wheel sit side by side instead — the same split sudoku and
+        // minesweeper make on isCompactHeight() — each with the full height,
+        // and the wheel's measured-fit geometry shrinks it to its column.
+        // Taller windows keep the stacked layout below, unchanged.
+        BoxWithConstraints(
             modifier = Modifier
                 .padding(bottom = 32.dp)
                 .fillMaxSize()
@@ -177,15 +186,15 @@ fun WordGameScreen(
                     rootOffset = it.localToRoot(Offset.Zero)
                 }
         ) {
-            // Puzzle board occupies the space above the letter wheel so it stays
-            // vertically centred there. The wheel below reserves its own height.
             val wheelHeight = wheelSpacing.boxSize + WHEEL_HEADROOM
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(bottom = wheelHeight),
-                contentAlignment = Alignment.Center
-            ) {
+            // The wheel column's natural width: the wheel box plus the side
+            // columns LetterChooser keeps for its buttons. Capped at half the
+            // window so the board keeps a usable share beside it.
+            val wheelColumnWidth = minOf(wheelSpacing.boxSize + WHEEL_SIDE_COLUMNS, maxWidth / 2)
+            val boardContent: @Composable () -> Unit = {
+                // Fills whatever box it is given and re-fits its zoom to that
+                // box on every layout (see CrosswordBoard), so rotation and
+                // the side-by-side split need no size maths here.
                 CrosswordBoard(
                     foundWords = foundWords,
                     revealedHints = revealedHints,
@@ -202,10 +211,7 @@ fun WordGameScreen(
                     }
                 )
             }
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
+            val wheelContent: @Composable () -> Unit = {
                 WordGameWheel(
                     isCompetitive = isCompetitive,
                     isDaily = isDaily,
@@ -237,6 +243,40 @@ fun WordGameScreen(
                     onWordBoxPositioned = { wordBoxOffset = it },
                     onLetterPositioned = { id, offset -> letterChooserPositions[id] = offset },
                 )
+            }
+
+            if (isCompactHeight()) {
+                Row(modifier = Modifier.fillMaxSize()) {
+                    Box(
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        boardContent()
+                    }
+                    // The wheel column is only as tall as the window, so its
+                    // fixed wheelHeight box is coerced down and LetterChooser
+                    // fits the wheel to what it actually gets.
+                    Box(
+                        modifier = Modifier.width(wheelColumnWidth).fillMaxHeight()
+                    ) {
+                        wheelContent()
+                    }
+                }
+            } else {
+                // Puzzle board occupies the space above the letter wheel so it
+                // stays vertically centred there. The wheel below reserves its
+                // own height.
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = wheelHeight),
+                    contentAlignment = Alignment.Center
+                ) {
+                    boardContent()
+                }
+                Box(modifier = Modifier.fillMaxSize()) {
+                    wheelContent()
+                }
             }
 
             WordGameCornerButtons(

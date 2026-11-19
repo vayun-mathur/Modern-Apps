@@ -15,6 +15,7 @@ import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
@@ -142,6 +143,7 @@ private fun ClueText(
             textAlign = TextAlign.Center,
             color = if (clue == 0) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
             else MaterialTheme.colorScheme.onSurface,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }

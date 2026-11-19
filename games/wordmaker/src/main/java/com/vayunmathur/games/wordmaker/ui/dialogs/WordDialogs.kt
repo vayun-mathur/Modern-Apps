@@ -4,8 +4,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
@@ -67,10 +65,14 @@ fun BonusWordsDialog(
         // The count of this puzzle's bonus words found so far (#915).
         title = { Text(text = pluralStringResource(R.plurals.bonus_words_title, bonusWords.size, bonusWords.size)) },
         text = {
-            LazyColumn(modifier = Modifier.fillMaxWidth()) {
+            // Plain scrolling Column, not a LazyColumn: the dialog's text slot
+            // is measured with bounded height, and a lazy container nested in
+            // it is a nested-scroll hazard (the launcher's TvEditMenu add-app
+            // picker follows the same rule) — bonus-word lists are short.
+            Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
                 // Full-height list rows (the old ~28 dp text lines were hard to hit) with a
                 // visible info affordance, so it is clear a tap shows the word's definition.
-                items(bonusWords.toList().sorted()) { word ->
+                bonusWords.sorted().forEach { word ->
                     ListItem(
                         modifier = Modifier
                             .fillMaxWidth()
