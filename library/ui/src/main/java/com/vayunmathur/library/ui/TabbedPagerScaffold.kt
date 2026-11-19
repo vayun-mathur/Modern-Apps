@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -101,11 +102,22 @@ fun TabbedPagerScaffold(
                     topBar = topBar,
                     bottomBar = leadingBottomBar,
                 ) { padding ->
-                    // Rail owns the start inset; the pager consumes the rest. The
-                    // forwarded space is consumed for the same reason as below:
-                    // the rail already covers the navigation bar, so a page's own
-                    // scaffold would otherwise inset for it again.
-                    Row(Modifier.padding(padding)) {
+                    // Do not forward the top padding: inner pages own their top
+                    // bar and consume the status-bar inset themselves, so
+                    // forwarding it here insets the status bar twice and leaves
+                    // a dead band above the page (the compact branch below
+                    // forwards only the bottom for the same reason). The top is
+                    // consumed on the pager instead, as is the start the rail
+                    // already covers, so a page's own scaffold does not inset
+                    // for either again.
+                    val direction = LocalLayoutDirection.current
+                    val start = padding.calculateStartPadding(direction)
+                    val end = padding.calculateEndPadding(direction)
+                    val top = padding.calculateTopPadding()
+                    val bottom = padding.calculateBottomPadding()
+                    Row(
+                        Modifier.padding(start = start, end = end, bottom = bottom),
+                    ) {
                         NavigationRail(Modifier.fillMaxHeight()) {
                             tabs.forEachIndexed { index, tab ->
                                 NavigationRailItem(
@@ -116,12 +128,13 @@ fun TabbedPagerScaffold(
                                 )
                             }
                         }
-                        val start = padding.calculateStartPadding(LocalLayoutDirection.current)
                         HorizontalPager(
                             state = pagerState,
                             modifier = Modifier
                                 .weight(1f)
-                                .consumeWindowInsets(PaddingValues(start = start)),
+                                .consumeWindowInsets(
+                                    PaddingValues(start = start, top = top),
+                                ),
                         ) { page -> tabs[page].content() }
                     }
                 }
@@ -234,9 +247,17 @@ fun <T : NavKey> TabbedPagerScaffold(
             topBar = topBar,
             bottomBar = leadingBottomBar,
         ) { padding ->
-            // Rail owns the start inset; content consumes the rest (same
-            // forwarding as the pager overload's expanded branch).
-            Row(Modifier.padding(padding)) {
+            // Same expanded forwarding as the pager overload: the top is not
+            // forwarded (inner pages own their top bar) and is consumed on
+            // the content container together with the start the rail covers.
+            val direction = LocalLayoutDirection.current
+            val start = padding.calculateStartPadding(direction)
+            val end = padding.calculateEndPadding(direction)
+            val top = padding.calculateTopPadding()
+            val bottom = padding.calculateBottomPadding()
+            Row(
+                Modifier.padding(start = start, end = end, bottom = bottom),
+            ) {
                 NavigationRail(Modifier.fillMaxHeight()) {
                     tabs.forEach { tab ->
                         NavigationRailItem(
@@ -247,12 +268,13 @@ fun <T : NavKey> TabbedPagerScaffold(
                         )
                     }
                 }
-                val start = padding.calculateStartPadding(LocalLayoutDirection.current)
                 Box(
                     Modifier
                         .weight(1f)
                         .fillMaxHeight()
-                        .consumeWindowInsets(PaddingValues(start = start)),
+                        .consumeWindowInsets(
+                            PaddingValues(start = start, top = top),
+                        ),
                 ) { content(current) }
             }
         }

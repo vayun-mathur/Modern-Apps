@@ -1,6 +1,7 @@
 package com.vayunmathur.library.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -12,13 +13,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.Dp
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.NavKey
 
@@ -38,6 +42,12 @@ import com.vayunmathur.library.util.NavKey
  * The content lambda runs in a [ColumnScope] that is already scrolling; use
  * [DetailLazyColumn] instead when the body is itself a long list that should
  * lazily compose.
+ *
+ * On wide windows the scrolling column is centred and capped at
+ * [DesktopContentMaxWidth] so forms and detail blocks keep a readable
+ * measure instead of stretching edge to edge. Pass [fullBleed] = true only
+ * for a detail whose content genuinely needs the full window width (a
+ * full-width hero or media surface); the lazy variant is never capped.
  */
 @Composable
 fun DetailScaffold(
@@ -51,6 +61,7 @@ fun DetailScaffold(
     actions: @Composable RowScope.() -> Unit = {},
     scrollBehavior: TopAppBarScrollBehavior? = null,
     bottomBar: @Composable () -> Unit = {},
+    fullBleed: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) = AppScaffold(
     title = title,
@@ -64,7 +75,7 @@ fun DetailScaffold(
     scrollBehavior = scrollBehavior,
     bottomBar = bottomBar,
 ) { pad ->
-    DetailColumn(pad, fillHeight = false, content)
+    DetailColumn(pad, fillHeight = false, fullBleed = fullBleed, content)
 }
 
 /** [DetailScaffold] with a title slot, for a styled or truncated heading. */
@@ -81,6 +92,7 @@ fun DetailScaffold(
     scrollBehavior: TopAppBarScrollBehavior? = null,
     bottomBar: @Composable () -> Unit = {},
     fillHeight: Boolean = false,
+    fullBleed: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) = AppScaffold(
     title = title,
@@ -94,7 +106,7 @@ fun DetailScaffold(
     scrollBehavior = scrollBehavior,
     bottomBar = bottomBar,
 ) { pad ->
-    DetailColumn(pad, fillHeight, content)
+    DetailColumn(pad, fillHeight, fullBleed, content)
 }
 
 /** [DetailScaffold] for a screen that owns a back stack, wiring the back button to it. */
@@ -110,6 +122,7 @@ fun <T : NavKey> DetailScaffold(
     actions: @Composable RowScope.() -> Unit = {},
     scrollBehavior: TopAppBarScrollBehavior? = null,
     bottomBar: @Composable () -> Unit = {},
+    fullBleed: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) = DetailScaffold(
     title = title,
@@ -122,6 +135,7 @@ fun <T : NavKey> DetailScaffold(
     actions = actions,
     scrollBehavior = scrollBehavior,
     bottomBar = bottomBar,
+    fullBleed = fullBleed,
     content = content,
 )
 
@@ -208,38 +222,57 @@ fun <T : NavKey> DetailLazyColumn(
 private fun DetailColumn(
     pad: PaddingValues,
     fillHeight: Boolean,
+    fullBleed: Boolean,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    // Centre the scrolling column at a readable measure on wide windows;
+    // fullBleed details keep the whole width. The cap lives here, on the
+    // scrolling form column only - DetailList (lazy) content is not capped.
+    val contentMaxWidth: Dp = if (fullBleed) Dp.Infinity else DesktopContentMaxWidth
     if (!fillHeight) {
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(pad)
-                .padding(horizontal = paneContentMargin())
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(Spacing.md),
-            content = content,
-        )
+                .padding(pad),
+            contentAlignment = Alignment.TopCenter,
+        ) {
+            Column(
+                modifier = Modifier
+                    .widthIn(max = contentMaxWidth)
+                    .fillMaxWidth()
+                    .padding(horizontal = paneContentMargin())
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(Spacing.md),
+                content = content,
+            )
+        }
         return
     }
     // Constrain the scrolling column to be at least as tall as the viewport so a
     // weighted child in [content] can fill the empty space below the blocks (and
     // still scroll once the content outgrows the screen).
-    BoxWithConstraints(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .padding(pad),
+        contentAlignment = Alignment.TopCenter,
     ) {
-        val minContentHeight = maxHeight
-        Column(
+        BoxWithConstraints(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = paneContentMargin())
-                .verticalScroll(rememberScrollState())
-                .heightIn(min = minContentHeight),
-            verticalArrangement = Arrangement.spacedBy(Spacing.md),
-            content = content,
-        )
+                .widthIn(max = contentMaxWidth)
+                .fillMaxWidth(),
+        ) {
+            val minContentHeight = maxHeight
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = paneContentMargin())
+                    .verticalScroll(rememberScrollState())
+                    .heightIn(min = minContentHeight),
+                verticalArrangement = Arrangement.spacedBy(Spacing.md),
+                content = content,
+            )
+        }
     }
 }
 

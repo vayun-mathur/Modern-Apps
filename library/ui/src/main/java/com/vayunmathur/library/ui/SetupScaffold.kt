@@ -1,6 +1,7 @@
 package com.vayunmathur.library.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
@@ -9,11 +10,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.NavKey
 
@@ -42,6 +45,10 @@ data class SetupAction(
  * [primaryAction] is the way forward and renders filled; [secondaryAction] is the escape
  * hatch and renders as text. Pass neither for a screen the user cannot act on yet - a
  * progress step, say - and the footer disappears rather than showing a dead button.
+ *
+ * On wide windows the scrolling column is centred and capped at
+ * [DesktopContentMaxWidth]; pass [fullBleed] = true only for a step whose
+ * content genuinely needs the full window width.
  */
 @Composable
 fun SetupScaffold(
@@ -54,6 +61,7 @@ fun SetupScaffold(
     primaryAction: SetupAction? = null,
     secondaryAction: SetupAction? = null,
     scrollBehavior: TopAppBarScrollBehavior? = null,
+    fullBleed: Boolean = false,
     content: @Composable ColumnScope.() -> Unit = {},
 ) = AppScaffold(
     title = "",
@@ -63,7 +71,7 @@ fun SetupScaffold(
     scrollBehavior = scrollBehavior,
     bottomBar = { SetupFooter(primaryAction, secondaryAction) },
 ) { pad ->
-    SetupColumn(pad, title, subtitle, icon, content)
+    SetupColumn(pad, title, subtitle, icon, fullBleed, content)
 }
 
 /** [SetupScaffold] for a screen that owns a back stack, wiring the back button to it. */
@@ -77,6 +85,7 @@ fun <T : NavKey> SetupScaffold(
     primaryAction: SetupAction? = null,
     secondaryAction: SetupAction? = null,
     scrollBehavior: TopAppBarScrollBehavior? = null,
+    fullBleed: Boolean = false,
     content: @Composable ColumnScope.() -> Unit = {},
 ) = SetupScaffold(
     title = title,
@@ -87,6 +96,7 @@ fun <T : NavKey> SetupScaffold(
     primaryAction = primaryAction,
     secondaryAction = secondaryAction,
     scrollBehavior = scrollBehavior,
+    fullBleed = fullBleed,
     content = content,
 )
 
@@ -96,32 +106,43 @@ private fun SetupColumn(
     title: String,
     subtitle: String?,
     icon: (@Composable () -> Unit)?,
+    fullBleed: Boolean,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Column(
+    // Centre the scrolling column at a readable measure on wide windows;
+    // fullBleed steps keep the whole width.
+    val contentMaxWidth: Dp = if (fullBleed) Dp.Infinity else DesktopContentMaxWidth
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(pad)
-            .padding(horizontal = paneContentMargin())
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(Spacing.md),
+            .padding(pad),
+        contentAlignment = Alignment.TopCenter,
     ) {
-        if (icon != null) {
+        Column(
+            modifier = Modifier
+                .widthIn(max = contentMaxWidth)
+                .fillMaxWidth()
+                .padding(horizontal = paneContentMargin())
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(Spacing.md),
+        ) {
+            if (icon != null) {
+                Spacer(Modifier.padding(top = Spacing.sm))
+                icon()
+            }
+            Text(title, style = MaterialTheme.typography.displaySmall)
+            if (subtitle != null) {
+                Text(
+                    subtitle,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            // The gap between the heading block and whatever the step actually asks for.
             Spacer(Modifier.padding(top = Spacing.sm))
-            icon()
+            content()
+            Spacer(Modifier.padding(bottom = Spacing.xl))
         }
-        Text(title, style = MaterialTheme.typography.displaySmall)
-        if (subtitle != null) {
-            Text(
-                subtitle,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        // The gap between the heading block and whatever the step actually asks for.
-        Spacer(Modifier.padding(top = Spacing.sm))
-        content()
-        Spacer(Modifier.padding(bottom = Spacing.xl))
     }
 }
 
