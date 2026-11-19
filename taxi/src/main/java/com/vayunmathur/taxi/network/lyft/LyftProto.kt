@@ -13,33 +13,52 @@ internal class ProtoMessage(private val buf: ByteArray, start: Int, private val 
     private val ranges = HashMap<Int, MutableList<IntArray>>()
 
     init {
+        // The buffer is a server response: every length/offset below is untrusted.
+        // A truncated or lying field stops the parse with whatever was read so far
+        // instead of throwing ArrayIndexOutOfBounds out of the accessors later.
         var p = start
-        loop@ while (p < end) {
-            val (tag, afterTag) = readVarint(buf, p)
-            p = afterTag
-            val field = (tag ushr TAG_FIELD_SHIFT).toInt()
-            when ((tag and WIRE_TYPE_MASK).toInt()) {
-                WIRE_VARINT -> {
-                    val (v, np) = readVarint(buf, p); p = np
-                    varints.getOrPut(field) { mutableListOf() }.add(v)
-                }
-                WIRE_FIXED64 -> {
-                    var v = 0L
-                    for (i in 0 until FIXED64_BYTES) {
-                        v = v or ((buf[p + i].toLong() and BYTE_MASK) shl (BITS_PER_BYTE * i))
+        var malformed = false
+        try {
+            while (p < end && !malformed) {
+                val (tag, afterTag) = readVarint(buf, p)
+                p = afterTag
+                val field = (tag ushr TAG_FIELD_SHIFT).toInt()
+                when ((tag and WIRE_TYPE_MASK).toInt()) {
+                    WIRE_VARINT -> {
+                        val (v, np) = readVarint(buf, p); p = np
+                        varints.getOrPut(field) { mutableListOf() }.add(v)
                     }
-                    p += FIXED64_BYTES
-                    fixed64.getOrPut(field) { mutableListOf() }.add(v)
+                    WIRE_FIXED64 -> {
+                        if (p + FIXED64_BYTES > end) {
+                            malformed = true
+                        } else {
+                            var v = 0L
+                            for (i in 0 until FIXED64_BYTES) {
+                                v = v or ((buf[p + i].toLong() and BYTE_MASK) shl (BITS_PER_BYTE * i))
+                            }
+                            p += FIXED64_BYTES
+                            fixed64.getOrPut(field) { mutableListOf() }.add(v)
+                        }
+                    }
+                    WIRE_LENGTH_DELIMITED -> {
+                        val (len, np) = readVarint(buf, p); p = np
+                        if (len < 0 || len > (end - p).toLong()) {
+                            malformed = true
+                        } else {
+                            val s = p; val e = p + len.toInt()
+                            ranges.getOrPut(field) { mutableListOf() }.add(intArrayOf(s, e))
+                            p = e
+                        }
+                    }
+                    WIRE_FIXED32 -> {
+                        if (p + FIXED32_BYTES > end) malformed = true else p += FIXED32_BYTES
+                    }
+                    // Unknown/invalid wire type: stop rather than misread.
+                    else -> malformed = true
                 }
-                WIRE_LENGTH_DELIMITED -> {
-                    val (len, np) = readVarint(buf, p); p = np
-                    val s = p; val e = p + len.toInt()
-                    ranges.getOrPut(field) { mutableListOf() }.add(intArrayOf(s, e))
-                    p = e
-                }
-                WIRE_FIXED32 -> p += FIXED32_BYTES
-                else -> break@loop // unknown/invalid wire type: stop rather than misread
             }
+        } catch (_: IndexOutOfBoundsException) {
+            // Truncated varint at the buffer end; keep the fields read so far.
         }
     }
 
@@ -86,16 +105,20 @@ internal class ProtoMessage(private val buf: ByteArray, start: Int, private val 
         private const val VARINT_PAYLOAD_BITS = 7
         private const val VARINT_PAYLOAD_MASK = 0x7f
         private const val VARINT_CONTINUATION = 0x80
+        private const val MAX_VARINT_SHIFT = 63
 
         fun readVarint(buf: ByteArray, from: Int): Pair<Long, Int> {
             var p = from
             var shift = 0
             var result = 0L
             while (true) {
+                if (p >= buf.size) throw IndexOutOfBoundsException("varint past end")
                 val b = buf[p++].toInt() and BYTE_MASK.toInt()
                 result = result or ((b and VARINT_PAYLOAD_MASK).toLong() shl shift)
                 if (b < VARINT_CONTINUATION) break
                 shift += VARINT_PAYLOAD_BITS
+                // A 64-bit varint is at most 10 bytes; a longer run is malformed.
+                if (shift > MAX_VARINT_SHIFT) throw IndexOutOfBoundsException("varint too long")
             }
             return result to p
         }

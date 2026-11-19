@@ -26,17 +26,25 @@ class LyftTokenStore(private val context: Context) {
         }
     }
 
+    // A corrupt preferences file throws (CorruptionException/IOException) on every
+    // read; that must read as "signed out", not crash every caller.
+    private suspend fun prefs() = try {
+        context.lyftDataStore.data.first()
+    } catch (_: Exception) {
+        null
+    }
+
     suspend fun accessToken(): String? =
-        context.lyftDataStore.data.first()[accessKey]?.takeIf { it.isNotBlank() }
+        prefs()?.get(accessKey)?.takeIf { it.isNotBlank() }
 
     suspend fun refreshToken(): String? =
-        context.lyftDataStore.data.first()[refreshKey]?.takeIf { it.isNotBlank() }
+        prefs()?.get(refreshKey)?.takeIf { it.isNotBlank() }
 
-    suspend fun userId(): String? = context.lyftDataStore.data.first()[userIdKey]
+    suspend fun userId(): String? = prefs()?.get(userIdKey)
 
     /** Treats the token as expired a minute early so a call never races the expiry. */
     suspend fun isExpired(): Boolean {
-        val expiresAt = context.lyftDataStore.data.first()[expiresAtKey] ?: return true
+        val expiresAt = prefs()?.get(expiresAtKey) ?: return true
         return System.currentTimeMillis() >= expiresAt - EXPIRY_SKEW_MS
     }
 

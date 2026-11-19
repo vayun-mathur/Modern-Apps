@@ -10,6 +10,7 @@ import com.vayunmathur.taxi.data.RideStopInfo
 import com.vayunmathur.taxi.data.VehicleInfo
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
@@ -123,7 +124,13 @@ internal class LyftRideParser(private val json: Json) {
             val loc = (root["location"] as? JsonObject) ?: root
             return toDriverLocationJson(loc)
         }
-        return if (isProto) (proto() ?: asJson()) else (asJson() ?: proto())
+        // Neither format may throw into the tracking poll loop: a malformed
+        // driver-location body is "no location yet", not a crash.
+        return if (isProto) {
+            (runCatching { proto() }.getOrNull() ?: runCatching { asJson() }.getOrNull())
+        } else {
+            (runCatching { asJson() }.getOrNull() ?: runCatching { proto() }.getOrNull())
+        }
     }
 
     fun toDriverLocationJson(o: JsonObject): DriverLocation? {
@@ -244,8 +251,13 @@ internal class LyftRideParser(private val json: Json) {
     }
 }
 
-internal fun JsonObject.lyftStr(key: String) = this[key]?.jsonPrimitive?.contentOrNull
+// (this[key] as? JsonPrimitive): the typed accessor throws IllegalArgumentException
+// when a server field is an object/array instead of a scalar.
+internal fun JsonObject.lyftStr(key: String) =
+    (this[key] as? JsonPrimitive)?.contentOrNull
 
-internal fun JsonObject.lyftLong(key: String) = this[key]?.jsonPrimitive?.longOrNull
+internal fun JsonObject.lyftLong(key: String) =
+    (this[key] as? JsonPrimitive)?.longOrNull
 
-internal fun JsonObject.lyftDbl(key: String) = this[key]?.jsonPrimitive?.doubleOrNull
+internal fun JsonObject.lyftDbl(key: String) =
+    (this[key] as? JsonPrimitive)?.doubleOrNull

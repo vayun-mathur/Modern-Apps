@@ -170,7 +170,14 @@ class RideTrackingService : Service() {
             if (rideId.isNullOrBlank()) return
             val intent = Intent(context, RideTrackingService::class.java)
                 .putExtra(EXTRA_RIDE_ID, rideId)
-            context.startForegroundService(intent)
+            // Called after async booking work: the app may no longer be
+            // foreground-eligible, and startForegroundService then throws
+            // ForegroundServiceStartNotAllowedException (API 31+).
+            try {
+                context.startForegroundService(intent)
+            } catch (e: IllegalStateException) {
+                Log.error(TAG, "cannot start ride tracking from background", e)
+            }
         }
 
         fun stop(context: Context) {

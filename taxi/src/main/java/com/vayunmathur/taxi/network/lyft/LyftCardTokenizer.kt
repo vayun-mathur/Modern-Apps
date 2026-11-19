@@ -10,8 +10,7 @@ import javax.net.ssl.SSLSocketFactory
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 
@@ -98,7 +97,7 @@ internal class LyftCardTokenizer(
     fun parseConfigJson(raw: String): TokenizerConfig? {
         val root = runCatching { json.parseToJsonElement(raw) }.getOrNull() as? JsonObject
             ?: return null
-        val strategies = root["strategies"]?.jsonArray?.mapNotNull { it as? JsonObject }
+        val strategies = (root["strategies"] as? JsonArray)?.mapNotNull { it as? JsonObject }
             ?: return null
         strategies.firstNotNullOfOrNull(::setupIntentConfig)?.let { return it }
         strategies.firstNotNullOfOrNull { s: JsonObject ->
@@ -204,7 +203,7 @@ internal class LyftCardTokenizer(
         }.getOrElse { return TokenizeResult.Err("Stripe SetupIntent request failed: ${it.message}") }
         val root = runCatching { json.parseToJsonElement(resp.text) as? JsonObject }.getOrNull()
         if (!resp.isSuccess) {
-            val msg = root?.get("error")?.jsonObject?.lyftStr("message")
+            val msg = (root?.get("error") as? JsonObject)?.lyftStr("message")
                 ?: "Stripe HTTP ${resp.status}: ${resp.text.take(ERROR_BODY_PREVIEW_MAX)}"
             return TokenizeResult.Err(msg)
         }
@@ -245,7 +244,7 @@ internal class LyftCardTokenizer(
         }.getOrElse { return TokenizeResult.Err("Stripe request failed: ${it.message}") }
         val root = runCatching { json.parseToJsonElement(resp.text) as? JsonObject }.getOrNull()
         if (!resp.isSuccess) {
-            val msg = root?.get("error")?.jsonObject?.lyftStr("message")
+            val msg = (root?.get("error") as? JsonObject)?.lyftStr("message")
                 ?: "Stripe HTTP ${resp.status}: ${resp.text.take(ERROR_BODY_PREVIEW_MAX)}"
             return TokenizeResult.Err(msg)
         }
@@ -295,14 +294,14 @@ internal class LyftCardTokenizer(
         }.getOrElse { return TokenizeResult.Err("Braintree request failed: ${it.message}") }
         val root = runCatching { json.parseToJsonElement(resp.text) as? JsonObject }.getOrNull()
         // Braintree GraphQL returns 200 with a non-empty `errors` array on failure.
-        val errors = root?.get("errors")?.jsonArray
+        val errors = root?.get("errors") as? JsonArray
         if (!resp.isSuccess || !errors.isNullOrEmpty()) {
-            val msg = errors?.firstOrNull()?.jsonObject?.lyftStr("message")
+            val msg = (errors?.firstOrNull() as? JsonObject)?.lyftStr("message")
                 ?: "Braintree HTTP ${resp.status}: ${resp.text.take(ERROR_BODY_PREVIEW_MAX)}"
             return TokenizeResult.Err(msg)
         }
-        val nonce = root?.get("data")?.jsonObject
-            ?.get("tokenizeCreditCard")?.jsonObject
+        val dataObj = root?.get("data") as? JsonObject
+        val nonce = (dataObj?.get("tokenizeCreditCard") as? JsonObject)
             ?.lyftStr("token")
             ?: return TokenizeResult.Err("Braintree returned no nonce")
         Log.dev(TAG, "Braintree tokenized ••${card.last4} -> nonce ${nonce.take(NONCE_LOG_PREFIX_LENGTH)}…")
@@ -324,7 +323,7 @@ internal class LyftCardTokenizer(
         val obj = runCatching { json.parseToJsonElement(raw) as? JsonObject }.getOrNull()
             ?: return null
         val fingerprint = obj.lyftStr("authorizationFingerprint") ?: return null
-        val url = obj["graphQL"]?.jsonObject?.lyftStr("url")
+        val url = (obj["graphQL"] as? JsonObject)?.lyftStr("url")
             ?: "https://payments.braintree-api.com/graphql"
         return url to fingerprint
     }

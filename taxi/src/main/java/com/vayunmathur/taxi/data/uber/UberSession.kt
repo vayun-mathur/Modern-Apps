@@ -24,7 +24,12 @@ class UberSession(private val context: Context) {
     private val signedInKey = booleanPreferencesKey("signed_in")
 
     suspend fun isSignedIn(): Boolean =
-        context.uberDataStore.data.first()[signedInKey] ?: false
+        // A corrupt preferences file throws on read; that reads as signed out.
+        try {
+            context.uberDataStore.data.first()[signedInKey] ?: false
+        } catch (_: Exception) {
+            false
+        }
 
     suspend fun setSignedIn(value: Boolean) {
         context.uberDataStore.edit { it[signedInKey] = value }
