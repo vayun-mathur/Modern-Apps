@@ -26,6 +26,7 @@ import com.vayunmathur.games.pipes.data.LevelPack
 import com.vayunmathur.games.pipes.platform.PipesViewModel
 import com.vayunmathur.games.pipes.ui.components.LevelThumbnail
 import com.vayunmathur.library.ui.AppScaffold
+import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.Card
 import com.vayunmathur.library.ui.CardDefaults
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
@@ -39,7 +40,11 @@ import com.vayunmathur.library.util.NavBackStack
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LevelScreen(backStack: NavBackStack<Route>, viewModel: PipesViewModel, packIndex: Int) {
-    val pack = LevelPack.PACKS[packIndex]
+    // See GameScreen: a stale restored pack index must not crash composition.
+    val pack = LevelPack.PACKS.getOrNull(packIndex) ?: run {
+        Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator() }
+        return
+    }
     val levelStats by viewModel.levelStats.collectAsState()
     AppScaffold(
         title = stringResource(R.string.level_selector),

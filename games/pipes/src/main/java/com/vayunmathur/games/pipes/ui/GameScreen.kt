@@ -25,7 +25,9 @@ fun GameScreen(backStack: NavBackStack<Route>, viewModel: PipesViewModel, packIn
     val dailyPack by viewModel.dailyPack.collectAsState()
     val colorblind by viewModel.colorblind.collectAsState()
     val isDaily = packIndex == PipesViewModel.DAILY_PACK_INDEX
-    val levels = if (isDaily) dailyPack?.levels else LevelPack.PACKS[packIndex].levels
+    // A restored back stack can carry a pack index this build no longer
+    // has; treat it like a not-yet-loaded pack instead of crashing.
+    val levels = if (isDaily) dailyPack?.levels else LevelPack.PACKS.getOrNull(packIndex)?.levels
     val levelStats = if (isDaily) dailyStats else packStats
     LaunchedEffect(isDaily) { if (isDaily) viewModel.refreshDaily() }
     LaunchedEffect(packIndex, levelIndex, levels) { viewModel.loadLevel(packIndex, levelIndex) }
