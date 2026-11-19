@@ -81,7 +81,15 @@ fun formatQuantity(q: Quantity, unit: UnitDef?, useToken: Boolean = false): Stri
  */
 fun formatInstant(epochSeconds: Double, useToken: Boolean = false): String {
     if (useToken) return "#" + epochSeconds.toLong()
-    val zoned = Instant.ofEpochSecond(epochSeconds.toLong()).atZone(ZoneId.systemDefault())
+    // A user-typed `#<digits>` token can name an epoch far outside the
+    // range java.time.Instant supports (or overflow to Infinity, whose
+    // toLong() saturates to Long.MAX_VALUE): ofEpochSecond then throws
+    // DateTimeException. This renders during composition / preview, where
+    // only ExpressionError is caught, so fall back to the token form
+    // instead of crashing.
+    val zoned = runCatching {
+        Instant.ofEpochSecond(epochSeconds.toLong()).atZone(ZoneId.systemDefault())
+    }.getOrElse { return "#" + epochSeconds.toLong() }
     val atMidnight = zoned.hour == 0 && zoned.minute == 0 && zoned.second == 0
     val formatter = if (atMidnight) {
         DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
