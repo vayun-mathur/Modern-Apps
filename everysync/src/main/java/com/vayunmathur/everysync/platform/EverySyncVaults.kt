@@ -293,7 +293,8 @@ class EverySyncVaults(private val viewModel: EverySyncViewModel) {
         return raw.mapNotNull { r ->
             val envelope = runCatching { inboxJson.decodeFromString<RelaySync.SignedEnvelope>(r) }.getOrNull()
                 ?: return@mapNotNull null
-            val valid = RelaySync.verify(ownerKey, envelope.payload.encodeToByteArray(), Base64.decode(envelope.sig))
+            val sig = runCatching { Base64.decode(envelope.sig) }.getOrNull() ?: return@mapNotNull null
+            val valid = RelaySync.verify(ownerKey, envelope.payload.encodeToByteArray(), sig)
             if (!valid) return@mapNotNull null
             runCatching { inboxJson.decodeFromString<Map<String, String>>(envelope.payload)["title"] }.getOrNull()
         }.lastOrNull()

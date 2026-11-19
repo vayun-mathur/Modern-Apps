@@ -109,7 +109,7 @@ object RelaySync {
     /** Fetches a peer's public bundle by device id (needed to seal invites / verify their signatures). */
     suspend fun getKey(id: String): ByteArray? {
         val r = raw("/getkey", IdReq(id)) ?: return null
-        return if (r.status == HTTP_OK) Base64.decode(r.body) else null
+        return if (r.status == HTTP_OK) runCatching { Base64.decode(r.body) }.getOrNull() else null
     }
 
     fun newVaultId(): String = Uuid.random().toString()
