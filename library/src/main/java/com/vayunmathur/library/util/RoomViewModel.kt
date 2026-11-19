@@ -114,7 +114,8 @@ class DefaultConverters {
     }
     @ColumnTypeConverter
     fun toList(value: String?): List<Long>? {
-        return value?.let { Json.decodeFromString<List<Long>>(it) }
+        // A corrupted/legacy column must not crash every query reading the row.
+        return value?.let { runCatching { Json.decodeFromString<List<Long>>(it) }.getOrNull() }
     }
     @ColumnTypeConverter
     fun fromListS(value: List<String>): String {
@@ -122,7 +123,7 @@ class DefaultConverters {
     }
     @ColumnTypeConverter
     fun toListS(value: String): List<String> {
-        return Json.decodeFromString<List<String>>(value)
+        return runCatching { Json.decodeFromString<List<String>>(value) }.getOrDefault(emptyList())
     }
 
     @ColumnTypeConverter
@@ -137,5 +138,11 @@ class DefaultConverters {
     @ColumnTypeConverter
     fun fromLocalTime(value: LocalTime) = value.toSecondOfDay()
     @ColumnTypeConverter
-    fun toLocalTime(value: Int) = LocalTime.fromSecondOfDay(value)
+    fun toLocalTime(value: Int): LocalTime =
+        // Out-of-range persisted seconds (corrupt/legacy row) clamp instead of throwing.
+        LocalTime.fromSecondOfDay(value.coerceIn(0, MAX_SECOND_OF_DAY))
+
+    private companion object {
+        const val MAX_SECOND_OF_DAY = 86_399
+    }
 }

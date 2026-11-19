@@ -18,7 +18,10 @@ open class LevelStatsRepository(context: Context, prefsName: String = "level_sta
 
     fun getLevelStats(): Map<String, LevelStats> {
         val jsonString = prefs.getString(levelStatsKey, "{}") ?: "{}"
-        return Json.decodeFromString<Map<String, LevelStats>>(jsonString)
+        // Persisted JSON can be corrupted (backup restore, partial write); a
+        // decode failure must not crash every caller on every launch.
+        return runCatching { Json.decodeFromString<Map<String, LevelStats>>(jsonString) }
+            .getOrDefault(emptyMap())
     }
 
     fun updateBestScore(levelId: String, score: Int) {
