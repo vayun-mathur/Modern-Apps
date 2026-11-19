@@ -57,8 +57,15 @@ class Dictionary {
         return false
     }
 
-    fun getDefinition(word: String): List<String> =
-        (definitions ?: loadDefinitions())[word.lowercase()] ?: emptyList()
+    fun getDefinition(word: String): List<String> {
+        // Tapping a word before the fire-and-forget init() finished (or
+        // after it failed) must show no definition, not crash on the
+        // lateinit context or a failed asset read.
+        if (!::appContext.isInitialized) return emptyList()
+        return runCatching {
+            (definitions ?: loadDefinitions())[word.lowercase()] ?: emptyList()
+        }.getOrDefault(emptyList())
+    }
 
     @Synchronized
     private fun loadDefinitions(): Map<String, List<String>> {
