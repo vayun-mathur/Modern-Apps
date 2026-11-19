@@ -683,10 +683,14 @@ class ProjectionService : Service() {
      * failure the flow stays null (unknown) instead of failing the service.
      */
     private fun publishCredentialExpiry() {
+        // daysRemaining parses the PEM (CertificateFactory + an X509 cast),
+        // so it belongs inside runCatching too: a malformed or rotated
+        // asset must leave the expiry unknown, not crash onStartCommand.
         runCatching {
-            assets.open(GalCredential.CERT_ASSET).use { it.readBytes().decodeToString() }
-        }.onSuccess { certPem ->
-            AutoSessionState.onCredentialExpiry(GalCredential.daysRemaining(certPem))
+            val certPem = assets.open(GalCredential.CERT_ASSET).use { it.readBytes().decodeToString() }
+            GalCredential.daysRemaining(certPem)
+        }.onSuccess { days ->
+            AutoSessionState.onCredentialExpiry(days)
         }.onFailure {
             Log.status(TAG, "could not read GAL leaf expiry", it)
         }
