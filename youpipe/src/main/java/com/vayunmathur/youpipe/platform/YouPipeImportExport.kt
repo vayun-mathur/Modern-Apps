@@ -44,7 +44,9 @@ fun YouPipeViewModel.importYouTubeTakeout(uri: Uri) {
 }
 
 private suspend fun YouPipeViewModel.importTakeoutZip(ctx: Application, uri: Uri) {
-    ZipInputStream(ctx.contentResolver.openInputStream(uri)).use { zipInputStream ->
+    // SAF providers may legally return null; surface it as IOException so
+    // the caller's existing error path reports an unsupported file.
+    ZipInputStream(ctx.contentResolver.openInputStream(uri) ?: throw java.io.IOException("Provider returned no stream")).use { zipInputStream ->
         var entry = zipInputStream.nextEntry
         val subs = mutableListOf<Subscription>()
         val history = mutableListOf<HistoryVideo>()
@@ -101,7 +103,9 @@ private fun importTakeoutJsonHistory(
     jsonArray.forEach { element ->
         try {
             parseTakeoutJsonEntry(element)?.let { history.add(it) }
-        } catch (e: IllegalArgumentException) {
+        } catch (e: Exception) {
+            // One malformed entry (incl. an undecodable video id) skips
+            // that entry only; it must not abort or crash the import.
             Log.error(TAG, "Error parsing history item", e)
         }
     }
@@ -150,7 +154,9 @@ private fun importTakeoutHtmlHistory(
     regex.findAll(html).forEach { match ->
         try {
             parseTakeoutHtmlEntry(match)?.let { history.add(it) }
-        } catch (e: IllegalArgumentException) {
+        } catch (e: Exception) {
+            // One malformed entry (incl. an undecodable video id) skips
+            // that entry only; it must not abort or crash the import.
             Log.error(TAG, "Error parsing HTML history item", e)
         }
     }
@@ -199,7 +205,7 @@ fun YouPipeViewModel.restoreSubscriptions(uri: Uri) {
     viewModelScope.launch(Dispatchers.IO) {
         isImportingMutable.value = true
         try {
-            val json = ctx.contentResolver.openInputStream(uri)!!.bufferedReader().readText()
+            val json = (ctx.contentResolver.openInputStream(uri) ?: throw java.io.IOException("Provider returned no stream")).bufferedReader().readText()
             val subs = decodeSubscriptionBackup(json)
             if (subs == null) {
                 // #565: files shaped like {"version":1,"salt":"..."} are an encrypted/salted
@@ -241,7 +247,7 @@ fun YouPipeViewModel.importNewPipe(uri: Uri) {
         isImportingMutable.value = true
         importProgressMutable.value = 0f
         try {
-            val jsonString = ctx.contentResolver.openInputStream(uri)!!.bufferedReader().readText()
+            val jsonString = (ctx.contentResolver.openInputStream(uri) ?: throw java.io.IOException("Provider returned no stream")).bufferedReader().readText()
             val json = Json.parseToJsonElement(jsonString).jsonObject
             val subsArray = json["subscriptions"]?.jsonArray
             if (subsArray != null) {

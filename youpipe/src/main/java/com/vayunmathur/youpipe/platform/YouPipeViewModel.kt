@@ -337,7 +337,7 @@ class YouPipeViewModel(
                             channelURLtoID(item.url),
                             item.getSubscriberCount(),
                             0,
-                            item.thumbnails.first().url,
+                            item.thumbnails.firstOrNull()?.url ?: "",
                         )
                         else -> null
                     }
@@ -682,5 +682,6 @@ class YouPipeViewModelFactory(
 /** Returns the resolved videoID if the current search query is a watch URL, else null. */
 fun YouPipeViewModel.resolveWatchUrl(): Long? {
     val q = searchQuery.value
-    return if (q.contains("/watch?v=")) videoURLtoID(q) else null
+    // User-typed/pasted query: a malformed v= value must not crash search.
+    return if (q.contains("/watch?v=")) runCatching { videoURLtoID(q) }.getOrNull() else null
 }

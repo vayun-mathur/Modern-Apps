@@ -28,6 +28,9 @@ internal fun buildSabrAttChallengeData(
 
 internal fun parseSabrIntegrityTokenData(rawIntegrityTokenData: String): Pair<String, Long> {
     val integrityTokenData = JsonUtils.toJsonArray(rawIntegrityTokenData)
+    // A short array from the GenerateIT endpoint is an argument failure
+    // the caller already handles; indexing it would crash the raw thread.
+    require(integrityTokenData.size >= 2) { "Integrity token data has fewer than 2 elements" }
     return base64ToU8(integrityTokenData[0].jsonPrimitive.content) to
         integrityTokenData[1].jsonPrimitive.content.toLong()
 }

@@ -67,8 +67,10 @@ class YoutubeMixPlaylistExtractor(
         if (videoId != null) {
             jsonBodyBuilder.value("videoId", videoId)
         }
-        if (playlistIndexString != null) {
-            jsonBodyBuilder.value("playlistIndex", playlistIndexString.toInt())
+        // A non-numeric index in a user-supplied mix URL is ignored, not
+        // allowed to escape onFetchPage as NumberFormatException.
+        playlistIndexString?.toIntOrNull()?.let { playlistIndex ->
+            jsonBodyBuilder.value("playlistIndex", playlistIndex)
         }
 
         val body = jsonBodyBuilder.done().toString().toByteArray(Charsets.UTF_8)

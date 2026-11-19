@@ -24,8 +24,10 @@ data class SponsorSegment(
     val segment: List<Float>,
     @SerialName("UUID") val uuid: String,
 ) {
-    val start: Long get() = (segment[0] * 1000).toLong()
-    val end: Long get() = (segment[1] * 1000).toLong()
+    // Mirror/shard data is untrusted: a segment with fewer than two
+    // timestamps must degrade to a zero-length segment, not crash playback.
+    val start: Long get() = ((segment.getOrNull(0) ?: 0f) * 1000).toLong()
+    val end: Long get() = ((segment.getOrNull(1) ?: 0f) * 1000).toLong()
 }
 
 /** Decodes HTML entities/markup to plain text. */
@@ -35,9 +37,12 @@ fun String.decodeHtml(): String =
 /** Maps a NewPipe [StreamInfoItem] to a [VideoInfo], or null if it has no upload date. */
 fun StreamInfoItem.toVideoInfo(): VideoInfo? {
     val date = getUploadDate() ?: return null
+    // A stream item whose URL carries no decodable video id is skipped
+    // (null), not allowed to crash the feed/search mapping.
+    val videoId = runCatching { videoURLtoID(url) }.getOrNull() ?: return null
     return VideoInfo(
         name.decodeHtml(),
-        videoURLtoID(url),
+        videoId,
         getDuration(),
         getViewCount(),
         date.instant.toKotlinInstant(),
