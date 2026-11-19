@@ -13,6 +13,7 @@ import android.speech.SpeechRecognizer
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.speech.platform.WhisperEngine
 import java.util.concurrent.Executors
+import java.util.concurrent.RejectedExecutionException
 import kotlin.math.log10
 import kotlin.math.sqrt
 
@@ -137,14 +138,39 @@ open class WhisperRecognitionService : RecognitionService() {
             transcribeExec.shutdownNow()
         }
 
+        // The recording thread is unsupervised and the platform audio layer throws
+        // undocumented RuntimeExceptions; any failure here is a dead microphone,
+        // so the catch stays broad by design.
+        @Suppress("TooGenericExceptionCaught")
         private fun loop() {
             val chunk = ShortArray(SAMPLE_RATE / 10) // 100 ms
             val state = VadState()
-            while (running && pumpOnce(chunk, state)) {
-                // All work happens in pumpOnce; an empty body keeps the loop to one jump.
+            // This thread is not supervised: a throw here (a read racing cancel's
+            // release(), a transcription submit racing shutdownNow()) would kill
+            // the process. Treat an unexpected failure as a dead microphone.
+            try {
+                while (running && pumpOnce(chunk, state)) {
+                    // All work happens in pumpOnce; an empty body keeps the loop to one jump.
+                }
+            } catch (e: Exception) {
+                if (!cancelled && !state.errorReported) {
+                    Log.error(TAG, "recording loop failed", e)
+                    state.errorReported = true
+                    finishError(SpeechRecognizer.ERROR_AUDIO)
+                }
+                return
             }
             if (cancelled || state.noMatchReported || state.errorReported) return
             finishAndTranscribe(state.speechStarted)
+        }
+
+        /** Submit transcription work; a submit racing cancel's shutdown is a no-op. */
+        private fun submitTranscription(block: () -> Unit) {
+            try {
+                transcribeExec.execute(block)
+            } catch (_: RejectedExecutionException) {
+                // cancel() shut the executor down first; the session is over anyway.
+            }
         }
 
         /**
@@ -213,7 +239,7 @@ open class WhisperRecognitionService : RecognitionService() {
             state.partialArmed = false
             partialPending = true
             val snapshot = flatten()
-            transcribeExec.execute {
+            submitTranscription {
                 val t = engine.transcribe(snapshot, lang)?.trim()
                 partialPending = false
                 if (!cancelled && !t.isNullOrBlank()) {
@@ -275,10 +301,10 @@ open class WhisperRecognitionService : RecognitionService() {
             val audio = flatten()
             // Queue the final pass behind any in-flight partial so the engine is only ever
             // touched by one thread; this is the last task submitted.
-            transcribeExec.execute {
+            submitTranscription {
                 val text = engine.transcribe(audio, lang)?.trim()
-                if (cancelled) return@execute
-                if (text.isNullOrBlank()) { finishNoMatch(); return@execute }
+                if (cancelled) return@submitTranscription
+                if (text.isNullOrBlank()) { finishNoMatch(); return@submitTranscription }
                 val b = Bundle().apply {
                     putStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION, arrayListOf(text))
                     putFloatArray(SpeechRecognizer.CONFIDENCE_SCORES, floatArrayOf(1f))

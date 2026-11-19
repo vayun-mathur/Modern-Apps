@@ -233,7 +233,10 @@ open class SupertonicTtsService : TextToSpeechService() {
         val out = ByteArray(samples.size * BYTES_PER_SAMPLE)
         var i = 0
         for (sample in samples) {
-            val value = (sample.coerceIn(-1f, 1f) * PCM_PEAK).roundToInt()
+            // coerceIn preserves NaN and roundToInt throws on it; a NaN sample from
+            // the native vocoder is silence, not a reason to kill the TTS service.
+            val clamped = if (sample.isNaN()) 0f else sample.coerceIn(-1f, 1f)
+            val value = (clamped * PCM_PEAK).roundToInt()
             out[i++] = (value and BYTE_MASK).toByte()
             out[i++] = ((value shr BYTE_BITS) and BYTE_MASK).toByte()
         }
