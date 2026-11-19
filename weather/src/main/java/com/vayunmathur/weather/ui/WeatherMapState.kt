@@ -191,7 +191,7 @@ internal fun WeatherMapDecodeEffect(state: WeatherMapState) {
                     state.loading = true
                     val decoded = withContext(Dispatchers.IO) {
                         val (w, h) = rasterSize(bbox)
-                        val url = omFileUrl(state.domain, meta.referenceTime, validTime)
+                        val url = omFileUrl(state.domain, meta.referenceTime, validTime) ?: return@withContext null
                         val t0 = System.currentTimeMillis()
                         // Range-fetching decodeRegion(url); ranges are fetched natively in Rust.
                         // (HttpURLConnection 64KB blocks, LRU) instead of full-file

@@ -67,7 +67,10 @@ suspend fun fetchOmMapMetadata(domain: OmDomain): OmMapMetadata? {
  * `reference_time` `2026-07-01T18:00:00Z` → folder `2026/07/01/1800Z`;
  * `valid_time` `2026-07-01T18:00Z` → filename `2026-07-01T1800.om`.
  */
-fun omFileUrl(domain: OmDomain, referenceTime: String, validTime: String): String {
+fun omFileUrl(domain: OmDomain, referenceTime: String, validTime: String): String? {
+    // reference_time comes from the server's latest.json; a short or
+    // reformatted value must not crash the map with substring OOB.
+    if (referenceTime.length < 16) return null
     val year = referenceTime.substring(0, 4)
     val month = referenceTime.substring(5, 7)
     val day = referenceTime.substring(8, 10)
