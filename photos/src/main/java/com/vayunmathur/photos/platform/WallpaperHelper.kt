@@ -57,7 +57,7 @@ class WallpaperViewModel(application: Application) : AndroidViewModel(applicatio
                     val maxEdge = 4096
                     if (w > maxEdge || h > maxEdge) {
                         val scale = maxEdge.toFloat() / max(w, h)
-                        decoder.setTargetSize((w * scale).roundToInt(), (h * scale).roundToInt())
+                        decoder.setTargetSize((w * scale).roundToInt().coerceAtLeast(1), (h * scale).roundToInt().coerceAtLeast(1))
                     }
                     decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
                 }

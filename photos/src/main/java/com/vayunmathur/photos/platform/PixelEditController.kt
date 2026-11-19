@@ -38,7 +38,8 @@ class PixelEditController(private val vm: PhotoEditViewModel) {
             withContext(Dispatchers.Main) {
                 vm.updateDocument {
                     it.updateLayer(index) { l ->
-                        (l as PixelLayer).copy(bitmapRef = BitmapReference(finalBmp))
+                        // Layer may have been replaced while the transform ran off-thread.
+                        (l as? PixelLayer)?.copy(bitmapRef = BitmapReference(finalBmp)) ?: l
                     }
                 }
             }
@@ -58,7 +59,7 @@ class PixelEditController(private val vm: PhotoEditViewModel) {
             )
             withContext(Dispatchers.Main) {
                 vm.updateDocument {
-                    it.updateLayer(index) { l -> (l as PixelLayer).copy(bitmapRef = BitmapReference(filled)) }
+                    it.updateLayer(index) { l -> (l as? PixelLayer)?.copy(bitmapRef = BitmapReference(filled)) ?: l }
                 }
             }
         }
@@ -93,7 +94,7 @@ class PixelEditController(private val vm: PhotoEditViewModel) {
             val flipped = Bitmap.createBitmap(src, 0, 0, src.width, src.height, m, true)
             withContext(Dispatchers.Main) {
                 vm.updateDocument { doc ->
-                    doc.updateLayer(index) { l -> (l as PixelLayer).copy(bitmapRef = BitmapReference(flipped)) }
+                    doc.updateLayer(index) { l -> (l as? PixelLayer)?.copy(bitmapRef = BitmapReference(flipped)) ?: l }
                 }
             }
         }
@@ -120,7 +121,7 @@ class PixelEditController(private val vm: PhotoEditViewModel) {
             withContext(Dispatchers.Main) {
                 vm.updateDocument { doc ->
                     doc.updateLayer(index) { l ->
-                        (l as PixelLayer).copy(bitmapRef = BitmapReference(out))
+                        (l as? PixelLayer)?.copy(bitmapRef = BitmapReference(out)) ?: l
                     }
                 }
             }

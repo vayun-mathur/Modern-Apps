@@ -134,7 +134,7 @@ class PhotoEditViewModel(
                     val target = PREVIEW_MAX_DIM
                     if (w > target || h > target) {
                         val scale = target.toFloat() / maxOf(w, h)
-                        decoder.setTargetSize((w * scale).roundToInt(), (h * scale).roundToInt())
+                        decoder.setTargetSize((w * scale).roundToInt().coerceAtLeast(1), (h * scale).roundToInt().coerceAtLeast(1))
                     }
                     decoder.allocator = android.graphics.ImageDecoder.ALLOCATOR_SOFTWARE
                 }
