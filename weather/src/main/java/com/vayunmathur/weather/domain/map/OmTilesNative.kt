@@ -1,5 +1,6 @@
 package com.vayunmathur.weather.domain.map
-import com.vayunmathur.library.log.Log
+
+import com.vayunmathur.library.log.NativeLoader
 
 /**
  * JNI bridge to the native Rust `.om` decoder (`libweather_om.so`, built from
@@ -8,21 +9,9 @@ import com.vayunmathur.library.log.Log
  * instead of crashing.
  */
 object OmTilesNative {
-    // Broad catch is deliberate: loadLibrary throws UnsatisfiedLinkError (an Error,
+    // Guarded by NativeLoader: loadLibrary throws UnsatisfiedLinkError (an Error,
     // not an Exception) plus undocumented RuntimeExceptions on some ABIs.
-    @Suppress("TooGenericExceptionCaught")
-    val isAvailable: Boolean =
-        try {
-            System.loadLibrary("weather_om")
-            Log.status("OmMap", "libweather_om loaded")
-            true
-        } catch (e: Exception) {
-            Log.error("OmMap", "System.loadLibrary(weather_om) failed", e)
-            false
-        } catch (e: UnsatisfiedLinkError) {
-            Log.error("OmMap", "System.loadLibrary(weather_om) failed", e)
-            false
-        }
+    val isAvailable: Boolean = NativeLoader.load("weather_om", "OmTilesNative")
 
     /**
      * Decode [variable] from the `.om` file at [omUrl] over the bounding box

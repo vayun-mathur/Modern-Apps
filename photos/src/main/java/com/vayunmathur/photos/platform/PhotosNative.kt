@@ -1,5 +1,7 @@
 package com.vayunmathur.photos.platform
 
+import com.vayunmathur.library.log.NativeLoader
+
 /**
  * JNI bridge to the native `photos_fx` Rust library: performance-critical
  * pixel-processing filters (stylize, unsharp mask, liquify, blur, content-aware
@@ -7,9 +9,7 @@ package com.vayunmathur.photos.platform
  * returns them.
  */
 object PhotosNative {
-    init {
-        System.loadLibrary("photos_fx")
-    }
+    val available: Boolean = NativeLoader.load("photos_fx", "PhotosNative")
 
     /** Stylize filter. mode: 0=None, 1=FindEdges (Sobel), 2=Emboss. */
     external fun stylize(pixels: IntArray, w: Int, h: Int, mode: Int): IntArray

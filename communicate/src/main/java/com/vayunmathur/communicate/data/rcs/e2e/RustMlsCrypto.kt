@@ -1,6 +1,7 @@
 package com.vayunmathur.communicate.data.rcs.e2e
 
-import com.vayunmathur.library.log.Log
+import com.vayunmathur.library.log.NativeLoader
+
 
 /**
  * JNI bridge to the `communicate_mls` Rust crate (OpenMLS, RFC 9420).
@@ -20,19 +21,7 @@ object RustMlsCrypto {
 
     private const val TAG = "RustMlsCrypto"
 
-    val isAvailable: Boolean = try {
-        System.loadLibrary("communicate_mls")
-        Log.status(TAG, "libcommunicate_mls loaded")
-        true
-    } catch (expected: Throwable) {
-        if (expected.message?.contains("already loaded", ignoreCase = true) == true) {
-            Log.status(TAG, "libcommunicate_mls already loaded")
-            true
-        } else {
-            Log.error(TAG, "System.loadLibrary(communicate_mls) failed", expected)
-            false
-        }
-    }
+    val isAvailable: Boolean = NativeLoader.load("communicate_mls", TAG)
 
     /** Generate an identity for `e164` UTF-8 bytes. Returns `[empty, identity]`. */
     @JvmStatic external fun generateIdentity(e164: ByteArray): Array<ByteArray>?

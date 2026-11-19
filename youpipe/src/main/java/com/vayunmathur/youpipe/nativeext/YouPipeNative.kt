@@ -1,6 +1,8 @@
 // PACKAGE STRUCTURE EXCEPTION (JNI)
 package com.vayunmathur.youpipe.nativeext
 
+import com.vayunmathur.library.log.NativeLoader
+
 /**
  * JNI surface of the Rust extractor (`youpipe/src/main/rust`).
  *
@@ -18,9 +20,7 @@ package com.vayunmathur.youpipe.nativeext
  */
 internal object YouPipeNative {
 
-    init {
-        System.loadLibrary("youpipe_extractor")
-    }
+    val available: Boolean = NativeLoader.load("youpipe_extractor", "YouPipeNative")
 
     /** @param filter one of `videos`, `channels`, `playlists`, or null for everything. */
     external fun search(

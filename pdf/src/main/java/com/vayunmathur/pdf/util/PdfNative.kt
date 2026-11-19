@@ -1,7 +1,8 @@
 // PACKAGE STRUCTURE EXCEPTION (JNI): FQN frozen for native symbol mangling
 // (Java_com_vayunmathur_pdf_util_PdfNative_* in Rust jni_bindings)
 package com.vayunmathur.pdf.util
-import com.vayunmathur.library.log.Log
+
+import com.vayunmathur.library.log.NativeLoader
 
 /**
  * JNI bridge to the native Rust PDF renderer (`libpdf_render.so`, built from
@@ -18,15 +19,7 @@ import com.vayunmathur.library.log.Log
 // so moving any declaration to another class breaks its native binding.
 object PdfNative {
 
-    val isAvailable: Boolean =
-        try {
-            System.loadLibrary("pdf_render")
-            Log.status("PdfNative", "libpdf_render loaded")
-            true
-        } catch (expected: UnsatisfiedLinkError) {
-            Log.error("PdfNative", "System.loadLibrary(pdf_render) failed", expected)
-            false
-        }
+    val isAvailable: Boolean = NativeLoader.load("pdf_render", "PdfNative")
 
     /**
      * Parse [data] (the raw PDF bytes) and return an opaque handle, or 0 on

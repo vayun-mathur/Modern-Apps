@@ -1,5 +1,7 @@
 package com.vayunmathur.networklocation
 
+import com.vayunmathur.library.log.NativeLoader
+
 // PACKAGE STRUCTURE EXCEPTION (JNI)
 
 /**
@@ -15,7 +17,7 @@ package com.vayunmathur.networklocation
 object NetworkLocationNative {
     /** Whether the `.so` loaded. Always true on device; guarded so host/unit
      * contexts without the native library degrade gracefully. */
-    val available: Boolean = runCatching { System.loadLibrary("networklocation") }.isSuccess
+    val available: Boolean = NativeLoader.load("networklocation", "NetworkLocationNative")
 
     /**
      * Estimate the device position from beacon fixes.

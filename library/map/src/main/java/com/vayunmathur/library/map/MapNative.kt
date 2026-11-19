@@ -1,5 +1,7 @@
 package com.vayunmathur.library.map
 
+import com.vayunmathur.library.log.NativeLoader
+
 import android.view.Surface
 
 /**
@@ -28,12 +30,7 @@ internal object MapNative {
      * False on a device whose ABI we did not build for. The caller shows the background
      * colour rather than crashing.
      */
-    val isAvailable: Boolean = try {
-        System.loadLibrary("map_renderer")
-        true
-    } catch (_: Throwable) {
-        false
-    }
+    val isAvailable: Boolean = NativeLoader.load("map_renderer", "MapNative")
 
     /**
      * Bring up Vulkan on [surface]. Returns an opaque handle, or 0 on failure.

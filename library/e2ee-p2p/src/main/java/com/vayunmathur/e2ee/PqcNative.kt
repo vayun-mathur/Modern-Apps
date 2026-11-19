@@ -1,5 +1,7 @@
 package com.vayunmathur.e2ee
 
+import com.vayunmathur.library.log.NativeLoader
+
 /**
  * JNI surface for the native Rust PQC library (libe2ee_pqc.so): ML-KEM-768 +
  * ML-DSA-65. All keys are DER (X.509 SPKI / PKCS#8), byte-compatible with the
@@ -16,7 +18,5 @@ internal object PqcNative {
     external fun nativeMldsaSign(privDer: ByteArray, msg: ByteArray): ByteArray?
     external fun nativeMldsaVerify(pubDer: ByteArray, msg: ByteArray, sig: ByteArray): Boolean
 
-    init {
-        System.loadLibrary("e2ee_pqc")
-    }
+    val available: Boolean = NativeLoader.load("e2ee_pqc", "PqcNative")
 }

@@ -1,5 +1,7 @@
 package com.vayunmathur.office.util
 
+import com.vayunmathur.library.log.NativeLoader
+
 import com.vayunmathur.office.domain.DocumentTreeCrdt
 import com.vayunmathur.office.platform.OfficeViewModel
 // PACKAGE STRUCTURE EXCEPTION (JNI)
@@ -36,13 +38,7 @@ import kotlinx.serialization.json.Json
  */
 object OfficeNative {
     /** False when the native lib is absent for this ABI; callers must fall back, not crash. */
-    val isAvailable: Boolean = try {
-        System.loadLibrary("office_engine")
-        true
-    } catch (expected: UnsatisfiedLinkError) {
-        false
-    }
-
+    val isAvailable: Boolean = NativeLoader.load("office_engine", "OfficeNative")
     // ---- Document tree CRDT ----
 
     /** Creates a native CRDT for [device]; returns a handle (0 on failure). */

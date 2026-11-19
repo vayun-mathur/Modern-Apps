@@ -1,5 +1,7 @@
 package com.vayunmathur.networklocation
 
+import com.vayunmathur.library.log.NativeLoader
+
 // PACKAGE STRUCTURE EXCEPTION (JNI)
 
 /**
@@ -62,7 +64,7 @@ object GeocoderNative {
     const val KIND_PLACE = 4
 
     /** Whether the `.so` loaded. Guarded so host/unit contexts degrade gracefully. */
-    val available: Boolean = runCatching { System.loadLibrary("networklocation") }.isSuccess
+    val available: Boolean = NativeLoader.load("networklocation", "GeocoderNative")
 
     /**
      * Open the geocoder DB from a file descriptor. [offset] is the database's start offset

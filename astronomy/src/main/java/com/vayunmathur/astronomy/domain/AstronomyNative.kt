@@ -1,5 +1,7 @@
 package com.vayunmathur.astronomy.domain
 
+import com.vayunmathur.library.log.NativeLoader
+
 /**
  * JNI bridge to the native `astronomy_engine` Rust library: the per-tick /
  * per-frame hot paths (batch RaDec -> AltAz, batch stereographic projection).
@@ -15,7 +17,7 @@ object AstronomyNative {
      * callers that have a Kotlin equivalent (see `projectAll`) check this and fall back
      * rather than dying with an [UnsatisfiedLinkError].
      */
-    val available: Boolean = runCatching { System.loadLibrary("astronomy_engine") }.isSuccess
+    val available: Boolean = NativeLoader.load("astronomy_engine", "AstronomyNative")
 
     /**
      * Batch RaDec -> AltAz. [radec] is interleaved `[ra0,dec0,ra1,dec1,...]` in

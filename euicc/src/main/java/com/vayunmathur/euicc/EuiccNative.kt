@@ -1,6 +1,8 @@
 // PACKAGE STRUCTURE EXCEPTION (JNI): FQN frozen for native RegisterNatives/symbol mangling
 package com.vayunmathur.euicc
 
+import com.vayunmathur.library.log.NativeLoader
+
 /**
  * JNI entry points into the native SGP.22 core (libeuicc.so).
  *
@@ -14,9 +16,7 @@ package com.vayunmathur.euicc
  * [activeChannel] for the duration of the block.
  */
 object EuiccNative {
-    init {
-        System.loadLibrary("euicc")
-    }
+    val available: Boolean = NativeLoader.load("euicc", "EuiccNative")
 
     /**
      * The transmit function for the currently open ISD-R logical channel, or

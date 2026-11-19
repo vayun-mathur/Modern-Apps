@@ -1,6 +1,8 @@
 // PACKAGE STRUCTURE EXCEPTION (JNI): FQN frozen for native RegisterNatives/symbol mangling
 package com.vayunmathur.passwords.util
 
+import com.vayunmathur.library.log.NativeLoader
+
 /**
  * JNI surface for the native Rust KDBX library (libpasswords_kdbx.so), backed
  * by the Rust `keepass` crate. Replaces keepassjava2 + Bouncy Castle.
@@ -14,7 +16,5 @@ internal object KdbxNative {
     external fun nativeImport(password: String, kdbx: ByteArray): String?
     external fun nativeExport(password: String, entriesJson: String): ByteArray?
 
-    init {
-        System.loadLibrary("passwords_kdbx")
-    }
+    val available: Boolean = NativeLoader.load("passwords_kdbx", "KdbxNative")
 }

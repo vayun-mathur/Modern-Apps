@@ -1,5 +1,7 @@
 package com.vayunmathur.code.util
 
+import com.vayunmathur.library.log.NativeLoader
+
 // PACKAGE STRUCTURE EXCEPTION (JNI)
 // This file stays in `util` on purpose: the Rust side binds the class by its
 // fully-qualified name (Java_com_vayunmathur_code_util_TreeSitterNative_highlight
@@ -7,7 +9,6 @@ package com.vayunmathur.code.util
 // and silently drop tree-sitter highlighting to the regex fallback.
 
 import com.vayunmathur.code.domain.syntax.Language
-import com.vayunmathur.library.log.Log
 
 /** A tree-sitter capture kind, aligned 1:1 (by ordinal) with the Rust side's enum. */
 enum class TsKind { KEYWORD, STRING, NUMBER, COMMENT, ANNOTATION, FUNCTION, TYPE, PROPERTY }
@@ -26,17 +27,7 @@ data class TsSpan(val start: Int, val end: Int, val kind: TsKind)
  */
 object TreeSitterNative {
 
-    val isAvailable: Boolean =
-        try {
-            System.loadLibrary("code_ts")
-            true
-        } catch (e: UnsatisfiedLinkError) {
-            Log.status("TreeSitter", "native lib missing, using regex highlighting", e)
-            false
-        } catch (e: SecurityException) {
-            Log.status("TreeSitter", "native lib blocked, using regex highlighting", e)
-            false
-        }
+    val isAvailable: Boolean = NativeLoader.load("code_ts", "TreeSitterNative")
 
     /**
      * Highlights [source] for [languageId] (see [languageIdFor]), returning packed

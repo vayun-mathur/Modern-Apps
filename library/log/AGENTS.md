@@ -18,6 +18,7 @@
 
 ## Key files
 - com/vayunmathur/library/log/Log.kt — the facade (use this, never `android.util.Log`)
+- com/vayunmathur/library/log/NativeLoader.kt — the one guarded `System.loadLibrary` caller; every `<Feature>Native` wrapper loads through it and exposes the returned availability flag
 - com/vayunmathur/library/log/MaInitProvider.kt — dev-gate init via manifest merger
 
 ## Verify (this module only)

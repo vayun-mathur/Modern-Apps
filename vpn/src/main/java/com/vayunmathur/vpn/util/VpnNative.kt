@@ -1,6 +1,6 @@
 // PACKAGE STRUCTURE EXCEPTION (JNI): FQN frozen for native RegisterNatives/symbol mangling
 package com.vayunmathur.vpn.util
-import com.vayunmathur.library.log.Log
+import com.vayunmathur.library.log.NativeLoader
 
 /**
  * JNI bridge to the native `vpn_wireguard` Rust library.
@@ -19,20 +19,7 @@ object VpnNative {
      * with NoClassDefFoundError/ExceptionInInitializerError instead.
      * Callers that need a tunnel must check this before calling natives.
      */
-    val isLoaded: Boolean
-
-    init {
-        isLoaded = try {
-            System.loadLibrary("vpn_wireguard")
-            true
-        } catch (expected: UnsatisfiedLinkError) {
-            Log.error("VpnNative", "System.loadLibrary(vpn_wireguard) failed", expected)
-            false
-        } catch (expected: SecurityException) {
-            Log.error("VpnNative", "System.loadLibrary(vpn_wireguard) blocked", expected)
-            false
-        }
-    }
+    val isLoaded: Boolean = NativeLoader.load("vpn_wireguard", "VpnNative")
 
     /** Dummy init so we force class load on cold start */
     @JvmStatic external fun init()

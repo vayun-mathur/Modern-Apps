@@ -1,5 +1,7 @@
 package com.vayunmathur.measure.platform.vio
 
+import com.vayunmathur.library.log.NativeLoader
+
 import com.vayunmathur.measure.domain.Pose3
 import com.vayunmathur.measure.domain.Vec3
 
@@ -38,9 +40,7 @@ data class CvFrameFlow(
  */
 object MeasureCvNative {
 
-    val available: Boolean by lazy {
-        runCatching { System.loadLibrary("measure_cv") }.isSuccess
-    }
+    val available: Boolean by lazy { NativeLoader.load("measure_cv", "MeasureCvNative") }
 
     fun createSession(fx: Double, fy: Double, cx: Double, cy: Double): Long =
         if (!available) 0L else nativeCreateSession(fx, fy, cx, cy)

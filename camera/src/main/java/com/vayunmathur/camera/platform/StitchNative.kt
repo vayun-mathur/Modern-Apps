@@ -1,6 +1,7 @@
 package com.vayunmathur.camera.platform
 
-import com.vayunmathur.library.log.Log
+import com.vayunmathur.library.log.NativeLoader
+
 
 /**
  * JNI bridge to the native `camera_stitch` Rust library (feature-based panorama
@@ -9,17 +10,7 @@ import com.vayunmathur.library.log.Log
  * Usage: newSession() -> addFrame()* -> stitch()/merge() -> free().
  */
 object StitchNative {
-    val isAvailable: Boolean = try {
-        System.loadLibrary("camera_stitch")
-        Log.status("StitchNative", "libcamera_stitch loaded")
-        true
-    } catch (e: UnsatisfiedLinkError) {
-        Log.error("StitchNative", "System.loadLibrary(camera_stitch) failed", e)
-        false
-    } catch (e: SecurityException) {
-        Log.error("StitchNative", "System.loadLibrary(camera_stitch) failed", e)
-        false
-    }
+    val isAvailable: Boolean = NativeLoader.load("camera_stitch", "StitchNative")
 
     /** Opens a stitch session. [sphere] selects full-sphere vs flat panorama. */
     external fun newSession(sphere: Boolean): Long

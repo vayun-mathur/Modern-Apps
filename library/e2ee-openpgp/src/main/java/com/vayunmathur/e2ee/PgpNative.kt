@@ -1,5 +1,7 @@
 package com.vayunmathur.e2ee
 
+import com.vayunmathur.library.log.NativeLoader
+
 // PACKAGE STRUCTURE EXCEPTION (JNI)
 
 /**
@@ -39,7 +41,5 @@ internal object PgpNative {
         data: ByteArray,
     ): ByteArray?
 
-    init {
-        System.loadLibrary("e2ee_pgp")
-    }
+    val available: Boolean = NativeLoader.load("e2ee_pgp", "PgpNative")
 }

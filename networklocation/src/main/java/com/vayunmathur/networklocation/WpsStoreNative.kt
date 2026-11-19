@@ -1,5 +1,7 @@
 package com.vayunmathur.networklocation
 
+import com.vayunmathur.library.log.NativeLoader
+
 // PACKAGE STRUCTURE EXCEPTION (JNI)
 
 /**
@@ -19,7 +21,7 @@ package com.vayunmathur.networklocation
  */
 object WpsStoreNative {
     /** Whether the `.so` loaded. Guarded so host/unit contexts degrade gracefully. */
-    val available: Boolean = runCatching { System.loadLibrary("networklocation") }.isSuccess
+    val available: Boolean = NativeLoader.load("networklocation", "WpsStoreNative")
 
     /**
      * Open a WPSDB store from a file descriptor. [offset] is the store's start offset within

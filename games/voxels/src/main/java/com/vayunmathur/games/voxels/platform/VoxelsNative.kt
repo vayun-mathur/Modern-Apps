@@ -3,7 +3,8 @@
 @file:Suppress("InvalidPackageDeclaration")
 package com.vayunmathur.games.voxels.util
 
-import com.vayunmathur.library.log.Log
+import com.vayunmathur.library.log.NativeLoader
+
 import android.view.Surface
 
 // JNI bridge: one extern fun per native entry point (count is inherent to the
@@ -11,14 +12,7 @@ import android.view.Surface
 /** JNI bridge to the Rust Voxels engine (`voxels_engine`). */
 @Suppress("TooManyFunctions", "TooGenericExceptionCaught")
 object VoxelsNative {
-    val isAvailable: Boolean = try {
-        System.loadLibrary("voxels_engine")
-        Log.status("VoxelsNative", "libvoxels_engine loaded")
-        true
-    } catch (t: Throwable) {
-        Log.error("VoxelsNative", "System.loadLibrary(voxels_engine) failed", t)
-        false
-    }
+    val isAvailable: Boolean = NativeLoader.load("voxels_engine", "VoxelsNative")
     // Starts loading the world on the engine thread and returns at once; poll nativeLoadState.
     external fun nativeInit(filesDir: String, seed: Int): Boolean
     // 0 idle, 1 generating, 2 meshing, 3 ready (see ui/LoadingOverlay.kt LoadPhase).

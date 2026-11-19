@@ -1,5 +1,7 @@
 package com.vayunmathur.library.ml
 
+import com.vayunmathur.library.log.NativeLoader
+
 /**
  * The JNI surface of the Vulkan compute runtime in `library/ml/src/main/rust`.
  *
@@ -28,12 +30,7 @@ internal object MlNative {
      * Vulkan or fp16 is available — that is only known once a create call is attempted,
      * because it needs a `VkDevice` to ask.
      */
-    val isAvailable: Boolean = try {
-        System.loadLibrary("modelrunner")
-        true
-    } catch (_: Throwable) {
-        false
-    }
+    val isAvailable: Boolean = NativeLoader.load("modelrunner", "MlNative")
 
     /**
      * Bring up MediaPipe Selfie Segmentation from a `.maml` blob. Returns 0 on failure.

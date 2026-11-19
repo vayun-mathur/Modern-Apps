@@ -1,6 +1,8 @@
 // PACKAGE STRUCTURE EXCEPTION (JNI): FQN frozen for native RegisterNatives/symbol mangling
 package com.vayunmathur.share.protocol
 
+import com.vayunmathur.library.log.NativeLoader
+
 import kotlinx.serialization.json.Json
 
 /**
@@ -160,10 +162,6 @@ internal object ShareNativeDiscovery {
         // turns every later access into NoClassDefFoundError, which the call sites'
         // catch (UnsatisfiedLinkError) cannot match. A failed load leaves the class
         // usable; native calls then throw UnsatisfiedLinkError, which they do catch.
-        try {
-            System.loadLibrary("share_nearby")
-        } catch (_: UnsatisfiedLinkError) {
-            // Native calls fail individually and are handled at their call sites.
-        }
+        NativeLoader.load("share_nearby", "ShareNative")
     }
 }

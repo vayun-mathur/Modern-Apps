@@ -1,6 +1,8 @@
 // PACKAGE STRUCTURE EXCEPTION (JNI): FQN frozen for native RegisterNatives/symbol mangling
 package com.vayunmathur.appstore.data.accrescent
 
+import com.vayunmathur.library.log.NativeLoader
+
 /**
  * JNI surface for the native ed25519 verifier (libappstore_signify.so), backed
  * by the Rust `ed25519-dalek` crate. Replaces Bouncy Castle, whose only use
@@ -20,5 +22,5 @@ internal object SignifyNative {
      * crash class initialisation with an [UnsatisfiedLinkError], which is
      * an [Error] and escapes every `catch (Exception)` fail-closed path.
      */
-    val available: Boolean = runCatching { System.loadLibrary("appstore_signify") }.isSuccess
+    val available: Boolean = NativeLoader.load("appstore_signify", "SignifyNative")
 }

@@ -1,6 +1,7 @@
 package com.vayunmathur.communicate.data.whatsapp.e2e
 
-import com.vayunmathur.library.log.Log
+import com.vayunmathur.library.log.NativeLoader
+
 
 /**
  * JNI wrapper around `libwhatsapp_signal.so` (Rust crate `whatsapp_signal`).
@@ -16,15 +17,7 @@ object RustWhatsAppCrypto {
     private const val PRIVATE_KEY_SIZE = 32
     private const val ENCRYPT_PARTS = 3
 
-    val isAvailable: Boolean = try {
-        System.loadLibrary("communicate_signal")
-        Log.status(TAG, "libwhatsapp_signal loaded")
-        true
-    } catch (expected: Throwable) {
-        Log.error(TAG, "System.loadLibrary(communicate_signal) failed", expected)
-        false
-    }
-
+    val isAvailable: Boolean = NativeLoader.load("communicate_signal", TAG)
     // -- Primitive key operations --
 
     /**

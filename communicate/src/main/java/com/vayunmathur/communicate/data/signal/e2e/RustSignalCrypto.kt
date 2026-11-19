@@ -1,6 +1,7 @@
 package com.vayunmathur.communicate.data.signal.e2e
 
-import com.vayunmathur.library.log.Log
+import com.vayunmathur.library.log.NativeLoader
+
 
 /**
  * JNI bridge to the Rust Signal crate + libsignal-android Java layer.
@@ -21,19 +22,7 @@ object RustSignalCrypto {
     private const val PRIVATE_KEY_SIZE = 32
     private const val ENCRYPT_PARTS = 3
 
-    val isAvailable: Boolean = try {
-        System.loadLibrary("communicate_signal")
-        Log.status(TAG, "libcommunicate_signal loaded (Signal)")
-        true
-    } catch (expected: Throwable) {
-        if (expected.message?.contains("already loaded", ignoreCase = true) == true) {
-            Log.status(TAG, "libcommunicate_signal already loaded")
-            true
-        } else {
-            Log.error(TAG, "System.loadLibrary(communicate_signal) failed", expected)
-            false
-        }
-    }
+    val isAvailable: Boolean = NativeLoader.load("communicate_signal", TAG)
 
     // -- Primitive key operations (reused from crypto.rs) --
 
