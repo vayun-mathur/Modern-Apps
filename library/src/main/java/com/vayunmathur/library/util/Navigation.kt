@@ -113,14 +113,16 @@ class NavBackStack<T: NavKey>(initial: Array<out T>) {
 val LocalSnackbarHostState = compositionLocalOf<SnackbarHostState?> { null }
 
 /**
- * Whether the screen is hosted inside [MainNavigation], so inner scaffolds apply
- * window insets exactly once.
+ * Whether the screen is hosted inside [MainNavigation].
  *
- * False (the default) means the screen is NOT hosted: previews, screenshot tests,
- * and pages hosted directly by an Activity. Those keep current M3 behavior.
- * True means hosted: the host owns the outer chrome, and the shared `Scaffold`
- * wrapper in `:library:ui` unions IME into the insets M3 itself consumes — never
- * padding outside a Scaffold.
+ * IME ownership no longer depends on this: the shared `Scaffold` wrapper in
+ * `:library:ui` always unions IME into the insets M3 itself consumes and
+ * consumes them for its content, so hosted, standalone (previews, screenshot
+ * tests, pages hosted directly by an Activity) and preview rendering all
+ * behave identically — never padding outside a Scaffold.
+ * True now gates only the hosted-only extra: the shared wrapper injects the
+ * global snackbar (see [LocalSnackbarHostState]) when a hosted screen
+ * supplied no explicit snackbar host.
  */
 val LocalHostScaffoldInfo = staticCompositionLocalOf { false }
 
@@ -387,9 +389,13 @@ fun Modifier.sharedContent(key: Any): Modifier {
 }
 
 /**
- * Single owner of the IME (keyboard) inset for every screen it hosts: it applies
- * [imePadding] once to all hosted content. Screens and reusable components rendered
- * inside must NOT call [imePadding] themselves, or the inset is applied twice.
+ * Host for every screen it hosts. It does NOT apply the IME (keyboard) inset
+ * itself: the shared `Scaffold` wrapper in `:library:ui` is the single owner
+ * of that inset for every AppScaffold-family screen (hosted or standalone —
+ * it unions IME into the scaffold insets and consumes them for its content).
+ * Screens and reusable components rendered inside must NOT call `imePadding`
+ * themselves; under a scaffold it is now a consumed no-op, and outside one it
+ * would double against the scaffold padding.
  *
  * [containerColor] is [Color.Unspecified] by default, which leaves the scaffold's own
  * opaque `colorScheme.background`. Pass [Color.Transparent] when something behind the
@@ -432,10 +438,11 @@ fun <T : NavKey> MainNavigation(
     // screen's inner Scaffold consumed insets again, double-lifting bottom bars by
     // a keyboard height (live probe: bottomBar laid out at H-2K). Instead the host
     // is a plain Box that marks screens hosted via LocalHostScaffoldInfo, and the
-    // shared Scaffold wrapper in :library:ui unions IME into the insets M3 itself
-    // consumes — exactly once, never padded outside a Scaffold.
+    // shared Scaffold wrapper in :library:ui always unions IME into the insets M3
+    // itself consumes and consumes them for its content — exactly once, hosted
+    // or standalone, never padded outside a Scaffold.
     // The snackbar renderer lives there too (default host when the screen supplies
-    // none); this function keeps only the producer (state + AppMessages drain).
+    // none, hosted only); this function keeps only the producer (state + drain).
     NavHostChrome(
         resultRegistry = resultRegistry,
         snackbarHostState = snackbarHostState,

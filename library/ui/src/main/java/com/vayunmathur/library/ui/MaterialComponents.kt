@@ -14,8 +14,10 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.ime
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.text.KeyboardActions
@@ -285,14 +287,31 @@ fun Surface(
 
 // --- Scaffold ---
 //
-// Hosted-mode IME ownership: screens under MainNavigation must apply the keyboard
-// inset exactly once. MainNavigation no longer lifts content itself; instead it
-// publishes LocalHostScaffoldInfo, and this funnel — the single path every
-// AppScaffold screen goes through — unions IME into the insets M3 itself consumes,
-// so bars, FAB, snackbar and content padding are all positioned consistently by
-// M3, exactly once. Nothing is ever padded outside a Scaffold. When the local is
-// absent (previews, screenshot tests, directly-hosted pages) behavior is
-// byte-identical to before.
+// IME ownership is unconditional: this funnel — the single path every
+// AppScaffold-family screen goes through — always unions IME into the insets
+// M3 itself consumes, so bars, FAB, snackbar and content padding are all
+// positioned consistently by M3, exactly once, whether the screen is hosted
+// by MainNavigation, standalone in its own Activity, or in a preview /
+// screenshot test. Hosted == standalone == preview; nothing is ever padded
+// outside a Scaffold for the keyboard.
+//
+// The content is additionally wrapped so the bottom insets M3 has already
+// folded into the content PaddingValues are consumed: a descendant
+// `imePadding()` (or `navigationBarsPadding()`) becomes a no-op instead of
+// double-padding. Only `navigationBars ∪ ime` is consumed — deliberately not
+// the full PaddingValues — so a nested scaffold's top bar can still claim
+// the status-bar inset the outer scaffold forwarded past (TabbedPagerScaffold
+// relies on inner pages owning their top bar). Callers still apply the
+// PaddingValues themselves — as `Modifier.padding(pad)` or as a LazyList
+// `contentPadding` — which is unaffected: consumption only stops live inset
+// modifiers in descendants from re-reading insets the scaffold already
+// accounted for. Slots (topBar / bottomBar / FAB / snackbarHost) sit outside
+// that wrapper: components there (e.g. a bottom bar claiming
+// `navigationBars ∪ ime` itself) keep owning their own insets.
+//
+// LocalHostScaffoldInfo now gates only the hosted-only extra: injecting the
+// global snackbar (from LocalSnackbarHostState, published by MainNavigation)
+// when a hosted screen supplied no explicit host.
 @Composable
 fun Scaffold(
     modifier: Modifier = Modifier,
@@ -307,26 +326,22 @@ fun Scaffold(
     content: @Composable (PaddingValues) -> Unit,
 ) {
     val hosted = LocalHostScaffoldInfo.current
-    if (!hosted) {
-        androidx.compose.material3.Scaffold(
-            modifier = modifier, topBar = topBar, bottomBar = bottomBar,
-            snackbarHost = snackbarHost ?: {},
-            floatingActionButton = floatingActionButton, floatingActionButtonPosition = floatingActionButtonPosition,
-            containerColor = containerColor, contentColor = contentColor, contentWindowInsets = contentWindowInsets,
-            content = content,
-        )
-        return
-    }
-    // Hosted: render the global snackbar when the screen supplied no explicit host.
-    val globalSnackbarState: SnackbarHostState? = LocalSnackbarHostState.current
+    val effectiveInsets = contentWindowInsets.union(WindowInsets.ime)
+    // Hosted only: render the global snackbar when the screen supplied none.
+    val globalSnackbarState: SnackbarHostState? =
+        if (hosted) LocalSnackbarHostState.current else null
     val resolvedSnackbarHost: @Composable () -> Unit = snackbarHost
         ?: globalSnackbarState?.let { state ->
             {
                 SnackbarHost(
                     state,
-                    modifier = Modifier
-                        .navigationBarsPadding()
-                        .padding(WindowInsets.ime.asPaddingValues()),
+                    // Union, not sum: a visible keyboard already covers the
+                    // navigation bar (same rule as BottomAppBar in
+                    // MaterialComponentsExtra.kt). Summing would float the
+                    // snackbar a nav-bar's height above the keys.
+                    modifier = Modifier.padding(
+                        WindowInsets.navigationBars.union(WindowInsets.ime).asPaddingValues(),
+                    ),
                 )
             }
         } ?: {}
@@ -335,9 +350,16 @@ fun Scaffold(
         snackbarHost = resolvedSnackbarHost,
         floatingActionButton = floatingActionButton, floatingActionButtonPosition = floatingActionButtonPosition,
         containerColor = containerColor, contentColor = contentColor,
-        contentWindowInsets = contentWindowInsets.union(WindowInsets.ime),
-        content = content,
-    )
+        contentWindowInsets = effectiveInsets,
+    ) { padding ->
+        Box(
+            Modifier
+                .fillMaxSize()
+                .consumeWindowInsets(WindowInsets.navigationBars.union(WindowInsets.ime)),
+        ) {
+            content(padding)
+        }
+    }
 }
 
 // --- Top app bars ---

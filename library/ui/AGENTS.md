@@ -21,7 +21,7 @@
 **Entry points + reading order:** `MaActivity.kt` → `AppScaffold.kt` → `Icons.kt` → `Messages.kt` → `DynamicTheme.kt`, then the area you need.
 **Gotchas:**
 - One public `@Composable` per file, named as the file; closed package roots still apply inside this library
-- Never `imePadding()`/`navigationBarsPadding()`/`systemBarsPadding()` in this library
+- Never `imePadding()`/`navigationBarsPadding()`/`systemBarsPadding()` in this library's reusable components: the shared `Scaffold` wrapper owns IME (unconditional `contentWindowInsets ∪ ime`, consumed as `navigationBars ∪ ime` for content, so a stray inset modifier under an AppScaffold-family screen is a no-op). Exceptions that still own their insets: `bottomBar`-slot bars (`EditorBottomBar`, `BottomAppBar` — outside consumed content) and non-Scaffold overlays (`HistoryScrubberCard` — nav-bars only, suppressed with justification)
 - Connectivity UI (`OfflineAware`/`rememberIsOnline`) lives in `:library:network`, not here (#884)
 - `MaFragmentActivity(autoSetContent=false)` + `showContent()` is the biometric-gate pattern (passwords, photos)
 

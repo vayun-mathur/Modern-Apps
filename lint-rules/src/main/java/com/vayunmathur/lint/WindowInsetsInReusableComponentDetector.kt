@@ -17,14 +17,17 @@ import org.jetbrains.uast.UCallExpression
  * `com.vayunmathur.library.ui`.
  *
  * These components are hosted in many different screens and do not know their
- * host's inset ownership. `MainNavigation` is the single owner of the IME inset
- * for every screen it hosts (it applies `imePadding()` once), and standalone
- * roots apply it exactly once at their own Scaffold. A reusable component that
- * also applies an inset makes it count twice - e.g. an editor toolbar floating a
- * keyboard's height above the keyboard.
+ * host's inset ownership. The shared `Scaffold` wrapper in `:library:ui` is
+ * the single owner of the IME inset for every AppScaffold-family screen,
+ * hosted or standalone: it unions IME into the scaffold insets and consumes
+ * `navigationBars` union `ime` for its content, so an inset modifier in content
+ * is a no-op there and would count twice outside it - e.g. an editor toolbar
+ * floating a keyboard's height above the keyboard. Bottom-bar-slot and
+ * non-Scaffold overlay components still own their insets themselves.
  *
- * Let the host own the inset. If a genuinely host-agnostic overlay must own its
- * own inset, suppress this on the specific declaration with a justification.
+ * Let the scaffold own the inset. If a genuinely host-agnostic overlay must
+ * own its own inset, suppress this on the specific declaration with a
+ * justification.
  */
 class WindowInsetsInReusableComponentDetector : Detector(), SourceCodeScanner {
 
@@ -41,7 +44,8 @@ class WindowInsetsInReusableComponentDetector : Detector(), SourceCodeScanner {
             node,
             context.getLocation(node),
             "`$name()` must not be called in a reusable `$REUSABLE_PACKAGE` component. " +
-                "The host (MainNavigation, or a standalone root Scaffold) owns window insets.",
+                "The shared Scaffold wrapper owns window insets for its content " +
+                "(bottom-bar and non-Scaffold overlay components own theirs).",
         )
     }
 
@@ -61,14 +65,17 @@ class WindowInsetsInReusableComponentDetector : Detector(), SourceCodeScanner {
                 not apply window insets (`imePadding()`, `navigationBarsPadding()`, \
                 `systemBarsPadding()`) themselves.
 
-                `MainNavigation` is the single owner of the IME inset for every screen it \
-                hosts - it applies `imePadding()` once - and standalone Activities apply it \
-                exactly once at their own root Scaffold. A reusable component that also applies \
-                an inset makes it count twice (for example, an editor toolbar floating a \
-                keyboard's height above the keyboard).
+                The shared `Scaffold` wrapper in `:library:ui` is the single owner of \
+                the IME inset for every AppScaffold-family screen, hosted or standalone: \
+                it unions IME into the scaffold insets and consumes \
+                `navigationBars` union `ime` for its content, so an inset modifier in \
+                content is a no-op there and would count twice outside it (for example, \
+                an editor toolbar floating a keyboard's height above the keyboard). \
+                Bottom-bar-slot and non-Scaffold overlay components still own theirs.
 
-                Let the host own the inset. If a genuinely host-agnostic overlay must own its \
-                own inset, suppress this issue on the specific declaration with a justification.
+                Let the scaffold own the inset. If a genuinely host-agnostic overlay must \
+                own its own inset, suppress this issue on the specific declaration with a \
+                justification.
                 """.trimIndent(),
             category = Category.CORRECTNESS,
             priority = 6,

@@ -134,7 +134,13 @@ fun RowScope.HistoryStepButton(label: String, onClick: () -> Unit) {
 
 @OptIn(ExperimentalTime::class)
 // Floating overlay card with no host bar to defer to: it owns its own nav-bar
-// inset. Exempt from WindowInsetsInReusableComponent (not a keyboard-tracking bar).
+// inset. Exempt from WindowInsetsInReusableComponent (not a keyboard-tracking
+// bar). Deliberately NOT removed by the Scaffold-owns-IME fix: callers host
+// this over a full-screen map (Astronomy SkyMap, FindFamily MainPage), not as
+// Scaffold content applying the scaffold PaddingValues, and it claims only
+// navigationBars — never IME. When it ever is placed under Scaffold content,
+// the shared Scaffold wrapper has consumed that inset, so this becomes a
+// harmless no-op instead of double-padding.
 @Suppress("WindowInsetsInReusableComponent")
 @Composable
 fun BoxScope.HistoryScrubberCard(

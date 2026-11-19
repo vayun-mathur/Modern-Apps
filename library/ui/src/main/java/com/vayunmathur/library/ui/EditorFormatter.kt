@@ -208,6 +208,12 @@ fun EditorBaseButtons(formatter: EditorFormatter) {
  * already covers the navigation bar (same fix as `BottomNavBar` in `:library`).
  * Not a [BottomAppBar]: the grid needs wrap-content height, and M3 fixes that
  * bar to a single container height.
+ *
+ * Deliberately NOT removed by the Scaffold-owns-IME fix: this is used in the
+ * `bottomBar` slot (notes, email), which sits outside the Scaffold content
+ * wrapper that consumes insets — a bottom bar must still claim the union
+ * itself, exactly like [BottomAppBar]. Using this inside Scaffold *content*
+ * instead would now be a no-op (content consumes IME), not double-padding.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable

@@ -8,7 +8,6 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
@@ -68,7 +67,6 @@ private fun TextEditorScreen(uri: Uri, viewModel: TextEditorViewModel) {
         // here would overwrite the unread original with whatever is typed.
         AppScaffold(
             title = uri.lastPathSegment ?: stringResource(R.string.type_file),
-            modifier = Modifier.imePadding(),
         ) { paddingValues ->
             Text(
                 stringResource(R.string.editor_load_failed),
@@ -79,7 +77,6 @@ private fun TextEditorScreen(uri: Uri, viewModel: TextEditorViewModel) {
         // Loading: render the bar only so the screen isn't blank during async read.
         AppScaffold(
             title = uri.lastPathSegment ?: stringResource(R.string.type_file),
-            modifier = Modifier.imePadding(),
         ) { }
     } else {
         TextEditorLoaded(uri, content, viewModel)
@@ -95,7 +92,6 @@ private fun TextEditorLoaded(uri: Uri, initialContent: String, viewModel: TextEd
 
     AppScaffold(
         title = uri.lastPathSegment ?: stringResource(R.string.type_file),
-        modifier = Modifier.imePadding(),
         actions = {
             IconButton(onClick = {
                 if (isEditing && state.text.toString() != initialContent) {
