@@ -195,7 +195,9 @@ object HtmlOdfConverter {
             val style = attrs["style"] ?: ""
             Regex("color\\s*:\\s*#?([0-9a-fA-F]{6})").find(style)?.let { s = s.copy(color = 0xFF000000L or it.groupValues[1].toLong(16)) }
             Regex("font-size\\s*:\\s*([0-9.]+)\\s*(pt|px)").find(style)?.let { m ->
-                val v = m.groupValues[1].toFloat(); s = s.copy(fontSize = if (m.groupValues[2] == "px") v * 0.75f else v)
+                // [0-9.]+ also matches "." / "1.2.3" in malformed HTML; toFloat() would throw.
+                val v = m.groupValues[1].toFloatOrNull() ?: return@let
+                s = s.copy(fontSize = if (m.groupValues[2] == "px") v * 0.75f else v)
             }
             if (style.contains("font-weight") && (style.contains("bold") || Regex("font-weight\\s*:\\s*[6-9]00").containsMatchIn(style))) s = s.copy(bold = true)
             if (Regex("font-style\\s*:\\s*italic").containsMatchIn(style)) s = s.copy(italic = true)
@@ -251,8 +253,8 @@ object HtmlOdfConverter {
         if (!s.contains('&')) return s
         return s.replace("&nbsp;", " ").replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
             .replace("&quot;", "\"").replace("&#39;", "'").replace("&apos;", "'")
-            .replace(Regex("&#(\\d+);")) { m -> m.groupValues[1].toIntOrNull()?.let { String(Character.toChars(it)) } ?: m.value }
-            .replace(Regex("&#x([0-9a-fA-F]+);")) { m -> m.groupValues[1].toIntOrNull(16)?.let { String(Character.toChars(it)) } ?: m.value }
+            .replace(Regex("&#(\\d+);")) { m -> m.groupValues[1].toIntOrNull()?.let { cp -> runCatching { String(Character.toChars(cp)) }.getOrNull() } ?: m.value }
+            .replace(Regex("&#x([0-9a-fA-F]+);")) { m -> m.groupValues[1].toIntOrNull(16)?.let { cp -> runCatching { String(Character.toChars(cp)) }.getOrNull() } ?: m.value }
     }
 
     // endregion
