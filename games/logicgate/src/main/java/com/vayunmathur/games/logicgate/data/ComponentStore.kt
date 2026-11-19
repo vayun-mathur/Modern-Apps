@@ -69,7 +69,11 @@ class ComponentStore(context: Context, dispatcher: CoroutineDispatcher) {
 
 private fun Pin.toDto() = PinSpecDto(name, width)
 
-private fun PinSpecDto.toDomain() = Pin(name, width)
+// Persisted widths are only ever 1/4/8 in-app; anything else is a
+// corrupt or cross-version restore and falls back to a 1-bit pin.
+private fun PinSpecDto.toDomain() = Pin(name, if (width in VALID_WIDTHS) width else 1)
+
+private val VALID_WIDTHS = setOf(1, 4, 8)
 
 private fun CustomChip.toDto() = ComponentDto(
     id = id,
