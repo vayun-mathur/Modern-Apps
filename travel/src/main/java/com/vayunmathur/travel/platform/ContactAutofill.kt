@@ -109,6 +109,9 @@ private fun parseContactCursor(c: Cursor): ContactInfo? {
         data3 = c.getColumnIndex(ContactsContract.Data.DATA3),
         displayName = c.getColumnIndex(ContactsContract.Data.DISPLAY_NAME),
     )
+    // A provider that answers the session URI without every projected
+    // column reports -1 for the missing ones; getString(-1) throws
+    // CursorIndexOutOfBounds. Only the MIME column is load-bearing.
     if (cols.mime < 0) return null
     val acc = ContactAccumulator()
     while (c.moveToNext()) {
@@ -127,19 +130,19 @@ private fun ContactAccumulator.readDisplayName(c: Cursor, cols: ContactColumns) 
 private fun ContactAccumulator.readRow(c: Cursor, cols: ContactColumns) {
     when (c.getString(cols.mime)) {
         StructuredName.CONTENT_ITEM_TYPE -> readStructuredName(c, cols)
-        Email.CONTENT_ITEM_TYPE -> if (email.isBlank()) email = c.getString(cols.data1).orEmpty()
-        Phone.CONTENT_ITEM_TYPE -> if (phone.isBlank()) phone = c.getString(cols.data1).orEmpty()
+        Email.CONTENT_ITEM_TYPE -> if (email.isBlank() && cols.data1 >= 0) email = c.getString(cols.data1).orEmpty()
+        Phone.CONTENT_ITEM_TYPE -> if (phone.isBlank() && cols.data1 >= 0) phone = c.getString(cols.data1).orEmpty()
         Event.CONTENT_ITEM_TYPE -> readBirthday(c, cols)
     }
 }
 
 private fun ContactAccumulator.readStructuredName(c: Cursor, cols: ContactColumns) {
-    given = c.getString(cols.data2).orEmpty()
-    family = c.getString(cols.data3).orEmpty()
+    if (cols.data2 >= 0) given = c.getString(cols.data2).orEmpty()
+    if (cols.data3 >= 0) family = c.getString(cols.data3).orEmpty()
 }
 
 private fun ContactAccumulator.readBirthday(c: Cursor, cols: ContactColumns) {
-    if (birthday.isNotBlank() || !isBirthdayRow(c, cols)) return
+    if (birthday.isNotBlank() || cols.data1 < 0 || !isBirthdayRow(c, cols)) return
     birthday = isoBirthday(c.getString(cols.data1))
 }
 

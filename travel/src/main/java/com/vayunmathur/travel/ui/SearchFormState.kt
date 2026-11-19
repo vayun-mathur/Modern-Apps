@@ -49,9 +49,15 @@ val FlightFormSaver: Saver<FlightFormState, Any> = listSaver(
             it.mix.infantsInSeat, it.mix.infantsOnLap, it.cabin.name, it.maxStops.name,
         )
     },
-    restore = {
-        @Suppress("UNCHECKED_CAST")
-        FlightFormState(
+    restore = { saved ->
+        // Saved state survives process death across app upgrades: an enum
+        // renamed/removed or a list written by an older version makes
+        // valueOf / the casts below throw, crashing the form on restore.
+        // Any mismatch restores the default form instead.
+        runCatching {
+            @Suppress("UNCHECKED_CAST")
+            val it = saved
+            FlightFormState(
             tripType = TripType.valueOf(it[0] as String),
             origin = it[1] as String,
             originText = it[2] as String,
@@ -67,7 +73,8 @@ val FlightFormSaver: Saver<FlightFormState, Any> = listSaver(
             ),
             cabin = Cabin.valueOf(it[11] as String),
             maxStops = MaxStops.valueOf(it[12] as String),
-        )
+            )
+        }.getOrDefault(FlightFormState())
     },
 )
 
@@ -78,8 +85,11 @@ val StayFormSaver: Saver<StayFormState, Any> = listSaver(
             it.checkIn, it.checkOut, it.rooms, it.guests,
         )
     },
-    restore = {
-        StayFormState(
+    restore = { saved ->
+        // Same stale-saved-state hazard as FlightFormSaver above.
+        runCatching {
+            val it = saved
+            StayFormState(
             place = it[0] as String,
             placeText = it[1] as String,
             latitude = (it[2] as Double).takeUnless(Double::isNaN),
@@ -88,6 +98,7 @@ val StayFormSaver: Saver<StayFormState, Any> = listSaver(
             checkOut = it[5] as String,
             rooms = it[6] as Int,
             guests = it[7] as Int,
-        )
+            )
+        }.getOrDefault(StayFormState())
     },
 )

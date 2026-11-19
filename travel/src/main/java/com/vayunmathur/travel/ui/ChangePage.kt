@@ -104,15 +104,19 @@ fun ChangePage(
                 DateField(stringResource(R.string.new_date), newDate, onDate = { newDate = it }, modifier = Modifier.fillMaxWidth())
                 Button(
                     onClick = {
-                        val slice = order.slices[selectedSliceIndex]
-                        viewModel.requestChange(
-                            orderId = route.orderId,
-                            removeSliceId = slice.id,
-                            origin = slice.origin,
-                            destination = slice.destination,
-                            newDate = newDate,
-                            cabin = "",
-                        )
+                        // The order can reload shorter while an index is
+                        // selected; indexing directly would go out of bounds.
+                        val slice = order.slices.getOrNull(selectedSliceIndex)
+                        if (slice != null) {
+                            viewModel.requestChange(
+                                orderId = route.orderId,
+                                removeSliceId = slice.id,
+                                origin = slice.origin,
+                                destination = slice.destination,
+                                newDate = newDate,
+                                cabin = "",
+                            )
+                        }
                     },
                     enabled = newDate.isNotBlank() && order.slices.getOrNull(selectedSliceIndex)?.id?.isNotBlank() == true,
                     modifier = Modifier.fillMaxWidth(),
