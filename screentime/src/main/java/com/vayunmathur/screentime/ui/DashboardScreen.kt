@@ -1,5 +1,6 @@
 package com.vayunmathur.screentime.ui
 
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.provider.Settings
 import androidx.compose.foundation.background
@@ -56,10 +57,16 @@ data class DashboardActions(
 fun DashboardScreen(state: ScreenTimeUiState, actions: DashboardActions) {
     val context = LocalContext.current
     val openUsageAccess = {
-        context.startActivity(
-            Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-        )
+        // Some images ship a Settings build with no usage-access activity; a missing
+        // handler must not crash the dashboard.
+        try {
+            context.startActivity(
+                Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+        } catch (_: ActivityNotFoundException) {
+            // No settings screen to open on this image; the empty dashboard remains.
+        }
     }
     val topUsed = remember(state.apps) { state.apps.maxOfOrNull { it.usedMillis } ?: 0L }
 

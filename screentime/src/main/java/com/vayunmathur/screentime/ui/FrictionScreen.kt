@@ -57,11 +57,18 @@ class FrictionActivity : ComponentActivity() {
                     onTakeABreak = {
                         lifecycleScope.launch(Dispatchers.IO) {
                             // A break spends the app immediately: the normal spent path pauses
-                            // it until midnight, with no timer row left behind.
-                            if (pkg != null) {
-                                Coordinator(this@FrictionActivity).onTimerReached(pkg)
+                            // it until midnight, with no timer row left behind. A DB failure
+                            // here must not crash the activity or leave it on screen: the
+                            // receivers broad-catch the identical call for this reason.
+                            try {
+                                if (pkg != null) {
+                                    Coordinator(this@FrictionActivity).onTimerReached(pkg)
+                                }
+                            } catch (_: Exception) {
+                                // Enforcement is retried by the next coordinator pass.
+                            } finally {
+                                finish()
                             }
-                            finish()
                         }
                     },
                 )

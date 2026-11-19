@@ -106,7 +106,10 @@ fun WindDownScreen(
 
     val active = picking
     if (active != null) {
-        val initial = if (active == WindDownPicking.Start) schedule.startMinute else schedule.endMinute
+        // The schedule is Room-persisted; a corrupt or legacy row can hold a minute
+        // outside 0..1439, and TimePickerState throws on an out-of-range hour/minute.
+        val initial = (if (active == WindDownPicking.Start) schedule.startMinute else schedule.endMinute)
+            .coerceIn(0, MINUTES_PER_DAY - 1)
         val timeState = rememberTimePickerState(
             initialHour = initial / 60,
             initialMinute = initial % 60,
@@ -143,6 +146,7 @@ fun WindDownScreen(
 private enum class WindDownPicking { Start, End }
 
 private const val WINDDOWN_DAYS = 7
+private const val MINUTES_PER_DAY = 24 * 60
 
 private fun formatWindDownMinute(minuteOfDay: Int): String =
     "%02d:%02d".format(minuteOfDay / 60, minuteOfDay % 60)
