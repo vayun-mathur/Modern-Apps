@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.core.net.toUri
 import androidx.media3.common.util.UnstableApi
 import com.vayunmathur.library.ui.AppScaffold
@@ -72,7 +73,7 @@ fun VideoEditPage(vm: VideoEditViewModel, id: Long, uri: String?) {
     }
 
     AppScaffold(
-        title = { Text(stringResource(R.string.title_edit_video), maxLines = 1) },
+        title = { Text(stringResource(R.string.title_edit_video), maxLines = 1, overflow = TextOverflow.Ellipsis) },
         onNavigateBack = { activity?.finish() },
         actions = {
             IconButton(onClick = { showSaveDialog = true }, enabled = !exporting) { IconSave() }

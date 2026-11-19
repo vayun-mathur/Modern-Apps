@@ -26,6 +26,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.style.TextOverflow
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.library.util.AppMessages
 import com.vayunmathur.library.ui.AppScaffold
@@ -92,7 +93,7 @@ fun EmlViewerScreen(
     AppScaffold(
         title = {
             val t = parsed?.message?.subject ?: uriString.substringAfterLast('/').substringAfterLast("%2F")
-            Text(t.ifBlank { stringResource(R.string.e_mail_file) }, maxLines = 1)
+            Text(t.ifBlank { stringResource(R.string.e_mail_file) }, maxLines = 1, overflow = TextOverflow.Ellipsis)
         },
         onNavigateBack = onBack,
         actions = {
@@ -196,7 +197,7 @@ private fun EmlHeader(from: String, date: String, to: String?, cc: String?, subj
             }
         }
         Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
-            Text(text = senderName, style = MaterialTheme.typography.titleSmall, maxLines = 1)
+            Text(text = senderName, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(text = date, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (!to.isNullOrBlank()) Text(text = stringResource(R.string.to, to), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (!cc.isNullOrBlank()) Text(text = stringResource(R.string.cc_1, cc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

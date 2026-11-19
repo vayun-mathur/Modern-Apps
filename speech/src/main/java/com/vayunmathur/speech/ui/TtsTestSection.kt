@@ -18,6 +18,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.Card
@@ -202,6 +203,7 @@ private fun VoiceLanguageDropdown(
                 modifier = Modifier.weight(1f),
                 textAlign = TextAlign.Start,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             IconArrowDropDown()
         }

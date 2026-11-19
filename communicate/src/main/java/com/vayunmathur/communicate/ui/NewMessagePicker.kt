@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.google.i18n.phonenumbers.PhoneNumberUtil
 import com.vayunmathur.communicate.R
@@ -168,7 +169,7 @@ internal fun NewMessagePicker(
                                 FilterChip(
                                     selected = true,
                                     onClick = { toggleContact(phone, label) },
-                                    label = { Text(label, maxLines = 1) },
+                                    label = { Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                                     trailingIcon = { IconClose(Modifier.size(16.dp)) },
                                 )
                             }

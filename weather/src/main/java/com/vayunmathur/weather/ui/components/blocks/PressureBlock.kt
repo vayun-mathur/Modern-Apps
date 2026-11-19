@@ -3,6 +3,7 @@ package com.vayunmathur.weather.ui.components.blocks
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.text.style.TextOverflow
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.IconPressure
 import com.vayunmathur.library.ui.Text
@@ -83,6 +84,7 @@ fun PressureBlock(current: Current, pressureUnit: PressureUnit) {
             maxLines = 1,
             softWrap = true,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }

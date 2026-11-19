@@ -23,6 +23,7 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.DateString
 import com.vayunmathur.library.ui.IconWifiFull
@@ -71,6 +72,7 @@ fun TvClockHeader(
                 color = Color.White,
                 lineHeight = timeSize * 1.05f,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
         Box(

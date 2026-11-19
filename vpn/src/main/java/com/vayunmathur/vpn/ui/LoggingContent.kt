@@ -86,7 +86,7 @@ fun LoggingContent(
                     Tab(
                         selected = tabIndex == i,
                         onClick = { tabIndex = i; onTabChange(i) },
-                        text = { Text(label, maxLines = 1, fontSize = 13.sp) },
+                        text = { Text(label, maxLines = 1, fontSize = 13.sp, overflow = TextOverflow.Ellipsis) },
                     )
                 }
             }

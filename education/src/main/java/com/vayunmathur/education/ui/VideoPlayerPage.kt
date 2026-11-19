@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.text.style.TextOverflow
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.CircularProgressIndicator
@@ -57,7 +58,7 @@ fun VideoPlayerPage(
     var retryCount by remember(videoUrl) { mutableIntStateOf(0) }
 
     AppScaffold(
-        title = { Text(title, maxLines = 1) },
+        title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         onNavigateBack = { backStack.pop() },
     ) { padding ->
         Box(

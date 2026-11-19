@@ -120,7 +120,7 @@ fun NoteTagEditor(
                             onAdd(s)
                             input = ""
                         },
-                        label = { Text(s, maxLines = 1) },
+                        label = { Text(s, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     )
                 }
             }

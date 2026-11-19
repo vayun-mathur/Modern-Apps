@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.ui.text.style.TextOverflow
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.IconWind
 import com.vayunmathur.library.ui.Text
@@ -59,6 +60,7 @@ fun WindBlock(current: Current, unit: WindUnit) {
                     modifier = Modifier.alignByBaseline(),
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 Spacer(Modifier.width(2.dp))
                 Text(
@@ -78,6 +80,7 @@ fun WindBlock(current: Current, unit: WindUnit) {
                 textAlign = TextAlign.Center,
                 maxLines = 1,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }

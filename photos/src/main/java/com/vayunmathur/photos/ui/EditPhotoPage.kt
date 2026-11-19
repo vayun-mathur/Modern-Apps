@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.text.style.TextOverflow
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.DropdownMenu
 import com.vayunmathur.library.ui.DropdownMenuItem
@@ -107,7 +108,7 @@ fun EditPhotoPage(
     }
 
     AppScaffold(
-        title = { Text(stringResource(R.string.title_edit_photo), maxLines = 1) },
+        title = { Text(stringResource(R.string.title_edit_photo), maxLines = 1, overflow = TextOverflow.Ellipsis) },
         onNavigateBack = { context.finish() },
         actions = {
             val isDrawing = state.activeCategory == ToolCategory.Draw

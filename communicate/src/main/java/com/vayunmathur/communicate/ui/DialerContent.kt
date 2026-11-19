@@ -145,7 +145,7 @@ private fun ContactRow(contact: CommunicateContact, onClick: () -> Unit) {
                 fontWeight = FontWeight.Medium,
             )
         },
-        supportingContent = { Text("${contact.label}  ${contact.phoneNumber}", maxLines = 1) },
+        supportingContent = { Text("${contact.label}  ${contact.phoneNumber}", maxLines = 1, overflow = TextOverflow.Ellipsis) },
         leadingContent = {
             Box(
                 modifier = Modifier

@@ -8,6 +8,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
@@ -43,6 +44,7 @@ fun TvReorderHint(
             color = Color(0xA8FFFFFF),
             maxLines = 1,
             modifier = Modifier.alpha(animatedFloat(if (text.isEmpty()) 0f else 1f)),
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }

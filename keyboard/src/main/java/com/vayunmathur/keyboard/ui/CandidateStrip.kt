@@ -70,6 +70,7 @@ fun CandidateStrip(
                     },
                     fontSize = 22.sp,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }

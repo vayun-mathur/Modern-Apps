@@ -73,7 +73,7 @@ private fun ThreadMessageRow(msg: EmailMessage, selected: Boolean, onClick: () -
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false),
                     )
-                    Text(text = "  \u2022  ${msg.date.substringBeforeLast(":")}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                    Text(text = "  \u2022  ${msg.date.substringBeforeLast(":")}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 if (msg.peekContent.isNotBlank()) {
                     Text(text = msg.peekContent, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)

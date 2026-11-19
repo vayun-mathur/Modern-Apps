@@ -21,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.DropdownMenu
 import com.vayunmathur.library.ui.IconArrowDropDown
@@ -114,6 +115,7 @@ internal fun WatchTopBar(
             style = MaterialTheme.typography.titleMedium,
             maxLines = 1,
             modifier = Modifier.weight(1f),
+            overflow = TextOverflow.Ellipsis,
         )
 
         PickerChip(

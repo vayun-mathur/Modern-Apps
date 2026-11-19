@@ -64,6 +64,7 @@ fun PrecipitationBlock(
                     maxLines = 1,
                     softWrap = true,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
             Box(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp)) {

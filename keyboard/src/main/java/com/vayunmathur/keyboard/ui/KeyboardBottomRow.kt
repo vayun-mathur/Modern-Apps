@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import com.vayunmathur.keyboard.R
@@ -94,7 +95,7 @@ internal fun RowScope.EnterKey(state: KeyboardState, actions: ImeActions, keyHei
         // gets a glyph.
         val customLabel = state.enterActionLabel
         if (customLabel != null) {
-            Text(customLabel, fontSize = 14.sp, maxLines = 1)
+            Text(customLabel, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         } else {
             EnterActionIcon(state.enterAction)
         }

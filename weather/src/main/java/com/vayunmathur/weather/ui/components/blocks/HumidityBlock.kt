@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.text.style.TextOverflow
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.IconDrizzle
 import com.vayunmathur.library.ui.Surface
@@ -81,6 +82,7 @@ private fun DewPointRow(dewPointCelsius: Double, tempUnit: TemperatureUnit) {
                     maxLines = 1,
                     softWrap = true,
                     color = MaterialTheme.colorScheme.onPrimary,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }

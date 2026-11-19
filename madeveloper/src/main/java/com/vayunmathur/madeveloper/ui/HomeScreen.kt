@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.FontFamily
 import com.vayunmathur.library.ui.AppPullToRefreshBox
@@ -221,7 +222,7 @@ private fun ActivitySection(state: MaDevUiState, onOpenIssues: () -> Unit, onOpe
     DashboardSection(title = "Recent activity") {
         state.issues.take(3).forEach { issue ->
             ListItem(
-                headlineContent = { Text(issue.title, maxLines = 1) },
+                headlineContent = { Text(issue.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 supportingContent = {
                     Text("${issue.repo} #${issue.number} · ${issue.author}")
                 },
@@ -231,7 +232,7 @@ private fun ActivitySection(state: MaDevUiState, onOpenIssues: () -> Unit, onOpe
         }
         state.prs.take(3).forEach { pr ->
             ListItem(
-                headlineContent = { Text(pr.title, maxLines = 1) },
+                headlineContent = { Text(pr.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 supportingContent = { Text("${pr.repo} #${pr.number} · ${pr.author}") },
                 leadingContent = { IconMerge() },
                 modifier = Modifier.clickable(onClick = onOpenPrs),
@@ -248,7 +249,7 @@ private fun RepoRow(repo: GitRepo, onClick: () -> Unit) {
         headlineContent = { Text(repo.name) },
         supportingContent = {
             Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-                if (repo.headSubject.isNotBlank()) Text(repo.headSubject, maxLines = 1)
+                if (repo.headSubject.isNotBlank()) Text(repo.headSubject, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
                     verticalAlignment = Alignment.CenterVertically,

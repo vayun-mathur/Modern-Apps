@@ -113,6 +113,7 @@ private fun MessageBody(msg: StoredMessage, ownAddress: String, onReply: () -> U
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
             Text(

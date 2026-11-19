@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.ui.nav
+import androidx.compose.ui.text.style.TextOverflow
 import com.vayunmathur.maps.data.string
 
 import androidx.compose.foundation.background
@@ -86,6 +87,7 @@ fun RouteShield(shield: RoadShield, modifier: Modifier = Modifier) {
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }

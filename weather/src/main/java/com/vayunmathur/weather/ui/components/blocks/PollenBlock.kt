@@ -2,6 +2,7 @@ package com.vayunmathur.weather.ui.components.blocks
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.text.style.TextOverflow
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.IconGrass
 import com.vayunmathur.library.ui.Text
@@ -61,6 +62,7 @@ fun PollenBlock(air: AirQualityCurrent?) {
             maxLines = 1,
             softWrap = true,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }

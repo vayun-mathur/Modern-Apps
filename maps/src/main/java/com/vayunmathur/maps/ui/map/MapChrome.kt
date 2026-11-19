@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.ui.map
+import androidx.compose.ui.text.style.TextOverflow
 import com.vayunmathur.maps.data.string
 
 import androidx.compose.foundation.clickable
@@ -47,6 +48,7 @@ fun MapSearchBar(
                 stringResource(MapsR.string.search_placeholder),
                 modifier = Modifier.weight(1f).padding(horizontal = Spacing.sm),
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             // Contact address shortcut (P17/P31): pick a contact's postal address, geocode it
             // and open the resolved place directly — never through the search box, so no

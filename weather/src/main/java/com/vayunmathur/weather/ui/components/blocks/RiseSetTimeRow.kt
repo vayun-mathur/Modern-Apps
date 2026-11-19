@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.ui.text.style.TextOverflow
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
 import androidx.compose.runtime.Composable
@@ -38,6 +39,7 @@ fun RiseSetTimeRow(
             style = style,
             maxLines = 1,
             softWrap = true,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }

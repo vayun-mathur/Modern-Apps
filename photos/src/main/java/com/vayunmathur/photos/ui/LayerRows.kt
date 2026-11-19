@@ -19,6 +19,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vayunmathur.library.ui.IconButton
@@ -57,7 +58,7 @@ internal fun LayerRow(
             }
             LayerThumbnail(layer)
             Column(modifier = Modifier.weight(1f)) {
-                Text(layer.name, fontSize = 13.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+                Text(layer.name, fontSize = 13.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(
                     "${androidx.compose.ui.res.stringResource(layer.blendMode.labelRes)} · ${(layer.opacity * 100).roundToInt()}%",
                     fontSize = 10.sp,

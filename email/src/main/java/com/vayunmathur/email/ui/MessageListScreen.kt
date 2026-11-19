@@ -33,6 +33,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vayunmathur.email.R
@@ -247,7 +248,7 @@ fun MessageListScreen(
                                                 Column {
                                                     Text(text = senderDisplayName(message.from), style = MaterialTheme.typography.titleSmall)
                                                     val preview = remember(message.peekContent) { message.peekContent.take(100) }
-                                                    Text(text = preview, style = MaterialTheme.typography.bodySmall, maxLines = 1, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                                    Text(text = preview, style = MaterialTheme.typography.bodySmall, maxLines = 1, color = MaterialTheme.colorScheme.onSurfaceVariant, overflow = TextOverflow.Ellipsis)
                                                 }
                                             },
                                             trailingContent = {
