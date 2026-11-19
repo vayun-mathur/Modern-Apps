@@ -10,16 +10,25 @@ fun EditorViewModel.startTerminal() {
     // by a process that no longer exists. The identity check keeps a stale exit from a
     // killed session (see terminalInterrupt) from clearing its replacement.
     var session: TerminalSession? = null
-    session = TerminalSession(
-        dir = dir,
-        onLine = { line -> appendTerminalLine(line) },
-        onExit = {
-            if (terminal === session) {
-                terminal = null
-                terminalRunning = false
-            }
-        },
-    )
+    // ProcessBuilder.start() throws IOException when the project folder was
+    // deleted / unmounted after opening, or the shell cannot be executed.
+    // Called from LaunchedEffect and click handlers, so an uncaught throw
+    // here crashes the app; report it in the terminal instead.
+    session = runCatching {
+        TerminalSession(
+            dir = dir,
+            onLine = { line -> appendTerminalLine(line) },
+            onExit = {
+                if (terminal === session) {
+                    terminal = null
+                    terminalRunning = false
+                }
+            },
+        )
+    }.getOrElse { e ->
+        appendTerminalLine("Could not start shell: ${e.message}")
+        return
+    }
     terminal = session
     terminalRunning = true
 }
