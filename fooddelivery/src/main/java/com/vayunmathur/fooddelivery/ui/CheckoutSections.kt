@@ -1,9 +1,9 @@
 package com.vayunmathur.fooddelivery.ui
 
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -195,7 +195,6 @@ internal fun CheckoutAddressPicker(
     )
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun CheckoutTipPicker(
     tipCents: Int,
@@ -212,7 +211,15 @@ internal fun CheckoutTipPicker(
     )
     Spacer(Modifier.height(8.dp))
 
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    // Only four fixed chips: a scrollable Row, not FlowRow. FlowRow leaves
+    // chips unplaced (0x0, unclickable) when a bounded-height parent (e.g. a
+    // non-scrolling Column) gives it no remaining height; a Row still places
+    // them, and scrolling keeps every chip reachable at large font scales
+    // instead of running off-screen.
+    Row(
+        modifier = Modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
         listOf(0, 200, 300, 500).forEach { cents ->
             val label = if (cents == 0) "None" else "$%.2f".format(cents / 100.0)
             FilterChip(
