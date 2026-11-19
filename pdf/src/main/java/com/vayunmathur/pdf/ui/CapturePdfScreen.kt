@@ -232,7 +232,6 @@ fun CapturePdfScreen(
                     }
                 }
             },
-            scrollBehavior = appBarScrollBehavior(),
         ) { padding ->
             Box(Modifier.padding(padding).fillMaxSize()) {
                 val sel = selectedIndex

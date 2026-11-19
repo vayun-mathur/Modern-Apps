@@ -26,7 +26,7 @@ fun LockScreen(
 ) {
     val messenger = rememberMessenger()
     ConsumeMessage(state.message, messenger, onDismissMessages)
-    AppScaffold(title = "SecureMail locked", scrollBehavior = appBarScrollBehavior()) { padding ->
+    AppScaffold(title = "SecureMail locked") { padding ->
         DesktopMaxWidthContainer(Modifier.padding(padding)) {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(16.dp),

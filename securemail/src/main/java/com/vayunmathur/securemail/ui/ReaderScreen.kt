@@ -67,7 +67,6 @@ fun ReaderScreen(
                 IconButton(onClick = { onReply(msg) }) { IconUndo() }
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         DesktopMaxWidthContainer(Modifier.padding(padding)) {
             Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {

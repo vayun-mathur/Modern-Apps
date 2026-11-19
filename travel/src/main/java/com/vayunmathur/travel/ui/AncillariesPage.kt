@@ -63,7 +63,6 @@ fun AncillariesPage(
     AppScaffold(
         title = stringResource(R.string.add_extras),
         backStack = backStack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         if (offer == null) {
             StatusBox(loading = false, error = null, isEmpty = true, emptyMessage = "No offer selected.")

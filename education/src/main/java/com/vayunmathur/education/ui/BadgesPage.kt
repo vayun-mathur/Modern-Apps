@@ -50,7 +50,6 @@ fun BadgesPage(backStack: NavBackStack<Route>, viewModel: EducationViewModel) {
     AppScaffold(
         title = if (band == Band.K2) stringResource(R.string.my_stickers) else stringResource(R.string.badges),
         backStack = backStack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         LazyColumn(
             modifier = Modifier

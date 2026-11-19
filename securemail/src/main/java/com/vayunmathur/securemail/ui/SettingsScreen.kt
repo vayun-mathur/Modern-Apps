@@ -47,7 +47,7 @@ fun SettingsScreen(
     val context = LocalContext.current
     ConsumeMessage(state.message, messenger, onDismissMessages)
     var newLabel by remember { mutableStateOf("") }
-    AppScaffold(title = "Settings", scrollBehavior = appBarScrollBehavior()) { padding ->
+    AppScaffold(title = "Settings") { padding ->
         DesktopMaxWidthContainer(Modifier.padding(padding)) {
             Column(
                 modifier = Modifier

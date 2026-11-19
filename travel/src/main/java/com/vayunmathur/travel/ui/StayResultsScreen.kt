@@ -50,7 +50,6 @@ fun StayResultsScreen(
                 navigationIcon = { IconNavigation { actions.back() } },
             )
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         items(state.results) { result ->
             StayResultCard(result) { actions.openStay(result) }

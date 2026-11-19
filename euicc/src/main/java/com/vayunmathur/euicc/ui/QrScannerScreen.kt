@@ -78,7 +78,6 @@ fun QrScannerScreen(backStack: NavBackStack<Route>, onResult: (String) -> Unit) 
     AppScaffold(
         title = stringResource(R.string.scan_qr_title),
         onNavigateBack = { backStack.pop() },
-        scrollBehavior = appBarScrollBehavior(),
     ) { pad ->
         Box(Modifier.fillMaxSize().padding(pad)) {
             if (hasPermission) {

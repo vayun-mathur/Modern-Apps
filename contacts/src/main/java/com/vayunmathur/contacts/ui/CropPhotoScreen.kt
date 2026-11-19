@@ -151,7 +151,6 @@ fun CropPhotoScreen(
                 onCropComplete(scaled)
             }) { Text(stringResource(UiR.string.done)) }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         val currentBitmap = bitmap ?: return@AppScaffold
 

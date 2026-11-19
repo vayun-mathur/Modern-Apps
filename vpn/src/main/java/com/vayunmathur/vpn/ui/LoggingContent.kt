@@ -80,7 +80,6 @@ fun LoggingContent(
                 IconDelete()
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { pad ->
         Column(Modifier.fillMaxSize().padding(pad)) {
             PrimaryScrollableTabRow(selectedTabIndex = tabIndex) {

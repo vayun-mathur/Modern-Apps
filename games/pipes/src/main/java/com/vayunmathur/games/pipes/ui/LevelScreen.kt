@@ -49,7 +49,6 @@ fun LevelScreen(backStack: NavBackStack<Route>, viewModel: PipesViewModel, packI
     AppScaffold(
         title = stringResource(R.string.level_selector),
         backStack = backStack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { paddingValues ->
         LazyVerticalGrid(
             GridCells.Adaptive(GRID_CELL_MIN_DP.dp),

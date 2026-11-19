@@ -80,7 +80,6 @@ fun MessageThreadScreen(
             )
         },
         onNavigateBack = onBack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         // Detail pane: letterboxed on expanded windows so message cards keep a
         // readable measure on desktop.

@@ -70,7 +70,6 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions) {
     AppScaffold(
         title = stringResource(R.string.nav_settings),
         onNavigateBack = { actions.back() },
-        scrollBehavior = appBarScrollBehavior(),
     ) { paddingValues ->
         Column(
             Modifier

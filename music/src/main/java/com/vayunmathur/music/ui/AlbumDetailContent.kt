@@ -61,7 +61,6 @@ fun AlbumDetailContent(
         title = {},
         onNavigateBack = { backStack.pop() },
         bottomBar = bottomBar,
-        scrollBehavior = appBarScrollBehavior(),
     ) {
             // Header: Album Art
             item {

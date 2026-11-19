@@ -54,7 +54,6 @@ fun EuiccHomeScreen(
             subtitle = stringResource(R.string.no_profiles_body),
             icon = { IconSim() },
             primaryAction = SetupAction(stringResource(R.string.add_profile_title), onAddSim),
-            scrollBehavior = appBarScrollBehavior(),
         )
         return
     }
@@ -66,7 +65,6 @@ fun EuiccHomeScreen(
             IconButton(onClick = onAddSim, enabled = !state.loading) { IconAdd() }
             IconButton(onClick = onReload, enabled = !state.loading) { IconRefresh() }
         },
-        scrollBehavior = appBarScrollBehavior(AppBarSize.LargeFlexible),
     ) { pad ->
         Column(
             modifier = Modifier.fillMaxWidth().padding(pad),

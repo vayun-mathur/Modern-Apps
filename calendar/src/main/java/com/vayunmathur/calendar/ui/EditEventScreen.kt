@@ -266,7 +266,6 @@ fun EditEventScreen(viewModel: CalendarViewModel, editRoute: Route.EditEvent, ba
                 com.vayunmathur.library.ui.OdfMarkdownEditorToolbar(descriptionController)
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) {
             // The detail screen's title morphs into this field. Keyed on the instance, matching the
             // detail side - the grid keys per instance so a recurring event has one origin per key.

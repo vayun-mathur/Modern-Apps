@@ -53,7 +53,6 @@ fun OrderDetailScreen(
     DetailScaffold(
         title = stringResource(R.string.order),
         onNavigateBack = { actions.back() },
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         val order = state.order
         if (order == null) {

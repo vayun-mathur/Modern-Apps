@@ -163,7 +163,6 @@ fun NoteEditScreen(
                 }
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { paddingValues ->
         Column(
             Modifier

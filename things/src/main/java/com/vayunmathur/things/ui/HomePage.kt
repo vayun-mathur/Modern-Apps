@@ -79,7 +79,6 @@ fun HomePage(
 ) {
     AppScaffold(
         title = stringResource(R.string.app_name),
-        scrollBehavior = appBarScrollBehavior(),
         actions = {
             IconButton(onClick = onOpenDevices) { IconWidgets() }
         },

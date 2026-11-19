@@ -44,7 +44,6 @@ fun PinGateScreen(error: String?, lockedOut: Boolean, actions: PinGateActions) {
 
     AppScaffold(
         title = stringResource(R.string.pin_title),
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         Column(
             modifier = Modifier.fillMaxSize().padding(24.dp),

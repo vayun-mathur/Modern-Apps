@@ -37,7 +37,6 @@ fun LocationScreen(
     SetupScaffold(
         title = stringResource(R.string.location_services),
         icon = { IconLocationOn() },
-        scrollBehavior = appBarScrollBehavior(),
         primaryAction = SetupAction(stringResource(R.string.next), onNext),
     ) {
         SwitchRow(

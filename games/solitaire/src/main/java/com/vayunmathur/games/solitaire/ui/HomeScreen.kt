@@ -58,7 +58,6 @@ fun HomeScreen(backStack: NavBackStack<Route>, viewModel: SolitaireViewModel) {
                 onOpenSettings = { backStack.add(Route.Settings) },
             )
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { paddingValues ->
         Column(
             Modifier.fillMaxSize().padding(paddingValues).padding(16.dp),

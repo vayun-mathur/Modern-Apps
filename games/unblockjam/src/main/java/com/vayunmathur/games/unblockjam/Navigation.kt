@@ -204,7 +204,6 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, onBack: () 
     DetailScaffold(
         title = stringResource(UiR.string.settings),
         onNavigateBack = onBack,
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         DailyReminderSettingsSection(
             enabled = state.reminderEnabled,
@@ -234,7 +233,6 @@ fun PackScreen(
                 onOpenSettings = onOpenSettings,
             )
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { paddingValues ->
         LazyColumn(
             Modifier.fillMaxSize(),
@@ -311,7 +309,7 @@ fun LevelScreen(
     onOpenLevel: (Int) -> Unit,
     title: String = stringResource(R.string.level_selector)
 ) {
-    AppScaffold(title = title, scrollBehavior = appBarScrollBehavior()) { paddingValues ->
+    AppScaffold(title = title) { paddingValues ->
         LazyVerticalGrid(
             GridCells.Adaptive(88.dp),
             Modifier.fillMaxSize(),
@@ -436,7 +434,6 @@ fun GameScreen(state: GameUiState, actions: GameActions, onBack: () -> Unit) {
     AppScaffold(
         title = {},
         onNavigateBack = onBack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { innerPadding ->
         Surface(
             modifier = Modifier.fillMaxSize(),

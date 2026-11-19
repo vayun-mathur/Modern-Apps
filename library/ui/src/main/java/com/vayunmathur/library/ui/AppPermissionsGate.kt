@@ -101,7 +101,6 @@ fun AppPermissionsGate(
         AppScaffold(
             title = stringResource(LibraryUiR.string.permission_gate_title),
             modifier = modifier,
-            scrollBehavior = appBarScrollBehavior(),
         ) { pad ->
             Box(
                 modifier = Modifier.fillMaxSize().padding(pad),
@@ -127,7 +126,6 @@ private fun GateBody(
 ) {
     LazyListScaffold(
         title = stringResource(LibraryUiR.string.permission_gate_title),
-        scrollBehavior = appBarScrollBehavior(),
         horizontalPadding = Spacing.lg,
         verticalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {

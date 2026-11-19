@@ -46,7 +46,6 @@ fun ScholarCourseScreen(state: CourseUiState, actions: CourseActions) {
         AppScaffold(
             title = state.title,
             onNavigateBack = { actions.navigateUp() },
-            scrollBehavior = appBarScrollBehavior(),
         ) { padding ->
             MissingContent(padding, stringResource(R.string.this_course_is_unavailable))
         }
@@ -62,7 +61,6 @@ fun ScholarCourseScreen(state: CourseUiState, actions: CourseActions) {
             )
         },
         onNavigateBack = { actions.navigateUp() },
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         if (state.description.isNotBlank()) {
             item {

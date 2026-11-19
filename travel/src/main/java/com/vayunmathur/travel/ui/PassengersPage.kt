@@ -92,7 +92,6 @@ fun PassengersPage(
     AppScaffold(
         title = stringResource(R.string.passengers),
         backStack = backStack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         // Trip creation happens here (not on payment): watch for the trip and
         // move to ancillaries once it exists.

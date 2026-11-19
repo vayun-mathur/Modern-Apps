@@ -97,7 +97,6 @@ fun ContactDetailsScreen(
                 IconDelete()
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) {
 
             item {

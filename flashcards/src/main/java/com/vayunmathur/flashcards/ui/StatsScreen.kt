@@ -55,7 +55,6 @@ fun StatsScreen(state: StatsUiState, actions: StatsActions) {
     AppScaffold(
         title = stringResource(R.string.nav_stats),
         onNavigateBack = { actions.back() },
-        scrollBehavior = appBarScrollBehavior(),
     ) { paddingValues ->
         Column(
             Modifier

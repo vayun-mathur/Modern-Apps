@@ -74,7 +74,6 @@ fun K2QuizScreen(state: QuizUiState, actions: QuizActions) {
     AppScaffold(
         title = "",
         onNavigateBack = { actions.navigateUp() },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         if (questions.isEmpty()) {
             MissingContent(padding, stringResource(R.string.let_s_go_back))

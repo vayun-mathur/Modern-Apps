@@ -67,7 +67,6 @@ fun ChangePage(
     AppScaffold(
         title = stringResource(R.string.change_flights),
         backStack = backStack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         val order = detail.order
         Column(

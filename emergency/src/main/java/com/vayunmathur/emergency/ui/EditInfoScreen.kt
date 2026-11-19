@@ -56,7 +56,6 @@ fun EditInfoScreen(
     LazyListScaffold(
         title = stringResource(R.string.app_name),
         horizontalPadding = 0.dp,
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         item {
             SettingsSection(title = stringResource(R.string.section_owner_identity)) {

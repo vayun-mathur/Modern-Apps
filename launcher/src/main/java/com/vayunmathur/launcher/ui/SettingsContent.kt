@@ -42,7 +42,7 @@ fun SettingsContent(
     onBack: () -> Unit = {},
     onOpenWidgetPicker: () -> Unit = {},
 ) {
-    AppScaffold(title = "Home screen", onNavigateBack = onBack, scrollBehavior = appBarScrollBehavior()) { padding ->
+    AppScaffold(title = "Home screen", onNavigateBack = onBack) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()

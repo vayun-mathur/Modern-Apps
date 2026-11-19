@@ -49,7 +49,6 @@ fun FileScreen(repoName: String, path: String, branch: String, viewModel: MaDevV
         title = fileName,
         subtitle = "$repoName · $branch",
         onNavigateBack = onBack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         Column(
             Modifier.padding(padding).verticalScroll(rememberScrollState()),

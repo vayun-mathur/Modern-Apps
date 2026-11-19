@@ -61,7 +61,6 @@ fun CastPickerContent(
                 IconButton(onClick = actions::startScan) { IconRefresh() }
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),

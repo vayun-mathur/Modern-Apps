@@ -53,7 +53,6 @@ fun DetailScreen(
     AppScaffold(
         title = detail?.title ?: "Detail",
         onNavigateBack = onBack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         DesktopMaxWidthContainer(Modifier.padding(padding)) {
             if (state.loading && detail == null) {

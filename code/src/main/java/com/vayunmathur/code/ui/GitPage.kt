@@ -89,7 +89,6 @@ fun GitPage(viewModel: EditorViewModel, backStack: NavBackStack<Route>) {
         actions = {
             IconButton(onClick = { viewModel.refreshGit() }) { IconRefresh() }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         Column(
             Modifier

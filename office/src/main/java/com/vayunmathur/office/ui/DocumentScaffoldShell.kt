@@ -95,7 +95,6 @@ internal fun DocumentScaffoldShell(
         bottomBar = {
             ScaffoldBottomBar(s, document, viewModel, chrome, launchers, sel)
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { paddingValues ->
         DocumentScaffoldBody(
             s = s,

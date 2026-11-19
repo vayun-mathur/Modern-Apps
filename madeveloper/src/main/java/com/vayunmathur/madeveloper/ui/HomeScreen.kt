@@ -53,7 +53,6 @@ fun HomeScreen(
 ) {
     AppScaffold(
         title = "Developer",
-        scrollBehavior = appBarScrollBehavior(),
         actions = {
             IconButton(onClick = onRefresh) { IconRefresh() }
         },

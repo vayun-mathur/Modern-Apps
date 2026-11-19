@@ -48,7 +48,6 @@ fun GeneralSettingsPage(
     AppScaffold(
         title = stringResource(R.string.settings_general_content),
         backStack = backStack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         Column(
             Modifier

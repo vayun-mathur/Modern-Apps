@@ -21,7 +21,6 @@ fun SettingsScreen(
     DetailScaffold(
         title = stringResource(UiR.string.settings),
         onNavigateBack = onBack,
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         SettingsSection {
             // Pre-resolved because SettingsSelectRow's `label` is a plain lambda, not a

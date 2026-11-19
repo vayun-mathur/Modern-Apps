@@ -40,7 +40,7 @@ fun DailyLevelScreen(backStack: NavBackStack<Route>, viewModel: PipesViewModel) 
     val dailyPack by viewModel.dailyPack.collectAsState()
     val dailyStats by viewModel.dailyStats.collectAsState()
     LaunchedEffect(Unit) { viewModel.refreshDaily() }
-    AppScaffold(title = stringResource(UiR.string.daily_challenge), backStack = backStack, scrollBehavior = appBarScrollBehavior()) { paddingValues ->
+    AppScaffold(title = stringResource(UiR.string.daily_challenge), backStack = backStack) { paddingValues ->
         val levels = dailyPack?.levels
         if (levels == null) { Box(Modifier.fillMaxSize().padding(paddingValues), Alignment.Center) { CircularProgressIndicator() }; return@AppScaffold }
         LazyVerticalGrid(GridCells.Adaptive(88.dp), Modifier.fillMaxSize(), contentPadding = paddingValues + PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 0.dp), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {

@@ -77,7 +77,6 @@ fun AddMedicationPage(backStack: NavBackStack<Route>, viewModel: MedicalViewMode
             if (draft.editingId == null) R.string.add_medication else R.string.edit_medication
         ),
         backStack = backStack,
-        scrollBehavior = appBarScrollBehavior(),
         actions = {
             TextButton(
                 enabled = draft.ingredient.isNotBlank(),

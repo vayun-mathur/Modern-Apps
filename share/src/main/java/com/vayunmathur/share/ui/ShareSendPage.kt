@@ -49,7 +49,6 @@ import com.vayunmathur.share.platform.SendUiState
 fun ShareSendPage(viewModel: ShareViewModel) {
     AppScaffold(
         title = stringResource(R.string.app_name),
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         // Letterboxed on expanded windows so the cards keep a readable measure.
         DesktopMaxWidthContainer(Modifier.padding(padding)) {

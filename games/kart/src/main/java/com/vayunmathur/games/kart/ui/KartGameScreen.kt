@@ -45,7 +45,6 @@ fun KartGameScreen(
         title = state.cup?.let { stringResource(R.string.cup_title, it.name) }
             ?: stringResource(R.string.app_name),
         alignment = AppBarAlignment.Center,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         Column(
             Modifier

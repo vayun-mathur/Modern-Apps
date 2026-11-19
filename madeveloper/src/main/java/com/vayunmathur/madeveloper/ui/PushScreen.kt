@@ -31,7 +31,6 @@ fun PushScreen(state: MaDevUiState, onInstall: (String) -> Unit, onBack: () -> U
         title = "Pushed installs",
         subtitle = if (state.connected) "Connected" else "Offline",
         onNavigateBack = onBack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         LazyColumn(
             Modifier.fillMaxSize().padding(padding),

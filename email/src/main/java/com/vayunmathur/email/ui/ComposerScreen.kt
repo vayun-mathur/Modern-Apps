@@ -298,7 +298,6 @@ fun ComposerScreen(
                     })
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         // Detail pane form: letterboxed on expanded windows so fields keep a
         // readable measure on desktop.

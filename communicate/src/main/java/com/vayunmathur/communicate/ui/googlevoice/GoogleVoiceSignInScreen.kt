@@ -61,7 +61,6 @@ fun GoogleVoiceSignInScreen(onBack: () -> Unit, onSignedIn: () -> Unit) {
     AppScaffold(
         title = stringResource(R.string.gv_sign_in_title),
         onNavigateBack = onBack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         AndroidView(
             modifier = Modifier

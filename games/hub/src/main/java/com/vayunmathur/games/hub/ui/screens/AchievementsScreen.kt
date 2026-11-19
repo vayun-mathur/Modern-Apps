@@ -73,7 +73,7 @@ fun AchievementsScreen(
         list.sortedWith(compareBy<AchievementWithProgress> { !it.isUnlocked }.thenBy { it.gameId }.thenBy { it.name })
     }
 
-    AppScaffold(title = { CommonSearchBar(value = search, onValueChange = { search = it }, padding = PaddingValues(0.dp)) }, scrollBehavior = appBarScrollBehavior()) { padding ->
+    AppScaffold(title = { CommonSearchBar(value = search, onValueChange = { search = it }, padding = PaddingValues(0.dp)) }) { padding ->
         LazyColumn(modifier = modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             item {
                 LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

@@ -50,7 +50,6 @@ fun ArMeasureContent(
         title = stringResource(R.string.app_name),
         actions = { IconButton(onClick = onOpenSettings) { IconSettings() } },
         bottomBar = bottomBar,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
 

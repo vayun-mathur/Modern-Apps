@@ -174,7 +174,6 @@ fun LearnStageScreen(
     AppScaffold(
         title = stage?.title ?: stringResource(R.string.tab_learn),
         onNavigateBack = onBack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { pad ->
         if (stage == null || level == null) {
             Box(Modifier.fillMaxSize().padding(pad), Alignment.Center) { CircularProgressIndicator() }

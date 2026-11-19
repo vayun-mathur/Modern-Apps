@@ -25,7 +25,6 @@ import com.vayunmathur.library.ui.appBarScrollBehavior
 internal fun CheckoutSuccess(onContinue: () -> Unit = {}) {
     AppScaffold(
         title = stringResource(R.string.order_confirmed),
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding),

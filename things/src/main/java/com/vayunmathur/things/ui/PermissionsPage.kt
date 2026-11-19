@@ -61,7 +61,6 @@ fun PermissionsPage(
 ) {
     AppScaffold(
         title = stringResource(R.string.app_name),
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         // First-run gate; letterboxed on expanded windows like the rest of the app.
         DesktopMaxWidthContainer(Modifier.padding(padding)) {

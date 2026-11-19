@@ -70,7 +70,6 @@ private fun TextEditorScreen(uri: Uri, viewModel: TextEditorViewModel) {
         AppScaffold(
             title = uri.lastPathSegment ?: stringResource(R.string.type_file),
             modifier = Modifier.imePadding(),
-            scrollBehavior = appBarScrollBehavior(),
         ) { paddingValues ->
             Text(
                 stringResource(R.string.editor_load_failed),
@@ -82,7 +81,6 @@ private fun TextEditorScreen(uri: Uri, viewModel: TextEditorViewModel) {
         AppScaffold(
             title = uri.lastPathSegment ?: stringResource(R.string.type_file),
             modifier = Modifier.imePadding(),
-            scrollBehavior = appBarScrollBehavior(),
         ) { }
     } else {
         TextEditorLoaded(uri, content, viewModel)
@@ -109,7 +107,6 @@ private fun TextEditorLoaded(uri: Uri, initialContent: String, viewModel: TextEd
                 if (isEditing) if (initialContent == state.text.toString()) IconVisible() else IconSave() else IconEdit()
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { paddingValues ->
         Column(
             modifier = Modifier

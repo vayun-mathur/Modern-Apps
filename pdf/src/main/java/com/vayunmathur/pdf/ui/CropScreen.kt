@@ -129,7 +129,6 @@ fun CropScreen(
                 Text(stringResource(R.string.auto_detect))
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
         BoxWithConstraints(

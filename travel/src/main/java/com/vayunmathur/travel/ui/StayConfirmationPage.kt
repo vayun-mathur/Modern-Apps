@@ -88,7 +88,6 @@ fun StayConfirmationPage(
 
     DetailScaffold(
         title = stringResource(if (trip != null && isTripAwaitingPayment(trip.status)) R.string.status_payment_pending else R.string.booking_confirmed),
-        scrollBehavior = appBarScrollBehavior()
     ) {
         Column(
             Modifier.fillMaxWidth(),

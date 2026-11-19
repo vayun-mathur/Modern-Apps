@@ -106,7 +106,6 @@ fun DownloadedVideosPage(backStack: NavBackStack<Route>, youPipeViewModel: YouPi
                 },
             )
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) {
             // Active downloads
             items(activeDownloads.toList(), key = { (videoID, _) -> "active-$videoID" }) { (videoID, status) ->

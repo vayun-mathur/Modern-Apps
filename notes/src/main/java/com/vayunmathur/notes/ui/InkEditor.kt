@@ -108,7 +108,6 @@ fun InkEditor(
                 onRedo = { if (redoStack.isNotEmpty()) strokes.add(redoStack.removeAt(redoStack.size - 1)) },
             )
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         Box(
             Modifier

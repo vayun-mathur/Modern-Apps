@@ -59,7 +59,7 @@ fun UberSignInScreen(onBack: () -> Unit, onUseWebView: () -> Unit) {
         }
     }
 
-    AppScaffold(title = stringResource(R.string.provider_uber), onNavigateBack = onBack, scrollBehavior = appBarScrollBehavior()) { padding ->
+    AppScaffold(title = stringResource(R.string.provider_uber), onNavigateBack = onBack) { padding ->
         Column(
             modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),

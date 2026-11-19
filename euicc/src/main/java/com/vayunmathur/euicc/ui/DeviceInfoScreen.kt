@@ -39,7 +39,6 @@ fun DeviceInfoScreen(state: EuiccScreenState, backStack: NavBackStack<Route>, on
     DetailScaffold(
         title = stringResource(R.string.device_info_title),
         backStack = backStack,
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         SettingsSection(title = stringResource(R.string.euicc_info_title)) {
             SettingsRow(

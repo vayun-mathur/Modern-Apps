@@ -81,7 +81,6 @@ fun CompetitiveLobbyScreen(
             )
         },
         alignment = AppBarAlignment.Center,
-        scrollBehavior = appBarScrollBehavior(),
     ) { innerPadding ->
         Column(
             modifier = Modifier

@@ -40,7 +40,6 @@ fun ListsScreen(onBack: () -> Unit, onOpenDetail: (MediaItem) -> Unit) {
     AppScaffold(
         title = "Lists",
         onNavigateBack = onBack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         DesktopMaxWidthContainer(Modifier.padding(padding)) {
             Column(

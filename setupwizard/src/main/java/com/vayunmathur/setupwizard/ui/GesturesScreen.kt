@@ -15,7 +15,6 @@ fun GesturesScreen(onTryIt: () -> Unit, onSkip: () -> Unit) {
         title = stringResource(R.string.swipe_gestures_title),
         subtitle = stringResource(R.string.swipe_gestures_desc),
         icon = { IconSwipe() },
-        scrollBehavior = appBarScrollBehavior(),
         primaryAction = SetupAction(stringResource(R.string.try_it), onTryIt),
         secondaryAction = SetupAction(stringResource(R.string.skip), onSkip),
     )

@@ -59,7 +59,6 @@ fun NutritionDetailsPage(backStack: NavBackStack<Route>, viewModel: HealthViewMo
     AppScaffold(
         title = stringResource(R.string.nutrition_breakdown),
         backStack = backStack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
             val day = today.minus(initialPage - page, DateTimeUnit.DAY)

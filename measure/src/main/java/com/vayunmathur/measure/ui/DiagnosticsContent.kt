@@ -33,7 +33,6 @@ fun DiagnosticsContent(
     AppScaffold(
         title = stringResource(R.string.diagnostics_title),
         onNavigateBack = onBack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         // Single-pane diagnostics list; letterboxed on expanded windows.
         DesktopMaxWidthContainer(Modifier.padding(padding)) {

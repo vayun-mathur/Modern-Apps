@@ -110,7 +110,6 @@ fun BarChartDetailsScreen(
             )
         },
         onNavigateBack = { actions.navigateUp() },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         Column(
             modifier = Modifier

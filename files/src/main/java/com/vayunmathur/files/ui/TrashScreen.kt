@@ -113,7 +113,6 @@ fun TrashScreen(
                 }
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             Text(

@@ -171,7 +171,6 @@ fun EventScreen(state: EventUiState, actions: EventActions) {
                 }
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) {
             ListItem({
                 Text(

@@ -18,7 +18,7 @@ import com.vayunmathur.networklocation.ui.OfflineDatabaseSection
 /** First-run screen: what the app does, and the offline-database download it cannot work without. */
 @Composable
 fun SetupScreen(onReady: () -> Unit) {
-    AppScaffold(title = "Network Location", scrollBehavior = appBarScrollBehavior()) { padding ->
+    AppScaffold(title = "Network Location") { padding ->
         // Letterboxed on expanded windows so the status text keeps a readable measure.
         DesktopMaxWidthContainer(Modifier.padding(padding)) {
             Column(

@@ -125,7 +125,6 @@ fun AccountDetailScreen(state: AccountDetailUiState, actions: AccountDetailActio
             )
         },
         onNavigateBack = { actions.back() },
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         if (provider == null) {
             Text(stringResource(R.string.no_accounts))

@@ -66,7 +66,6 @@ fun RecommendationsSettingsPage(
     AppScaffold(
         title = stringResource(R.string.label_recommendations),
         backStack = backStack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         Column(
             Modifier

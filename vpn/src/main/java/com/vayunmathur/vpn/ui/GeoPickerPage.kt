@@ -49,7 +49,6 @@ fun GeoPickerPage(backStack: NavBackStack<Route>, vm: VpnViewModel) {
         title = stringResource(R.string.geo_picker_title),
         horizontalPadding = 16.dp,
         verticalArrangement = Arrangement.spacedBy(12.dp),
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         item {
             CommonSearchBar(

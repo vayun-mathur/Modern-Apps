@@ -31,7 +31,6 @@ fun GeoCityPage(backStack: NavBackStack<Route>, vm: VpnViewModel, countryCode: S
         title = city,
         horizontalPadding = 16.dp,
         verticalArrangement = Arrangement.spacedBy(12.dp),
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         if (geoCity == null) {
             item { Text(city) }

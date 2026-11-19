@@ -78,7 +78,6 @@ fun ActivationCodeScreen(backStack: NavBackStack<Route>) {
             label = stringResource(R.string.activation_code_scan_button),
             onClick = { backStack.add(Route.ScanQr) },
         ),
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         OutlinedTextField(
             value = code,

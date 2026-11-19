@@ -53,7 +53,6 @@ fun WelcomeScreen(
         title = stringResource(R.string.welcome_to_modern_apps_os),
         subtitle = stringResource(R.string.modern_apps_os_desc),
         icon = { IconShield() },
-        scrollBehavior = appBarScrollBehavior(),
         primaryAction = SetupAction(stringResource(R.string.next), onNext),
         secondaryAction = onEmergencyCall?.let {
             SetupAction(stringResource(R.string.emergency_call), it)

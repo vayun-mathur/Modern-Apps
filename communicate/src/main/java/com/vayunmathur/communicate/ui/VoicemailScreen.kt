@@ -83,7 +83,6 @@ fun VoicemailScreen() {
 
     AppScaffold(
         title = stringResource(R.string.voicemail_title),
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         DefaultDialerGate(modifier = Modifier.padding(padding)) { roleRevision ->
             PermissionGate(

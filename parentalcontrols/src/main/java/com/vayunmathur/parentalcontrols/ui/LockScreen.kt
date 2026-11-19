@@ -52,7 +52,6 @@ fun LockScreen(reason: Enforcer.BlockReason, appLabel: String?, actions: LockAct
 
     AppScaffold(
         title = title,
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         Column(
             modifier = Modifier.fillMaxSize().padding(24.dp),

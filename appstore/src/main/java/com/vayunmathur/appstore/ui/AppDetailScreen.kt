@@ -60,7 +60,6 @@ fun AppDetailScreen(
         actions = {
             IconButton(onClick = { actions.shareApp(app) }) { IconShare() }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         Column(
             Modifier

@@ -52,7 +52,7 @@ fun SnippetsPage(viewModel: EditorViewModel, backStack: NavBackStack<Route>) {
     // null = no dialog, -1 = adding a new snippet, >=0 = editing that index.
     var editing by remember { mutableStateOf<Int?>(null) }
 
-    AppScaffold(title = stringResource(R.string.user_snippets), backStack = backStack, scrollBehavior = appBarScrollBehavior()) { padding ->
+    AppScaffold(title = stringResource(R.string.user_snippets), backStack = backStack) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
             Button(onClick = { editing = -1 }, modifier = Modifier.padding(16.dp)) {
                 Text(stringResource(R.string.add_snippet))

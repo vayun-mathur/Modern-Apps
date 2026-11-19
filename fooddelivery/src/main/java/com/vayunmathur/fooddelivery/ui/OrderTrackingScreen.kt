@@ -114,7 +114,6 @@ fun OrderTrackingScreen(orderId: Int, onBack: () -> Unit) {
             )
         },
         onNavigateBack = onBack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         val o = order
         when {

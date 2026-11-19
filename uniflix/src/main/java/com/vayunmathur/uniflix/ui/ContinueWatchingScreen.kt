@@ -32,7 +32,6 @@ fun ContinueWatchingScreen(onBack: () -> Unit, onResume: (ContinueWatchingEntry)
     AppScaffold(
         title = "Continue watching",
         onNavigateBack = onBack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         DesktopMaxWidthContainer(Modifier.padding(padding)) {
             Column(

@@ -78,7 +78,6 @@ fun ParentPage(backStack: NavBackStack<Route>, viewModel: EducationViewModel) {
     AppScaffold(
         title = stringResource(R.string.parent_settings),
         backStack = backStack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         Column(
             Modifier

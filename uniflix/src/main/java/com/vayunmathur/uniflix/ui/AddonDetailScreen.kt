@@ -41,7 +41,6 @@ fun AddonDetailScreen(addonDbId: Long, onBack: () -> Unit) {
     AppScaffold(
         title = row?.entity?.name ?: "Addon",
         onNavigateBack = onBack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         DesktopMaxWidthContainer(Modifier.padding(padding)) {
             if (row == null) {

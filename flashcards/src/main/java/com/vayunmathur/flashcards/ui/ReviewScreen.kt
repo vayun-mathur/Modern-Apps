@@ -117,7 +117,6 @@ fun ReviewScreen(
                 IconButton(onClick = { actions.undo() }) { IconUndo() }
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { paddingValues ->
         if (state.done) {
             EmptyState(

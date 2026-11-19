@@ -99,7 +99,6 @@ fun InsertOrEditContactScreen(
                 }
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             CommonSearchBar(

@@ -32,7 +32,6 @@ fun ConfirmCarrierContent(
         icon = { IconSim() },
         primaryAction = SetupAction(stringResource(R.string.download_esim_button), onConfirm),
         secondaryAction = SetupAction(stringResource(UiR.string.cancel), onCancel),
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         if (carrier != null) {
             Text(carrier, style = MaterialTheme.typography.titleLarge)

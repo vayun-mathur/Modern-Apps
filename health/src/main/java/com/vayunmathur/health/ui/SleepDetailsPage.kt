@@ -84,7 +84,6 @@ fun SleepDetailsPage(backStack: NavBackStack<Route>, viewModel: HealthViewModel)
             )
         },
         onNavigateBack = { backStack.pop() },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         Column(
             modifier = Modifier

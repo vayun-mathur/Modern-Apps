@@ -66,7 +66,6 @@ fun PlayOnTvScreen(
     AppScaffold(
         title = stringResource(R.string.play_on_tv),
         backStack = backStack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         ControllerPad(
             state = state,

@@ -52,7 +52,7 @@ fun WhatsAppBackupImportScreen(onBack: () -> Unit) {
         }
     }
 
-    DetailScaffold(title = "Import WhatsApp backup", scrollBehavior = appBarScrollBehavior()) {
+    DetailScaffold(title = "Import WhatsApp backup") {
         Text("Select a msgstore.db.crypt15 file and enter its 64-character hex backup key.")
 
         OutlinedButton(

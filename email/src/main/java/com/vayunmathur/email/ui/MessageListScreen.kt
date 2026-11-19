@@ -145,7 +145,6 @@ fun MessageListScreen(
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
             Box(modifier = Modifier.fillMaxWidth().height(2.dp)) {

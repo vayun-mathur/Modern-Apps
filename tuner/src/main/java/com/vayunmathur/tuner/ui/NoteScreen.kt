@@ -35,7 +35,6 @@ import com.vayunmathur.tuner.platform.TunerUiState
 fun NoteScreen(state: TunerUiState) {
     AppScaffold(
         title = stringResource(R.string.tab_note),
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         // Single-pane instrument readout; letterboxed on expanded windows so the
         // meter and status keep a readable measure on desktop.

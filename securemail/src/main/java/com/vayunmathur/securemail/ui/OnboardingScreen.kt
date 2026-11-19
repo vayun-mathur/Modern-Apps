@@ -36,7 +36,7 @@ fun OnboardingScreen(
 ) {
     val messenger = rememberMessenger()
     ConsumeMessage(state.message, messenger, onDismissMessages)
-    AppScaffold(title = "Set up SecureMail", scrollBehavior = appBarScrollBehavior()) { padding ->
+    AppScaffold(title = "Set up SecureMail") { padding ->
         DesktopMaxWidthContainer(Modifier.padding(padding)) {
             Column(
                 modifier = Modifier

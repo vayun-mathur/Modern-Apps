@@ -155,7 +155,6 @@ fun MedicalPage(backStack: NavBackStack<Route>, viewModel: MedicalViewModel) {
     }
 
     LazyListScaffold(
-        scrollBehavior = appBarScrollBehavior(),
         horizontalPadding = 16.dp,
         verticalArrangement = Arrangement.spacedBy(8.dp),
         floatingActionButton = {

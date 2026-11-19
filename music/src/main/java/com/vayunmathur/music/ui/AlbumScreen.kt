@@ -38,5 +38,5 @@ fun AlbumsTabContent(backStack: NavBackStack<Route>, musicViewModel: MusicViewMo
         ShufflePlayFab(musicViewModel)
     }, searchString = { it.name },
     // getAlbums already returns them sorted by name.
-    scrollBehavior = appBarScrollBehavior())
+    )
 }

@@ -46,7 +46,6 @@ fun OemUnlockScreen(
     SetupScaffold(
         title = stringResource(R.string.lock_your_bootloader),
         icon = { IconWarning(tint = MaterialTheme.colorScheme.error) },
-        scrollBehavior = appBarScrollBehavior(),
         primaryAction = SetupAction(
             stringResource(R.string.reboot_to_bootloader),
             onRebootToBootloader,

@@ -45,5 +45,5 @@ fun ArtistsTabContent(backStack: NavBackStack<Route>, musicViewModel: MusicViewM
         ShufflePlayFab(musicViewModel)
     }, searchString = { it.name },
     // getArtists already returns them sorted by name.
-    scrollBehavior = appBarScrollBehavior())
+    )
 }

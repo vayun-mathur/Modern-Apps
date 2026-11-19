@@ -74,7 +74,6 @@ fun PricingScreen(
         },
         horizontalPadding = 8.dp,
         verticalArrangement = Arrangement.spacedBy(4.dp),
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         if (filtered.isEmpty()) {
             item(key = "pricing-empty") {

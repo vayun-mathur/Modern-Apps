@@ -113,7 +113,6 @@ fun SetupScreen() {
     DetailScaffold(
         title = stringResource(R.string.app_name),
         alignment = AppBarAlignment.Center,
-        scrollBehavior = appBarScrollBehavior(),
     ) {
             StatusCard(enabled = enabled, selected = selected)
 

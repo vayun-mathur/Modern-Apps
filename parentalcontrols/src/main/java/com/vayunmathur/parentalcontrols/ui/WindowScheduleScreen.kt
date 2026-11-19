@@ -69,7 +69,6 @@ fun WindowScheduleScreen(
     LazyListScaffold(
         title = title,
         horizontalPadding = 0.dp,
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         item {
             SettingsSection {

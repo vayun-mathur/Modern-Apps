@@ -53,7 +53,6 @@ fun UnitPage(backStack: NavBackStack<Route>, viewModel: EducationViewModel, unit
             )
         },
         onNavigateBack = { backStack.pop() },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         if (unit == null) {
             MissingContent(padding, stringResource(R.string.this_unit_is_unavailable))

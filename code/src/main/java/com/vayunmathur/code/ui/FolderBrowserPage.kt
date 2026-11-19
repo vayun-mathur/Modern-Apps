@@ -65,7 +65,7 @@ fun FolderBrowserPage(viewModel: EditorViewModel, backStack: NavBackStack<Route>
         }
     }
 
-    AppScaffold(title = stringResource(R.string.open_folder), backStack = backStack, scrollBehavior = appBarScrollBehavior()) { padding ->
+    AppScaffold(title = stringResource(R.string.open_folder), backStack = backStack) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
             Text(
                 text = currentDir.absolutePath,

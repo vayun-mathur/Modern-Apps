@@ -46,7 +46,6 @@ fun CommitScreen(repoName: String, sha: String, viewModel: MaDevViewModel, onBac
         title = commit?.shortSha?.ifBlank { sha.take(SHORT_SHA_LENGTH) } ?: sha.take(SHORT_SHA_LENGTH),
         subtitle = repoName,
         onNavigateBack = onBack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         Column(
             Modifier.padding(padding).verticalScroll(rememberScrollState()),

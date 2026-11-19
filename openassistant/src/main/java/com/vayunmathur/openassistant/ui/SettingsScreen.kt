@@ -55,7 +55,6 @@ fun SettingsScreen(
     DetailLazyColumn(
         title = stringResource(R.string.settings_title),
         onNavigateBack = { actions.back() },
-        scrollBehavior = appBarScrollBehavior(),
     ) {
             item {
                 Text(

@@ -58,7 +58,6 @@ fun OutboxScreen(
                 }) { Text(stringResource(R.string.send_now)) }
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         if (outbox.isEmpty()) {
             EmptyState(

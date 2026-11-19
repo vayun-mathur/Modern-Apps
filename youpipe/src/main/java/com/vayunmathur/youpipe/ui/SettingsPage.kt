@@ -36,7 +36,6 @@ fun SettingsPage(
 
     AppScaffold(
         title = stringResource(UiR.string.settings),
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         Column(
             Modifier

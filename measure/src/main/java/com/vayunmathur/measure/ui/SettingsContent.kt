@@ -33,7 +33,6 @@ fun SettingsContent(
     AppScaffold(
         title = stringResource(UiR.string.settings),
         onNavigateBack = onBack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         // Single-pane settings form; letterboxed on expanded windows.
         DesktopMaxWidthContainer(Modifier.padding(padding)) {

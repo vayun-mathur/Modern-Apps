@@ -152,7 +152,6 @@ fun PlaylistDetailPage(
                 }
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { paddingValues ->
         if (localData.isEmpty()) {
             Box(Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {

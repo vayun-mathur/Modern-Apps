@@ -154,7 +154,6 @@ fun TodoListScreen(
             }
         },
         state = listState,
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         item(key = "quick-add") {
             QuickAddBar(lists = listNames, onAdd = actions::quickAdd, leading = quickAddLeading)

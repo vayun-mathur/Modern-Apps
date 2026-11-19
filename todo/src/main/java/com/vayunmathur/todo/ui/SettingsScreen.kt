@@ -45,7 +45,6 @@ fun SettingsScreen(
     DetailScaffold(
         title = stringResource(R.string.settings),
         onNavigateBack = actions::back,
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         SettingsSection(title = stringResource(R.string.settings_general)) {
             val views = TodoView.smartViews.filter { it != TodoView.Completed } + state.lists.map { TodoView.InList(it.syncId) }

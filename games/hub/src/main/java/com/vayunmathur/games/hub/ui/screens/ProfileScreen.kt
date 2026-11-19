@@ -83,7 +83,6 @@ fun ProfileScreen(
                 showEditDialog = true
             }) { IconPerson() }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         LazyColumn(modifier = modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             item {

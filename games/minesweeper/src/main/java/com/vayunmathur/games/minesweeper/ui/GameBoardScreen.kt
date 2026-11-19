@@ -95,7 +95,6 @@ fun GameBoardScreen(
         actions = {
             if (game != null) ClockText(elapsedSeconds)
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         BoxWithConstraints(
             Modifier

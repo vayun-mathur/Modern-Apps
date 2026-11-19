@@ -97,7 +97,6 @@ fun DeckListScreen(
         floatingActionButton = {
             FloatingActionButton(onClick = { showAddDialog = true }) { IconAdd() }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { paddingValues ->
         if (localDecks.isEmpty()) {
             EmptyState(

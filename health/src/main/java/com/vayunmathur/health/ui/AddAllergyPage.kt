@@ -53,7 +53,6 @@ fun AddAllergyPage(backStack: NavBackStack<Route>, viewModel: MedicalViewModel) 
             if (draft.editingId == null) R.string.add_allergy else R.string.edit_allergy
         ),
         backStack = backStack,
-        scrollBehavior = appBarScrollBehavior(),
         actions = {
             TextButton(
                 enabled = draft.displayName.isNotBlank(),

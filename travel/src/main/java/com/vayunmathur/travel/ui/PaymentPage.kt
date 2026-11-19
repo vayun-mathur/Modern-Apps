@@ -81,7 +81,6 @@ fun PaymentPage(
     AppScaffold(
         title = stringResource(R.string.payment),
         backStack = backStack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         val offer = review.offer
         val loading = checkout is CheckoutState.Loading

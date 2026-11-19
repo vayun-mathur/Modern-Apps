@@ -39,7 +39,6 @@ fun DashboardScreen(state: SupervisionUiState, actions: DashboardActions) {
     LazyListScaffold(
         title = stringResource(R.string.dashboard_title),
         horizontalPadding = 0.dp,
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         item {
             Surface(

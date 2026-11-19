@@ -78,7 +78,6 @@ fun VideoEditPage(vm: VideoEditViewModel, id: Long, uri: String?) {
         actions = {
             IconButton(onClick = { showSaveDialog = true }, enabled = !exporting) { IconSave() }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         Column(
             modifier = Modifier.fillMaxSize().background(Color.Black).padding(padding),

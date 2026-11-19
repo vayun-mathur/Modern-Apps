@@ -48,7 +48,6 @@ fun BedtimeScreen(state: SupervisionUiState, actions: BedtimeActions) {
     LazyListScaffold(
         title = stringResource(R.string.bedtime_title),
         horizontalPadding = 0.dp,
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         item {
             SettingsSection {

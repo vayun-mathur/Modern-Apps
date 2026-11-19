@@ -145,7 +145,6 @@ fun NoteListScreen(
                 FloatingActionButton(onClick = { actions.addNote() }) { IconAdd() }
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { paddingValues ->
         Column(Modifier.fillMaxSize().padding(paddingValues)) {
             if (state.dueCount > 0 && !selection.isActive) {

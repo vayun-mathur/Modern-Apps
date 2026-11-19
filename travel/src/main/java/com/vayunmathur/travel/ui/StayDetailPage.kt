@@ -49,7 +49,6 @@ fun StayDetailPage(
     AppScaffold(
         title = route.name.ifBlank { stringResource(R.string.hotel) },
         backStack = backStack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         val rates = state.rates
         if (rates == null) {

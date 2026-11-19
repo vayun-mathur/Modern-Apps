@@ -21,7 +21,6 @@ fun PlayerSettingsScreen(onBack: () -> Unit) {
     AppScaffold(
         title = "Player",
         onNavigateBack = onBack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         DesktopMaxWidthContainer(Modifier.padding(padding)) {
             Column(

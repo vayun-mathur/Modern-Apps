@@ -160,7 +160,6 @@ fun ProductScreen(
     AppScaffold(
         title = product?.title ?: stringResource(R.string.app_name),
         onNavigateBack = onBack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         val current = product
         if (current == null) {

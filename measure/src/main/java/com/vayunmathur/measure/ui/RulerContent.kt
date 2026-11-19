@@ -44,7 +44,6 @@ fun RulerContent(
         title = stringResource(R.string.tool_ruler),
         actions = { IconButton(onClick = onOpenSettings) { IconSettings() } },
         bottomBar = bottomBar,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         Column(
             modifier = Modifier.fillMaxSize().padding(padding),

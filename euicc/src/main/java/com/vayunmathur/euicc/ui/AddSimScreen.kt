@@ -32,6 +32,5 @@ fun AddSimScreen(backStack: NavBackStack<Route>) {
             label = stringResource(R.string.enter_code_button),
             onClick = { backStack.add(Route.ActivationCode) },
         ),
-        scrollBehavior = appBarScrollBehavior(),
     )
 }

@@ -87,7 +87,7 @@ fun StopwatchScreen(
                 IconButton({ actions.resetStopwatch() }) { IconRestartAlt() }
             }
         }
-    }, horizontalPadding = 16.dp, scrollBehavior = appBarScrollBehavior()) {
+    }, horizontalPadding = 16.dp) {
         // On expanded widths the dial and the laps sit side by side in fractional
         // columns so neither stretches awkwardly wide; compact stays stacked.
         if (expanded) {

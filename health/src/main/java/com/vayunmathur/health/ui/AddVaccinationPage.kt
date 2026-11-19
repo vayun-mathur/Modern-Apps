@@ -89,7 +89,6 @@ fun AddVaccinationPage(backStack: NavBackStack<Route>, viewModel: MedicalViewMod
             if (draft.editingId == null) R.string.add_vaccination else R.string.edit_vaccination
         ),
         backStack = backStack,
-        scrollBehavior = appBarScrollBehavior(),
         actions = {
             TextButton(
                 enabled = draft.displayName.isNotBlank(),

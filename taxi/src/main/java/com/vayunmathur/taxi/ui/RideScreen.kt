@@ -220,7 +220,7 @@ fun RideScreen(bookingTrip: MutableState<BookingTrip?>? = null) {
         quote()
     }
 
-    AppScaffold(title = stringResource(R.string.nav_ride), scrollBehavior = appBarScrollBehavior()) { padding ->
+    AppScaffold(title = stringResource(R.string.nav_ride)) { padding ->
         val contentData = RideContentData(
             camera = camera, routeOverlay = routeOverlay,
             pickup = pickup, destination = destination,

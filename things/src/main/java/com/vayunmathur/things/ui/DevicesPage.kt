@@ -58,7 +58,6 @@ fun DevicesPage(
     AppScaffold(
         title = stringResource(R.string.add_device),
         onNavigateBack = onNavigateBack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         // Two buttons; cap them at a readable measure on desktop.
         DesktopMaxWidthContainer(Modifier.padding(padding)) {

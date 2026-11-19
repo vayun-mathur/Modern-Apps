@@ -16,7 +16,7 @@ import com.vayunmathur.networklocation.ui.OfflineDatabaseSection
 /** Home once the databases are installed: the live GPS / network-location / geocoder check. */
 @Composable
 fun StatusScreen() {
-    AppScaffold(title = "Network Location", scrollBehavior = appBarScrollBehavior()) { padding ->
+    AppScaffold(title = "Network Location") { padding ->
         DesktopMaxWidthContainer(Modifier.padding(padding)) {
             Column(
                 Modifier

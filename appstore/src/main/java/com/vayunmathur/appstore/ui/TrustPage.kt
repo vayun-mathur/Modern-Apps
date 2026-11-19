@@ -57,7 +57,6 @@ fun TrustPage(
         state = rememberLazyListState(initialFirstVisibleItemIndex = initialFirstVisibleItem),
         horizontalPadding = 16.dp,
         verticalArrangement = Arrangement.spacedBy(12.dp),
-        scrollBehavior = appBarScrollBehavior(),
     ) {
             item {
                 Text(

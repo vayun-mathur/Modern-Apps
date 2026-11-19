@@ -155,7 +155,6 @@ fun ImportIcsScreen(
                 }
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { paddingValues ->
         when {
             events == null -> {

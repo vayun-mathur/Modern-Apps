@@ -23,7 +23,6 @@ fun SettingsPage(backStack: NavBackStack<Route>) {
     AppScaffold(
         title = stringResource(R.string.settings_about),
         backStack = backStack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { pad ->
         Column(
             Modifier.fillMaxSize().padding(pad).verticalScroll(rememberScrollState()),

@@ -87,7 +87,6 @@ fun GameBoardScreen(
         actions = {
             if (game != null) ClockText(elapsedSeconds)
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         // Short windows (landscape phones) and wide expanded windows in landscape
         // cannot fit board + pad + actions stacked, so the board sits beside the

@@ -66,7 +66,6 @@ fun HomeScreen(
                 title = { Text(stringResource(R.string.app_name)) },
             )
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         home.storage?.let { s -> item { StorageCard(s) } }
 

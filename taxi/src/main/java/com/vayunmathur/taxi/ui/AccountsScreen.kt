@@ -94,7 +94,7 @@ fun AccountsScreen(onConnectLyft: () -> Unit) {
         busyId = null
     }
 
-    AppScaffold(title = stringResource(UiR.string.settings), scrollBehavior = appBarScrollBehavior()) { padding ->
+    AppScaffold(title = stringResource(UiR.string.settings)) { padding ->
         Column(
             modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),

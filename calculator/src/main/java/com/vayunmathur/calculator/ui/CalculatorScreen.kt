@@ -52,7 +52,6 @@ fun CalculatorScreen(
         actions = {
             IconButton({ showUnitPicker = true }) { IconRuler() }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         // Three genuinely different windows, not two:
         //

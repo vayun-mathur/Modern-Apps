@@ -71,7 +71,6 @@ private fun EmailVerificationContent(
     AppScaffold(
         title = stringResource(R.string.email_verification),
         onClose = onDone,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).padding(24.dp),

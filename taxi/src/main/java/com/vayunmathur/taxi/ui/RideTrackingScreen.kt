@@ -116,7 +116,7 @@ fun RideTrackingScreen(rideId: String) {
 
     val driverLoc = liveLocation ?: ride?.driverLocation
 
-    AppScaffold(title = stringResource(R.string.tracking_title), scrollBehavior = appBarScrollBehavior()) { padding ->
+    AppScaffold(title = stringResource(R.string.tracking_title)) { padding ->
         Box(Modifier.fillMaxSize().padding(top = padding.calculateTopPadding())) {
             TrackingMap(ride, driverLoc, Modifier.fillMaxSize())
 

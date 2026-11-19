@@ -34,7 +34,6 @@ fun AppLimitsScreen(state: SupervisionUiState, actions: AppLimitsActions) {
     LazyListScaffold(
         title = stringResource(R.string.limits_title),
         horizontalPadding = 0.dp,
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         item {
             SettingsSection {

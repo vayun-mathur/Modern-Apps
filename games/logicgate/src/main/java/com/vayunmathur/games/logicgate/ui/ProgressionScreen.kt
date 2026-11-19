@@ -46,7 +46,6 @@ fun ProgressionScreen(
         title = stringResource(R.string.app_name),
         modifier = modifier,
         actions = { GameTopBarActions(onOpenGameCenter = onOpenGameCenter) },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         LazyColumn(
             Modifier.fillMaxSize(),

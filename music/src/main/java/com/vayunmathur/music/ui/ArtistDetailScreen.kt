@@ -75,7 +75,6 @@ fun ArtistDetailScreen(backStack: NavBackStack<Route>, musicViewModel: MusicView
         title = {},
         onNavigateBack = { backStack.pop() },
         bottomBar = { PlayingBottomBar(musicViewModel, backStack, Modifier.navigationBarsPadding()) },
-        scrollBehavior = appBarScrollBehavior(),
     ) {
             // Header: Album Art
             item {

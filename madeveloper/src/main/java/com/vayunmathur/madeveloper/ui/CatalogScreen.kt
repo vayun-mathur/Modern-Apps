@@ -26,7 +26,6 @@ fun CatalogScreen(state: MaDevUiState, onBack: () -> Unit) {
         title = "Available builds",
         subtitle = "Read-only catalog",
         onNavigateBack = onBack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         LazyColumn(
             Modifier.fillMaxSize().padding(padding),

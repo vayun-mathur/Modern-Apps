@@ -69,7 +69,6 @@ fun TodoDetailScreen(state: TodoUiState, actions: TodoActions) {
     DetailScaffold(
         title = stringResource(R.string.todo_details),
         onNavigateBack = { actions.back() },
-        scrollBehavior = appBarScrollBehavior(),
         bottomBar = {
             // EditorBottomBar claims navigationBars ∪ ime itself; no extra imePadding.
             if (notes.focused) OdfMarkdownEditorToolbar(notes)

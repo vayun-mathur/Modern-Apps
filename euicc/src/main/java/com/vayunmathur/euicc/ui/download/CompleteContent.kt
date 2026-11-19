@@ -25,7 +25,6 @@ fun CompleteContent(carrier: String?, onDone: () -> Unit) {
         subtitle = stringResource(R.string.download_complete_text),
         icon = { IconCheckCircle() },
         primaryAction = SetupAction(stringResource(UiR.string.done), onDone),
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         if (carrier != null) {
             Text(carrier, style = MaterialTheme.typography.titleMedium)

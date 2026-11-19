@@ -165,7 +165,6 @@ fun WordGameScreen(
             )
         },
         alignment = AppBarAlignment.Center,
-        scrollBehavior = appBarScrollBehavior(),
     ) { innerPadding ->
         // Wide windows letterbox the whole play area at a readable measure
         // instead of stretching the crossword across the window; the board

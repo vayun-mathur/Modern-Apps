@@ -233,7 +233,7 @@ internal fun ForecastScaffold(
 private fun EmptyHome(viewModel: WeatherViewModel, onAddLocation: () -> Unit) {
     val (onUseCurrent, requesting) = rememberRequestDeviceLocation(viewModel)
 
-    AppScaffold(title = stringResource(R.string.app_name), scrollBehavior = appBarScrollBehavior()) { padding ->
+    AppScaffold(title = stringResource(R.string.app_name)) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(stringResource(R.string.no_locations_yet), style = MaterialTheme.typography.titleMedium)

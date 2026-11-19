@@ -154,7 +154,6 @@ fun ImportVcfScreen(
                 }
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { paddingValues ->
         when {
             contacts == null -> {

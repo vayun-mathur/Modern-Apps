@@ -126,7 +126,6 @@ fun EditContactPage(backStack: NavBackStack<Route>, viewModel: ContactViewModel,
                 com.vayunmathur.library.ui.OdfMarkdownEditorToolbar(noteController)
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         // Short (landscape) windows collapse the fixed spacers so the ~2000dp form
         // needs less scrolling; portrait keeps every gap verbatim.

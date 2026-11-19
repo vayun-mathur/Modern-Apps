@@ -49,7 +49,6 @@ fun TimerScreen(
         },
         horizontalPadding = if (showKeypad) 0.dp else 16.dp,
         verticalArrangement = Arrangement.spacedBy(16.dp),
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         if (showKeypad) {
             item {

@@ -27,7 +27,6 @@ fun FailedContent(message: String?, onRetry: () -> Unit, onCancel: () -> Unit) {
         icon = { IconWarning() },
         primaryAction = SetupAction(stringResource(R.string.try_again), onRetry),
         secondaryAction = SetupAction(stringResource(UiR.string.cancel), onCancel),
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         if (message != null) {
             Text(

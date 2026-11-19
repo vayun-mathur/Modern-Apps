@@ -112,7 +112,6 @@ fun SavedPage(backStack: NavBackStack<Route>, youPipeViewModel: YouPipeViewModel
                 IconAdd()
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) {
             // Pinned: Downloads (the existing downloads UI, not a real playlist).
             item(key = "pinned-downloads") {

@@ -185,7 +185,6 @@ fun CalendarScreen(state: CalendarUiState, actions: CalendarActions) {
                 IconAdd()
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { innerPadding ->
         Column(Modifier.padding(innerPadding).fillMaxSize()) {
             when (state.layout) {

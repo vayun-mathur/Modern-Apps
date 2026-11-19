@@ -109,5 +109,5 @@ fun SongsScreen(
     // per keystroke and matched on field names and numeric ids, so typing "1" hit everything.
     searchString = { "${it.title} ${it.artist} ${it.album}" },
     // No sortOrder: getSongs already returns the library sorted by title.
-    scrollBehavior = appBarScrollBehavior(), loading = state.loading)
+    loading = state.loading)
 }

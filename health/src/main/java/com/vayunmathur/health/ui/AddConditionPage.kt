@@ -53,7 +53,6 @@ fun AddConditionPage(backStack: NavBackStack<Route>, viewModel: MedicalViewModel
             if (draft.editingId == null) R.string.add_condition else R.string.edit_condition
         ),
         backStack = backStack,
-        scrollBehavior = appBarScrollBehavior(),
         actions = {
             TextButton(
                 enabled = draft.displayName.isNotBlank(),

@@ -49,7 +49,6 @@ fun HistoryScreen(state: HistoryUiState, actions: HistoryActions) {
                 }
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         if (state.records.isEmpty()) {
             Column(

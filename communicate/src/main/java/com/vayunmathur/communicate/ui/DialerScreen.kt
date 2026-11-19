@@ -71,7 +71,6 @@ fun DialerScreen() {
                 )
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         DefaultDialerGate(modifier = Modifier.padding(padding)) { roleRevision ->
             Column(

@@ -45,7 +45,6 @@ fun SubscriptionsPage(
     // A plain scrolling list with no top bar: LazyListScaffold with no title draws none,
     // and owns the list insets the raw Scaffold + LazyColumn pair was deriving by hand.
     LazyListScaffold(
-        scrollBehavior = appBarScrollBehavior(),
     ) {
             if (fetchProgress in 0f..1f) {
                 item {

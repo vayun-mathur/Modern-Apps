@@ -53,7 +53,6 @@ fun ConfirmationCodeContent(
             enabled = code.isNotBlank(),
         ),
         secondaryAction = SetupAction(stringResource(UiR.string.cancel), onCancel),
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         OutlinedTextField(
             value = code,

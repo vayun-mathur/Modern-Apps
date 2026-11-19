@@ -57,7 +57,6 @@ fun UnitConverterScreen(state: UnitConverterUiState, actions: UnitConverterActio
     AppScaffold(
         title = stringResource(R.string.units),
         alignment = AppBarAlignment.Center,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         val category = state.categories.getOrNull(state.selectedCategoryIndex)
         // Sibling tool, never list-detail: a single converter form, letterboxed

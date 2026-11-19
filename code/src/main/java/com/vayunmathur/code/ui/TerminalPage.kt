@@ -57,7 +57,6 @@ fun TerminalPage(viewModel: EditorViewModel, backStack: NavBackStack<Route>) {
             IconButton(onClick = { viewModel.terminalInterrupt() }, enabled = hasFolder) { IconStop() }
             IconButton(onClick = { viewModel.clearTerminal() }) { IconDelete() }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
             if (!hasFolder) {

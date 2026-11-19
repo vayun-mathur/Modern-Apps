@@ -64,7 +64,7 @@ fun LyftSignInScreen(onBack: () -> Unit) {
         }
     }
 
-    AppScaffold(title = stringResource(R.string.provider_lyft), onNavigateBack = onBack, scrollBehavior = appBarScrollBehavior()) { padding ->
+    AppScaffold(title = stringResource(R.string.provider_lyft), onNavigateBack = onBack) { padding ->
         Column(
             modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),

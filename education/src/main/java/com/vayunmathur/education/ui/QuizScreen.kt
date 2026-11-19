@@ -101,7 +101,6 @@ fun QuizScreen(
         AppScaffold(
             title = state.title,
             onNavigateBack = { actions.navigateUp() },
-            scrollBehavior = appBarScrollBehavior(),
         ) { padding ->
             MissingContent(padding, stringResource(R.string.this_exercise_has_no_questions_yet))
         }
@@ -114,7 +113,6 @@ fun QuizScreen(
     DetailScaffold(
         title = state.title,
         onNavigateBack = { actions.navigateUp() },
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         LinearProgressIndicator(
             progress = { (index + 1f) / questions.size },

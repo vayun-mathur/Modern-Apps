@@ -233,7 +233,6 @@ fun MessagesScreen(onOpenThread: (SmsThread) -> Unit, onOpenAccounts: () -> Unit
                 IconAdd()
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         DefaultSmsGate(modifier = Modifier.padding(padding)) { roleRevision ->
             PermissionGate(

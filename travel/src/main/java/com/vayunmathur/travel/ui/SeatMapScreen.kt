@@ -80,7 +80,6 @@ fun SeatMapScreen(
     AppScaffold(
         title = stringResource(R.string.choose_seats),
         onNavigateBack = { actions.back() },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         val cabins = state.cabins.filter { it.segmentId == segmentId }
         if (state.loading || state.error != null || cabins.isEmpty()) {

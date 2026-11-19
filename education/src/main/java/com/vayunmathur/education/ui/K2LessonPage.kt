@@ -44,7 +44,6 @@ fun K2LessonPage(backStack: NavBackStack<Route>, viewModel: EducationViewModel, 
     AppScaffold(
         title = lesson?.title ?: stringResource(R.string.lesson),
         backStack = backStack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         if (lesson == null) {
             MissingContent(padding, stringResource(R.string.let_s_go_back))

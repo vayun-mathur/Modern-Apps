@@ -64,7 +64,6 @@ fun AccountsScreen(
     DetailScaffold(
         title = stringResource(R.string.accounts_title),
         onNavigateBack = onBack,
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         Card(modifier = Modifier.fillMaxWidth()) {
             ListItem(

@@ -60,7 +60,6 @@ fun DataSettingsPage(
     AppScaffold(
         title = stringResource(R.string.settings_data),
         backStack = backStack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         if (isLoading) {
             Box(Modifier.fillMaxSize().padding(padding)) {

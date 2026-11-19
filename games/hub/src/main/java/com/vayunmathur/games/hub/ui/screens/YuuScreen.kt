@@ -56,7 +56,6 @@ fun YuuScreen(
 ) {
     AppScaffold(
         title = { Text(stringResource(R.string.tab_yuu), fontWeight = FontWeight.Bold) },
-        scrollBehavior = appBarScrollBehavior(),
         floatingActionButton = {
             FloatingActionButton(onClick = actions::onCreate) { IconAdd() }
         },

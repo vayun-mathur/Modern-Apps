@@ -26,7 +26,6 @@ fun InstallingContent(progress: Float?) {
         title = stringResource(R.string.installing_title),
         subtitle = stringResource(R.string.installing_text),
         icon = { IconSim() },
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         if (progress == null) {
             LinearProgressIndicator(modifier = Modifier.fillMaxWidth())

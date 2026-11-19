@@ -48,7 +48,6 @@ fun HomeScreen(
         actions = {
             GameTopBarActions(onOpenGameCenter = { backStack.add(Route.GameCenter) })
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         // Menu column; letterboxed on expanded windows so buttons and stat
         // cards keep a readable measure on desktop.

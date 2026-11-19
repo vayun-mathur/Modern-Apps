@@ -98,7 +98,6 @@ fun GameScreen(
             IconButton(onClick = { cameraState.fit(CircuitLayout(state.circuit, lookup, labels).bounds) }) { IconFullscreen() }
             IconButton(onClick = { actions.showBrief(true) }) { IconInfo() }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         Box(
             Modifier

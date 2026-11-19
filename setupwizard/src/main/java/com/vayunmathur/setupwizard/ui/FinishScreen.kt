@@ -34,7 +34,6 @@ fun FinishScreen(state: SetupUiState, onFinish: (disableOemUnlocking: Boolean) -
             else R.string.profile_setup_done_desc
         ),
         icon = { IconCheckCircle() },
-        scrollBehavior = appBarScrollBehavior(),
         primaryAction = SetupAction(
             label = stringResource(R.string.start),
             onClick = { onFinish(offerOemUnlockingOptOut && disableOemUnlocking) },

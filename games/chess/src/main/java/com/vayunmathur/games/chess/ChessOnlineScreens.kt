@@ -126,7 +126,6 @@ internal fun ChessOnlineGameDestination(viewModel: OnlineChessViewModel, gameId:
         } else {
             AppScaffold(
                 title = stringResource(R.string.tab_online),
-                scrollBehavior = appBarScrollBehavior(),
             ) { innerPadding ->
                 Column(
                     Modifier
@@ -160,7 +159,6 @@ private fun ChessOnlineLobbyScreen(
 
     AppScaffold(
         title = stringResource(R.string.tab_online),
-        scrollBehavior = appBarScrollBehavior(),
     ) { innerPadding ->
         Column(
             Modifier
@@ -490,7 +488,6 @@ private fun ChessOnlineGame(
     AppScaffold(
         title = playing.opponentName?.let { stringResource(R.string.online_opponent, it) }
             ?: stringResource(R.string.tab_online),
-        scrollBehavior = appBarScrollBehavior(),
     ) { innerPadding ->
         GameLayout(
             state = state,

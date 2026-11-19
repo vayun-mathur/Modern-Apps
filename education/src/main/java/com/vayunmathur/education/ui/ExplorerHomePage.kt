@@ -82,7 +82,6 @@ fun ExplorerHomePage(backStack: NavBackStack<Route>, viewModel: EducationViewMod
             }
             IconButton(onClick = { backStack.add(Route.ParentGate) }) { IconSettings() }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         item {
             Row(

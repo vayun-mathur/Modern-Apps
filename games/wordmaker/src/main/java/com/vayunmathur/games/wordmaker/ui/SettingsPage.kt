@@ -67,7 +67,6 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, onBack: () 
     DetailScaffold(
         title = stringResource(UiR.string.settings),
         onNavigateBack = onBack,
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         SettingsSection {
             SettingsSwitchRow(

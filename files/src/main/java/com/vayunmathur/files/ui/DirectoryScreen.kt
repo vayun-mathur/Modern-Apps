@@ -205,7 +205,6 @@ fun DirectoryScreen(
                 onShowNewFile = { showNewFileDialog = true },
             )
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         // Expanded windows (desktop, large tablets) list the parent folder beside the current
         // one. This stays inside the same destination on purpose: files deliberately has no

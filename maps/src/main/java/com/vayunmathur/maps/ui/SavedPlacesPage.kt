@@ -60,7 +60,6 @@ fun SavedPlacesPage(backStack: NavBackStack<Route>, viewModel: SavedPlacesViewMo
     AppScaffold(
         title = stringResource(R.string.saved_places_title),
         backStack = backStack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         Column(
             Modifier

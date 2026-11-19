@@ -45,7 +45,6 @@ fun AddAccountScreen(actions: AddAccountActions) {
     AppScaffold(
         title = stringResource(R.string.add_account_title),
         onNavigateBack = { actions.back() },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         LazyColumn(Modifier.padding(padding)) {
             items(ProviderRegistry.all, key = { it.id }) { provider ->

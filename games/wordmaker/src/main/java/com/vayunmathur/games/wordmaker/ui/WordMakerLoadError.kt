@@ -44,7 +44,6 @@ fun WordMakerLoadError(
             )
         },
         alignment = AppBarAlignment.Center,
-        scrollBehavior = appBarScrollBehavior(),
     ) { innerPadding ->
         ErrorState(
             title = message,

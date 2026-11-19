@@ -49,7 +49,7 @@ fun ProfileScreen(viewModel: ShopViewModel, required: Boolean) {
     val saved = viewModel.profile
     var draft by rememberSaveable(saved, stateSaver = ShopProfileSaver) { mutableStateOf(saved ?: ShopProfile()) }
     val error = draft.validationError()
-    AppScaffold(title = "Profile", scrollBehavior = appBarScrollBehavior()) { padding ->
+    AppScaffold(title = "Profile") { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(16.dp),

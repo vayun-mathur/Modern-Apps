@@ -60,7 +60,6 @@ fun VideoPlayerPage(
     AppScaffold(
         title = { Text(title, maxLines = 1) },
         onNavigateBack = { backStack.pop() },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         Box(
             Modifier

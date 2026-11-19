@@ -131,7 +131,6 @@ internal fun PartialScaffold(
         },
         horizontalPadding = horizontalPadding,
         verticalArrangement = Arrangement.spacedBy(8.dp),
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         content()
         if (state.loading || state.error != null || isEmpty) {

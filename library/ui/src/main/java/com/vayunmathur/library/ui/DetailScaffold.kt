@@ -49,7 +49,7 @@ fun DetailScaffold(
     alignment: AppBarAlignment = AppBarAlignment.Start,
     size: AppBarSize = AppBarSize.Small,
     actions: @Composable RowScope.() -> Unit = {},
-    scrollBehavior: TopAppBarScrollBehavior,
+    scrollBehavior: TopAppBarScrollBehavior? = null,
     bottomBar: @Composable () -> Unit = {},
     content: @Composable ColumnScope.() -> Unit,
 ) = AppScaffold(
@@ -78,7 +78,7 @@ fun DetailScaffold(
     alignment: AppBarAlignment = AppBarAlignment.Start,
     size: AppBarSize = AppBarSize.Small,
     actions: @Composable RowScope.() -> Unit = {},
-    scrollBehavior: TopAppBarScrollBehavior,
+    scrollBehavior: TopAppBarScrollBehavior? = null,
     bottomBar: @Composable () -> Unit = {},
     fillHeight: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
@@ -108,7 +108,7 @@ fun <T : NavKey> DetailScaffold(
     alignment: AppBarAlignment = AppBarAlignment.Start,
     size: AppBarSize = AppBarSize.Small,
     actions: @Composable RowScope.() -> Unit = {},
-    scrollBehavior: TopAppBarScrollBehavior,
+    scrollBehavior: TopAppBarScrollBehavior? = null,
     bottomBar: @Composable () -> Unit = {},
     content: @Composable ColumnScope.() -> Unit,
 ) = DetailScaffold(
@@ -139,7 +139,7 @@ fun DetailLazyColumn(
     alignment: AppBarAlignment = AppBarAlignment.Start,
     size: AppBarSize = AppBarSize.Small,
     actions: @Composable RowScope.() -> Unit = {},
-    scrollBehavior: TopAppBarScrollBehavior,
+    scrollBehavior: TopAppBarScrollBehavior? = null,
     bottomBar: @Composable () -> Unit = {},
     content: LazyListScope.() -> Unit,
 ) = AppScaffold(
@@ -164,7 +164,7 @@ fun DetailLazyColumn(
     alignment: AppBarAlignment = AppBarAlignment.Start,
     size: AppBarSize = AppBarSize.Small,
     actions: @Composable RowScope.() -> Unit = {},
-    scrollBehavior: TopAppBarScrollBehavior,
+    scrollBehavior: TopAppBarScrollBehavior? = null,
     bottomBar: @Composable () -> Unit = {},
     content: LazyListScope.() -> Unit,
 ) = AppScaffold(
@@ -189,7 +189,7 @@ fun <T : NavKey> DetailLazyColumn(
     alignment: AppBarAlignment = AppBarAlignment.Start,
     size: AppBarSize = AppBarSize.Small,
     actions: @Composable RowScope.() -> Unit = {},
-    scrollBehavior: TopAppBarScrollBehavior,
+    scrollBehavior: TopAppBarScrollBehavior? = null,
     bottomBar: @Composable () -> Unit = {},
     content: LazyListScope.() -> Unit,
 ) = DetailLazyColumn(

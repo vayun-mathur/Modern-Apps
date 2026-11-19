@@ -169,7 +169,6 @@ fun EditorScreen(
                 }) { IconSearch() }
                 IconButton(onClick = onOpenSettings) { IconSettings() }
             },
-            scrollBehavior = appBarScrollBehavior(),
         ) { padding ->
             EditorBody(
                 state = state,

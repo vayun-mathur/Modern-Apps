@@ -40,7 +40,6 @@ fun ActivityFeedScreen(
     AppScaffold(
         title = stringResource(R.string.tab_activity),
         navigationIcon = { backStack?.let { IconNavigation(it) } },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         if (activity.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp), contentAlignment = Alignment.TopStart) {

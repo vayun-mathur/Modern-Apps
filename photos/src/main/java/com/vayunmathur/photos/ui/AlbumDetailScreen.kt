@@ -110,7 +110,6 @@ fun AlbumDetailScreen(
         title = if (isSelectionMode) pluralStringResource(R.plurals.items_selected, selectedIds.size, selectedIds.size) else title,
         onNavigateBack = if (isSelectionMode) null else ({ backStack.pop() }),
         onClose = if (isSelectionMode) ({ onClearSelection() }) else null,
-        scrollBehavior = appBarScrollBehavior(),
         actions = {
             if (isSelectionMode) {
                 if (selectedIds.size == 1) {

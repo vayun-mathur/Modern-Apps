@@ -153,7 +153,6 @@ fun LocationsScreen(
                 }
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         val showDeviceLocationCard = localData.none { it.location.isCurrent }
         if (showDeviceLocationCard) {

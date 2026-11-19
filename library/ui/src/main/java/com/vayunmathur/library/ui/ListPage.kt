@@ -55,7 +55,7 @@ inline fun <T : DatabaseItem, Route : NavKey, reified EditPage : Route> ListPage
     noinline headlineContent: @Composable (T) -> Unit,
     noinline supportingContent: @Composable (T) -> Unit,
     noinline viewPage: suspend (id: Long) -> Route,
-    scrollBehavior: TopAppBarScrollBehavior,
+    scrollBehavior: TopAppBarScrollBehavior? = null,
     noinline editPage: (() -> Route)? = null,
     settingsPage: Route? = null,
     noinline otherActions: @Composable () -> Unit = {},
@@ -109,7 +109,7 @@ internal fun <T : DatabaseItem, Route : NavKey> ListPageContent(
     headlineContent: @Composable (T) -> Unit,
     supportingContent: @Composable (T) -> Unit,
     viewPage: suspend (id: Long) -> Route,
-    scrollBehavior: TopAppBarScrollBehavior,
+    scrollBehavior: TopAppBarScrollBehavior? = null,
     isEditPage: (Any?) -> Boolean,
     editPage: (() -> Route)? = null,
     settingsPage: Route? = null,
@@ -144,11 +144,12 @@ internal fun <T : DatabaseItem, Route : NavKey> ListPageContent(
         searchQuery = ""
     }
 
+    val behavior = scrollBehavior ?: appBarScrollBehavior()
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
 
     Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        modifier = Modifier.nestedScroll(behavior.nestedScrollConnection),
         topBar = {
             TopAppBar(
                 title = {
@@ -171,7 +172,7 @@ internal fun <T : DatabaseItem, Route : NavKey> ListPageContent(
                         }
                     }
                 },
-                scrollBehavior = scrollBehavior,
+                scrollBehavior = behavior,
             )
         },
         bottomBar = bottomBar,

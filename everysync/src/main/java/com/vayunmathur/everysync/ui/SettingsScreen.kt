@@ -74,7 +74,6 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions) {
     DetailScaffold(
         title = stringResource(R.string.settings_title),
         onNavigateBack = { actions.back() },
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         OutlinedTextField(
             value = intervalText,

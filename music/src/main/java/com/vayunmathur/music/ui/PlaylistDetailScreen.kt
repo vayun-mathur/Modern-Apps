@@ -99,7 +99,6 @@ fun PlaylistDetailScreen(backStack: NavBackStack<Route>, musicViewModel: MusicVi
                     }
         },
         bottomBar = { PlayingBottomBar(musicViewModel, backStack, Modifier.navigationBarsPadding()) },
-        scrollBehavior = appBarScrollBehavior(),
     ) {
             item {
                 Column(

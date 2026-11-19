@@ -38,7 +38,6 @@ fun SandboxScreen(
         title = stringResource(R.string.lg_sandbox_title),
         modifier = modifier,
         actions = { GameTopBarActions(onOpenGameCenter = onOpenGameCenter) },
-        scrollBehavior = appBarScrollBehavior(),
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 text = { Text(stringResource(R.string.lg_new_component)) },

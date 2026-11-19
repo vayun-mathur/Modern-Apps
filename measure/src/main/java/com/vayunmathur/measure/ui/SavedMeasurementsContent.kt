@@ -37,7 +37,6 @@ fun SavedMeasurementsContent(
     AppScaffold(
         title = stringResource(UiR.string.saved),
         onNavigateBack = onBack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         // Single-pane list; letterboxed on expanded windows so rows keep a
         // readable measure on desktop.

@@ -44,7 +44,6 @@ fun LanguagePickerScreen(state: LanguagePickerUiState, actions: LanguagePickerAc
     AppScaffold(
         title = title,
         onNavigateBack = actions::goBack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         Column(
             modifier = Modifier

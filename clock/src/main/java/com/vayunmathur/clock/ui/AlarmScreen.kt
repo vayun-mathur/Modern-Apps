@@ -55,7 +55,6 @@ fun AlarmScreen(
         },
         horizontalPadding = 16.dp,
         verticalArrangement = Arrangement.spacedBy(12.dp),
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         if (alarms.isEmpty()) {
             item {

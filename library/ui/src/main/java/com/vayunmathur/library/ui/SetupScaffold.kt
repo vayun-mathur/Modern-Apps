@@ -53,7 +53,7 @@ fun SetupScaffold(
     onClose: (() -> Unit)? = null,
     primaryAction: SetupAction? = null,
     secondaryAction: SetupAction? = null,
-    scrollBehavior: TopAppBarScrollBehavior,
+    scrollBehavior: TopAppBarScrollBehavior? = null,
     content: @Composable ColumnScope.() -> Unit = {},
 ) = AppScaffold(
     title = "",
@@ -76,7 +76,7 @@ fun <T : NavKey> SetupScaffold(
     icon: (@Composable () -> Unit)? = null,
     primaryAction: SetupAction? = null,
     secondaryAction: SetupAction? = null,
-    scrollBehavior: TopAppBarScrollBehavior,
+    scrollBehavior: TopAppBarScrollBehavior? = null,
     content: @Composable ColumnScope.() -> Unit = {},
 ) = SetupScaffold(
     title = title,

@@ -69,7 +69,6 @@ fun RcsRegistrationScreen(
     DetailScaffold(
         title = stringResource(R.string.rcs_status_title),
         onNavigateBack = onBack,
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(bottom = 8.dp)) {

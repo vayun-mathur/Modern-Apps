@@ -38,7 +38,6 @@ fun HomeScreen(
 ) {
     AppScaffold(
         title = "Uniflix",
-        scrollBehavior = appBarScrollBehavior(),
         actions = {
             IconButton(onClick = onOpenSearch) { IconSearch() }
             IconButton(onClick = onOpenAddons) { IconWidgets() }

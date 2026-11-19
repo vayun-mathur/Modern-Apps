@@ -48,8 +48,9 @@ enum class AppBarSize { Small, MediumFlexible, LargeFlexible }
  * them - it is not applied here so that a screen can let a list scroll under
  * the bars while still insetting its own items.
  *
- * [scrollBehavior] is required rather than defaulted so that every screen states how its bar
- * reacts to scrolling; [appBarScrollBehavior] gives the right one for a [size].
+ * [scrollBehavior] defaults to [appBarScrollBehavior] for the chosen [size] — almost every
+ * screen passed exactly that by hand (335 call sites), so it is now the default rather than
+ * a per-screen statement. Pass one explicitly only to pair a size with a custom behaviour.
  */
 @Composable
 fun AppScaffold(
@@ -62,7 +63,7 @@ fun AppScaffold(
     alignment: AppBarAlignment = AppBarAlignment.Start,
     size: AppBarSize = AppBarSize.Small,
     actions: @Composable RowScope.() -> Unit = {},
-    scrollBehavior: TopAppBarScrollBehavior,
+    scrollBehavior: TopAppBarScrollBehavior? = null,
     floatingActionButton: @Composable () -> Unit = {},
     bottomBar: @Composable () -> Unit = {},
     snackbarHost: (@Composable () -> Unit)? = null,
@@ -101,15 +102,16 @@ fun AppScaffold(
     alignment: AppBarAlignment = AppBarAlignment.Start,
     size: AppBarSize = AppBarSize.Small,
     actions: @Composable RowScope.() -> Unit = {},
-    scrollBehavior: TopAppBarScrollBehavior,
+    scrollBehavior: TopAppBarScrollBehavior? = null,
     floatingActionButton: @Composable () -> Unit = {},
     bottomBar: @Composable () -> Unit = {},
     snackbarHost: (@Composable () -> Unit)? = null,
     content: @Composable (PaddingValues) -> Unit,
 ) {
     val resolvedNavigationIcon = resolveNavigationIcon(navigationIcon, onClose, onNavigateBack)
+    val behavior = scrollBehavior ?: appBarScrollBehavior(size)
     Scaffold(
-        modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        modifier = modifier.nestedScroll(behavior.nestedScrollConnection),
         topBar = {
             AppTopBar(
                 title = title,
@@ -118,7 +120,7 @@ fun AppScaffold(
                 actions = actions,
                 alignment = alignment,
                 size = size,
-                scrollBehavior = scrollBehavior,
+                scrollBehavior = behavior,
             )
         },
         floatingActionButton = floatingActionButton,
@@ -162,7 +164,7 @@ fun <T : NavKey> AppScaffold(
     alignment: AppBarAlignment = AppBarAlignment.Start,
     size: AppBarSize = AppBarSize.Small,
     actions: @Composable RowScope.() -> Unit = {},
-    scrollBehavior: TopAppBarScrollBehavior,
+    scrollBehavior: TopAppBarScrollBehavior? = null,
     floatingActionButton: @Composable () -> Unit = {},
     bottomBar: @Composable () -> Unit = {},
     snackbarHost: (@Composable () -> Unit)? = null,

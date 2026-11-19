@@ -50,7 +50,7 @@ fun SettingsScreen(backStack: NavBackStack<Route>, state: SettingsUiState, actio
     val linesLabel = stringResource(R.string.lines_only)
     val linesArtLabel = stringResource(R.string.lines_art)
 
-    AppScaffold(title = stringResource(R.string.settings), onNavigateBack = { backStack.pop() }, scrollBehavior = appBarScrollBehavior()) { padding ->
+    AppScaffold(title = stringResource(R.string.settings), onNavigateBack = { backStack.pop() }) { padding ->
         // Letterboxed on expanded windows so the form keeps a readable measure.
         DesktopMaxWidthContainer(Modifier.padding(padding)) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {

@@ -124,5 +124,5 @@ fun MenuScreen(
                     it.passkeys.joinToString(" ") { pk -> "${pk.rpName} ${pk.rpId} ${pk.userName}" }
             is CredentialItem.PasskeyItem -> "${it.passkey.rpName} ${it.passkey.rpId} ${it.passkey.userName}"
         }
-    }, scrollBehavior = appBarScrollBehavior(), loading = state.loading)
+    }, loading = state.loading)
 }

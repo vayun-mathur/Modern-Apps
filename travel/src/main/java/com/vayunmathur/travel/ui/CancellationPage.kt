@@ -51,7 +51,6 @@ fun CancellationPage(
     DetailScaffold(
         title = stringResource(R.string.cancel_order),
         onNavigateBack = { backStack.pop() },
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         Column(
             Modifier.fillMaxWidth(),

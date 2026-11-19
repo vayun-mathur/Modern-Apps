@@ -72,7 +72,6 @@ fun ContactListPick(
         },
         horizontalPadding = 16.dp,
         verticalArrangement = Arrangement.spacedBy(8.dp),
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         item(key = "pick-search") {
             CommonSearchBar(

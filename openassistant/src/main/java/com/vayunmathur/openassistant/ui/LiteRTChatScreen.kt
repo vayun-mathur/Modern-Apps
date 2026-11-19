@@ -78,7 +78,6 @@ fun ChatScreen(
                 onRemoveImage = { actions.removeImage(it) }
             )
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         SelectionContainer {
             // Only the latest A2UI surface stays interactive; older cards are inert scrollback.

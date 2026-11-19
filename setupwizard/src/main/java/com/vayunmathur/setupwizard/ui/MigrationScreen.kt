@@ -21,7 +21,6 @@ fun MigrationScreen(onRestore: () -> Unit, onSkip: () -> Unit) {
         title = stringResource(R.string.restore_apps_and_data),
         subtitle = stringResource(R.string.data_restore_desc),
         icon = { IconRestore() },
-        scrollBehavior = appBarScrollBehavior(),
         primaryAction = SetupAction(stringResource(R.string.restore), onRestore),
         secondaryAction = SetupAction(stringResource(R.string.skip), onSkip),
     )

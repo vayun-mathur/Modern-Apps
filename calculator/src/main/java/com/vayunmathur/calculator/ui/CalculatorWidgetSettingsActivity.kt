@@ -84,7 +84,6 @@ class CalculatorWidgetSettingsActivity : ComponentActivity() {
         DetailScaffold(
             title = stringResource(R.string.calculator_widget_label),
             onNavigateBack = { finish() },
-            scrollBehavior = appBarScrollBehavior(),
         ) {
             SettingsSection {
                 SettingsSwitchRow(

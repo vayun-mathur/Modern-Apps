@@ -41,7 +41,6 @@ fun AddAccountScreen(
         navigationIcon = {
             if (onBack != null) { IconNavigation(onBack) }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
             ProviderPicker(onPick = { onPickProvider(it.id) })

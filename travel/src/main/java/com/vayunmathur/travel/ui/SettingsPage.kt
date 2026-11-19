@@ -63,7 +63,6 @@ fun SettingsPage(backStack: NavBackStack<Route>, viewModel: TravelViewModel) {
     AppScaffold(
         title = stringResource(UiR.string.settings),
         backStack = backStack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         Column(
             Modifier

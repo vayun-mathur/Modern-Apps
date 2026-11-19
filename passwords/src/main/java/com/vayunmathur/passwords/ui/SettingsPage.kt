@@ -60,7 +60,6 @@ fun SettingsPage(
                 format = passwordsViewModel.buildBackupFormat(),
             )
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) {
             Text(stringResource(R.string.import_csv_warning))
             Spacer(Modifier.height(16.dp))

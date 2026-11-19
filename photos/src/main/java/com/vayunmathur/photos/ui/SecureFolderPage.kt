@@ -112,7 +112,6 @@ fun SecureFolderPage(
                 )
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { paddingValues ->
         if (photos.isEmpty()) {
             EmptyState(

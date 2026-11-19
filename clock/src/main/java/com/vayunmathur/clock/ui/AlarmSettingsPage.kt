@@ -49,7 +49,6 @@ fun AlarmSettingsPage(backStack: NavBackStack<Route>, ds: DataStoreUtils) {
     DetailScaffold(
         title = stringResource(R.string.alarm_settings),
         onNavigateBack = { backStack.pop() },
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         Text(
             stringResource(R.string.defaults_for_new_alarms),

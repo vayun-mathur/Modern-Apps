@@ -224,7 +224,6 @@ internal fun SafePdfViewerChrome(
                     }
                 }
             },
-            scrollBehavior = appBarScrollBehavior(),
         ) { innerPadding ->
             // Expanded edit mode: real pages beside the tools panel so the toolbar
             // never covers content. Otherwise the compact full-size viewer.

@@ -88,7 +88,6 @@ fun GraphScreen(state: GraphUiState, actions: GraphActions) {
                 modifier = Modifier.padding(end = 12.dp),
             )
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         // Sibling tools, never list-detail: side-by-side on wide or short windows.
         if (isExpandedWidth() || isCompactHeight()) {

@@ -104,7 +104,6 @@ fun NoteScreen(state: NoteUiState, actions: NoteActions, sharedTextKey: Any? = n
                 EditorBottomBar(scrollable = true, content = insertButtons)
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
         fillHeight = true,
     ) {
         BasicTextField(

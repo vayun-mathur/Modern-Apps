@@ -56,7 +56,6 @@ fun DownloadsPage(
                 IconButton(onClick = { viewModel.clearAllDownloads() }) { IconDelete() }
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { paddingValues ->
         DesktopMaxWidthContainer(modifier = Modifier.padding(paddingValues)) {
         if (downloads.isEmpty()) {

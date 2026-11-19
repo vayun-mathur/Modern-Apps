@@ -30,7 +30,6 @@ fun MediaGridScreen(
     AppScaffold(
         title = title,
         onNavigateBack = onBack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         DesktopMaxWidthContainer(Modifier.padding(padding)) {
             if (loading) {

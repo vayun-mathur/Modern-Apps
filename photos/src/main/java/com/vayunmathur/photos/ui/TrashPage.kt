@@ -129,7 +129,6 @@ fun TrashPage(backStack: NavBackStack<Route>, galleryViewModel: GalleryViewModel
                 }
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { paddingValues ->
         if (trashedPhotos.isEmpty()) {
             EmptyState(

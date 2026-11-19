@@ -57,7 +57,6 @@ fun ScholarHomeScreen(state: HomeUiState, actions: HomeActions) {
                 IconSettings()
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         item {
             Row(

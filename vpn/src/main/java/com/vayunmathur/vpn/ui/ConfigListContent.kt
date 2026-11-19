@@ -64,7 +64,6 @@ fun ConfigListContent(
         },
         horizontalPadding = 16.dp,
         verticalArrangement = Arrangement.spacedBy(12.dp),
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         item {
             Button(onGeoPicker, Modifier.fillMaxWidth()) { Text(stringResource(R.string.browse_by_location)) }

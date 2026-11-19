@@ -231,7 +231,6 @@ fun ContactListScreen(
         // than a row inside one item per letter. The headers carry the extra 6dp that keeps the gap
         // between groups at the 16dp it has always been.
         verticalArrangement = Arrangement.spacedBy(2.dp),
-        scrollBehavior = appBarScrollBehavior(),
         overlay = {
             val itemCount by remember { derivedStateOf { listState.layoutInfo.totalItemsCount } }
             ContactSectionScroller(

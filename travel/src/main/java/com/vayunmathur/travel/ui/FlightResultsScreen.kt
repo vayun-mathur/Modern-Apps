@@ -72,7 +72,6 @@ fun FlightResultsScreen(
                 navigationIcon = { IconNavigation { actions.back() } },
             )
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         val visible = state.visibleOffers
         val expiry = visible.mapNotNull { it.expiresAt.ifBlank { null } }.minOrNull()

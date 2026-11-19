@@ -247,7 +247,6 @@ fun ConversationScreen(
                 },
             )
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         if (showPollComposer) {
             PollComposerDialog(

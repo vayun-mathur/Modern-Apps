@@ -71,7 +71,6 @@ fun NoteTypeEditScreen(state: NoteTypeEditUiState, actions: NoteTypeEditActions)
                 actions.save(name.ifBlank { "Note type" }, css, type, fields.toList(), templates.toList())
             }) { com.vayunmathur.library.ui.IconSave() }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { paddingValues ->
         Column(
             Modifier

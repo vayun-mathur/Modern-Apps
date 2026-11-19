@@ -195,7 +195,6 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions) {
                 }
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { paddingValues ->
         if (calendars.isEmpty()) {
             Box(

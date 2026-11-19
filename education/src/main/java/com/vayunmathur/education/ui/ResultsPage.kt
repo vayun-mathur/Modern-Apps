@@ -42,7 +42,6 @@ fun ResultsPage(
     AppScaffold(
         title = stringResource(R.string.results),
         backStack = backStack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         Column(
             Modifier

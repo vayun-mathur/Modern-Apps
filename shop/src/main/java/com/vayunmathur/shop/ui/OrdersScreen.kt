@@ -48,7 +48,6 @@ fun OrdersScreen(viewModel: ShopViewModel) {
     val context = LocalContext.current
     AppScaffold(
         title = stringResource(R.string.orders),
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         AppPullToRefreshBox(
             isRefreshing = viewModel.refreshingTracking,

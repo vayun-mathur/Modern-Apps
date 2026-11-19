@@ -49,7 +49,6 @@ import com.vayunmathur.tuner.platform.TunerUiState
 fun ChordScreen(state: TunerUiState, onSelectInstrument: (String) -> Unit) {
     AppScaffold(
         title = stringResource(R.string.tab_chord),
-        scrollBehavior = appBarScrollBehavior(),
         actions = { InstrumentMenu(state, onSelectInstrument) },
     ) { padding ->
         // Single-pane instrument readout; letterboxed on expanded windows.

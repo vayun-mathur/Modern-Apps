@@ -110,7 +110,6 @@ fun YuuEditorScreen(
                 }
             ) { IconSave() }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         Column(
             modifier = modifier.fillMaxSize().padding(padding).padding(12.dp),

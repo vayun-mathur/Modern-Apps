@@ -81,7 +81,6 @@ fun GameDetailScreen(
     AppScaffold(
         title = KnownGames.displayName(gameId, game?.displayName),
         backStack = backStack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         val g = game
         if (g == null) {

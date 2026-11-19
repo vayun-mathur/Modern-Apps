@@ -71,7 +71,6 @@ fun ProfileDetailScreen(
                 Text(stringResource(R.string.rename_profile_title))
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         SettingsSection {
             SettingsRow(

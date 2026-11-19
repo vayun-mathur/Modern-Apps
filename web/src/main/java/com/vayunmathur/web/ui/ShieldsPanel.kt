@@ -191,7 +191,7 @@ internal fun ShieldsPage(
     val overrides by viewModel.shieldSettings.collectAsStateWithLifecycle()
     val global = viewModel.shields
 
-    AppScaffold(title = stringResource(R.string.shields), backStack = backStack, scrollBehavior = appBarScrollBehavior()) { padding ->
+    AppScaffold(title = stringResource(R.string.shields), backStack = backStack) { padding ->
         LazyColumn(Modifier.padding(padding)) {
             item {
                 Text(

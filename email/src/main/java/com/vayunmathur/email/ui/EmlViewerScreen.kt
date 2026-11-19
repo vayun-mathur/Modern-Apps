@@ -104,7 +104,6 @@ fun EmlViewerScreen(
                 }
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         when {
             loading -> {

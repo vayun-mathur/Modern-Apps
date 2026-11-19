@@ -172,7 +172,6 @@ internal fun SiteDataPage(
                 },
             )
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         if (storages.isEmpty() && permissions.isEmpty()) {
             item {

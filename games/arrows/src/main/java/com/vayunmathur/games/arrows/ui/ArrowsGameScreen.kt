@@ -98,7 +98,6 @@ fun ArrowsGameScreen(
                 onOpenSettings = onOpenSettings,
             )
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         val game = state.game
         when {

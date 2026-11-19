@@ -90,7 +90,6 @@ fun ExerciseDetailsPage(backStack: NavBackStack<Route>, viewModel: HealthViewMod
             )
         },
         onNavigateBack = { backStack.pop() },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         if (records.isEmpty()) {
             EmptyState(

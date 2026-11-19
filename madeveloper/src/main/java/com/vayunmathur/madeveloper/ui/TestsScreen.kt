@@ -31,7 +31,6 @@ fun TestsScreen(state: MaDevUiState, onBack: () -> Unit) {
         title = "CI tests",
         subtitle = state.tests?.coveragePct?.let { "Coverage %.1f%%".format(it) },
         onNavigateBack = onBack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         LazyColumn(
             Modifier.fillMaxSize().padding(padding),

@@ -93,7 +93,6 @@ fun OnlineTab(viewModel: OfficeViewModel, onOpenDoc: (OfficeDocMeta) -> Unit) {
                 IconRefresh()
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { pad ->
         Column(Modifier.fillMaxSize().padding(pad)) {
             OfflineBanner(online)

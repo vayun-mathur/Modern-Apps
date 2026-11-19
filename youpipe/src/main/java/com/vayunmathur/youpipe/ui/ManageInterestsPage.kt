@@ -56,7 +56,6 @@ fun ManageInterestsPage(
     AppScaffold(
         title = stringResource(R.string.title_manage_interests),
         backStack = backStack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { paddingValues ->
         LazyColumn(Modifier.padding(paddingValues)) {
             item { SectionHeader(stringResource(R.string.label_your_channels)) }

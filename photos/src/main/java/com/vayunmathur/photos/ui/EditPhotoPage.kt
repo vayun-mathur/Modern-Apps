@@ -154,7 +154,6 @@ fun EditPhotoPage(
                 }
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { paddingValues ->
         val layoutDirection = LocalLayoutDirection.current
         Column(

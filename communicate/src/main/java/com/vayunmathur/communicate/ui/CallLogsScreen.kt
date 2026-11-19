@@ -56,7 +56,6 @@ fun CallLogsScreen() {
     var pendingDelete by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<CommunicateCallLogEntry?>(null) }
     AppScaffold(
         title = stringResource(R.string.call_logs_title),
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         DefaultDialerGate(modifier = Modifier.padding(padding)) { roleRevision ->
             PermissionGate(

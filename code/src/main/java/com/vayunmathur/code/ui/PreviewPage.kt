@@ -29,7 +29,7 @@ import com.vayunmathur.library.util.NavBackStack
  */
 @Composable
 fun PreviewPage(viewModel: EditorViewModel, backStack: NavBackStack<Route>) {
-    AppScaffold(title = stringResource(R.string.preview), backStack = backStack, scrollBehavior = appBarScrollBehavior()) { padding ->
+    AppScaffold(title = stringResource(R.string.preview), backStack = backStack) { padding ->
         val tab = viewModel.currentTab
         if (tab == null) {
             Text(

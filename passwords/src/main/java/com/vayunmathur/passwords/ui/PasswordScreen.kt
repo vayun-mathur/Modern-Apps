@@ -102,7 +102,6 @@ fun PasswordScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         horizontalPadding = 16.dp,
         verticalArrangement = Arrangement.spacedBy(12.dp),
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         // Header
         item {

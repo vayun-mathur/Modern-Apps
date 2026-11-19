@@ -73,7 +73,6 @@ fun DashboardScreen(state: ScreenTimeUiState, actions: DashboardActions) {
     LazyListScaffold(
         title = stringResource(R.string.app_name),
         horizontalPadding = 0.dp,
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         item { PeriodToggle(state.period, actions.onSetPeriod) }
 

@@ -82,7 +82,7 @@ fun ClockScreen(
         FloatingActionButton({
             backStack.add(Route.SelectTimeZonesDialog)
         }) { IconAdd() }
-    }, state = listState, verticalArrangement = Arrangement.spacedBy(4.dp), scrollBehavior = appBarScrollBehavior()) {
+    }, state = listState, verticalArrangement = Arrangement.spacedBy(4.dp)) {
         item {
             val is24h = state.is24Hour
             val time = state.now().toLocalDateTime(state.zone)

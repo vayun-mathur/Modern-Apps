@@ -53,7 +53,6 @@ fun HealthConnectRequiredPage(
             ),
             onClick = { installFailed = !onInstall() },
         ),
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         Text(
             stringResource(

@@ -41,7 +41,6 @@ fun CommitsScreen(
         title = "Commits",
         subtitle = "$repoName · $branch",
         onNavigateBack = onBack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         AppPullToRefreshBox(
             isRefreshing = false,

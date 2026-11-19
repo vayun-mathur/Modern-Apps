@@ -207,7 +207,6 @@ fun CatalogPickerPage(
             )
         },
         onNavigateBack = { backStack.pop() },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         Column(modifier = Modifier.padding(padding)) {
 

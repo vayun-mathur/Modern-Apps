@@ -240,7 +240,6 @@ fun NotesListScreen(
             }
         },
         state = listState,
-        scrollBehavior = appBarScrollBehavior(),
     ) {
             items(localData, key = { it.id }) { note ->
                 val dragging = reorderState.draggingKey == note.id

@@ -99,7 +99,6 @@ fun PasskeyPage(
                 IconDelete()
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         Card(shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(12.dp)) {

@@ -49,7 +49,6 @@ fun AddonsContent(
     AppScaffold(
         title = "Stream addons",
         onNavigateBack = onBack,
-        scrollBehavior = appBarScrollBehavior(),
         actions = {
             IconButton(onClick = onRefreshAll, enabled = !refreshing) { IconRefresh() }
             IconButton(onClick = onImportJsClick) { IconUpload() }

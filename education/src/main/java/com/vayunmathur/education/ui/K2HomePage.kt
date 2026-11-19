@@ -71,7 +71,6 @@ fun K2HomePage(backStack: NavBackStack<Route>, viewModel: EducationViewModel) {
             }
             IconButton(onClick = { backStack.add(Route.ParentGate) }) { IconSettings() }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         Column(
             Modifier

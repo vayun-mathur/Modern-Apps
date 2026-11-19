@@ -28,7 +28,7 @@ internal fun SignalRegistrationStepScaffold(
     onBack: () -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    DetailScaffold(title = "Register Signal", scrollBehavior = appBarScrollBehavior()) {
+    DetailScaffold(title = "Register Signal") {
         Text(
             "Registers this number as the PRIMARY Signal device. This will link Signal to this app — " +
                 "use a test number.",

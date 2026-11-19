@@ -79,7 +79,6 @@ fun SettingsPage(
     AppScaffold(
         title = stringResource(UiR.string.settings),
         backStack = backStack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { paddingValues ->
         DesktopMaxWidthContainer(modifier = Modifier.padding(paddingValues)) {
         LazyColumn(

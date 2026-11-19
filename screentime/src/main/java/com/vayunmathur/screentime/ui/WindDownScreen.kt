@@ -45,7 +45,6 @@ fun WindDownScreen(
     LazyListScaffold(
         title = stringResource(R.string.winddown_title),
         horizontalPadding = 0.dp,
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         item {
             SettingsSection {

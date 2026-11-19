@@ -44,7 +44,6 @@ fun ViewInfoScreen(state: EmergencyUiState) {
     LazyListScaffold(
         // No title and no actions: the scaffold draws no bar, so the content starts
         // at the top. scrollBehavior is still required for the nested-scroll wiring.
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         if (state.loading) {
             item {

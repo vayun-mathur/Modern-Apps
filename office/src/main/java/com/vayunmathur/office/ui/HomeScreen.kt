@@ -54,7 +54,7 @@ fun HomeScreen(
     onNewSpreadsheet: () -> Unit = {},
     onNewPresentation: () -> Unit = {},
 ) {
-    AppScaffold(title = stringResource(R.string.app_name), scrollBehavior = appBarScrollBehavior()) { pad ->
+    AppScaffold(title = stringResource(R.string.app_name)) { pad ->
         Column(
             Modifier.fillMaxSize().padding(pad).background(MaterialTheme.colorScheme.background)
                 .padding(homeScreenPadding),

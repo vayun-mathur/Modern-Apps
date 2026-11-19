@@ -54,7 +54,7 @@ fun GameBoardScreen(
 ) {
     var showRestartConfirm by remember { mutableStateOf(false) }
     if (showRestartConfirm) { RestartConfirmDialog(onConfirm = { actions.onRestart() }, onDismiss = { showRestartConfirm = false }) }
-    AppScaffold(title = "", onNavigateBack = onBack, scrollBehavior = appBarScrollBehavior()) { innerPadding ->
+    AppScaffold(title = "", onNavigateBack = onBack) { innerPadding ->
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             val infoBoxes = @Composable { LevelPickerBox(levelIndex = state.levelIndex, onLevelChange = onLevelChange, isCompleted = state.isCompleted, maxLevelIndex = state.maxLevelIndex); MovesBox(moves = state.moves, bestScore = state.bestScore, optimalMoves = state.levelData.optimalMoves) }
             val actionButtons = @Composable {

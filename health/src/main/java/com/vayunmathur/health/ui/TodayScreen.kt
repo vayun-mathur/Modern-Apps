@@ -34,7 +34,6 @@ import com.vayunmathur.library.util.round
 fun TodayScreen(state: TodayUiState, actions: TodayActions) {
     LazyListScaffold(
         verticalArrangement = Arrangement.spacedBy(12.dp),
-        scrollBehavior = appBarScrollBehavior(),
     ) {
             item {
                 ActivityRingsHero(

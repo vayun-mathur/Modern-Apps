@@ -38,7 +38,7 @@ fun DashboardScreen(
     onBackupNow: () -> Unit,
     onRestoreNow: () -> Unit,
 ) {
-    AppScaffold(title = "Backup", scrollBehavior = appBarScrollBehavior()) { padding ->
+    AppScaffold(title = "Backup") { padding ->
         // Letterboxed on expanded windows so the form keeps a readable measure.
         DesktopMaxWidthContainer(Modifier.padding(padding)) {
             Column(

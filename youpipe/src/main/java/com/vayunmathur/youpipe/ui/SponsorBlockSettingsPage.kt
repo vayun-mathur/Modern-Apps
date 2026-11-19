@@ -33,7 +33,6 @@ fun SponsorBlockSettingsPage(
     AppScaffold(
         title = stringResource(R.string.settings_sponsorblock),
         backStack = backStack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         Column(
             Modifier

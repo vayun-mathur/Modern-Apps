@@ -45,7 +45,6 @@ fun PinSetupScreen(actions: PinSetupActions) {
 
     AppScaffold(
         title = stringResource(R.string.pin_setup_title),
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         Column(
             modifier = Modifier.fillMaxSize().padding(24.dp),

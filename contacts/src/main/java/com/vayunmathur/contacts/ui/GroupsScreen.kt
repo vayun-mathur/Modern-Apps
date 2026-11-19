@@ -87,7 +87,6 @@ fun GroupsScreen(state: GroupsUiState, actions: ContactsActions, expandGroupId: 
         },
         horizontalPadding = 8.dp,
         verticalArrangement = Arrangement.spacedBy(4.dp),
-        scrollBehavior = appBarScrollBehavior(),
     ) {
             if (state.groups.isEmpty()) {
                 item(key = "groups-empty") {

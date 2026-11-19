@@ -89,7 +89,6 @@ fun BodyPage(backStack: NavBackStack<Route>, viewModel: HealthViewModel) {
             }
         },
         verticalArrangement = Arrangement.spacedBy(12.dp),
-        scrollBehavior = appBarScrollBehavior(),
     ) {
             // Body composition
             item {

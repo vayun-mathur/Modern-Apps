@@ -109,7 +109,6 @@ fun AccountsScreen(state: AccountsUiState, actions: AccountsActions) {
                 IconAdd()
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         if (state.accounts.isEmpty()) {
             EmptyState(

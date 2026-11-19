@@ -66,7 +66,6 @@ fun HomePage(backStack: NavBackStack<Route>, viewModel: TravelViewModel, homeRou
                 IconSettings()
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
         bottomBar = {
             BottomNavBar {
                 BottomNavBarItem(

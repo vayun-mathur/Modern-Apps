@@ -97,7 +97,6 @@ fun HistoryPage(backStack: NavBackStack<Route>, youPipeViewModel: YouPipeViewMod
                 }
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         items(history, key = { it.id }) { historyItem ->
                 val isSelected = historyItem.id in selectedIds

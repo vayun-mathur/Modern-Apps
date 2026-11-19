@@ -38,7 +38,6 @@ fun ConfigDetailPage(backStack: NavBackStack<Route>, vm: VpnViewModel, id: Long)
     DetailScaffold(
         title = stringResource(R.string.tunnel, cfg.name),
         backStack = backStack,
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         Text(
             stringResource(R.string.imported_from_wireguard_conf_using_gotat),

@@ -60,7 +60,6 @@ fun InstalledSitesPage(
     AppScaffold(
         title = stringResource(R.string.installed_apps),
         backStack = backStack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { paddingValues ->
         DesktopMaxWidthContainer(modifier = Modifier.padding(paddingValues)) {
         if (installed.isEmpty()) {

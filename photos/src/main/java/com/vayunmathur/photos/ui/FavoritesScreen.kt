@@ -86,7 +86,6 @@ fun FavoritesScreen(
         },
         onNavigateBack = if (isSelectionMode) null else ({ backStack.pop() }),
         onClose = if (isSelectionMode) ({ actions.clearSelection() }) else null,
-        scrollBehavior = appBarScrollBehavior(),
         actions = {
             if (isSelectionMode) {
                 GallerySelectionActions(allFavorite, actions, onAddToAlbum = { showAlbumPicker = true })

@@ -32,7 +32,6 @@ fun DraftsScreen(
     AppScaffold(
         title = stringResource(R.string.drafts),
         onNavigateBack = onBack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         if (drafts.isEmpty()) {
             EmptyState(

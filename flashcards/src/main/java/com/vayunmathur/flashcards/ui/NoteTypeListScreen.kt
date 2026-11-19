@@ -64,7 +64,6 @@ fun NoteTypeListScreen(state: NoteTypeListUiState, actions: NoteTypeListActions)
         floatingActionButton = {
             FloatingActionButton(onClick = { actions.addNoteType() }) { IconAdd() }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { paddingValues ->
         LazyColumn(Modifier.fillMaxSize(), contentPadding = paddingValues) {
             items(state.noteTypes, key = { it.id }) { summary ->

@@ -62,7 +62,6 @@ fun GameBoardScreen(state: SolitaireUiState, mode: GameMode, actions: SolitaireA
             Text(timeText, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(end = 16.dp))
             Text("${stringResource(R.string.moves)}: $moveCount", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(end = 16.dp))
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { innerPadding ->
         var confirmGiveUp by remember { mutableStateOf(false) }
         val giveUp = {

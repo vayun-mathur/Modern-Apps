@@ -69,7 +69,6 @@ fun AlbumsScreen(
     AppScaffold(
         title = stringResource(R.string.label_albums),
         bottomBar = { NavigationBar(Route.Albums, backStack) },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),

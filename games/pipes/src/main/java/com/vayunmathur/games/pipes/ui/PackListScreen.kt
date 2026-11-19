@@ -32,7 +32,7 @@ import com.vayunmathur.library.ui.appBarScrollBehavior
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PackListScreen(packs: List<PackProgress>, onOpenPack: (Int) -> Unit, onOpenSettings: () -> Unit, onOpenGameCenter: () -> Unit, daily: DailyProgress? = null, onOpenDaily: () -> Unit = {}) {
-    DetailLazyColumn(title = stringResource(R.string.pack_selector), actions = { GameTopBarActions(onOpenGameCenter = onOpenGameCenter, onOpenSettings = onOpenSettings) }, scrollBehavior = appBarScrollBehavior()) {
+    DetailLazyColumn(title = stringResource(R.string.pack_selector), actions = { GameTopBarActions(onOpenGameCenter = onOpenGameCenter, onOpenSettings = onOpenSettings) }) {
         daily?.let { item { DailyChallengeCard(day = it.day, completed = it.completed, total = it.total, streak = it.streak, onOpen = onOpenDaily) } }
         itemsIndexed(packs) { index, pack -> Card(Modifier.clickable { onOpenPack(index) }, colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surface)) { Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Column { Text(pack.name, style = MaterialTheme.typography.headlineMedium); Text(pack.shape.replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)) }; Text("${pack.completed}/${pack.total}", style = MaterialTheme.typography.titleMedium) } } }
     }

@@ -57,7 +57,6 @@ fun BypassListPage(backStack: NavBackStack<Route>) {
     AppScaffold(
         title = stringResource(R.string.bypass_list_title),
         backStack = backStack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { pad ->
         val list = apps
         if (list == null) {

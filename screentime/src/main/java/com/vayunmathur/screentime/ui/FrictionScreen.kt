@@ -108,7 +108,6 @@ fun FrictionScreen(appLabel: String?, nudge: Boolean, onContinue: () -> Unit, on
         title = stringResource(
             if (nudge) R.string.friction_nudge_title else R.string.friction_spent_title,
         ),
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         Column(
             modifier = Modifier.fillMaxSize().padding(24.dp),

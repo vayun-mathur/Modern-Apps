@@ -157,7 +157,6 @@ class DocumentPickerActivity : ComponentActivity() {
             title = titleFor(mode),
             modifier = Modifier.imePadding(),
             onNavigateBack = { navUp() },
-            scrollBehavior = appBarScrollBehavior(),
         ) { padding ->
             Column(Modifier.fillMaxSize().padding(padding)) {
                 PickerPathHeader(currentDir.absolutePath)

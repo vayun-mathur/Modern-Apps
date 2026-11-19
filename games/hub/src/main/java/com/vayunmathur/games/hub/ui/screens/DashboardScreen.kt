@@ -65,7 +65,6 @@ fun DashboardScreen(
     AppScaffold(
         title = { Text(stringResource(R.string.app_name), fontWeight = FontWeight.Bold) },
         actions = topBarActions,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         LazyColumn(
             modifier = modifier.fillMaxSize().padding(padding),

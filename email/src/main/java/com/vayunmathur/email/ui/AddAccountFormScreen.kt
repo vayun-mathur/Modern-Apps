@@ -77,7 +77,6 @@ fun AddAccountFormScreen(
         navigationIcon = {
             if (onBack != null) { IconNavigation(onBack) }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
             if (selectedProvider.id == PROVIDER_OUTLOOK) {

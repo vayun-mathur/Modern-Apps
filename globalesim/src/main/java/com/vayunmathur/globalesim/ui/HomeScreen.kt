@@ -81,7 +81,6 @@ fun HomeScreen(
     )
     AppScaffold(
         title = "Purchase",
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         AppPullToRefreshBox(
             isRefreshing = state.refreshing,

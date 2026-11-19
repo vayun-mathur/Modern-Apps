@@ -84,7 +84,6 @@ fun EmbeddedCheckoutScreen(viewModel: ShopViewModel, onClose: () -> Unit) {
     AppScaffold(
         title = request.storeName,
         onClose = close,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
             if (failed) {

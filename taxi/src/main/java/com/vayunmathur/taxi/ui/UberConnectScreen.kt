@@ -30,7 +30,7 @@ import com.vayunmathur.taxi.network.uber.UberWebView
 fun UberConnectScreen(onBack: () -> Unit, onTryNative: () -> Unit = {}) {
     var captured by remember { mutableIntStateOf(0) }
 
-    AppScaffold(title = stringResource(R.string.provider_uber), onNavigateBack = onBack, scrollBehavior = appBarScrollBehavior()) { padding ->
+    AppScaffold(title = stringResource(R.string.provider_uber), onNavigateBack = onBack) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             if (captured > 0) {
                 Text(

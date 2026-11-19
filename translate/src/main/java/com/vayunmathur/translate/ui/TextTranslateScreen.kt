@@ -86,7 +86,6 @@ fun TextTranslateScreen(state: TextTranslateUiState, actions: TextTranslateActio
                 }
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         Column(
             modifier = Modifier

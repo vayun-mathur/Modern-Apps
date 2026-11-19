@@ -41,7 +41,7 @@ fun OnboardingScreen(
     onRestoreWithCode: (List<String>) -> Unit,
     onDismissMessages: () -> Unit,
 ) {
-    AppScaffold(title = "Set up Backup", scrollBehavior = appBarScrollBehavior()) { padding ->
+    AppScaffold(title = "Set up Backup") { padding ->
         // Letterboxed on expanded windows so the form keeps a readable measure.
         DesktopMaxWidthContainer(Modifier.padding(padding)) {
             Column(

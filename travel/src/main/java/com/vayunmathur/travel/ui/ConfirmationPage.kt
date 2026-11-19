@@ -93,7 +93,6 @@ fun ConfirmationPage(
 
     DetailScaffold(
         title = stringResource(confirmationTitle(trip?.status.orEmpty())),
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         Column(
             Modifier.fillMaxWidth(),

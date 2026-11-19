@@ -164,7 +164,6 @@ internal fun OmniboxEditor(
             AppScaffold(
                 title = { omniboxField(Modifier.fillMaxWidth()) },
                 navigationIcon = dismissOmnibox,
-                scrollBehavior = appBarScrollBehavior(),
             ) { paddingValues -> suggestions(paddingValues) }
         }
     }

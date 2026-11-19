@@ -53,7 +53,7 @@ fun SearchPage(viewModel: EditorViewModel, backStack: NavBackStack<Route>) {
         viewModel.actions.searchProject(query, caseSensitive, useRegex)
     }
 
-    AppScaffold(title = stringResource(UiR.string.search), backStack = backStack, scrollBehavior = appBarScrollBehavior()) { padding ->
+    AppScaffold(title = stringResource(UiR.string.search), backStack = backStack) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
             OutlinedTextField(
                 value = query,

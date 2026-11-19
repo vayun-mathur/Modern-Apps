@@ -93,7 +93,6 @@ fun StayGuestsPage(
     com.vayunmathur.library.ui.AppScaffold(
         title = stringResource(R.string.guest_details),
         backStack = backStack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         val loading = booking is StayBookingState.Loading
         Column(

@@ -55,7 +55,6 @@ fun CastContent(
                 IconButton(onClick = actions::startScan) { IconRefresh() }
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         // Letterboxed on expanded windows so the device list keeps a readable measure.
         DesktopMaxWidthContainer(Modifier.padding(padding)) {

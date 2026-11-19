@@ -110,7 +110,6 @@ fun HolidayCalendarsScreen(viewModel: CalendarViewModel, backStack: NavBackStack
     AppScaffold(
         title = stringResource(R.string.holiday_calendars),
         backStack = backStack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { paddingValues ->
         Column(Modifier.padding(paddingValues).fillMaxSize()) {
             OutlinedTextField(

@@ -28,7 +28,7 @@ internal fun WhatsAppRegistrationStepScaffold(
     onBack: () -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    DetailScaffold(title = "Register WhatsApp", scrollBehavior = appBarScrollBehavior()) {
+    DetailScaffold(title = "Register WhatsApp") {
         Text(
             "Registers this number as the PRIMARY WhatsApp device. This will log WhatsApp out " +
                 "on the number's real phone — use a test number.",

@@ -37,7 +37,6 @@ fun DailyLimitScreen(currentMinutes: Int?, actions: DailyLimitActions) {
     LazyListScaffold(
         title = stringResource(R.string.daily_title),
         horizontalPadding = 0.dp,
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         item {
             SettingsSection {

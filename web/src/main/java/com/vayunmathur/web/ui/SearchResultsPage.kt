@@ -126,7 +126,6 @@ fun SearchResultsPage(
 
     AppScaffold(
         title = query,
-        scrollBehavior = appBarScrollBehavior(),
         modifier = modifier,
     ) { paddingValues ->
         DesktopMaxWidthContainer(modifier = Modifier.padding(paddingValues)) {

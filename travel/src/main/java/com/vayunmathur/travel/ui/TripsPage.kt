@@ -57,7 +57,6 @@ fun TripsPage(backStack: NavBackStack<Route>, viewModel: TravelViewModel) {
                 IconRefresh()
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         AppPullToRefreshBox(
             isRefreshing = pending && trips.isNotEmpty(),

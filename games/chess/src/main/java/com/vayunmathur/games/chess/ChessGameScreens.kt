@@ -338,7 +338,6 @@ fun ChessGameScreen(
                 IconGameCenterTrophy(stringResource(R.string.achievements))
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { innerPadding ->
         BoxWithConstraints(
             Modifier

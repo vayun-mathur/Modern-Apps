@@ -80,7 +80,6 @@ fun RepoScreen(
         title = repoName,
         subtitle = repo?.defaultBranch?.takeIf { it.isNotBlank() }?.let { "Default branch $it" },
         onNavigateBack = onBack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         LazyColumn(
             Modifier.padding(padding),

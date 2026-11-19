@@ -169,7 +169,6 @@ internal fun ExpandedEditorScaffold(
             IconButton(onClick = onOpenQuickOpen) { IconSearch() }
             IconButton(onClick = onOpenSettings) { IconSettings() }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         CodeWideLayout(
             tree = { treeModifier ->

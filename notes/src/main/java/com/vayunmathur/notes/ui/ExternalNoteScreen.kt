@@ -78,7 +78,6 @@ fun ExternalNoteScreen(
                 }
             }) { IconAdd() }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { paddingValues ->
         if (loaded) {
             OdfMarkdownEditor(

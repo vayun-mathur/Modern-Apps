@@ -52,7 +52,7 @@ fun SettingsPage(viewModel: EditorViewModel, backStack: NavBackStack<Route>) {
     var showTabWidthDialog by remember { mutableStateOf(false) }
     var showEditorThemeDialog by remember { mutableStateOf(false) }
 
-    AppScaffold(title = stringResource(UiR.string.settings), backStack = backStack, scrollBehavior = appBarScrollBehavior()) { padding ->
+    AppScaffold(title = stringResource(UiR.string.settings), backStack = backStack) { padding ->
         Column(
             Modifier
                 .padding(padding)

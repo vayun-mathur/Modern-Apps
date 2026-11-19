@@ -101,7 +101,6 @@ fun RecipeManagementPage(backStack: NavBackStack<Route>, viewModel: HealthViewMo
                 }
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
             PrimaryTabRow(

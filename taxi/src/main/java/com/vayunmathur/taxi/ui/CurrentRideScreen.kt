@@ -51,7 +51,7 @@ fun CurrentRideScreen() {
         return
     }
 
-    AppScaffold(title = stringResource(R.string.nav_current_ride), scrollBehavior = appBarScrollBehavior()) { padding ->
+    AppScaffold(title = stringResource(R.string.nav_current_ride)) { padding ->
         Box(
             Modifier.fillMaxSize().padding(padding).padding(24.dp),
             contentAlignment = Alignment.Center,

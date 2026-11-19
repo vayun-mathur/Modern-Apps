@@ -86,7 +86,6 @@ fun HistoryPage(
                 }
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { paddingValues ->
         DesktopMaxWidthContainer(modifier = Modifier.padding(paddingValues)) {
             if (history.isEmpty()) {

@@ -44,7 +44,6 @@ fun UwbRangingContent(
     AppScaffold(
         title = peerName,
         onNavigateBack = onBack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         Column(
             modifier = Modifier

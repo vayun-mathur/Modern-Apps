@@ -133,7 +133,6 @@ fun CutGlueContent(
                 }
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
             if (pageKeys.isEmpty()) {

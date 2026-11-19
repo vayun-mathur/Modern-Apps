@@ -115,7 +115,6 @@ internal fun BookmarksScreen(
                 IconFolder()
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { paddingValues ->
         DesktopMaxWidthContainer(modifier = Modifier.padding(paddingValues)) {
         Column(Modifier.fillMaxSize()) {

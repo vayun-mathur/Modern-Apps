@@ -131,7 +131,6 @@ fun NonogramGameScreen(
                 onOpenSettings = onOpenSettings,
             )
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         Column(
             Modifier

@@ -252,7 +252,6 @@ fun CheckoutScreen(
     AppScaffold(
         title = stringResource(R.string.checkout),
         onNavigateBack = onBack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             LazyColumn(

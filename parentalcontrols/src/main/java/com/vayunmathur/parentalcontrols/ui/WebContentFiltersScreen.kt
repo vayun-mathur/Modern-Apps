@@ -38,7 +38,6 @@ fun WebContentFiltersScreen(
     LazyListScaffold(
         title = stringResource(R.string.web_filters_title),
         horizontalPadding = 0.dp,
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         item {
             SettingsSection {

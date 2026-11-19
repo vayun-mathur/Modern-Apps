@@ -89,7 +89,6 @@ fun PasswordEditScreen(
                 Text(stringResource(UiR.string.save))
             }
         },
-        scrollBehavior = appBarScrollBehavior(),
     ) {
         if (saveError != null) {
             Text(saveError!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)

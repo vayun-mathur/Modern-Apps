@@ -46,7 +46,6 @@ fun BrowseScreen(
         title = state.title,
         onNavigateBack = onBack,
         alignment = AppBarAlignment.Start,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         when {
             state.isLoading && state.apps.isEmpty() -> Box(

@@ -48,7 +48,6 @@ fun LessonPage(backStack: NavBackStack<Route>, viewModel: EducationViewModel, le
             )
         },
         onNavigateBack = { backStack.pop() },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         if (lesson == null) {
             MissingContent(padding, stringResource(R.string.this_lesson_is_unavailable))

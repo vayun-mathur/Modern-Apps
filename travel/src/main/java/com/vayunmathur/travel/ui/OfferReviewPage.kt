@@ -63,7 +63,6 @@ fun OfferReviewPage(
     AppScaffold(
         title = stringResource(R.string.review_flight),
         backStack = backStack,
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         val offer = review.offer
         Column(
