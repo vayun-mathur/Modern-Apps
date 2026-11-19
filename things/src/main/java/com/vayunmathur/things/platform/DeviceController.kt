@@ -149,9 +149,17 @@ object DeviceController {
         } catch (_: Exception) {}
     }
 
+    /** A persisted value stored under the wrong type throws ClassCastException. */
+    internal fun savedAddress(key: String): String? =
+        try {
+            prefs.getString(key, null)
+        } catch (_: ClassCastException) {
+            null
+        }
+
     private fun refreshPaired() {
-        bottlePaired.value = prefs.getString(BOTTLE_ADDRESS_KEY, null) != null
-        scalePaired.value = prefs.getString(SCALE_ADDRESS_KEY, null) != null
+        bottlePaired.value = savedAddress(BOTTLE_ADDRESS_KEY) != null
+        scalePaired.value = savedAddress(SCALE_ADDRESS_KEY) != null
     }
 
     /** Marshal onto the main thread; replaces the Activity's `runOnUiThread`. */
@@ -200,16 +208,16 @@ object DeviceController {
     /** Reconnect to any remembered devices. No-op without permission or a powered-on adapter. */
     fun autoConnectSavedDevices() {
         if (!hasBluetoothConnectPermission() || !bluetoothEnabled()) return
-        prefs.getString(BOTTLE_ADDRESS_KEY, null)?.let { bleManager.connect(it) }
+        savedAddress(BOTTLE_ADDRESS_KEY)?.let { bleManager.connect(it) }
         // The scale is powered off between weigh-ins, so wait for it passively rather than
         // burning a doomed active attempt on every launch.
-        prefs.getString(SCALE_ADDRESS_KEY, null)?.let { scaleBleManager.connect(it, passive = true) }
+        savedAddress(SCALE_ADDRESS_KEY)?.let { scaleBleManager.connect(it, passive = true) }
     }
 
     /** Whether at least one device is remembered (drives the service lifecycle). */
     fun hasRememberedDevice(): Boolean =
-        prefs.getString(BOTTLE_ADDRESS_KEY, null) != null ||
-            prefs.getString(SCALE_ADDRESS_KEY, null) != null
+        savedAddress(BOTTLE_ADDRESS_KEY) != null ||
+            savedAddress(SCALE_ADDRESS_KEY) != null
 
     /** Last-resort cleanup when the service is intentionally stopped. */
     fun closeManagers() {

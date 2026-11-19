@@ -1,6 +1,7 @@
 package com.vayunmathur.things.platform
 
 import android.annotation.SuppressLint
+import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCallback
@@ -84,9 +85,10 @@ class ScaleBleManager {
     /** Scanned BLE scale identified by display name and Bluetooth address. */
     data class ScaleBleDevice(val name: String, val address: String)
 
-    private val bluetoothManager = DeviceController.appContext.getSystemService(BluetoothManager::class.java)
-    private val adapter = bluetoothManager.adapter
-    internal val scanner get() = adapter.bluetoothLeScanner
+    // Nullable for the same reason as BleManager: no Bluetooth stack, no crash.
+    private val adapter: BluetoothAdapter? =
+        DeviceController.appContext.getSystemService(BluetoothManager::class.java)?.adapter
+    internal val scanner get() = adapter?.bluetoothLeScanner
     internal var gatt: BluetoothGatt? = null
 
     // See BleManager: keep connect() idempotent so repeated auto-connect calls don't stack a
@@ -190,7 +192,16 @@ class ScaleBleManager {
 
     internal fun stopWatch() = stopWatchNow(watchCallback)
 
-    private fun openGatt(address: String) = openGattFor(adapter.getRemoteDevice(address))
+    private fun openGatt(address: String) {
+        // A persisted address can be corrupt/legacy; getRemoteDevice throws on it.
+        val device = try {
+            adapter?.getRemoteDevice(address)
+        } catch (e: IllegalArgumentException) {
+            Log.error(TAG, "invalid bluetooth address", e)
+            null
+        } ?: return
+        openGattFor(device)
+    }
 
     internal fun openGattFor(device: BluetoothDevice) = openGattNow(device)
 

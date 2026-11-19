@@ -1,6 +1,7 @@
 package com.vayunmathur.things.platform
 
 import android.annotation.SuppressLint
+import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCallback
@@ -82,9 +83,11 @@ class BleManager {
     /** Scanned WaterH bottle identified by display name and Bluetooth address. */
     data class BleDevice(val name: String, val address: String)
 
-    private val bluetoothManager = DeviceController.appContext.getSystemService(BluetoothManager::class.java)
-    private val adapter = bluetoothManager.adapter
-    private val scanner get() = adapter.bluetoothLeScanner
+    // Nullable: a device without a Bluetooth stack (or with it off at the service
+    // level) must degrade to "no devices", not crash DeviceController.init().
+    private val adapter: BluetoothAdapter? =
+        DeviceController.appContext.getSystemService(BluetoothManager::class.java)?.adapter
+    private val scanner get() = adapter?.bluetoothLeScanner
     private var gatt: BluetoothGatt? = null
 
     // The device we want to stay connected to, and whether the last disconnect was user-initiated.
@@ -127,7 +130,13 @@ class BleManager {
 
     private val scanCallback = object : ScanCallback() {
         override fun onScanResult(callbackType: Int, result: ScanResult) {
-            val name = result.device.name ?: return
+            // getName() is permission-gated on API 31+; a scan that started before a
+            // revocation must drop the result, not crash the callback.
+            val name = try {
+                result.device.name
+            } catch (_: SecurityException) {
+                return
+            } ?: return
             if (!name.startsWith("WaterH", ignoreCase = true)) return
             val addr = result.device.address
             if (DeviceController.discoveredDevices.none { it.address == addr }) {
@@ -151,7 +160,14 @@ class BleManager {
         val settings = ScanSettings.Builder()
             .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
             .build()
-        scanner?.startScan(null, settings, scanCallback)
+        try {
+            scanner?.startScan(null, settings, scanCallback)
+        } catch (e: SecurityException) {
+            // Permission revoked between the gate and the scan start.
+            Log.error(TAG, "startScan not permitted", e)
+            DeviceController.scanning.value = false
+            return
+        }
         DeviceController.connectionState.value = SCANNING_STATE
         handler.removeCallbacks(scanTimeout)
         handler.postDelayed(scanTimeout, SCAN_TIMEOUT_MS)
@@ -183,7 +199,18 @@ class BleManager {
         stopScan()
         DeviceController.bottleLink.value = DeviceController.LinkState.Connecting
         DeviceController.connectionState.value = "Connecting..."
-        val device = adapter.getRemoteDevice(address)
+        // A persisted address can be corrupt/legacy; getRemoteDevice throws on it.
+        val device = try {
+            adapter?.getRemoteDevice(address)
+        } catch (e: IllegalArgumentException) {
+            Log.error(TAG, "invalid bluetooth address", e)
+            null
+        }
+        if (device == null) {
+            DeviceController.bottleLink.value = DeviceController.LinkState.Waiting
+            DeviceController.connectionState.value = "Invalid device address"
+            return
+        }
         gatt = device.connectGatt(DeviceController.appContext, autoConnect, gattCallback, BluetoothDevice.TRANSPORT_LE)
     }
 

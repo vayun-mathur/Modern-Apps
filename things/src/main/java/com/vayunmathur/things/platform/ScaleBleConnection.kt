@@ -82,7 +82,14 @@ internal fun ScaleBleManager.startScanNow(scanCallback: ScanCallback) {
     val settings = ScanSettings.Builder()
         .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
         .build()
-    scanner?.startScan(null, settings, scanCallback)
+    try {
+        scanner?.startScan(null, settings, scanCallback)
+    } catch (e: SecurityException) {
+        // Permission revoked between the gate and the scan start.
+        Log.error(ScaleBleManager.TAG, "startScan not permitted", e)
+        DeviceController.scaleScanning.value = false
+        return
+    }
     DeviceController.scaleConnectionState.value = SCALE_SCANNING_STATE
     handler.removeCallbacks(scanTimeout)
     handler.postDelayed(scanTimeout, ScaleBleManager.SCAN_TIMEOUT_MS)
@@ -109,7 +116,14 @@ internal fun ScaleBleManager.startWatchNow(address: String, watchCallback: ScanC
     if (watchAddress == address) return
     stopWatch()
     watchAddress = address
-    val filters = listOf(ScanFilter.Builder().setDeviceAddress(address).build())
+    // setDeviceAddress throws on a corrupt persisted address; drop the watch instead.
+    val filters = try {
+        listOf(ScanFilter.Builder().setDeviceAddress(address).build())
+    } catch (e: IllegalArgumentException) {
+        Log.error(ScaleBleManager.TAG, "invalid bluetooth address", e)
+        watchAddress = null
+        return
+    }
     val settings = ScanSettings.Builder()
         .setScanMode(ScanSettings.SCAN_MODE_LOW_POWER)
         .build()

@@ -104,10 +104,19 @@ fun DeviceController.saveScaleAdvertisedTraits(category: Int, encryptsResistance
 }
 
 fun DeviceController.savedScaleCategory(): Int? =
-    if (devicePrefs.contains(SCALE_CATEGORY_KEY)) devicePrefs.getInt(SCALE_CATEGORY_KEY, 0) else null
+    // Wrong-typed persisted values throw ClassCastException; treat as absent.
+    try {
+        if (devicePrefs.contains(SCALE_CATEGORY_KEY)) devicePrefs.getInt(SCALE_CATEGORY_KEY, 0) else null
+    } catch (_: ClassCastException) {
+        null
+    }
 
 fun DeviceController.savedScaleEncryptsResistance(): Boolean =
-    devicePrefs.getBoolean(SCALE_ENCRYPT_RES_KEY, false)
+    try {
+        devicePrefs.getBoolean(SCALE_ENCRYPT_RES_KEY, false)
+    } catch (_: ClassCastException) {
+        false
+    }
 
 // --- Scale user slot ---
 
@@ -119,11 +128,20 @@ fun DeviceController.savedScaleEncryptsResistance(): Boolean =
  * recoverable only by resetting the scale.
  */
 fun DeviceController.scaleUserIndex(): Int? =
-    if (devicePrefs.contains(SCALE_USER_INDEX_KEY)) devicePrefs.getInt(SCALE_USER_INDEX_KEY, 0) else null
+    // Called from init(); a wrong-typed persisted slot must not crash startup.
+    try {
+        if (devicePrefs.contains(SCALE_USER_INDEX_KEY)) devicePrefs.getInt(SCALE_USER_INDEX_KEY, 0) else null
+    } catch (_: ClassCastException) {
+        null
+    }
 
 /** Stable per-slot secret. Generated once; the scale expects the same value on every visit. */
 fun DeviceController.scaleUserKey(): Int {
-    val existing = devicePrefs.getInt(SCALE_USER_KEY_KEY, 0)
+    val existing = try {
+        devicePrefs.getInt(SCALE_USER_KEY_KEY, 0)
+    } catch (_: ClassCastException) {
+        0
+    }
     if (existing in MIN_SCALE_USER_KEY..MAX_SCALE_USER_KEY) return existing
     val generated = Random.nextInt(MIN_SCALE_USER_KEY, SCALE_USER_KEY_BOUND)
     devicePrefs.edit { putInt(SCALE_USER_KEY_KEY, generated) }
