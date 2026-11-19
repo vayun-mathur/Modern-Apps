@@ -43,7 +43,7 @@ class BootReceiver : BroadcastReceiver() {
                         if (unlocked) reconcileFromProvider(context, action)
                         else armFromMirror(context, action)
                     } finally {
-                        pendingResult.finish()
+                        pendingResult?.finish()
                     }
                 }
             }

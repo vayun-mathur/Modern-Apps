@@ -95,7 +95,7 @@ class ReminderReceiver : BroadcastReceiver() {
             } catch (expected: Exception) {
                 Log.error(TAG, "could not post reminder notification", expected)
             } finally {
-                pendingResult.finish()
+                pendingResult?.finish()
             }
         }
     }
