@@ -71,12 +71,15 @@ class RouteSerializerTest {
                 json.encodeToString(TvStoreRoute.serializer(), browse),
             ),
         )
-        assertEquals(
-            TvStoreRoute.Main,
-            json.decodeFromString(
+        for (route in listOf<TvStoreRoute>(
+            TvStoreRoute.Home, TvStoreRoute.Search, TvStoreRoute.Updates,
+            TvStoreRoute.Library, TvStoreRoute.Sources,
+        )) {
+            val restored = json.decodeFromString(
                 TvStoreRoute.serializer(),
-                json.encodeToString(TvStoreRoute.serializer(), TvStoreRoute.Main),
-            ),
-        )
+                json.encodeToString(TvStoreRoute.serializer(), route),
+            )
+            assertEquals(route, restored)
+        }
     }
 }
