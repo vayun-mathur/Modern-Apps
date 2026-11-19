@@ -72,7 +72,14 @@ fun unlockDatabaseWithBiometrics(
     fun prompt(title: String, subtitle: String, cipher: Cipher, onCipher: (Cipher) -> String) {
         val biometricPrompt = BiometricPrompt(activity, executor, object : BiometricPrompt.AuthenticationCallback() {
             override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                onSuccess(onCipher(result.cryptoObject?.cipher!!))
+                // Device-credential success can deliver no CryptoObject on some
+                // devices; fail gracefully instead of crashing on a force-unwrap.
+                val cipher = result.cryptoObject?.cipher
+                if (cipher == null) {
+                    onFailure("Device authentication didn't unlock the secure folder.")
+                    return
+                }
+                onSuccess(onCipher(cipher))
             }
 
             override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
