@@ -62,7 +62,7 @@ class TvSearchDownloadsDeepTest {
         if (a != null) assertTrue(a.invoke() == true, "click $t") else node.performClick()
     }
     private fun themed(content: @androidx.compose.runtime.Composable (NavBackStack<TvRoute>) -> Unit) {
-        rule.setContent { val bs = rememberNavBackStack<TvRoute>(TvRoute.Main(TV_RAIL_HOME)); stack = bs; MaTvTheme(TvAccent.Red) { content(bs) } }
+        rule.setContent { val bs = rememberNavBackStack<TvRoute>(TvRoute.Home); stack = bs; MaTvTheme(TvAccent.Red) { content(bs) } }
     }
 
     @Test fun downloads_longPressSelectsAndDeleteRemoves() {

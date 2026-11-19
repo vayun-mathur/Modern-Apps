@@ -25,6 +25,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.vayunmathur.library.image.ImageRequest
@@ -219,6 +220,7 @@ private fun VideoQualityDropdown(
                 modifier = Modifier.weight(1f),
                 textAlign = TextAlign.Start,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             IconArrowDropDown()
         }
@@ -257,6 +259,7 @@ private fun AudioLanguageDropdown(
                 modifier = Modifier.weight(1f),
                 textAlign = TextAlign.Start,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             IconArrowDropDown()
         }

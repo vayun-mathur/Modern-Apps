@@ -71,7 +71,7 @@ class TvPagesDeep2Test {
         if (a != null) assertTrue(a.invoke() == true, "click $t") else node.performClick()
     }
     private fun themed(content: @androidx.compose.runtime.Composable (NavBackStack<TvRoute>) -> Unit) {
-        rule.setContent { val bs = rememberNavBackStack<TvRoute>(TvRoute.Main(TV_RAIL_HOME)); stack = bs; MaTvTheme(TvAccent.Red) { content(bs) } }
+        rule.setContent { val bs = rememberNavBackStack<TvRoute>(TvRoute.Home); stack = bs; MaTvTheme(TvAccent.Red) { content(bs) } }
     }
     private fun awaitDb(cond: () -> Boolean) {
         val d = System.currentTimeMillis() + 8_000
@@ -89,14 +89,14 @@ class TvPagesDeep2Test {
         vm.videoStateMutable.value = YouPipeViewModel.VideoState(data = VideoData("Watched One", 100, 55, Instant.fromEpochSeconds(1_600_000_000), "", "Seeded Chan", "UCseed", "", "desc"))
         themed { bs -> bs.add(TvRoute.AddToPlaylist(55)); TvAddToPlaylistPage(bs, vm, 55) }
         awaitText("Music Mix"); clickText("Music Mix"); clickText("Cancel")
-        rule.waitUntil(5_000) { stack?.backStack?.lastOrNull() == TvRoute.Main(TV_RAIL_HOME) }
+        rule.waitUntil(5_000) { stack?.backStack?.lastOrNull() == TvRoute.Home }
         assertTrue(runBlocking { db.playlistItemDao().getAllFlow().first() }.none { it.videoItem.videoID == 55L })
     }
     @Test fun addToPlaylist_noVideoData_showsCloseAndPops() {
         vm.videoStateMutable.value = YouPipeViewModel.VideoState()
         themed { bs -> bs.add(TvRoute.AddToPlaylist(55)); TvAddToPlaylistPage(bs, vm, 55) }
         awaitText("Close"); clickText("Close")
-        rule.waitUntil(5_000) { stack?.backStack?.lastOrNull() == TvRoute.Main(TV_RAIL_HOME) }
+        rule.waitUntil(5_000) { stack?.backStack?.lastOrNull() == TvRoute.Home }
     }
     @Test fun dataSettings_clearHistory_emptiesDb() {
         themed { _ -> TvDataSettingsPage(vm) }
@@ -124,7 +124,7 @@ class TvPagesDeep2Test {
         rule.onNode(hasSetTextAction()).performTextInput("Road Trip")
         clickText("New playlist")
         awaitDb { runBlocking { db.playlistDao().getAll() }.any { it.name == "Road Trip" } }
-        rule.waitUntil(5_000) { stack?.backStack?.lastOrNull() == TvRoute.Main(TV_RAIL_HOME) }
+        rule.waitUntil(5_000) { stack?.backStack?.lastOrNull() == TvRoute.Home }
     }
     @Test fun createCategory_typeNameAndCreate_persists() {
         themed { bs -> TvCreateCategoryPage(bs, vm, null) }
@@ -144,6 +144,6 @@ class TvPagesDeep2Test {
     @Test fun subscriptions_categoryRow_showsSeededChannel() {
         themed { bs -> TvSubscriptionsPage(bs, vm) }
         awaitText("Seeded Chan"); awaitText("News")
-        assertEquals(TvRoute.Main(TV_RAIL_HOME), stack?.backStack?.lastOrNull())
+        assertEquals(TvRoute.Home, stack?.backStack?.lastOrNull())
     }
 }

@@ -1,4 +1,5 @@
 package com.vayunmathur.youpipe.ui
+import androidx.compose.ui.text.style.TextOverflow
 import com.vayunmathur.youpipe.R
 
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -141,7 +142,7 @@ fun DownloadedVideosPage(backStack: NavBackStack<Route>, youPipeViewModel: YouPi
                                 modifier = Modifier.size(80.dp, 45.dp).clip(RoundedCornerShape(8.dp)),
                             )
                         },
-                        content = { Text(status.videoInfo.name, maxLines = 1) },
+                        content = { Text(status.videoInfo.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                         supportingContent = { Text("${(status.progress * 100).toInt()}%") },
                         trailingContent = {
                             Row(verticalAlignment = Alignment.CenterVertically) {

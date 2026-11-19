@@ -65,7 +65,7 @@ class TvFeedDeepTest {
     @AfterTest fun tearDown() { TvLoadedVideo.id = null; Thread.sleep(100) }
     private fun awaitText(t: String) = rule.waitUntilExactlyOneExists(hasText(t), 15_000)
     private fun themed(content: @androidx.compose.runtime.Composable (NavBackStack<TvRoute>) -> Unit) {
-        rule.setContent { val bs = rememberNavBackStack<TvRoute>(TvRoute.Main(TV_RAIL_HOME)); stack = bs; MaTvTheme(TvAccent.Red) { content(bs) } }
+        rule.setContent { val bs = rememberNavBackStack<TvRoute>(TvRoute.Home); stack = bs; MaTvTheme(TvAccent.Red) { content(bs) } }
     }
     private fun clickFirstCard() {
         val count = rule.onAllNodes(hasClickAction()).fetchSemanticsNodes().size

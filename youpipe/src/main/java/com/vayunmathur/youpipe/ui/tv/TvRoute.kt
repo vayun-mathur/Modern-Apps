@@ -11,16 +11,37 @@ import kotlinx.serialization.Serializable
  * destination can never leak into the phone back stack or vice versa. Dialogs (add-to-playlist,
  * create-playlist, create-category) are entries here rather than overlays, because a TV has no
  * bottom sheet to host them: each is a full D-pad-traversable list screen with its own focus.
+ *
+ * The six rail tabs are siblings: selecting one resets the back stack to that route
+ * (see the route-backed TvAppFrame), so BACK, deep links and process restore see
+ * the tab actually on screen. The old `Main(initialTab)` wrapper is gone;
+ * [tvRouteForTab] turns a legacy tab index into the start sibling.
  */
 @Serializable
 sealed interface TvRoute : NavKey {
-    /** The tab strip: home feed, subscriptions, history, saved, settings. No swipe, D-pad only. */
-    @Serializable
-    data class Main(val initialTab: Int = 0) : TvRoute
-
-    /** Explicit search screen: opened only from the home entry row's CENTER press, never autofocused. */
+    /** Rail tab: search. A sibling route, opened via the rail (see TvRouteDestination). */
     @Serializable
     data object Search : TvRoute
+
+    /** Rail tab: home feed (the default start tab). */
+    @Serializable
+    data object Home : TvRoute
+
+    /** Rail tab: subscriptions. */
+    @Serializable
+    data object Subscriptions : TvRoute
+
+    /** Rail tab: watch history. */
+    @Serializable
+    data object History : TvRoute
+
+    /** Rail tab: saved / library hub (playlists, watch later, downloads entry). */
+    @Serializable
+    data object Saved : TvRoute
+
+    /** Rail tab: settings hub. */
+    @Serializable
+    data object Settings : TvRoute
 
     /** Details for one video: description, chapters, related, comments. Opened from the player. */
     @Serializable
@@ -79,7 +100,7 @@ sealed interface TvRoute : NavKey {
     data object ManageInterests : TvRoute
 }
 
-/** Rail indices in [TvRailHost]: Search is a destination, then the five browse roots. */
+/** Rail indices, matching the rail order. Kept for the legacy initialTab int. */
 const val TV_RAIL_SEARCH = 0
 const val TV_RAIL_HOME = 1
 const val TV_RAIL_SUBSCRIPTIONS = 2
@@ -87,3 +108,13 @@ const val TV_RAIL_HISTORY = 3
 const val TV_RAIL_SAVED = 4
 const val TV_RAIL_SETTINGS = 5
 const val TV_RAIL_COUNT = 6
+
+/** The sibling route for a legacy rail [tab] index, clamped to the rail range. */
+internal fun tvRouteForTab(tab: Int): TvRoute = when (tab.coerceIn(TV_RAIL_SEARCH, TV_RAIL_SETTINGS)) {
+    TV_RAIL_SEARCH -> TvRoute.Search
+    TV_RAIL_HOME -> TvRoute.Home
+    TV_RAIL_SUBSCRIPTIONS -> TvRoute.Subscriptions
+    TV_RAIL_HISTORY -> TvRoute.History
+    TV_RAIL_SAVED -> TvRoute.Saved
+    else -> TvRoute.Settings
+}

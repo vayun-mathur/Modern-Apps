@@ -82,7 +82,7 @@ fun VideoDetailScreen(
                     VideoDetails(state, actions, titleSharedKey)
 
                     if(!fullscreen) {
-                        DetailTabs(state, actions, initialTab, withDescription = true)
+                        DetailTabs(state, actions, initialTab, withDescription = true, modifier = Modifier.weight(1f))
                     }
                 }
             }
@@ -102,6 +102,7 @@ internal fun DetailTabs(
     actions: VideoDetailActions,
     initialTab: Int,
     withDescription: Boolean,
+    modifier: Modifier = Modifier,
 ) {
     val tabLabels = if (withDescription) {
         listOf(R.string.label_comments, R.string.label_related_videos, R.string.label_description)
@@ -114,7 +115,7 @@ internal fun DetailTabs(
     )
     val coroutineScope = rememberCoroutineScope()
 
-    Column {
+    Column(modifier) {
         SecondaryTabRow(selectedTabIndex = pagerState.currentPage) {
             tabLabels.forEachIndexed { index, labelRes ->
                 Tab(

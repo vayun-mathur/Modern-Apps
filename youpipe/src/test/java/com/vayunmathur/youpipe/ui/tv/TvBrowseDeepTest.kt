@@ -100,7 +100,7 @@ class TvBrowseDeepTest {
         clickNodeAt(count - 1)
     }
     private fun themed(content: @androidx.compose.runtime.Composable (NavBackStack<TvRoute>) -> Unit) {
-        rule.setContent { val bs = rememberNavBackStack<TvRoute>(TvRoute.Main(TV_RAIL_HOME)); stack = bs; MaTvTheme(TvAccent.Red) { content(bs) } }
+        rule.setContent { val bs = rememberNavBackStack<TvRoute>(TvRoute.Home); stack = bs; MaTvTheme(TvAccent.Red) { content(bs) } }
     }
     private fun presetLoaded() {
         TvLoadedVideo.id = 77
@@ -175,13 +175,13 @@ class TvBrowseDeepTest {
         assertEquals(TvRoute.VideoPlayerRoute(66), stack?.backStack?.lastOrNull())
     }
     @Test fun tvDefaultBackStack_allKeys() {
-        assertEquals(listOf(TvRoute.Main(TV_RAIL_SUBSCRIPTIONS)), tvDefaultBackStack("subscriptions"))
-        assertEquals(listOf(TvRoute.Main(TV_RAIL_HISTORY)), tvDefaultBackStack("history"))
-        assertEquals(listOf(TvRoute.Main(TV_RAIL_SAVED)), tvDefaultBackStack("downloads"))
-        assertEquals(listOf(TvRoute.Main(TV_RAIL_SAVED)), tvDefaultBackStack("saved"))
-        assertEquals(listOf(TvRoute.Main(TV_RAIL_SETTINGS)), tvDefaultBackStack("settings"))
-        assertEquals(listOf(TvRoute.Main(TV_RAIL_HOME)), tvDefaultBackStack(null))
-        assertEquals(listOf(TvRoute.Main(TV_RAIL_HOME)), tvDefaultBackStack("home"))
+        assertEquals(listOf(TvRoute.Subscriptions), tvDefaultBackStack("subscriptions"))
+        assertEquals(listOf(TvRoute.History), tvDefaultBackStack("history"))
+        assertEquals(listOf(TvRoute.Saved), tvDefaultBackStack("downloads"))
+        assertEquals(listOf(TvRoute.Saved), tvDefaultBackStack("saved"))
+        assertEquals(listOf(TvRoute.Settings), tvDefaultBackStack("settings"))
+        assertEquals(listOf(TvRoute.Home), tvDefaultBackStack(null))
+        assertEquals(listOf(TvRoute.Home), tvDefaultBackStack("home"))
     }
     @Test fun tvSharedHelpers_subtitleAndDuration() {
         assertEquals(null, tvDurationBadge(-1)); assertEquals("10:00", tvDurationBadge(600))

@@ -167,7 +167,7 @@ class TvPlayerDeepTest {
             videoStreams = streams, audioStreams = audios, subtitles = subs, segments = chapters,
             relatedVideos = listOf(info))
         rule.setContent { MaTvTheme(TvAccent.Red) {
-            val bs = rememberNavBackStack<TvRoute>(TvRoute.Main(TV_RAIL_HOME)); stack = bs
+            val bs = rememberNavBackStack<TvRoute>(TvRoute.Home); stack = bs
             TvPlayerPage(bs, vm, 77)
         } }
         awaitText("Deep Video")
@@ -183,7 +183,7 @@ class TvPlayerDeepTest {
         val c = chrome({ details++ }, { channel++ }, { sub++ }, { wl++ }, { save++ }, { relatedId = it })
         c.onDetails(); c.onChannel(); c.onToggleSubscribe(); c.onWatchLater(); c.onSaveToPlaylist(); c.onPlayRelated(99)
         assertEquals(listOf(1, 1, 1, 1, 1), listOf(details, channel, sub, wl, save)); assertEquals(99L, relatedId)
-        rule.setContent { val bs = rememberNavBackStack<TvRoute>(TvRoute.Main(TV_RAIL_HOME)); stack = bs }
+        rule.setContent { val bs = rememberNavBackStack<TvRoute>(TvRoute.Home); stack = bs }
         rule.waitForIdle()
         stack!!.playVideo(42); assertEquals(TvRoute.VideoPlayerRoute(42), stack!!.backStack.last())
         // From details of same video: pops back to existing player instead of stacking.
@@ -197,7 +197,7 @@ class TvPlayerDeepTest {
     @Test fun rememberChrome_subscribeToggleAndWatchLater_withSeededVm() {
         var captured: TvPlayerChrome? = null
         rule.setContent { MaTvTheme(TvAccent.Red) {
-            val bs = rememberNavBackStack<TvRoute>(TvRoute.Main(TV_RAIL_HOME)); stack = bs
+            val bs = rememberNavBackStack<TvRoute>(TvRoute.Home); stack = bs
             val data = VideoData("Deep Video", 900, 120, Instant.fromEpochSeconds(1_600_000_000), "", "Seeded Chan", "UCseed", "", "desc")
             captured = rememberTvPlayerChrome(bs, vm, 55, data, listOf(info))
             androidx.tv.material3.Text(captured!!.byline)

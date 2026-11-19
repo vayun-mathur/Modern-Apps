@@ -135,7 +135,7 @@ class TvPagesTest {
 
     private fun themed(content: @androidx.compose.runtime.Composable (NavBackStack<TvRoute>) -> Unit) {
         rule.setContent {
-            val backStack = rememberNavBackStack<TvRoute>(TvRoute.Main(TV_RAIL_HOME))
+            val backStack = rememberNavBackStack<TvRoute>(TvRoute.Home)
             stack = backStack
             MaTvTheme(TvAccent.Red) { content(backStack) }
         }
@@ -316,7 +316,7 @@ class TvPagesTest {
         themed { bs -> TvChannelPage(bs, vm, "UCunknown123") }
         // Channel load fails offline: page must settle without crashing or navigating.
         rule.waitForIdle()
-        assertEquals(TvRoute.Main(TV_RAIL_HOME), stack?.backStack?.lastOrNull())
+        assertEquals(TvRoute.Home, stack?.backStack?.lastOrNull())
     }
 
     @Test
@@ -430,10 +430,10 @@ class TvPagesTest {
         assertEquals("0:00", formatTvElapsed(0))
         assertEquals("1:05", formatTvElapsed(65_000))
         // tvDefaultBackStack maps persisted keys to rail destinations.
-        assertEquals(listOf(TvRoute.Main(TV_RAIL_HISTORY)), tvDefaultBackStack("history"))
-        assertEquals(listOf(TvRoute.Main(TV_RAIL_HOME)), tvDefaultBackStack("nonsense"))
+        assertEquals(listOf(TvRoute.History), tvDefaultBackStack("history"))
+        assertEquals(listOf(TvRoute.Home), tvDefaultBackStack("nonsense"))
         assertEquals(
-            listOf(TvRoute.Main(TV_RAIL_SUBSCRIPTIONS), TvRoute.SubscriptionFeed(null)),
+            listOf(TvRoute.Subscriptions, TvRoute.SubscriptionFeed(null)),
             tvDefaultBackStack("all_subscriptions"),
         )
     }
