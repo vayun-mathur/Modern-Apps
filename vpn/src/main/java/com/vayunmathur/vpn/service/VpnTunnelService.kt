@@ -95,12 +95,10 @@ class VpnTunnelService : VpnService() {
 
     override fun onCreate() {
         super.onCreate()
-        try {
-            VpnNative.init()
-        } catch (expected: UnsatisfiedLinkError) {
-            Log.error(TAG, "native lib missing", expected)
-        } catch (expected: SecurityException) {
-            Log.error(TAG, "native lib blocked", expected)
+        // Touching VpnNative loads the class; isLoaded records whether the
+        // .so actually loaded (VpnNative no longer rethrows from its init).
+        if (!VpnNative.isLoaded) {
+            Log.error(TAG, "native lib missing")
         }
         val nm = getSystemService(NotificationManager::class.java)
         nm?.createNotificationChannel(
@@ -198,6 +196,14 @@ class VpnTunnelService : VpnService() {
 
     private suspend fun runTunnel(config: VpnConfig) {
         isRunning = true
+
+        // Without the .so every native call below throws
+        // UnsatisfiedLinkError out of the tunnel coroutine.
+        if (!VpnNative.isLoaded) {
+            Log.error(TAG, "newTunnel skipped: native lib missing")
+            stopVpn()
+            return
+        }
 
         val handle = VpnNative.newTunnel(
             config.privateKey, config.peerPublicKey, config.peerPresharedKey, config.peerKeepalive

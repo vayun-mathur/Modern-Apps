@@ -11,12 +11,26 @@ import com.vayunmathur.library.log.Log
  * Android TUN fd <-> UDP socket bridging lives in [com.vayunmathur.vpn.service.VpnTunnelService].
  */
 object VpnNative {
+    /**
+     * False when the native library could not be loaded (missing split /
+     * wrong ABI). The load failure is recorded instead of rethrown from
+     * the class initializer: rethrowing poisons the class, so every later
+     * touch (including the service's "native missing" handling) would die
+     * with NoClassDefFoundError/ExceptionInInitializerError instead.
+     * Callers that need a tunnel must check this before calling natives.
+     */
+    val isLoaded: Boolean
+
     init {
-        try {
+        isLoaded = try {
             System.loadLibrary("vpn_wireguard")
+            true
         } catch (expected: UnsatisfiedLinkError) {
             Log.error("VpnNative", "System.loadLibrary(vpn_wireguard) failed", expected)
-            throw expected
+            false
+        } catch (expected: SecurityException) {
+            Log.error("VpnNative", "System.loadLibrary(vpn_wireguard) blocked", expected)
+            false
         }
     }
 
