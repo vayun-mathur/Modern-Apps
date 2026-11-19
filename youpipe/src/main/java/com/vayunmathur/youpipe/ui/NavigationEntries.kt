@@ -1,0 +1,97 @@
+package com.vayunmathur.youpipe.ui
+
+import com.vayunmathur.library.ui.IconHistory
+import com.vayunmathur.library.ui.IconHome
+import com.vayunmathur.library.ui.IconSave
+import com.vayunmathur.library.ui.IconSettings
+import com.vayunmathur.library.ui.IconSubscriptions
+import com.vayunmathur.library.ui.RouteTab
+import com.vayunmathur.library.util.DialogPage
+import com.vayunmathur.library.util.EntryProviderScope
+import com.vayunmathur.library.util.MorphPage
+import com.vayunmathur.library.util.NavBackStack
+import com.vayunmathur.library.util.SiblingPage
+import com.vayunmathur.youpipe.Route
+import com.vayunmathur.youpipe.platform.YouPipeViewModel
+import com.vayunmathur.youpipe.ui.dialogs.AddToPlaylist
+import com.vayunmathur.youpipe.ui.dialogs.AddToWatchLater
+import com.vayunmathur.youpipe.ui.dialogs.CreatePlaylist
+import com.vayunmathur.youpipe.ui.dialogs.CreateSubscriptionCategory
+
+internal fun navigationTabs(): List<RouteTab<Route>> = listOf(
+    RouteTab(Route.Home, "Home", { IconHome() }),
+    RouteTab(Route.Subscriptions, "Subscriptions", { IconSubscriptions() }),
+    RouteTab(Route.History, "History", { IconHistory() }),
+    RouteTab(Route.Saved, "Saved", { IconSave() }),
+    RouteTab(Route.Settings, "Settings", { IconSettings() }),
+)
+
+internal fun EntryProviderScope<Route>.siblingEntries(
+    backStack: NavBackStack<Route>,
+    ypvm: YouPipeViewModel,
+) {
+    entry<Route.Home>(metadata = SiblingPage()) { SearchPage(backStack, ypvm) }
+    entry<Route.Subscriptions>(metadata = SiblingPage()) { SubscriptionsPage(backStack, ypvm) }
+    entry<Route.History>(metadata = SiblingPage()) { HistoryPage(backStack, ypvm) }
+    entry<Route.Saved>(metadata = SiblingPage()) { SavedPage(backStack, ypvm) }
+    entry<Route.Settings>(metadata = SiblingPage()) { SettingsPage(backStack, ypvm) }
+}
+
+internal fun EntryProviderScope<Route>.detailEntries(
+    backStack: NavBackStack<Route>,
+    ypvm: YouPipeViewModel,
+) {
+    // Morph, not Fullscreen: the feed row's title travels into the title under the player, and
+    // a morph only works against a crossfade - the immersive scale would move the target while
+    // the title is still on its way to it.
+    entry<Route.VideoPage>(metadata = MorphPage()) {
+        VideoPage(backStack, ypvm, it.videoID)
+    }
+    // Morph: a subscription row carries its avatar and name up into the header here. The other
+    // ways in - a search result, a video's author line - are unkeyed and simply crossfade.
+    entry<Route.ChannelPage>(metadata = MorphPage()) {
+        ChannelPage(backStack, ypvm, it.channelID)
+    }
+    entry<Route.SubscriptionVideosPage> {
+        SubscriptionVideosPage(backStack, ypvm, it.category)
+    }
+    entry<Route.CreateSubscriptionCategory>(metadata = DialogPage()) {
+        CreateSubscriptionCategory(backStack, ypvm, it.id)
+    }
+    entry<Route.Downloads> {
+        DownloadedVideosPage(backStack, ypvm)
+    }
+    entry<Route.PlaylistDetail>(metadata = MorphPage()) {
+        PlaylistDetailPage(backStack, ypvm, it.playlistId)
+    }
+    entry<Route.CreatePlaylist>(metadata = DialogPage()) {
+        CreatePlaylist(backStack, ypvm)
+    }
+    entry<Route.AddToPlaylist>(metadata = DialogPage()) {
+        AddToPlaylist(backStack, ypvm, it.videoID, it.includeWatchLater)
+    }
+    entry<Route.AddToWatchLater>(metadata = DialogPage()) {
+        AddToWatchLater(backStack, ypvm, it.videoID)
+    }
+}
+
+internal fun EntryProviderScope<Route>.settingsEntries(
+    backStack: NavBackStack<Route>,
+    ypvm: YouPipeViewModel,
+) {
+    entry<Route.SettingsGeneral> {
+        GeneralSettingsPage(backStack, ypvm)
+    }
+    entry<Route.SettingsSponsorBlock> {
+        SponsorBlockSettingsPage(backStack, ypvm)
+    }
+    entry<Route.SettingsRecommendations> {
+        RecommendationsSettingsPage(backStack, ypvm)
+    }
+    entry<Route.SettingsData> {
+        DataSettingsPage(backStack, ypvm)
+    }
+    entry<Route.ManageInterests> {
+        ManageInterestsPage(backStack, ypvm)
+    }
+}
