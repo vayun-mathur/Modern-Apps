@@ -129,7 +129,9 @@ object TodoTxt {
 
     private fun parseRec(value: String): String? {
         val (strict, n, unit) = REC.find(value)?.destructured ?: return null
-        val count = n.toInt().coerceAtLeast(1)
+        // REC allows unbounded digits in an imported file; a count that does
+        // not fit an Int is not a recurrence, not a NumberFormatException.
+        val count = n.toIntOrNull()?.coerceAtLeast(1) ?: return null
         val r = when {
             strict.isEmpty() && unit == "d" -> Recurrence.AfterCompletion(count)
             strict.isEmpty() && unit == "w" -> Recurrence.AfterCompletion(count * DAYS_PER_WEEK)
@@ -141,5 +143,9 @@ object TodoTxt {
         return r.serialize()
     }
 
-    private fun toMs(date: String, zone: TimeZone) = DueDates.startOfDay(LocalDate.parse(date), zone)
+    // The DATE regex only checks digit shape, so an imported file can carry
+    // e.g. 2026-13-45 or 2026-02-30: LocalDate.parse throws on those. An
+    // invalid calendar date means "no date", matching TodoCsv's parseOrNull.
+    private fun toMs(date: String, zone: TimeZone): Long? =
+        runCatching { DueDates.startOfDay(LocalDate.parse(date), zone) }.getOrNull()
 }
