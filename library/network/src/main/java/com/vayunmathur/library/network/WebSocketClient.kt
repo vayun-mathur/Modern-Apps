@@ -258,7 +258,12 @@ class WebSocketClient private constructor(
     }
 
     private fun readFramePayload(header: FrameHeader): ByteArray {
-        if (header.payloadLen > Int.MAX_VALUE) throw IOException("ws frame too large ${header.payloadLen}")
+        // A hostile/buggy peer can send a negative 64-bit length (high bit set);
+        // without this it becomes NegativeArraySizeException, which is not an
+        // IOException and escapes the read loop's error handling as a crash.
+        if (header.payloadLen < 0 || header.payloadLen > Int.MAX_VALUE) {
+            throw IOException("ws frame too large ${header.payloadLen}")
+        }
         val payload = readExactBytes(header.payloadLen.toInt(), "ws truncated frame")
         val maskKey = header.maskKey ?: return payload
         for (i in payload.indices) {
