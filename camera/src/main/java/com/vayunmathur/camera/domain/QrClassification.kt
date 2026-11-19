@@ -155,7 +155,7 @@ private class CborCursor(private val bytes: ByteArray) {
         val minor = bytes[pos++].toInt() and 0x1F
         return when (minor) {
             in 0..23 -> minor.toLong()
-            24 -> byte().toLong() and BYTE_MASK.toLong()
+            24 -> byte()?.let { it.toLong() and BYTE_MASK.toLong() }
             25 -> uInt(2)
             26 -> uInt(4)
             27 -> uInt(8)
@@ -195,15 +195,18 @@ private class CborCursor(private val bytes: ByteArray) {
         return true
     }
 
-    private fun byte(): Byte {
-        if (pos >= bytes.size) throw IndexOutOfBoundsException("CBOR cursor past end at $pos of ${bytes.size}")
+    // Null past the end rather than throwing: the bytes come from a scanned
+    // QR, so a truncated long-form argument (e.g. a lone 0x18) is malformed
+    // input to report as UNKNOWN, not a crash in the composable reading it.
+    private fun byte(): Byte? {
+        if (pos >= bytes.size) return null
         return bytes[pos++]
     }
 
     private fun uInt(n: Int): Long? {
         if (pos + n > bytes.size) return null
         var v = 0L
-        repeat(n) { v = (v shl BYTE_SHIFT) or (byte().toLong() and BYTE_MASK.toLong()) }
+        repeat(n) { v = (v shl BYTE_SHIFT) or ((byte() ?: return null).toLong() and BYTE_MASK.toLong()) }
         return v
     }
 }
