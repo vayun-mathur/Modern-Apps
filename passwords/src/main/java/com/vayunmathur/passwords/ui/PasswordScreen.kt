@@ -31,8 +31,6 @@ import androidx.core.net.toUri
 import com.vayunmathur.library.ui.Card
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.library.util.sharedText
-import com.vayunmathur.library.util.tryOrDefault
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.ExternalIntents
 import com.vayunmathur.library.ui.FloatingActionButton
@@ -55,7 +53,6 @@ import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.passwords.R
 import com.vayunmathur.passwords.data.Password
 import com.vayunmathur.passwords.data.Passkey
-import com.vayunmathur.passwords.domain.TOTP
 import com.vayunmathur.passwords.platform.PasswordUiState
 import com.vayunmathur.passwords.platform.PasswordsActions
 
@@ -209,45 +206,11 @@ fun PasswordScreen(
 
         // TOTP card: show generated code and circular timer
         item {
-            Card(shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(12.dp)) {
-                    Text(stringResource(R.string.section_totp), style = MaterialTheme.typography.titleMedium)
-                    Spacer(Modifier.height(8.dp))
-
-                    val secret = password.totpSecret
-                    if (secret.isNullOrBlank()) {
-                        Text(stringResource(R.string.totp_not_configured))
-                    } else {
-                        val timeStep = state.now() / 1000 / 30
-                        // Imported/synced secrets may not decode to a key; show placeholder, not a crash.
-                        val currentCode = remember(secret, timeStep) {
-                            tryOrDefault("----") { TOTP.generate(secret, timeStep * 30) }
-                        }
-                        val secondsRemaining = ((30000 - state.now() % 30000) / 1000).toInt()
-
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                            Column {
-                                Text(currentCode, style = MaterialTheme.typography.displayMedium)
-                                Spacer(Modifier.height(4.dp))
-                                Text(stringResource(R.string.totp_refreshes_in, secondsRemaining), style = MaterialTheme.typography.bodySmall)
-                            }
-
-                            // Circular progress showing proportion of time remaining
-                            Box(contentAlignment = Alignment.Center) {
-                                CircularProgressIndicator(
-                                    { (30000L - state.now() % 30000L) / 30000f },
-                                    Modifier.size(56.dp),
-                                )
-                                IconButton({
-                                    actions.copyToClipboard("totp", currentCode, "TOTP copied")
-                                }) {
-                                    IconCopy()
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            PasswordTotpCard(
+                password = password,
+                now = state.now,
+                onCopy = { code -> actions.copyToClipboard("totp", code, "TOTP copied") },
+            )
         }
 
         // Passkeys merged into this entry
