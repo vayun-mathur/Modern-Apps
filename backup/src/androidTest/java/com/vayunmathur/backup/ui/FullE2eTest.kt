@@ -17,7 +17,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Launch-no-crash test: launches the app, grants every requested permission, and
+ * Full e2e test: launches the app, grants every requested permission, and
  * asserts it lands on real content rather than sitting on a permission screen.
  *
  * Backup has no launcher intent by design: it is configured from Settings, which
@@ -39,7 +39,7 @@ import org.junit.runner.RunWith
  * and non-Compose screens alike.
  */
 @RunWith(AndroidJUnit4::class)
-class LaunchNoCrashTest {
+class FullE2eTest {
 
     @Test
     fun launch_showsOnboardingWithoutCrash() {
@@ -48,9 +48,9 @@ class LaunchNoCrashTest {
         val targetContext = instrumentation.targetContext
         val packageName = targetContext.packageName
 
-        // Clean app state first: every run starts from the fresh-install
-        // first screen this test asserts, not whatever a previous run left.
-        clearAppData(instrumentation.uiAutomation, packageName)
+        // Clean state is provided by the runner: ./test clears the app's
+        // data before instrumenting (clearing from inside the test would
+        // kill the instrumentation, which runs in the app process).
 
         grantAllRequestedPermissions(instrumentation.uiAutomation, targetContext.packageManager, packageName)
 
@@ -73,17 +73,6 @@ class LaunchNoCrashTest {
         )
         // Still alive in front: the process did not crash after painting content.
         assertEquals(packageName, device.currentPackageName)
-    }
-
-    private fun clearAppData(uiAutomation: UiAutomation, packageName: String) {
-        try {
-            uiAutomation.executeShellCommand("pm clear $packageName").close()
-        } catch (ignored: SecurityException) {
-            // Shell cannot clear the package: the content assertions below
-            // report whatever state the app actually starts in.
-        } catch (ignored: IOException) {
-            // Shell pipe failed: same reporting path as above.
-        }
     }
 
     private fun grantAllRequestedPermissions(

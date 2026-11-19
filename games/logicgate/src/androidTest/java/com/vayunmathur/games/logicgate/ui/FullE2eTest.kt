@@ -16,14 +16,14 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Launch-no-crash test: launches the app, grants every requested permission, and asserts it
+ * Full e2e test: launches the app, grants every requested permission, and asserts it
  * reaches the level map, marked by its stable tagline.
  *
  * UiDevice polling, not compose-test: compose's Espresso idle-sync reflects on hidden
  * InputManager APIs that no longer exist on current releases.
  */
 @RunWith(AndroidJUnit4::class)
-class LaunchNoCrashTest {
+class FullE2eTest {
 
     @Test
     fun launch_grantsPermissions_showsLevelMap() {

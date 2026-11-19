@@ -72,7 +72,7 @@ class ContactsSearchTest {
         val token = seeded!!.first
         val absent = seeded.second
 
-        // The search field is part of first paint (proven by LaunchNoCrashTest):
+        // The search field is part of first paint (proven by FullE2eTest):
         // tap it directly. Do NOT tap the Search action icon — that toggles
         // search UI state and collapses the field we need. Note the field is
         // an EditText with EMPTY text: the "Search contacts" Compose hint

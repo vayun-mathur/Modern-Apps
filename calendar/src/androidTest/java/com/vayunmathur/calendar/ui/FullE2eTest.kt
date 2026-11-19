@@ -16,7 +16,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Launch-no-crash test that launches the app, grants every requested permission, and
+ * Full e2e test that launches the app, grants every requested permission, and
  * asserts it gets past the permission screen onto the agenda view.
  *
  * Calendar gates on READ/WRITE_CALENDAR plus exact alarms and notifications through
@@ -31,7 +31,7 @@ import org.junit.runner.RunWith
  * and non-Compose screens alike.
  */
 @RunWith(AndroidJUnit4::class)
-class LaunchNoCrashTest {
+class FullE2eTest {
 
     @Test
     fun launch_grantsPermissions_showsAgenda() {

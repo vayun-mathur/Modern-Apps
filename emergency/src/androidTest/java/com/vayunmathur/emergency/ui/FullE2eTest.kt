@@ -17,7 +17,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Launch-no-crash test: clears the app's data, grants every requested permission, and
+ * Full e2e test: starts from the runner-cleared clean state, grants every requested permission, and
  * asserts it lands on the emergency-info view card.
  *
  * Emergency has no launcher entry (it is reached from Settings > Safety &
@@ -34,7 +34,7 @@ import org.junit.runner.RunWith
  * and non-Compose screens alike.
  */
 @RunWith(AndroidJUnit4::class)
-class LaunchNoCrashTest {
+class FullE2eTest {
 
     @Test
     fun launch_grantsPermissions_showsEmergencyInfo() {
@@ -43,7 +43,9 @@ class LaunchNoCrashTest {
         val targetContext = instrumentation.targetContext
         val packageName = targetContext.packageName
 
-        clearAppData(instrumentation.uiAutomation, packageName)
+        // Clean state is provided by the runner: ./test clears the app's
+        // data before instrumenting (clearing from inside the test would
+        // kill the instrumentation, which runs in the app process).
 
         grantAllRequestedPermissions(instrumentation.uiAutomation, targetContext.packageManager, packageName)
 
@@ -73,16 +75,6 @@ class LaunchNoCrashTest {
      * Starts from clean app state: wipes the target package's data (which also
      * resets its grants, so this runs before the grant pass).
      */
-    private fun clearAppData(uiAutomation: UiAutomation, packageName: String) {
-        try {
-            uiAutomation.executeShellCommand("pm clear $packageName").close()
-        } catch (ignored: SecurityException) {
-            // Cannot clear headlessly: the content assertions below report stale state.
-        } catch (ignored: IOException) {
-            // Shell pipe failed: the content assertions below report it.
-        }
-    }
-
     private fun grantAllRequestedPermissions(
         uiAutomation: UiAutomation,
         packageManager: PackageManager,

@@ -16,7 +16,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Launch-no-crash test: launches the app, grants every requested permission, and
+ * Full e2e test: launches the app, grants every requested permission, and
  * asserts it lands on real content rather than sitting on a permission screen.
  *
  * Navigation starts on the Home route with no onboarding gate in this build:
@@ -30,7 +30,7 @@ import org.junit.runner.RunWith
  * and non-Compose screens alike.
  */
 @RunWith(AndroidJUnit4::class)
-class LaunchNoCrashTest {
+class FullE2eTest {
 
     @Test
     fun launch_grantsPermissions_showsCatalogHome() {
@@ -39,10 +39,9 @@ class LaunchNoCrashTest {
         val targetContext = instrumentation.targetContext
         val packageName = targetContext.packageName
 
-        // Clean-state start: wipe any data a previous run left behind so the
-        // first screen below is the fresh-install one, then grant permissions
-        // (grants are applied after the clear so they survive it).
-        clearAppData(instrumentation.uiAutomation, packageName)
+        // Clean state is provided by the runner: ./test clears the app's
+        // data before instrumenting (clearing from inside the test would
+        // kill the instrumentation, which runs in the app process).
         grantAllRequestedPermissions(instrumentation.uiAutomation, targetContext.packageManager, packageName)
 
         val intent = targetContext.packageManager.getLaunchIntentForPackage(packageName)
@@ -64,17 +63,6 @@ class LaunchNoCrashTest {
         )
         // Still alive in front: the process did not crash after painting content.
         assertEquals(packageName, device.currentPackageName)
-    }
-
-    private fun clearAppData(uiAutomation: UiAutomation, packageName: String) {
-        try {
-            uiAutomation.executeShellCommand("pm clear $packageName").close()
-        } catch (ignored: SecurityException) {
-            // Clear refused: leftover state may change the first screen and
-            // the content assertions below report it.
-        } catch (ignored: IOException) {
-            // Shell pipe failed: the content assertions below report it.
-        }
     }
 
     private fun grantAllRequestedPermissions(

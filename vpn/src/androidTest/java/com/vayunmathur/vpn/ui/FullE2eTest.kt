@@ -15,7 +15,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Launch-no-crash test: launches the app, grants every headlessly grantable
+ * Full e2e test: launches the app, grants every headlessly grantable
  * permission, and asserts the permission gate is correctly shown.
  *
  * Vpn gates on PermissionRequirement.Vpn, which the OS only grants via a user
@@ -30,7 +30,7 @@ import org.junit.runner.RunWith
  * and non-Compose screens alike.
  */
 @RunWith(AndroidJUnit4::class)
-class LaunchNoCrashTest {
+class FullE2eTest {
 
     @Test
     fun launch_showsVpnGateWithoutCrash() {

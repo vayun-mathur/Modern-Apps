@@ -16,7 +16,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Launch-no-crash test: launches the app, grants every requested permission, and
+ * Full e2e test: launches the app, grants every requested permission, and
  * asserts it lands on the compass page rather than sitting on a permission screen.
  *
  * Measure starts at Route.Compass, the first bottom-bar tab; the title and the
@@ -29,7 +29,7 @@ import org.junit.runner.RunWith
  * and non-Compose screens alike.
  */
 @RunWith(AndroidJUnit4::class)
-class LaunchNoCrashTest {
+class FullE2eTest {
 
     @Test
     fun launch_grantsPermissions_showsCompass() {

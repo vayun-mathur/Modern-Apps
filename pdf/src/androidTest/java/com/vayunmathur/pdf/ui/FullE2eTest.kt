@@ -16,7 +16,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Launch-no-crash test: launches the app, grants every requested permission, and
+ * Full e2e test: launches the app, grants every requested permission, and
  * asserts it gets past the permission screen onto the picker.
  *
  * Pdf lands on its initial picker when launched with no document intent; the
@@ -28,7 +28,7 @@ import org.junit.runner.RunWith
  * and non-Compose screens alike.
  */
 @RunWith(AndroidJUnit4::class)
-class LaunchNoCrashTest {
+class FullE2eTest {
 
     @Test
     fun launch_grantsPermissions_showsPicker() {
