@@ -99,7 +99,7 @@ class InferenceService : Service() {
         private const val AUDIT_OUTCOME_CHARS = 200
         private val HOST_CONFIRM = Regex("""\[HostConfirm ([^\]]+)]""")
         private val HOST_CANCEL = Regex("""\[HostCancel ([^\]]+)]""")
-        private val HOST_SEND_MSG = Regex("""\[HostSendMsg (\{.*})]""")
+        private val HOST_SEND_MSG = Regex("""\[HostSendMsg (\{.*\})]""")
 
         /** The system prompt used when the user has not set a custom one. */
         val DEFAULT_SYSTEM_PROMPT = """
