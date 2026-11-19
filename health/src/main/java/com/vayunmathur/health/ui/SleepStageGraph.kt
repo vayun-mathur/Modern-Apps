@@ -33,8 +33,13 @@ import kotlinx.serialization.json.Json
 @Composable
 fun SleepStageGraph(record: Record) {
     val stages = remember(record) {
-        record.sleepData?.stagesJson?.let { Json.decodeFromString<List<SleepStage>>(it) }
-            ?: emptyList()
+        // stagesJson is persisted in Room; a payload written by another build
+        // (or otherwise undecodable) must hide the graph, not throw
+        // SerializationException during composition — the same guard the
+        // exercise segments/laps parsing already uses.
+        record.sleepData?.stagesJson?.let {
+            runCatching { Json.decodeFromString<List<SleepStage>>(it) }.getOrNull()
+        } ?: emptyList()
     }
 
     if (stages.isEmpty()) return

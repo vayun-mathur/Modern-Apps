@@ -80,6 +80,9 @@ class MedicalViewModel(
     companion object {
         /** 9am in seconds since midnight: the default time of a new reminder schedule. */
         internal const val DEFAULT_DOSE_TIME_SECONDS = 9 * 60 * 60
+
+        /** Seconds in a day: dose times are valid in `0 until SECONDS_PER_DAY`. */
+        internal const val SECONDS_PER_DAY = 24 * 60 * 60
     }
 
     val vaccinations: StateFlow<List<VaccinationEntry>> = repository.getVaccinationsFlow()
@@ -380,7 +383,12 @@ class MedicalViewModel(
                 // what lets reactivating the medication bring its reminders back.
                 remindersEnabled = schedule != null &&
                     (schedule.enabled || entry.status != MedicationStatus.Active),
-                times = schedule?.times?.takeIf { it.isNotEmpty() }
+                // Drop out-of-range dose times stored by older imports: the
+                // editor renders each with LocalTime.fromSecondOfDay, which
+                // throws outside 0..86399. DoseSchedule already ignores them
+                // when arming; this keeps the editor consistent with that.
+                times = schedule?.times?.filter { it in 0 until SECONDS_PER_DAY }
+                    ?.takeIf { it.isNotEmpty() }
                     ?: listOf(DEFAULT_DOSE_TIME_SECONDS),
                 repeatUnit = schedule?.repeatUnit ?: RepeatUnit.Daily,
                 interval = schedule?.interval ?: 1,

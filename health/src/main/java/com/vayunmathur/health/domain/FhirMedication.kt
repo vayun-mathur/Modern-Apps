@@ -349,6 +349,12 @@ private fun parseTimeOfDay(value: String): Int? {
     val h = parts[0].toIntOrNull() ?: return null
     val m = parts[1].toIntOrNull() ?: return null
     val s = parts.getOrNull(2)?.substringBefore('.')?.toIntOrNull() ?: 0
+    // FHIR timings come from other systems; an out-of-range clock time such as
+    // "24:00" or "08:60" is not a dose time. Returning it as seconds-since-
+    // midnight would be stored on the schedule and later crash the editor's
+    // LocalTime.fromSecondOfDay rendering, so reject it like any other
+    // unparseable value.
+    if (h !in 0..23 || m !in 0..59 || s !in 0..59) return null
     return h * 3600 + m * 60 + s
 }
 
