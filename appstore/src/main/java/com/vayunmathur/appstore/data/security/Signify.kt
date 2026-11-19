@@ -41,6 +41,7 @@ object Signify {
         signature: String,
         base64PublicKey: String,
     ): Boolean {
+        if (!SignifyNative.available) return false
         return try {
             val pubKeyBytes = decodeRange(base64PublicKey, PUBKEY_HEADER, PUBKEY_END) ?: return false
 
@@ -54,7 +55,9 @@ object Signify {
             val sigBytes = decodeRange(sigBase64, SIG_HEADER, SIG_END) ?: return false
 
             SignifyNative.nativeVerify(pubKeyBytes, message, sigBytes)
-        } catch (_: Exception) {
+        } catch (_: Throwable) {
+            // Fail closed on linkage errors as well as parsing failures:
+            // a verifier that cannot run must never crash its caller.
             false
         }
     }

@@ -86,6 +86,13 @@ open class AccrescentRepoDataFetcher(private val context: Context) {
         } catch (expected: IllegalStateException) {
             Log.status(TAG, "repodata fetch/verify failed", expected)
             Result.failure(expected)
+        } catch (expected: IllegalArgumentException) {
+            // Malformed (but signed) repodata: decodeFromString throws
+            // SerializationException, an IllegalArgumentException. It must
+            // fail closed like every other failure here, not escape and
+            // crash the update-check / install caller.
+            Log.status(TAG, "repodata fetch/verify failed", expected)
+            Result.failure(expected)
         } catch (expected: java.io.IOException) {
             Log.status(TAG, "repodata fetch/verify failed", expected)
             Result.failure(expected)

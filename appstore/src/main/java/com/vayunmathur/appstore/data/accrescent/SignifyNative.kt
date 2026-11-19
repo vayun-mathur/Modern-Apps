@@ -14,7 +14,11 @@ package com.vayunmathur.appstore.data.accrescent
 internal object SignifyNative {
     external fun nativeVerify(pubkey: ByteArray, message: ByteArray, signature: ByteArray): Boolean
 
-    init {
-        System.loadLibrary("appstore_signify")
-    }
+    /**
+     * Whether the native library loaded. A missing `.so` (an ABI the APK
+     * does not ship) must fail closed as "signature does not verify", not
+     * crash class initialisation with an [UnsatisfiedLinkError], which is
+     * an [Error] and escapes every `catch (Exception)` fail-closed path.
+     */
+    val available: Boolean = runCatching { System.loadLibrary("appstore_signify") }.isSuccess
 }
