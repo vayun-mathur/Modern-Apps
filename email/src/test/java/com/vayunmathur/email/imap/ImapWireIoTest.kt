@@ -60,6 +60,12 @@ class ImapWireIoTest {
     }
 
     @Test
+    fun `oversized literal is refused instead of allocated`() {
+        val (io, _) = wire("* 1 FETCH (BODY[] {2147483647}\r\n".toByteArray())
+        kotlin.test.assertFailsWith<java.io.IOException> { io.readLineWithLiteral() }
+    }
+
+    @Test
     fun `exhausted stream returns null`() {
         val (io, _) = wire(ByteArray(0))
         assertNull(io.readLineWithLiteral())

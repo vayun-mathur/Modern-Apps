@@ -26,6 +26,11 @@ internal class ImapWireIo(
         val litMatch = Regex("""\{(\d+)(\+)?\}$""").find(lineStr)
         if (litMatch != null) {
             val size = litMatch.groupValues[1].toIntOrNull() ?: 0
+            if (size > MAX_LITERAL_BYTES) {
+                // The literal length is server-controlled: allocating it
+                // unchecked lets a broken or hostile server OOM the process.
+                throw IOException("IMAP literal too large: $size bytes")
+            }
             if (size > 0) {
                 val litBytes = ByteArray(size)
                 var read = 0
@@ -94,5 +99,8 @@ internal class ImapWireIo(
         private const val TAG = "RawImap"
         private const val LOG_LINE_PREVIEW_LEN = 120
         private const val LOG_SNIFF_LEN = 600
+
+        /** Largest literal body buffered in memory; bigger mail fails the fetch instead of the process. */
+        private const val MAX_LITERAL_BYTES = 64 * 1024 * 1024
     }
 }

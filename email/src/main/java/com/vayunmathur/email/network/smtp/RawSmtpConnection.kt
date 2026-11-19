@@ -63,7 +63,7 @@ class RawSmtpConnection(
         sendCommand("EHLO $hostname")
         val resp = readMultilineResponse()
         ehloResponse = resp
-        caps = resp.map { it.substring(SMTP_REPLY_CODE_LEN).trim().uppercase() }.toSet()
+        caps = resp.map { it.drop(SMTP_REPLY_CODE_LEN).trim().uppercase() }.toSet()
         if (!isPositive(resp)) throw IOException("EHLO failed: $resp")
         return resp
     }
