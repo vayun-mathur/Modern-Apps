@@ -10,7 +10,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -84,12 +84,12 @@ internal fun RowScope.KeyButton(key: Key, actions: CalculatorActions, second: Bo
                 else -> key.onPress(actions)
             }
         },
-        modifier = Modifier.weight(key.weight).height(50.dp).padding(2.dp),
+        modifier = Modifier.weight(key.weight).heightIn(min = 50.dp).padding(2.dp),
         shape = MaterialTheme.shapes.largeIncreased,
         colors = colors,
         contentPadding = PaddingValues(0.dp),
     ) {
-        Text(label, fontSize = if (label.length >= 4) 13.sp else 18.sp, maxLines = 1)
+        Text(label, fontSize = if (label.length >= 4) 13.sp else 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -189,6 +189,7 @@ internal fun DisplayColumn(state: CalculatorUiState, actions: CalculatorActions,
             fontSize = 38.sp,
             maxLines = 1,
             softWrap = false,
+            overflow = TextOverflow.Ellipsis,
         )
         Text(
             state.preview,
@@ -198,6 +199,7 @@ internal fun DisplayColumn(state: CalculatorUiState, actions: CalculatorActions,
             maxLines = 1,
             softWrap = false,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            overflow = TextOverflow.Ellipsis,
         )
         if (state.unitOptions.isNotEmpty()) {
             // A wrapping row of filter chips rather than a ButtonGroup: the group is a

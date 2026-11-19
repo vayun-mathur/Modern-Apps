@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.text.KeyboardOptions
@@ -73,6 +74,7 @@ internal fun CategoryDropdown(
                 modifier = Modifier.weight(1f),
                 textAlign = TextAlign.Start,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             IconArrowDropDown()
         }
@@ -153,6 +155,7 @@ private fun UnitDropdown(
                 modifier = Modifier.weight(1f),
                 textAlign = TextAlign.Start,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             IconArrowDropDown()
         }

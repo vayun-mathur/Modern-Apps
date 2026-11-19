@@ -26,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vayunmathur.calculator.R
@@ -141,7 +142,7 @@ internal fun UnitPickerSheet(
                 ) {
                     items(categories.size) { index ->
                         NavigationDrawerItem(
-                            label = { Text(categories[index].name, maxLines = 1) },
+                            label = { Text(categories[index].name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                             selected = index == categoryIndex,
                             onClick = { categoryIndex = index },
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),

@@ -51,9 +51,9 @@ fun LockScreen(reason: Enforcer.BlockReason, appLabel: String?, actions: LockAct
 
     AppScaffold(
         title = title,
-    ) {
+    ) { pad ->
         Column(
-            modifier = Modifier.fillMaxSize().padding(24.dp),
+            modifier = Modifier.fillMaxSize().padding(pad).padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
         ) {

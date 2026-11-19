@@ -107,9 +107,9 @@ fun FrictionScreen(appLabel: String?, nudge: Boolean, onContinue: () -> Unit, on
         title = stringResource(
             if (nudge) R.string.friction_nudge_title else R.string.friction_spent_title,
         ),
-    ) {
+    ) { pad ->
         Column(
-            modifier = Modifier.fillMaxSize().padding(24.dp),
+            modifier = Modifier.fillMaxSize().padding(pad).padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
         ) {

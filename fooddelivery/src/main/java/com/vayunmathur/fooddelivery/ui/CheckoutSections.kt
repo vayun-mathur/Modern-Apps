@@ -2,6 +2,8 @@ package com.vayunmathur.fooddelivery.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -193,6 +195,7 @@ internal fun CheckoutAddressPicker(
     )
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun CheckoutTipPicker(
     tipCents: Int,
@@ -209,7 +212,7 @@ internal fun CheckoutTipPicker(
     )
     Spacer(Modifier.height(8.dp))
 
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         listOf(0, 200, 300, 500).forEach { cents ->
             val label = if (cents == 0) "None" else "$%.2f".format(cents / 100.0)
             FilterChip(

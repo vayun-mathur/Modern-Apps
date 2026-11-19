@@ -208,7 +208,7 @@ private fun LanguageBar(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        TextButton(onClick = onSource, modifier = Modifier.width(140.dp)) {
+        TextButton(onClick = onSource, modifier = Modifier.weight(1f)) {
             Text(
                 text = Languages.displayName(sourceCode),
                 maxLines = 1,
@@ -222,7 +222,7 @@ private fun LanguageBar(
         ) {
             IconSwapLanguages()
         }
-        TextButton(onClick = onTarget, modifier = Modifier.width(140.dp)) {
+        TextButton(onClick = onTarget, modifier = Modifier.weight(1f)) {
             Text(
                 text = Languages.displayName(targetCode),
                 maxLines = 1,

@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vayunmathur.calculator.platform.CalculatorActions
@@ -43,6 +44,7 @@ internal fun LandscapeDisplay(state: CalculatorUiState, modifier: Modifier = Mod
             maxLines = 1,
             softWrap = false,
             color = MaterialTheme.colorScheme.onSurface,
+            overflow = TextOverflow.Ellipsis,
         )
         Text(
             state.preview,
@@ -52,6 +54,7 @@ internal fun LandscapeDisplay(state: CalculatorUiState, modifier: Modifier = Mod
             maxLines = 1,
             softWrap = false,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }
@@ -136,6 +139,6 @@ private fun RowScope.LandscapeKeyButton(
         colors = colors,
         contentPadding = PaddingValues(0.dp),
     ) {
-        Text(label, fontSize = if (label.length >= 4) 13.sp else 18.sp, maxLines = 1)
+        Text(label, fontSize = if (label.length >= 4) 13.sp else 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
