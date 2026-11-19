@@ -156,6 +156,14 @@ internal object ShareNativeDiscovery {
     external fun nativeParsePresenceAdvertName(advertBytes: ByteArray): String?
 
     init {
-        System.loadLibrary("share_nearby")
+        // Do not let a missing/ABI-mismatched .so fail class initialization: that
+        // turns every later access into NoClassDefFoundError, which the call sites'
+        // catch (UnsatisfiedLinkError) cannot match. A failed load leaves the class
+        // usable; native calls then throw UnsatisfiedLinkError, which they do catch.
+        try {
+            System.loadLibrary("share_nearby")
+        } catch (_: UnsatisfiedLinkError) {
+            // Native calls fail individually and are handled at their call sites.
+        }
     }
 }

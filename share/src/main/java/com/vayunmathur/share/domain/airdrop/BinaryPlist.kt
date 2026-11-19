@@ -214,15 +214,15 @@ object BinaryPlist {
                     0x3 -> readReal(pos + 1, 8)
                     0x4 -> {
                         val (len, start) = countAt(pos, info)
-                        bytes.copyOfRange(start, checkedEnd(start, len))
+                        bytes.copyOfRange(start, checkedEnd(start, len.toLong()))
                     }
                     0x5 -> {
                         val (len, start) = countAt(pos, info)
-                        String(bytes, start, checkedEnd(start, len) - start, Charsets.US_ASCII)
+                        String(bytes, start, checkedEnd(start, len.toLong()) - start, Charsets.US_ASCII)
                     }
                     0x6 -> {
                         val (len, start) = countAt(pos, info)
-                        String(bytes, start, checkedEnd(start, len * 2) - start, Charsets.UTF_16BE)
+                        String(bytes, start, checkedEnd(start, len.toLong() * 2) - start, Charsets.UTF_16BE)
                     }
                     0x8 -> readSized(pos + 1, info + 1)
                     0xA -> readArray(pos, info)
@@ -243,13 +243,17 @@ object BinaryPlist {
 
         private fun readArray(pos: Int, info: Int): List<Any?> {
             val (count, start) = countAt(pos, info)
-            checkedEnd(start, count * refSize)
+            // Long math: count * refSize in Int wraps (e.g. 2^29 * 8 == 0), which
+            // let a crafted body pass the bounds check and then allocate a list
+            // sized by the un-wrapped count -> OutOfMemoryError, an Error that
+            // escapes every caller's catch (Exception).
+            checkedEnd(start, count.toLong() * refSize)
             return List(count) { i -> readObject(readSized(start + i * refSize, refSize)) }
         }
 
         private fun readDict(pos: Int, info: Int): Map<String, Any?> {
             val (count, start) = countAt(pos, info)
-            checkedEnd(start, count * refSize * 2)
+            checkedEnd(start, count.toLong() * refSize * 2)
             val map = LinkedHashMap<String, Any?>(count)
             for (i in 0 until count) {
                 val key = readObject(readSized(start + i * refSize, refSize)) as? String
@@ -269,7 +273,7 @@ object BinaryPlist {
             return count.toInt() to pos + 2 + size
         }
 
-        private fun checkedEnd(start: Int, len: Int): Int {
+        private fun checkedEnd(start: Int, len: Long): Int {
             val end = start.toLong() + len
             if (len < 0 || end > offsetTableOffset) throw FormatException("object overruns")
             return end.toInt()

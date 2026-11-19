@@ -1,5 +1,6 @@
 package com.vayunmathur.share.platform.receive
 
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -100,15 +101,21 @@ class ShareSaveActivity : ComponentActivity() {
             return
         }
         val name = displayName(next)
-        creator.launch(
-            Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
-                addCategory(Intent.CATEGORY_OPENABLE)
-                // Per file, from its own name: a batch can mix a photo and a PDF, and the picker
-                // uses the type to choose a default location and a sensible extension.
-                type = ReceivedFileStore.mimeTypeOf(name)
-                putExtra(Intent.EXTRA_TITLE, name)
-            }
-        )
+        // A build without DocumentsUI has no handler for CREATE_DOCUMENT.
+        try {
+            creator.launch(
+                Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                    // Per file, from its own name: a batch can mix a photo and a PDF, and the picker
+                    // uses the type to choose a default location and a sensible extension.
+                    type = ReceivedFileStore.mimeTypeOf(name)
+                    putExtra(Intent.EXTRA_TITLE, name)
+                }
+            )
+        } catch (_: ActivityNotFoundException) {
+            Log.status(TAG, "no document picker on this device")
+            finish()
+        }
     }
 
     /** The staged file's name. These are our own `FileProvider` URIs, so it is the last segment. */

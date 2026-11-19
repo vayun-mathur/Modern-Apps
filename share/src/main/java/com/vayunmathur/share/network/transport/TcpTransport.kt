@@ -8,6 +8,7 @@ import com.vayunmathur.share.platform.IncomingTransfer
 import com.vayunmathur.share.platform.ReceivedFile
 import com.vayunmathur.share.platform.ReceivedFileStore
 import java.io.File
+import java.io.IOException
 import java.io.OutputStream
 import java.net.InetAddress
 import java.net.InetSocketAddress
@@ -225,12 +226,24 @@ class TcpTransport(
         // The side that dialled the socket is the Nearby Connections initiator: it sends
         // CONNECTION_REQUEST and drives UKEY2 as the client. The endpoint info and id are
         // the advertised ones, so the peer sees the identity it discovered.
-        val session = ShareSession(
-            localName = localName,
-            localEndpointInfo = localEndpointInfo,
-            localEndpointId = localEndpointId,
-            isInitiator = !incoming,
-        )
+        // Native session creation throws UnsatisfiedLinkError (an Error, so the
+        // callers' catch (Exception) misses it) when the .so cannot load; surface
+        // it as an IOException they already handle.
+        val session = try {
+            ShareSession(
+                localName = localName,
+                localEndpointInfo = localEndpointInfo,
+                localEndpointId = localEndpointId,
+                isInitiator = !incoming,
+            )
+        } catch (e: LinkageError) {
+            try {
+                socket.close()
+            } catch (_: Exception) {
+                // Already broken; the failure below is the useful one.
+            }
+            throw IOException("native share library unavailable", e)
+        }
         val conn = Connection(
             socket = socket,
             session = session,

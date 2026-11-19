@@ -41,6 +41,18 @@ impl Session {
             let have = self.bytes_recvs.entry(payload_id).or_default();
             let gap = offset > have.len();
             if offset == have.len() {
+                // Unbounded reassembly lets a peer grow this buffer with non-final
+                // chunks until allocation failure aborts the process. A sharing
+                // frame is a control message; one frame's cap is generous for it.
+                if have.len().saturating_add(chunk.body().len()) > frame::MAX_FRAME_LEN {
+                    let have_len = have.len();
+                    let _ = self.bytes_recvs.remove(&payload_id);
+                    self.note(format!(
+                        "BYTES {payload_id} over frame cap: have {have_len}, chunk {}",
+                        chunk.body().len()
+                    ));
+                    return 0;
+                }
                 have.extend_from_slice(chunk.body());
             }
             if gap {

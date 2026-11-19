@@ -247,6 +247,9 @@ object ShareReceiveController {
      * handles and partial files all go — but *posted notifications do*, so a stale Request
      * notification would offer an Accept that can never work.
      */
+    // Startup spans socket, TLS and NSD/BLE layers, which throw undocumented
+    // RuntimeExceptions as well as IOExceptions; both catches stay broad by design.
+    @Suppress("TooGenericExceptionCaught")
     fun start(context: Context) {
         val app = context.applicationContext
         val p = ensure(app)
@@ -268,16 +271,30 @@ object ShareReceiveController {
             if (swept > 0) Log.status(TAG, "swept $swept orphaned staged file(s)")
             // Before listen(), so a socket accepted immediately announces the identity we are
             // about to advertise rather than the transport's construction-time one.
-            p.transport.setLocalIdentity(localName, endpointInfo, p.endpointId)
-            val port = p.transport.listen()
-            // The WIFI_LAN port under _FC9F5ED42C8A._tcp, endpoint info in the `n` TXT
-            // attribute — the record a Quick Share device lists us from.
-            p.nsd.advertise(p.endpointId, endpointInfo, port)
-            // The same blob inside a Nearby Connections BleAdvertisement under 0xFEF3.
-            p.ble.startAdvertising(p.endpointId, endpointInfo)
-            Log.status(TAG, "receiving as \"$localName\" on port $port")
+            try {
+                p.transport.setLocalIdentity(localName, endpointInfo, p.endpointId)
+                val port = p.transport.listen()
+                // The WIFI_LAN port under _FC9F5ED42C8A._tcp, endpoint info in the `n` TXT
+                // attribute — the record a Quick Share device lists us from.
+                p.nsd.advertise(p.endpointId, endpointInfo, port)
+                // The same blob inside a Nearby Connections BleAdvertisement under 0xFEF3.
+                p.ble.startAdvertising(p.endpointId, endpointInfo)
+                Log.status(TAG, "receiving as \"$localName\" on port $port")
+            } catch (e: Exception) {
+                // Bind/TLS/advertise failures must not crash the receive service or
+                // wedge `advertising` on: a later start() retries from scratch.
+                advertising = false
+                Log.error(TAG, "failed to start receiving", e)
+                return
+            }
         }
-        scope.launch { p.airDrop.startReceiving() }
+        scope.launch {
+            try {
+                p.airDrop.startReceiving()
+            } catch (e: Exception) {
+                Log.error(TAG, "failed to start AirDrop receiving", e)
+            }
+        }
     }
 
     /**

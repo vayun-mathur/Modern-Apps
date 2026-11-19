@@ -244,8 +244,12 @@ class ShareViewModel(
                 val uris = if (Build.VERSION.SDK_INT >= 33) {
                     intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM, Uri::class.java)
                 } else {
+                    // The deprecated overload is erased-generic: any app can send an
+                    // ArrayList<String> in this extra, and the first element use would
+                    // throw ClassCastException. Keep only real Uris.
                     @Suppress("DEPRECATION")
-                    intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM)
+                    intent.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)
+                        ?.filterIsInstance<Uri>()
                 }
                 if (!uris.isNullOrEmpty()) setOutgoingUris(uris)
             }

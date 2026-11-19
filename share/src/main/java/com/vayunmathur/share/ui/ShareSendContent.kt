@@ -1,4 +1,5 @@
 package com.vayunmathur.share.ui
+import android.content.ActivityNotFoundException
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -61,7 +62,14 @@ fun ShareSendContent(
             OutgoingFilesCard(
                 uris = uiState.outgoingUris,
                 displayNames = uiState.outgoingDisplayNames,
-                onPickFiles = { pickerLauncher.launch(arrayOf("*/*")) },
+                onPickFiles = {
+                    // A build without DocumentsUI has no handler for the picker.
+                    try {
+                        pickerLauncher.launch(arrayOf("*/*"))
+                    } catch (_: ActivityNotFoundException) {
+                        // Nothing to pick with on this device; the screen stays.
+                    }
+                },
                 onClear = actions::clearOutgoing,
             )
         }

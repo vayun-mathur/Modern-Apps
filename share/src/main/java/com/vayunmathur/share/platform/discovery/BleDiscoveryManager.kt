@@ -101,7 +101,12 @@ class BleDiscoveryManager(private val context: Context) {
         val data = parseAdvertisementBytes(serviceData) ?: return null
         // `data` nests the Sharing blob inside the Nearby Connections envelope; the
         // envelope is what carries the peer's endpoint id.
-        val endpointInfo = ShareNativeDiscovery.nativeParseBleEndpointInfo(data) ?: run {
+        val endpointInfo = try {
+            ShareNativeDiscovery.nativeParseBleEndpointInfo(data)
+        } catch (e: UnsatisfiedLinkError) {
+            Log.error(TAG, "libshare_nearby unavailable — cannot parse endpoint info", e)
+            return null
+        } ?: run {
             Log.dev(
                 TAG,
                 "skipping $addr: not a NearbySharing endpoint payload (" +
@@ -408,7 +413,12 @@ class BleDiscoveryManager(private val context: Context) {
         val payload = decodeAdvertisedPayload(serviceData, addr) ?: return null
         // Key on the advertised endpoint id, which is also what the mDNS leg
         // reports, so one device does not appear twice.
-        val endpointId = ShareNativeDiscovery.nativeParseBleEndpointId(payload.data) ?: addr
+        val endpointId = try {
+            ShareNativeDiscovery.nativeParseBleEndpointId(payload.data)
+        } catch (e: UnsatisfiedLinkError) {
+            Log.error(TAG, "libshare_nearby unavailable — cannot parse endpoint id", e)
+            null
+        } ?: addr
         return NearbyDevice(
             endpointId = endpointId,
             // Both names come from bytes already in hand: the endpoint-info blob, then
