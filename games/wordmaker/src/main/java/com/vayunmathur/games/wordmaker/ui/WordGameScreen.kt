@@ -171,13 +171,17 @@ fun WordGameScreen(
         // instead of stretching the crossword across the window; the board
         // itself never splits. Bars stay full-bleed — only the body is capped.
         DesktopMaxWidthContainer(modifier = Modifier.padding(innerPadding)) {
-        // Short windows (landscape phones, under 480.dp tall) cannot stack the
-        // board over the wheel: wheelHeight alone is 320-410.dp, so reserving it
-        // as bottom padding left the board ~0.dp and it collapsed. There the
-        // board and wheel sit side by side instead — the same split sudoku and
-        // minesweeper make on isCompactHeight() — each with the full height,
-        // and the wheel's measured-fit geometry shrinks it to its column.
-        // Taller windows keep the stacked layout below, unchanged.
+        // Short landscape windows (under 480.dp tall, wider than tall) cannot
+        // stack the board over the wheel: wheelHeight alone is 320-410.dp, so
+        // reserving it as bottom padding left the board ~0.dp and it collapsed.
+        // There the board and wheel sit side by side instead, each with the
+        // full height, and the wheel's measured-fit geometry shrinks it to its
+        // column. Portrait windows keep the stacked layout no matter how short
+        // they are: a side-by-side split there halves an already narrow width,
+        // squeezing the wheel into a sliver of its column (Robolectric's
+        // 320x470.dp test window and portrait split-screen both hit this), so
+        // compact height alone must not trigger the split — landscape aspect
+        // is required too. Taller windows keep the stacked layout, unchanged.
         BoxWithConstraints(
             modifier = Modifier
                 .padding(bottom = 32.dp)
@@ -245,7 +249,8 @@ fun WordGameScreen(
                 )
             }
 
-            if (isCompactHeight()) {
+            val sideBySide = isCompactHeight() && maxWidth > maxHeight
+            if (sideBySide) {
                 Row(modifier = Modifier.fillMaxSize()) {
                     Box(
                         modifier = Modifier.weight(1f).fillMaxHeight(),
