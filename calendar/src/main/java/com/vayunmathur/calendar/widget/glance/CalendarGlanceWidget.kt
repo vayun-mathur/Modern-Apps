@@ -152,12 +152,16 @@ fun Content(context: Context, positionedEvents: Map<LocalDate, List<Instance>>) 
     ) {
         LazyColumn(modifier = GlanceModifier.fillMaxSize().background(GlanceTheme.colors.surface)) {
             for(day in days) {
-                if(positionedEvents[day]!!.isNotEmpty()) {
+                // The map was keyed by the days loadData saw; rendering can
+                // run after midnight (or with any stale/partial data), so a
+                // missing day is an empty day, not a crash in the widget.
+                val dayEvents = positionedEvents[day].orEmpty()
+                if(dayEvents.isNotEmpty()) {
                     item {
                         DayHeader(dayHeaderLabel(day, today, context))
                     }
                 }
-                items(positionedEvents[day]!!) { instance ->
+                items(dayEvents) { instance ->
                     CalendarEventRow(
                         color = instance.color,
                         title = instance.eventTitle,
