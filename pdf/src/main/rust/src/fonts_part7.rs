@@ -142,6 +142,10 @@ pub(crate) mod cmap {
     }
 
     fn hex_to_bytes(hex: &str) -> Vec<u8> {
+        // Tokenizers push raw bytes as chars; non-ASCII input would slice inside a char.
+        if !hex.is_ascii() {
+            return Vec::new();
+        }
         let mut h = hex.to_string();
         if h.len() % 2 == 1 {
             h.push('0');

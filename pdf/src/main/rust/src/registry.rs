@@ -65,10 +65,7 @@ pub(crate) fn open_decrypted(bytes: &[u8], password: &[u8]) -> Option<Document> 
         return Some(doc);
     }
     if let Ok(pw) = std::str::from_utf8(password) {
-        if let Ok(d2) = Document::load_mem_with_options(
-            bytes,
-            lopdf::LoadOptions::with_password(pw),
-        ) {
+        if let Ok(d2) = load_mem_with_options_on_big_stack(bytes, pw) {
             // was_encrypted + !is_encrypted means lopdf authenticated and
             // decrypted in-place; an auth failure comes back as a husk
             // (still "encrypted", no objects), which must not win.
@@ -184,6 +181,31 @@ fn load_mem_on_big_stack(bytes: &[u8]) -> lopdf::Result<Document> {
                 Err(payload) => std::panic::resume_unwind(payload),
             },
             Err(_) => Document::load_mem(bytes),
+        }
+    })
+}
+
+/// `Document::load_mem_with_options` on the big-stack worker, like [`load_mem_on_big_stack`].
+///
+/// The encrypted re-parse in [`open_decrypted`] must not run lopdf's recursive
+/// parser on the small JNI thread stack: a deeply nested encrypted file would
+/// overflow it (a guard-page fault no catch_unwind can recover).
+fn load_mem_with_options_on_big_stack(bytes: &[u8], password: &str) -> lopdf::Result<Document> {
+    std::thread::scope(|s| {
+        match std::thread::Builder::new()
+            .name("pdf-open".to_owned())
+            .stack_size(OPEN_STACK_BYTES)
+            .spawn_scoped(s, || {
+                Document::load_mem_with_options(bytes, lopdf::LoadOptions::with_password(password))
+            }) {
+            Ok(h) => match h.join() {
+                Ok(r) => r,
+                Err(payload) => std::panic::resume_unwind(payload),
+            },
+            Err(_) => Document::load_mem_with_options(
+                bytes,
+                lopdf::LoadOptions::with_password(password),
+            ),
         }
     })
 }

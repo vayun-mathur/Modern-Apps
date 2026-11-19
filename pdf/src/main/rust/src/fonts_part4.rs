@@ -105,7 +105,8 @@ pub(crate) mod encoding {
         // Strip a font-specific suffix like "name.sc" / "name.alt".
         let base = name.split('.').next().unwrap_or(name);
         if let Some(hex) = base.strip_prefix("uni") {
-            if hex.len() >= 4 {
+            // Slicing at byte 4 panics on non-ASCII (e.g. U+FFFD from a bad #XX escape).
+            if hex.len() >= 4 && hex.is_ascii() {
                 if let Ok(cp) = u32::from_str_radix(&hex[..4], 16) {
                     return char::from_u32(cp);
                 }
