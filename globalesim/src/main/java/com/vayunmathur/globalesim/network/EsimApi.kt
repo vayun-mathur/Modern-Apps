@@ -1,4 +1,4 @@
-package com.vayunmathur.globalesim.data.api
+package com.vayunmathur.globalesim.network
 
 import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.library.network.StaticMirror

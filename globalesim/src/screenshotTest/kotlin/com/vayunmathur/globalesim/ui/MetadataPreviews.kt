@@ -3,9 +3,9 @@ package com.vayunmathur.globalesim.ui
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import com.android.tools.screenshot.PreviewTest
-import com.vayunmathur.globalesim.data.api.NetworkDto
-import com.vayunmathur.globalesim.data.api.ProfileDto
-import com.vayunmathur.globalesim.data.api.RateDto
+import com.vayunmathur.globalesim.network.NetworkDto
+import com.vayunmathur.globalesim.network.ProfileDto
+import com.vayunmathur.globalesim.network.RateDto
 import com.vayunmathur.globalesim.platform.EsimUiState
 import com.vayunmathur.library.ui.DynamicTheme
 

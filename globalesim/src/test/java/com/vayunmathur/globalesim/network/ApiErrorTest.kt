@@ -1,4 +1,4 @@
-package com.vayunmathur.globalesim.data.api
+package com.vayunmathur.globalesim.network
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

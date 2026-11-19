@@ -1,4 +1,4 @@
-package com.vayunmathur.globalesim.data.api
+package com.vayunmathur.globalesim.network
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

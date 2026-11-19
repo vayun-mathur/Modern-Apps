@@ -5,7 +5,7 @@
 _Install: ./install globalesim (dev by default)._
 <!-- last-reviewed: 2026-10-24 -->
 - Gradle: :globalesim / dir: globalesim/
-- Package roots present: ui, data, domain, platform
+- Package roots present: ui, data, domain, platform, network
 - Entry files: MainActivity.kt, Route.kt, Navigation.kt
 - Deps: :library:network, :library:log, :library:ui (via conventions), androidx.datastore.preferences, stripe-android
 - Metadata: metadata_data/globalesim.md (present)
@@ -18,8 +18,8 @@ _Install: ./install globalesim (dev by default)._
 - Anonymous account (client-minted UUIDv4, no PII). The account id is the only credential and is shown as the "SIM ID": Copy SIM ID on the old phone, Claim on a phone without an eSIM
 - Rate catalog (server-scaled to the wallet's face value), Stripe card and NOWPayments crypto (+5%) top-ups, $5–$20 per payment
 - One-tap install via the standard `https://esimsetup.android.com/esim_qrcode_provisioning?carddata=LPA:1$<smdp>$<code>` link (unpinned ACTION_VIEW, raw carddata)
-**Architecture / data-flow:** `ui/` screens → `platform/EsimViewModel` (single `EsimUiState`) → `data/api/EsimApi` (own `/esim/v1/*` on api.maproj.org, FIRST_PARTY) with pure `domain/QuoteMath` and `data/AnonymousIdStore` (DataStore UUID). The reseller vendor is server-only (`location_share_server/src/handlers/esim*.rs`) and never named here.
-**Entry points + reading order:** `Route.Purchase` / `Route.Pricing` (sibling tab routes, no other routes) → `MainActivity.kt` → `Navigation.kt` → `platform/EsimViewModel.kt` → `data/api/EsimApi.kt`.
+**Architecture / data-flow:** `ui/` screens → `platform/EsimViewModel` (single `EsimUiState`) → `network/EsimApi` (own `/esim/v1/*` on api.maproj.org, FIRST_PARTY) with pure `domain/QuoteMath` and `data/AnonymousIdStore` (DataStore UUID). The reseller vendor is server-only (`location_share_server/src/handlers/esim*.rs`) and never named here.
+**Entry points + reading order:** `Route.Purchase` / `Route.Pricing` (sibling tab routes, no other routes) → `MainActivity.kt` → `Navigation.kt` → `platform/EsimViewModel.kt` → `network/EsimApi.kt`.
 **Gotchas:**
 - After any payment the ViewModel polls `/status` until the wallet rises (server-owned pending checkout + `pending_credit_cents` keep it going); pull-to-refresh on Purchase reloads status
 - One open crypto checkout per account, owned by the server and restored from `/status`
@@ -34,14 +34,15 @@ _Install: ./install globalesim (dev by default)._
 - com/vayunmathur/globalesim/MainActivity.kt
 - com/vayunmathur/globalesim/Navigation.kt
 - com/vayunmathur/globalesim/Route.kt
-### data/ — api + anonymous id
-- com/vayunmathur/globalesim/data/api/EsimApi.kt — BASE_URL + url(path) + NetworkClient calls
-- com/vayunmathur/globalesim/data/api/EsimDtos.kt — generic DTOs only, no vendor strings
+### data/ — anonymous id
 - com/vayunmathur/globalesim/data/AnonymousIdStore.kt
 ### domain/ — pure logic (no Android)
 - com/vayunmathur/globalesim/domain/QuoteMath.kt — payment bounds, cents formatting/parsing
 - com/vayunmathur/globalesim/domain/CheckoutUrls.kt
 - com/vayunmathur/globalesim/domain/EsimActivationCode.kt
+### network/ — storefront API client
+- com/vayunmathur/globalesim/network/EsimApi.kt — BASE_URL + url(path) + NetworkClient calls
+- com/vayunmathur/globalesim/network/EsimDtos.kt — generic DTOs only, no vendor strings
 ### platform/ — ViewModel
 - com/vayunmathur/globalesim/platform/EsimViewModel.kt
 ### ui/ — one public @Composable per file

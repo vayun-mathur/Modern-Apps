@@ -25,7 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
-import com.vayunmathur.globalesim.data.api.ProfileDto
+import com.vayunmathur.globalesim.network.ProfileDto
 import com.vayunmathur.globalesim.domain.QuoteMath
 import com.vayunmathur.globalesim.domain.buildActivationCode
 import com.vayunmathur.globalesim.platform.EsimUiState

@@ -10,8 +10,8 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import com.vayunmathur.globalesim.Navigation
 import com.vayunmathur.globalesim.Route
-import com.vayunmathur.globalesim.data.api.NetworkDto
-import com.vayunmathur.globalesim.data.api.RateDto
+import com.vayunmathur.globalesim.network.NetworkDto
+import com.vayunmathur.globalesim.network.RateDto
 import com.vayunmathur.globalesim.platform.EsimUiState
 import com.vayunmathur.globalesim.platform.EsimViewModel
 import com.vayunmathur.library.ui.DynamicTheme

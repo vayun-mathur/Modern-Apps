@@ -3,8 +3,8 @@ package com.vayunmathur.globalesim.platform
 import android.app.Application
 import android.os.Looper
 import androidx.test.core.app.ApplicationProvider
-import com.vayunmathur.globalesim.data.api.EsimApi
-import com.vayunmathur.globalesim.data.api.ProfileDto
+import com.vayunmathur.globalesim.network.EsimApi
+import com.vayunmathur.globalesim.network.ProfileDto
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test

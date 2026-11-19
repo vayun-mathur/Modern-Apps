@@ -10,7 +10,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.core.app.ApplicationProvider
-import com.vayunmathur.globalesim.data.api.ProfileDto
+import com.vayunmathur.globalesim.network.ProfileDto
 import org.robolectric.Shadows
 import com.vayunmathur.globalesim.platform.EsimUiState
 import com.vayunmathur.library.ui.DynamicTheme

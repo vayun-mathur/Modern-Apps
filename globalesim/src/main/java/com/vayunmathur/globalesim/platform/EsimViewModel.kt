@@ -9,10 +9,10 @@ import androidx.lifecycle.viewModelScope
 import com.stripe.android.PaymentConfiguration
 import com.vayunmathur.globalesim.data.AnonymousIdStore
 import com.vayunmathur.globalesim.data.StripeKeyStore
-import com.vayunmathur.globalesim.data.api.EsimApi
-import com.vayunmathur.globalesim.data.api.ProfileDto
-import com.vayunmathur.globalesim.data.api.RateDto
-import com.vayunmathur.globalesim.data.api.StatusResponse
+import com.vayunmathur.globalesim.network.EsimApi
+import com.vayunmathur.globalesim.network.ProfileDto
+import com.vayunmathur.globalesim.network.RateDto
+import com.vayunmathur.globalesim.network.StatusResponse
 import com.vayunmathur.globalesim.domain.upgradeCheckoutUrl
 import java.io.IOException
 import kotlin.time.Duration.Companion.minutes
