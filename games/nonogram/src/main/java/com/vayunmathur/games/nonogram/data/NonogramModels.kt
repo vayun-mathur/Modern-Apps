@@ -82,7 +82,9 @@ data class NonogramGameState(
      * guarantee.
      */
     val isWon: Boolean
-        get() = filled.size == puzzle.filledCount && filled.all { puzzle.solution[it] }
+        // Restored marks may hold indices outside this puzzle; they simply
+        // do not count towards a win instead of crashing the board.
+        get() = filled.size == puzzle.filledCount && filled.all { puzzle.solution.getOrNull(it) == true }
 
     /** Failed once the hearts run out, unless the last guess also finished the picture. */
     val isFailed: Boolean get() = hearts <= 0 && !isWon
@@ -90,7 +92,7 @@ data class NonogramGameState(
     val isOver: Boolean get() = isWon || isFailed
 
     /** Whether [index] belongs to the picture, which is what a tap on it is judged against. */
-    fun belongsToPicture(index: Int): Boolean = puzzle.solution[index]
+    fun belongsToPicture(index: Int): Boolean = puzzle.solution.getOrNull(index) == true
 }
 
 /**
