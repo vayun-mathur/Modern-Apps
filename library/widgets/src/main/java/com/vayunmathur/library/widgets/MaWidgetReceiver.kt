@@ -70,7 +70,7 @@ abstract class MaWidgetReceiver<W : GlanceAppWidget>(
                         widgetFactory().updateAll(context)
                     } catch (_: Exception) {
                     } finally {
-                        pending.finish()
+                        pending?.finish()
                     }
                 }
             }
