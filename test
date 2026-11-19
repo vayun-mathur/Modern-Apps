@@ -887,6 +887,13 @@ if [[ $RUN_INST -eq 1 && ${#INST_MODS[@]} -gt 0 ]]; then
       echo "[$cur/$TOTAL] Error: no test APK found for :${colon_mod} (assemble failed?)."
       INST_RC=1; continue
     fi
+    # Clean state per module: wipe the app's data before instrumenting so the
+    # designated FullE2eTest starts from a fresh-install first screen. This
+    # must happen here, not inside the test: the instrumentation runs in the
+    # app process, so a `pm clear` from the test would kill the test itself.
+    if is_app_module "$mod"; then
+      "$ADB_BIN" -s "$TARGET_SERIAL" shell pm clear "$pkg" >/dev/null 2>&1 || true
+    fi
     echo "[$cur/$TOTAL] Running instrumented tests ($test_pkg)..."
     inst_args=(-w -r)
     if [[ $NO_COV -eq 0 ]]; then
