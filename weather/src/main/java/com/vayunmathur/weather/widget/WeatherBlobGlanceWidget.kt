@@ -1,4 +1,6 @@
 package com.vayunmathur.weather.widget
+import com.vayunmathur.weather.data.WeatherRefreshWorker
+import com.vayunmathur.library.widgets.MaWidgetReceiver
 
 import android.content.Context
 import android.content.Intent
@@ -176,4 +178,15 @@ private fun BlobWeatherBlock(weather: WidgetWeather?, tempColor: Color) {
         contentDescription = context.getString(condition.label),
         modifier = GlanceModifier.size(40.dp).padding(top = 4.dp)
     )
+}
+
+/** Weather Blob Glance Widget Receiver: a ma widget receiver implementation for weather blob glance widget receiver. */
+class WeatherBlobGlanceWidgetReceiver : MaWidgetReceiver<WeatherBlobGlanceWidget>(
+    widgetClass = WeatherBlobGlanceWidget::class,
+    receiverClass = WeatherBlobGlanceWidgetReceiver::class,
+    widgetFactory = ::WeatherBlobGlanceWidget,
+) {
+    override fun onEnabledExtra(context: Context) {
+        WeatherRefreshWorker.scheduleHourlyRefresh(context)
+    }
 }

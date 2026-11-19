@@ -1,4 +1,11 @@
 package com.vayunmathur.weather.widget
+import com.vayunmathur.weather.network.ForecastResponse
+import com.vayunmathur.weather.domain.roundCoord
+import com.vayunmathur.weather.data.weatherJson
+import com.vayunmathur.weather.data.WeatherRepository
+import com.vayunmathur.library.log.Log
+import com.vayunmathur.weather.data.WeatherRefreshWorker
+import com.vayunmathur.library.widgets.MaWidgetReceiver
 
 import com.vayunmathur.library.util.DateNameStyle
 import android.content.Context
@@ -226,5 +233,58 @@ private fun WeatherBlock(weather: WidgetWeather?) {
                 fontWeight = FontWeight.Bold,
             ),
         )
+    }
+}
+
+/** Weather Glance Widget Receiver: a ma widget receiver implementation for weather glance widget receiver. */
+class WeatherGlanceWidgetReceiver : MaWidgetReceiver<WeatherGlanceWidget>(
+    widgetClass = WeatherGlanceWidget::class,
+    receiverClass = WeatherGlanceWidgetReceiver::class,
+    widgetFactory = ::WeatherGlanceWidget,
+) {
+    override fun onEnabledExtra(context: Context) {
+        WeatherRefreshWorker.scheduleHourlyRefresh(context)
+    }
+}
+
+/**
+ * Snapshot of cached weather used by the widgets. Populated from the
+ * most-recent [com.vayunmathur.weather.data.WeatherCache] row for the
+ * user's primary saved location (preferring the device-location row).
+ * `null` while no forecast has been cached yet — the widget renders a
+ * dash in that case rather than failing to load.
+ */
+data class WidgetWeather(
+    val temperatureCelsius: Double,
+    val weatherCode: Int,
+    val isDay: Boolean,
+)
+
+// Broad catch is deliberate: a snapshot miss renders as a dash, and Room plus
+// kotlinx.serialization throw undocumented RuntimeExceptions (not just IOException).
+@Suppress("TooGenericExceptionCaught")
+internal suspend fun loadWeatherSnapshot(context: Context): WidgetWeather? {
+    return try {
+        val repo = WeatherRepository.get(context)
+        // Prefer the device-current row, fall back to the first pinned location.
+        val location = repo.getCurrentDeviceLocation()
+            ?: repo.getLocations().firstOrNull()
+            ?: return null
+        val cache = repo.getCache(
+            roundCoord(location.latitude),
+            roundCoord(location.longitude),
+        ) ?: return null
+        val forecast = runCatching {
+            weatherJson.decodeFromString<ForecastResponse>(cache.forecastJson)
+        }.getOrNull() ?: return null
+        val current = forecast.current ?: return null
+        WidgetWeather(
+            temperatureCelsius = current.temperature,
+            weatherCode = current.weatherCode,
+            isDay = current.isDay != 0,
+        )
+    } catch (e: Exception) {
+        Log.dev("WeatherWidget", "no cached snapshot yet", e)
+        null
     }
 }
