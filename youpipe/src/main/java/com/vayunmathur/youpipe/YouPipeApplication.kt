@@ -6,7 +6,7 @@ import com.vayunmathur.library.log.Log
 import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.library.network.TrustBundle
 import com.vayunmathur.library.util.DataStoreUtils
-import com.vayunmathur.youpipe.data.RemoteImageFetchers
+import com.vayunmathur.library.image.fetchers.HttpImageFetcher
 import com.vayunmathur.youpipe.network.MyDownloader
 import com.vayunmathur.youpipe.network.sabr.LocalDomPoTokenProvider
 import com.vayunmathur.youpipe.platform.youtubeLocalization
@@ -30,7 +30,7 @@ class YouPipeApplication : Application() {
         // shared image pipeline; the fetch function is built here from
         // NetworkClient so no library-to-library edge is needed (#884).
         ImageLoader.setDefault(
-            ImageLoader.Builder(this).remote(RemoteImageFetchers::network).build(),
+            ImageLoader.Builder(this).remote { data, _ -> HttpImageFetcher.fetch(data, NetworkClient::getBytes) }.build(),
         )
         appContext = applicationContext
         val language = DataStoreUtils.getInstance(this).getString("youtube_language").orEmpty()

@@ -17,7 +17,8 @@ import com.vayunmathur.web.Route
 import com.vayunmathur.web.data.FaviconStore
 import com.vayunmathur.web.data.HistoryEntry
 import com.vayunmathur.web.data.InstalledSite
-import com.vayunmathur.web.data.RemoteImageFetchers
+import com.vayunmathur.library.image.fetchers.HttpImageFetcher
+import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.web.data.TabThumbnailStore
 import com.vayunmathur.web.data.WebDatabase
 import com.vayunmathur.web.platform.TestStores
@@ -73,11 +74,11 @@ class MiscDeepTest {
     }
 
     @Test fun remoteImageFetcherRejectsNonHttpData() = runBlocking {
-        assertNull(RemoteImageFetchers.network(null, context))
-        assertNull(RemoteImageFetchers.network(42, context))
-        assertNull(RemoteImageFetchers.network("ftp://example.com/x.png", context))
-        assertNull(RemoteImageFetchers.network(Uri.parse("file:///tmp/x.png"), context))
-        assertNull(RemoteImageFetchers.network(Uri.parse("content://media/1"), context))
+        assertNull(HttpImageFetcher.fetch(null, NetworkClient::getBytes))
+        assertNull(HttpImageFetcher.fetch(42, NetworkClient::getBytes))
+        assertNull(HttpImageFetcher.fetch("ftp://example.com/x.png", NetworkClient::getBytes))
+        assertNull(HttpImageFetcher.fetch(Uri.parse("file:///tmp/x.png"), NetworkClient::getBytes))
+        assertNull(HttpImageFetcher.fetch(Uri.parse("content://media/1"), NetworkClient::getBytes))
         Unit
     }
 

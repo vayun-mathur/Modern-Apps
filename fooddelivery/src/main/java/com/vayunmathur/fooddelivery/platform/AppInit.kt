@@ -1,7 +1,7 @@
 package com.vayunmathur.fooddelivery.platform
 
 import android.content.Context
-import com.vayunmathur.fooddelivery.data.RemoteImageFetchers
+import com.vayunmathur.library.image.fetchers.HttpImageFetcher
 import com.vayunmathur.library.image.ImageLoader
 import com.vayunmathur.library.log.Log
 import androidx.core.content.edit
@@ -42,7 +42,7 @@ object AppInit {
         // the fetch function is built here from NetworkClient so no
         // library-to-library edge is needed (#884).
         ImageLoader.setDefault(
-            ImageLoader.Builder(appCtx).remote(RemoteImageFetchers::network).build(),
+            ImageLoader.Builder(appCtx).remote { data, _ -> HttpImageFetcher.fetch(data, NetworkClient::getBytes) }.build(),
         )
         scope.launch {
             // Kept in separate try blocks: a trust-bundle failure must not also skip the token

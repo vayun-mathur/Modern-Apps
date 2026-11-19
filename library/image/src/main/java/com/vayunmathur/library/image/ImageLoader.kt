@@ -425,7 +425,7 @@ class ImageLoader private constructor(
          *
          * ```
          * ImageLoader.Builder(context)
-         *     .remote { data, _ -> RemoteImageFetchers.network(data) }
+         *     .remote { data, _ -> HttpImageFetcher.fetch(data, transport) }
          *     .build()
          * ```
          *

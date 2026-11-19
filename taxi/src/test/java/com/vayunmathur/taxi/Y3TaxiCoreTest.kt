@@ -24,7 +24,8 @@ import com.vayunmathur.taxi.data.PaymentMethodsResult
 import com.vayunmathur.taxi.data.Place
 import com.vayunmathur.taxi.data.Provider
 import com.vayunmathur.taxi.data.QuoteResult
-import com.vayunmathur.taxi.data.RemoteImageFetchers
+import com.vayunmathur.library.image.fetchers.HttpImageFetcher
+import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.taxi.data.RideQuote
 import com.vayunmathur.taxi.data.RideStatusResult
 import com.vayunmathur.taxi.data.lyft.LyftTokenStore
@@ -95,11 +96,11 @@ class Y3TaxiCoreTest {
     }
 
     @Test fun remoteImageFetcherRejectsNonHttp() : Unit = runBlocking {
-        assertNull(RemoteImageFetchers.network(null, ctx))
-        assertNull(RemoteImageFetchers.network(42, ctx))
-        assertNull(RemoteImageFetchers.network("ftp://x/y.png", ctx))
-        assertNull(RemoteImageFetchers.network(Uri.parse("file:///tmp/x.png"), ctx))
-        assertNull(RemoteImageFetchers.network(Uri.parse("content://media/1"), ctx))
+        assertNull(HttpImageFetcher.fetch(null, NetworkClient::getBytes))
+        assertNull(HttpImageFetcher.fetch(42, NetworkClient::getBytes))
+        assertNull(HttpImageFetcher.fetch("ftp://x/y.png", NetworkClient::getBytes))
+        assertNull(HttpImageFetcher.fetch(Uri.parse("file:///tmp/x.png"), NetworkClient::getBytes))
+        assertNull(HttpImageFetcher.fetch(Uri.parse("content://media/1"), NetworkClient::getBytes))
     }
 
     @Test fun locationProviderWithoutPermission() : Unit = runBlocking {

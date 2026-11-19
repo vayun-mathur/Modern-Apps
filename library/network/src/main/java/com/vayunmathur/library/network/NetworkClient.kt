@@ -328,6 +328,24 @@ object NetworkClient {
         return RawResponse(r.status, r.statusMessage, r.bodyBytes, r.headers, r.finalUrl)
     }
 
+    /**
+     * GET [url] and return the response body, throwing [java.io.IOException]
+     * on a non-success status.
+     *
+     * The bytes-or-throw shape the image pipeline's shared
+     * `HttpImageFetcher` (in `:library:image`) takes as its transport, and
+     * what the eight per-app `RemoteImageFetchers` copies each re-derived
+     * from [execute]. Kept here so the status-to-exception mapping exists
+     * once; callers that need headers or the status itself use [execute].
+     */
+    suspend fun getBytes(url: String): ByteArray {
+        val response = execute(url)
+        if (!response.isSuccess) {
+            throw java.io.IOException("HTTP ${response.status} for $url")
+        }
+        return response.bytes
+    }
+
     // ------------------------------------------------------------------
     // Streaming variants
     // ------------------------------------------------------------------

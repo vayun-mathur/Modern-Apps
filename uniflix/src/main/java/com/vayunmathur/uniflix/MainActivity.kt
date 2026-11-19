@@ -5,7 +5,8 @@ import com.vayunmathur.library.image.ImageLoader
 import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.library.network.TrustBundle
 import com.vayunmathur.library.ui.MaActivity
-import com.vayunmathur.uniflix.data.RemoteImageFetchers
+import com.vayunmathur.library.image.fetchers.HttpImageFetcher
+import com.vayunmathur.uniflix.data.TmdbImageUrl
 
 /** Main Activity: a ma activity implementation for main activity. */
 class MainActivity : MaActivity() {
@@ -17,7 +18,7 @@ class MainActivity : MaActivity() {
         // the fetch function is built here from NetworkClient so no
         // library-to-library edge is needed (#884).
         ImageLoader.setDefault(
-            ImageLoader.Builder(this).remote(RemoteImageFetchers::network).build(),
+            ImageLoader.Builder(this).remote { data, _ -> HttpImageFetcher.fetch(data, NetworkClient::getBytes, TmdbImageUrl::proxyFor) }.build(),
         )
     }
 

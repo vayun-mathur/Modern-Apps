@@ -8,7 +8,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.lifecycleScope
 import com.vayunmathur.library.ui.MaActivity
 import com.vayunmathur.travel.data.TravelRepository
-import com.vayunmathur.travel.data.RemoteImageFetchers
+import com.vayunmathur.library.image.fetchers.HttpImageFetcher
 import com.vayunmathur.travel.platform.TravelViewModel
 import com.vayunmathur.travel.platform.TravelViewModelFactory
 import com.vayunmathur.travel.platform.pendingTripIds
@@ -37,7 +37,7 @@ class MainActivity : MaActivity() {
         // pipeline; the fetch function is built here from NetworkClient so no
         // library-to-library edge is needed (#884).
         ImageLoader.setDefault(
-            ImageLoader.Builder(this).remote(RemoteImageFetchers::network).build(),
+            ImageLoader.Builder(this).remote { data, _ -> HttpImageFetcher.fetch(data, NetworkClient::getBytes) }.build(),
         )
 
         lifecycleScope.launch(Dispatchers.IO) {

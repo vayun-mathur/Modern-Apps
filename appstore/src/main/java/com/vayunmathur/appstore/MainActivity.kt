@@ -32,7 +32,7 @@ import com.vayunmathur.appstore.data.ExternalLinks
 import com.vayunmathur.appstore.data.UpdateCheckWorker
 import com.vayunmathur.appstore.platform.AppStoreViewModel
 import com.vayunmathur.appstore.platform.AppStoreViewModelFactory
-import com.vayunmathur.appstore.data.RemoteImageFetchers
+import com.vayunmathur.library.image.fetchers.HttpImageFetcher
 import com.vayunmathur.library.image.ImageLoader
 import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.library.network.TrustBundle
@@ -58,7 +58,7 @@ class MainActivity : MaActivity() {
         // pipeline; the fetch function is built here from NetworkClient so no
         // library-to-library edge is needed (#884).
         ImageLoader.setDefault(
-            ImageLoader.Builder(this).remote(RemoteImageFetchers::network).build(),
+            ImageLoader.Builder(this).remote { data, _ -> HttpImageFetcher.fetch(data, NetworkClient::getBytes) }.build(),
         )
 
         val repository = AppStoreDatabaseRepository.get(this)

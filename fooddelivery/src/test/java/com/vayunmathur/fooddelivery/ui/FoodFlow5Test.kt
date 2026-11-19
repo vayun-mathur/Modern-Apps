@@ -20,7 +20,8 @@ import com.vayunmathur.fooddelivery.data.CartItem
 import com.vayunmathur.fooddelivery.data.MenuItem
 import com.vayunmathur.fooddelivery.data.Modifier
 import com.vayunmathur.fooddelivery.data.ModifierGroup
-import com.vayunmathur.fooddelivery.data.RemoteImageFetchers
+import com.vayunmathur.library.image.fetchers.HttpImageFetcher
+import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.fooddelivery.data.SavedAddress
 import com.vayunmathur.fooddelivery.data.SelectedModifier
 import com.vayunmathur.fooddelivery.platform.AppInit
@@ -169,12 +170,12 @@ class FoodFlow5Test {
     }
 
     @Test fun remoteImageFetcherSchemeGuards() { runBlocking {
-        assertNull(RemoteImageFetchers.network(null, ctx))
-        assertNull(RemoteImageFetchers.network(42, ctx))
-        assertNull(RemoteImageFetchers.network("ftp://example.com/x.png", ctx))
-        assertNull(RemoteImageFetchers.network(Uri.parse("file:///tmp/x.png"), ctx))
+        assertNull(HttpImageFetcher.fetch(null, NetworkClient::getBytes))
+        assertNull(HttpImageFetcher.fetch(42, NetworkClient::getBytes))
+        assertNull(HttpImageFetcher.fetch("ftp://example.com/x.png", NetworkClient::getBytes))
+        assertNull(HttpImageFetcher.fetch(Uri.parse("file:///tmp/x.png"), NetworkClient::getBytes))
         // Loopback refusal is deterministic on any machine (no external network).
-        val refused = runCatching { RemoteImageFetchers.network("http://127.0.0.1:9/x.png", ctx) }
+        val refused = runCatching { HttpImageFetcher.fetch("http://127.0.0.1:9/x.png", NetworkClient::getBytes) }
             .exceptionOrNull()
         assertTrue(refused is java.io.IOException, "expected loopback refusal, got $refused")
     } }

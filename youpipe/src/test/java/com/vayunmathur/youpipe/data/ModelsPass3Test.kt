@@ -1,6 +1,8 @@
 package com.vayunmathur.youpipe.data
 
 import androidx.test.core.app.ApplicationProvider
+import com.vayunmathur.library.image.fetchers.HttpImageFetcher
+import com.vayunmathur.library.network.NetworkClient
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.youpipe.Route
 import com.vayunmathur.youpipe.platform.defaultBackStack
@@ -171,15 +173,15 @@ class ModelsPass3Test {
     @Test
     fun remoteImageFetchers_rejectNonHttpWithoutNetwork() = runTest {
         // None of these may touch the network: non-HTTP inputs answer null.
-        assertNull(RemoteImageFetchers.network("ftp://example.com/x.jpg", context))
-        assertNull(RemoteImageFetchers.network("relative/path.jpg", context))
-        assertNull(RemoteImageFetchers.network(12345, context))
-        assertNull(RemoteImageFetchers.network(null, context))
+        assertNull(HttpImageFetcher.fetch("ftp://example.com/x.jpg", NetworkClient::getBytes))
+        assertNull(HttpImageFetcher.fetch("relative/path.jpg", NetworkClient::getBytes))
+        assertNull(HttpImageFetcher.fetch(12345, NetworkClient::getBytes))
+        assertNull(HttpImageFetcher.fetch(null, NetworkClient::getBytes))
         assertNull(
-            RemoteImageFetchers.network(android.net.Uri.parse("file:///sdcard/x.jpg"), context),
+            HttpImageFetcher.fetch(android.net.Uri.parse("file:///sdcard/x.jpg"), NetworkClient::getBytes),
         )
         assertNull(
-            RemoteImageFetchers.network(android.net.Uri.parse("content://media/1"), context),
+            HttpImageFetcher.fetch(android.net.Uri.parse("content://media/1"), NetworkClient::getBytes),
         )
     }
 }

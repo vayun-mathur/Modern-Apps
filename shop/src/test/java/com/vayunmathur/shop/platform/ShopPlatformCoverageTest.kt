@@ -10,7 +10,8 @@ import com.vayunmathur.shop.R
 import com.vayunmathur.shop.data.Money
 import com.vayunmathur.shop.data.OrderTracking
 import com.vayunmathur.shop.data.PlacedOrder
-import com.vayunmathur.shop.data.RemoteImageFetchers
+import com.vayunmathur.library.image.fetchers.HttpImageFetcher
+import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.shop.data.ShopProfile
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -71,12 +72,12 @@ class ShopPlatformCoverageTest {
     }
 
     @Test fun remoteImageFetcherRejectsNonHttpInputs() = runBlocking {
-        assertNull(RemoteImageFetchers.network(null, context))
-        assertNull(RemoteImageFetchers.network(123, context))
-        assertNull(RemoteImageFetchers.network(Uri.parse("file:///tmp/x.png"), context))
-        assertNull(RemoteImageFetchers.network(Uri.parse("content://media/1"), context))
-        assertNull(RemoteImageFetchers.network("ftp://example.com/x.png", context))
-        assertNull(RemoteImageFetchers.network("", context))
+        assertNull(HttpImageFetcher.fetch(null, NetworkClient::getBytes))
+        assertNull(HttpImageFetcher.fetch(123, NetworkClient::getBytes))
+        assertNull(HttpImageFetcher.fetch(Uri.parse("file:///tmp/x.png"), NetworkClient::getBytes))
+        assertNull(HttpImageFetcher.fetch(Uri.parse("content://media/1"), NetworkClient::getBytes))
+        assertNull(HttpImageFetcher.fetch("ftp://example.com/x.png", NetworkClient::getBytes))
+        assertNull(HttpImageFetcher.fetch("", NetworkClient::getBytes))
         Unit
     }
 

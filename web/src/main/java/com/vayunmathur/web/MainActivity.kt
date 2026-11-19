@@ -18,7 +18,7 @@ import com.vayunmathur.library.network.TrustBundle
 import com.vayunmathur.library.ui.MaActivity
 import com.vayunmathur.library.util.OfflineAware
 import com.vayunmathur.web.data.FaviconStore
-import com.vayunmathur.web.data.RemoteImageFetchers
+import com.vayunmathur.library.image.fetchers.HttpImageFetcher
 import com.vayunmathur.web.data.TabThumbnailStore
 import com.vayunmathur.web.data.WebRepository
 import com.vayunmathur.web.platform.BrowserTab
@@ -47,7 +47,7 @@ class MainActivity : MaActivity() {
         // shared image pipeline; the fetch function is built here from
         // NetworkClient so no library-to-library edge is needed (#884).
         ImageLoader.setDefault(
-            ImageLoader.Builder(this).remote(RemoteImageFetchers::network).build(),
+            ImageLoader.Builder(this).remote { data, _ -> HttpImageFetcher.fetch(data, NetworkClient::getBytes) }.build(),
         )
         // Parses ~8 MB of filter lists off the main thread. Shields fail open until it lands.
         lifecycleScope.launch { ShieldsEngine.load(applicationContext) }

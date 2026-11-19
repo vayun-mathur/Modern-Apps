@@ -6,7 +6,7 @@ import com.vayunmathur.library.network.StaticMirror
  * TMDB artwork — no direct image.tmdb.org. Sizes: w185/w342 cards, w500 search, original hero.
  *
  * URLs point at the server's static copy on R2 (images are content-addressed, so a copy
- * never goes stale); [RemoteImageFetchers] falls back to the self-hosted image proxy
+ * never goes stale); the shared image fetcher falls back to the self-hosted image proxy
  * ([proxyFor]) when the copy does not exist yet, and the proxy then creates it.
  */
 object TmdbImageUrl {

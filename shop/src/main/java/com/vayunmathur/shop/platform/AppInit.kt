@@ -5,7 +5,7 @@ import com.vayunmathur.library.image.ImageLoader
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.library.network.TrustBundle
-import com.vayunmathur.shop.data.RemoteImageFetchers
+import com.vayunmathur.library.image.fetchers.HttpImageFetcher
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -35,7 +35,7 @@ object AppInit {
         // the fetch function is built here from NetworkClient so no
         // library-to-library edge is needed (#884).
         ImageLoader.setDefault(
-            ImageLoader.Builder(appCtx).remote(RemoteImageFetchers::network).build(),
+            ImageLoader.Builder(appCtx).remote { data, _ -> HttpImageFetcher.fetch(data, NetworkClient::getBytes) }.build(),
         )
         scope.launch {
             try {

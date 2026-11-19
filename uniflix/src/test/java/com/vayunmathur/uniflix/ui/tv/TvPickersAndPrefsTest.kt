@@ -10,7 +10,8 @@ import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.uniflix.data.AddonEntity
 import com.vayunmathur.uniflix.data.AddonPrefs
-import com.vayunmathur.uniflix.data.RemoteImageFetchers
+import com.vayunmathur.library.image.fetchers.HttpImageFetcher
+import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.uniflix.domain.SubtitleTrack
 import com.vayunmathur.uniflix.platform.AddonRow
 import kotlin.test.Test
@@ -131,12 +132,12 @@ class TvPickersAndPrefsTest {
     }
 
     @Test fun remoteFetcherRejectsNonHttpData() = runTest {
-        assertNull(RemoteImageFetchers.network(null, context))
-        assertNull(RemoteImageFetchers.network(42, context))
-        assertNull(RemoteImageFetchers.network("file:///tmp/x.png", context))
-        assertNull(RemoteImageFetchers.network(Uri.parse("content://media/1"), context))
-        assertNull(RemoteImageFetchers.network(Uri.parse("file:///tmp/x.png"), context))
+        assertNull(HttpImageFetcher.fetch(null, NetworkClient::getBytes))
+        assertNull(HttpImageFetcher.fetch(42, NetworkClient::getBytes))
+        assertNull(HttpImageFetcher.fetch("file:///tmp/x.png", NetworkClient::getBytes))
+        assertNull(HttpImageFetcher.fetch(Uri.parse("content://media/1"), NetworkClient::getBytes))
+        assertNull(HttpImageFetcher.fetch(Uri.parse("file:///tmp/x.png"), NetworkClient::getBytes))
         // An unreachable https URL fails (throw or IOException), never returns bytes.
-        assertTrue(runCatching { RemoteImageFetchers.network("https://addons.invalid/x.png", context) }.isFailure)
+        assertTrue(runCatching { HttpImageFetcher.fetch("https://addons.invalid/x.png", NetworkClient::getBytes) }.isFailure)
     }
 }
