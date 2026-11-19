@@ -58,4 +58,36 @@ class PasskeyUtilsExtraTest {
         val info = CallingAppInfoFactory.callingAppInfo("com.example.app")
         assertNull(PasskeyUtils.getPrivilegedOrigin(info, ctx))
     }
+
+    @Test fun privilegedOriginReturnsNullForUnlistedCallerWithOrigin() {
+        // CallingAppInfo.getOrigin() throws IllegalStateException (not
+        // IllegalArgumentException) when the system populated an origin but
+        // the caller is not on the bundled allow-list, e.g. an unlisted
+        // browser. That must resolve to "not privileged", not escape and
+        // cancel the whole create/get flow.
+        val info = CallingAppInfoFactory.callingAppInfo("com.example.app", "https://example.com")
+        assertNull(PasskeyUtils.getPrivilegedOrigin(info, ctx))
+    }
+
+    @Test fun requestDescriptorHelpers() {
+        val create = org.json.JSONObject(
+            """{"pubKeyCredParams":[{"type":"public-key","alg":-257},{"type":"public-key","alg":-7}],""" +
+                """"excludeCredentials":[{"type":"public-key","id":"Y3JlZC0x"},{"type":"other","id":"eA"}]}""",
+        )
+        assertEquals(true, PasskeyUtils.supportsEs256(create))
+        assertEquals(listOf("Y3JlZC0x"), PasskeyUtils.credentialDescriptorIds(create, "excludeCredentials"))
+        assertEquals(
+            false,
+            PasskeyUtils.supportsEs256(org.json.JSONObject("""{"pubKeyCredParams":[{"type":"public-key","alg":-257}]}""")),
+        )
+        assertEquals(true, PasskeyUtils.supportsEs256(org.json.JSONObject("""{}""")))
+        assertEquals(
+            emptyList<String>(),
+            PasskeyUtils.credentialDescriptorIds(org.json.JSONObject("""{}"""), "allowCredentials"),
+        )
+        // Same credential bytes spelled with base64url padding still match.
+        val stored = PasskeyUtils.encodeB64Url(ByteArray(16) { it.toByte() })
+        assertEquals(true, PasskeyUtils.credentialIdsMatch(stored, stored + "=="))
+        assertEquals(false, PasskeyUtils.credentialIdsMatch(stored, "b3RoZXItY3JlZA"))
+    }
 }

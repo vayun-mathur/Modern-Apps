@@ -3,6 +3,7 @@ package com.vayunmathur.passwords.platform
 import android.content.Context
 import com.vayunmathur.library.log.Log
 import androidx.credentials.provider.CallingAppInfo
+import org.json.JSONObject
 import java.security.MessageDigest
 import java.security.SecureRandom
 import kotlin.io.encoding.Base64
@@ -56,6 +57,54 @@ object PasskeyUtils {
         return id
     }
 
+    // -- Request-descriptor helpers --
+    //
+    // Credential ids cross the Credential Manager boundary as base64url strings. A relying
+    // party may spell the same id with padding, so compare decoded bytes, not raw strings.
+
+    /** True when [storedId] and [requestedId] name the same credential bytes. */
+    fun credentialIdsMatch(storedId: String, requestedId: String): Boolean {
+        if (storedId == requestedId) return true
+        if (storedId.isEmpty() || requestedId.isEmpty()) return false
+        return runCatching {
+            decodeB64Url(storedId).contentEquals(decodeB64Url(requestedId))
+        }.getOrDefault(false)
+    }
+
+    /**
+     * The `public-key` credential ids named by a `allowCredentials` / `excludeCredentials`
+     * array in a request JSON object; empty when the array is absent.
+     */
+    fun credentialDescriptorIds(request: JSONObject, key: String): List<String> {
+        val descriptors = request.optJSONArray(key) ?: return emptyList()
+        return buildList {
+            for (i in 0 until descriptors.length()) {
+                val item = descriptors.optJSONObject(i) ?: continue
+                val type = item.optString("type", "")
+                if (type.isNotEmpty() && type != "public-key") continue
+                val id = item.optString("id", "")
+                if (id.isNotEmpty()) add(id)
+            }
+        }
+    }
+
+    /**
+     * True when this authenticator can satisfy a creation request: it only makes ES256
+     * (alg -7) keys, so a `pubKeyCredParams` list that does not offer -7 cannot be served.
+     * An absent or empty list imposes no constraint.
+     */
+    fun supportsEs256(request: JSONObject): Boolean {
+        val params = request.optJSONArray("pubKeyCredParams") ?: return true
+        if (params.length() == 0) return true
+        for (i in 0 until params.length()) {
+            val item = params.optJSONObject(i) ?: continue
+            val type = item.optString("type", "")
+            if (type.isNotEmpty() && type != "public-key") continue
+            if (item.has("alg") && item.optInt("alg") == -7) return true
+        }
+        return false
+    }
+
     // -- Origin resolution --
 
     fun getPrivilegedOrigin(callingAppInfo: CallingAppInfo, context: Context): String? {
@@ -70,20 +119,33 @@ object PasskeyUtils {
         } catch (expected: IllegalArgumentException) {
             Log.dev(TAG, "No privileged browser match: ${expected.message}")
             null
+        } catch (expected: IllegalStateException) {
+            // CallingAppInfo.getOrigin() throws IllegalStateException (not
+            // IllegalArgumentException) when the system populated an origin but
+            // the caller is not on the allow-list, e.g. a browser this app does
+            // not list. That caller is simply not privileged: fall back to its
+            // android: origin instead of aborting the whole ceremony.
+            Log.dev(TAG, "Caller is not a privileged browser: ${expected.message}")
+            null
         }
     }
 
-    @OptIn(ExperimentalStdlibApi::class)
     fun getAndroidOrigin(callingAppInfo: CallingAppInfo): String {
-        val fingerprint = callingAppInfo.signingInfo
+        val signer = callingAppInfo.signingInfoCompat
             .apkContentsSigners
             .firstOrNull()
             ?.toByteArray()
-            ?.let { MessageDigest.getInstance("SHA-256").digest(it) }
-            ?.toHexString(HexFormat.UpperCase)
-            ?: "unknown"
-        return "android:apk-key-hash:$fingerprint"
+        return if (signer != null) androidOriginFromSigner(signer) else "android:apk-key-hash:unknown"
     }
+
+    /**
+     * WebAuthn's android facet origin for a signing certificate:
+     * `android:apk-key-hash:` + base64url(SHA-256 of the certificate). The
+     * colon-separated hex form is the assetlinks / privileged-allow-list
+     * fingerprint, and a relying party expecting the facet origin rejects it.
+     */
+    fun androidOriginFromSigner(signerBytes: ByteArray): String =
+        "android:apk-key-hash:" + encodeB64Url(MessageDigest.getInstance("SHA-256").digest(signerBytes))
 
     // -- AuthenticatorData builder --
 

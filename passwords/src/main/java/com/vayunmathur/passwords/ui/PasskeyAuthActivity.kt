@@ -109,6 +109,29 @@ class PasskeyAuthActivity : FragmentActivity() {
         val userDisplayName = user.optString("displayName", userName)
         val challenge = json.getString("challenge")
 
+        // This authenticator only makes ES256 keys. Honouring a request that
+        // does not offer alg -7 would persist a credential the relying party
+        // then rejects; refuse before anything is generated or stored.
+        if (!PasskeyUtils.supportsEs256(json)) {
+            Log.error(TAG, "Create request offers no ES256 in pubKeyCredParams")
+            setResult(RESULT_CANCELED)
+            return
+        }
+        // excludeCredentials names credentials the relying party already has:
+        // creating (and, via the shared helper, silently replacing) one of
+        // them must not happen.
+        val excludedIds = PasskeyUtils.credentialDescriptorIds(json, "excludeCredentials")
+        if (excludedIds.isNotEmpty()) {
+            val excluded = runBlocking { repository.getPasskeysByRpId(rpId) }.any { stored ->
+                excludedIds.any { PasskeyUtils.credentialIdsMatch(stored.credentialId, it) }
+            }
+            if (excluded) {
+                Log.error(TAG, "Create request excludes an existing credential for rpId=$rpId")
+                setResult(RESULT_CANCELED)
+                return
+            }
+        }
+
         // Privileged browsers provide clientDataHash directly
         val callingAppInfo = request.callingAppInfo
         val privilegedOrigin = PasskeyUtils.getPrivilegedOrigin(callingAppInfo, applicationContext)
@@ -206,6 +229,17 @@ class PasskeyAuthActivity : FragmentActivity() {
         val json = JSONObject(publicKeyOption.requestJson)
         val challenge = json.getString("challenge")
 
+        // Entry enumeration already filters by allowCredentials, but never
+        // sign for a credential this request did not allow.
+        val allowedIds = PasskeyUtils.credentialDescriptorIds(json, "allowCredentials")
+        if (allowedIds.isNotEmpty() &&
+            allowedIds.none { PasskeyUtils.credentialIdsMatch(passkey.credentialId, it) }
+        ) {
+            Log.error(TAG, "Selected credential is not in allowCredentials for rpId=${passkey.rpId}")
+            setResult(RESULT_CANCELED)
+            return
+        }
+
         val callingAppInfo = providerRequest.callingAppInfo
         val privilegedOrigin = PasskeyUtils.getPrivilegedOrigin(callingAppInfo, applicationContext)
         val isPrivileged = privilegedOrigin != null
@@ -270,8 +304,13 @@ class PasskeyAuthActivity : FragmentActivity() {
 
     private fun readPrivilegedHash(option: GetPublicKeyCredentialOption): ByteArray? {
         return try {
-            option.clientDataHash
+            // An empty hash is no hash: signing over it cannot verify, so let
+            // the caller fall back to hashing its own clientDataJSON.
+            option.clientDataHash?.takeIf { it.isNotEmpty() }
         } catch (expected: GetCredentialUnknownException) {
+            Log.dev(TAG, "privileged clientDataHash unavailable", expected)
+            null
+        } catch (expected: IllegalStateException) {
             Log.dev(TAG, "privileged clientDataHash unavailable", expected)
             null
         }

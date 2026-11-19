@@ -32,9 +32,17 @@ suspend fun buildGetCredentialResponse(
         when (option) {
             is BeginGetPublicKeyCredentialOption -> {
                 // requestJson comes from the calling app; skip malformed options.
-                val rpId = runCatching { JSONObject(option.requestJson).optString("rpId", "") }.getOrNull() ?: continue
+                val request = runCatching { JSONObject(option.requestJson) }.getOrNull() ?: continue
+                val rpId = request.optString("rpId", "")
                 if (rpId.isBlank()) continue
+                // An allowCredentials list constrains which credentials may be
+                // offered; offering the rest only lets the user pick one the
+                // relying party will reject.
+                val allowedIds = PasskeyUtils.credentialDescriptorIds(request, "allowCredentials")
                 for (passkey in passkeyDao.getByRpId(rpId)) {
+                    if (allowedIds.isNotEmpty() &&
+                        allowedIds.none { PasskeyUtils.credentialIdsMatch(passkey.credentialId, it) }
+                    ) continue
                     val intent = Intent(context, PasskeyAuthActivity::class.java).apply {
                         putExtra(PasskeyAuthActivity.EXTRA_FLOW, PasskeyAuthActivity.FLOW_GET)
                         putExtra(PasskeyAuthActivity.EXTRA_CREDENTIAL_ID, passkey.credentialId)

@@ -90,6 +90,24 @@ class PasskeyEntriesTest {
         assertEquals(0, otherRp.credentialEntries.size)
     }
 
+    @Test fun publicKeyOptionHonoursAllowCredentials() = runBlocking {
+        val matching = buildGetCredentialResponse(
+            ctx,
+            listOf(BeginGetPublicKeyCredentialOption(Bundle(), "req-allow", """{"rpId":"example.com","challenge":"Y2hhbGxlbmdl","allowCredentials":[{"type":"public-key","id":"cred-1"}]}""")),
+            FakePasskeyDao(),
+            FakePasswordDao(),
+        )
+        assertEquals(1, matching.credentialEntries.size)
+
+        val nonMatching = buildGetCredentialResponse(
+            ctx,
+            listOf(BeginGetPublicKeyCredentialOption(Bundle(), "req-allow-other", """{"rpId":"example.com","challenge":"Y2hhbGxlbmdl","allowCredentials":[{"type":"public-key","id":"b3RoZXItY3JlZA"}]}""")),
+            FakePasskeyDao(),
+            FakePasswordDao(),
+        )
+        assertEquals(0, nonMatching.credentialEntries.size)
+    }
+
     @Test fun noOptionsYieldEmptyResponse() = runBlocking {
         val response = buildGetCredentialResponse(ctx, emptyList(), FakePasskeyDao(), FakePasswordDao())
         assertEquals(0, response.credentialEntries.size)

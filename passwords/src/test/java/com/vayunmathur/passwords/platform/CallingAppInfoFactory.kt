@@ -40,4 +40,7 @@ object CallingAppInfoFactory {
 
     fun callingAppInfo(packageName: String): CallingAppInfo =
         CallingAppInfo(packageName, signingInfo())
+
+    fun callingAppInfo(packageName: String, origin: String): CallingAppInfo =
+        CallingAppInfo(packageName, signingInfo(), origin)
 }

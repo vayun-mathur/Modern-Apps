@@ -38,6 +38,18 @@ class PasskeyUtilsTest {
         assertEquals(0x40, data[32].toInt() and 0xFF)
     }
 
+    @Test fun androidOriginIsBase64UrlSha256OfSigningCert() {
+        // WebAuthn android facet: "android:apk-key-hash:" + base64url(SHA-256
+        // of the signing certificate), not the colon-hex fingerprint form
+        // used in assetlinks / the privileged allow-list.
+        val cert = byteArrayOf(1, 2, 3, 4, 5, 6, 7, 8)
+        val digest = java.security.MessageDigest.getInstance("SHA-256").digest(cert)
+        assertEquals(
+            "android:apk-key-hash:" + PasskeyUtils.encodeB64Url(digest),
+            PasskeyUtils.androidOriginFromSigner(cert),
+        )
+    }
+
     @Test fun aaguidIs16Bytes() {
         assertEquals(16, PasskeyUtils.SAME_DEVICE_AAGUID.size)
     }
