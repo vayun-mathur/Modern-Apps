@@ -27,7 +27,12 @@ import com.vayunmathur.library.util.DatabaseHelper
 import com.vayunmathur.passwords.R
 import com.vayunmathur.passwords.data.PasswordRepository
 import com.vayunmathur.passwords.domain.DomainMatch
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.passwords.data.Password
 
@@ -40,6 +45,15 @@ class PasswordAutofillService : AutofillService() {
         DatabaseHelper(applicationContext).isKeyGenerated()
     }
     private val repository by lazy { PasswordRepository.get(applicationContext) }
+
+    // Owned by the service (no lifecycleScope on a Service): cancelled in
+    // onDestroy. All repository work runs on Dispatchers.IO.
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    override fun onDestroy() {
+        serviceScope.cancel()
+        super.onDestroy()
+    }
 
     override fun onFillRequest(request: FillRequest, cancellationSignal: CancellationSignal, callback: FillCallback) {
         if (!isDatabaseAvailable) {
@@ -61,7 +75,10 @@ class PasswordAutofillService : AutofillService() {
 
         val inlineSpecs = request.inlineSuggestionsRequest?.inlinePresentationSpecs
 
-        runBlocking {
+        // FillCallback is the autofill framework's async contract: return
+        // without blocking and invoke the callback exactly once when the
+        // IO vault read completes.
+        val job = serviceScope.launch {
             try {
                 val allPasswords = repository.getAllPasswords()
 
@@ -71,7 +88,7 @@ class PasswordAutofillService : AutofillService() {
 
                 if (matches.isEmpty()) {
                     callback.onSuccess(null)
-                    return@runBlocking
+                    return@launch
                 }
 
                 val responseBuilder = FillResponse.Builder()
@@ -101,11 +118,19 @@ class PasswordAutofillService : AutofillService() {
                 }
 
                 callback.onSuccess(responseBuilder.build())
+            } catch (expected: CancellationException) {
+                throw expected
             } catch (expected: IllegalStateException) {
+                Log.error(tag, "Error in onFillRequest", expected)
+                callback.onSuccess(null)
+            } catch (expected: Throwable) {
+                // e.g. SQLCipher native load failure: the callback must
+                // still complete, with the same no-fill outcome.
                 Log.error(tag, "Error in onFillRequest", expected)
                 callback.onSuccess(null)
             }
         }
+        cancellationSignal.setOnCancelListener { job.cancel() }
     }
 
     override fun onSaveRequest(request: SaveRequest, callback: SaveCallback) {
@@ -114,8 +139,12 @@ class PasswordAutofillService : AutofillService() {
         val password = parser.passwordText
 
         if (!username.isNullOrBlank() && !password.isNullOrBlank()) {
-            try {
-                runBlocking {
+            // SaveCallback is the autofill framework's async contract:
+            // invoke it exactly once when the IO vault write completes.
+            // onSaveRequest has no CancellationSignal; serviceScope
+            // cancellation in onDestroy is the cancellation path here.
+            serviceScope.launch {
+                try {
                     val candidates = repository.getAllPasswords()
                     val existing = candidates.firstOrNull { it.username == username || it.email == username }
                     if (existing != null) {
@@ -133,12 +162,20 @@ class PasswordAutofillService : AutofillService() {
                             )
                         )
                     }
+                    callback.onSuccess()
+                } catch (expected: CancellationException) {
+                    throw expected
+                } catch (expected: IllegalStateException) {
+                    Log.error(tag, "Error in onSaveRequest", expected)
+                    callback.onFailure("Unable to open vault")
+                } catch (expected: Throwable) {
+                    // e.g. SQLCipher native load failure: complete the
+                    // callback with the same vault-failure outcome.
+                    Log.error(tag, "Error in onSaveRequest", expected)
+                    callback.onFailure("Unable to open vault")
+                }
             }
-            } catch (expected: IllegalStateException) {
-                Log.error(tag, "Error in onSaveRequest", expected)
-                callback.onFailure("Unable to open vault")
-                return
-            }
+            return
         }
         callback.onSuccess()
     }

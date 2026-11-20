@@ -43,6 +43,14 @@ class PasskeyAuthUnlockTest {
         val controller = Robolectric.buildActivity(PasskeyAuthActivity::class.java, intent)
         controller.create()
         val activity = controller.get()
+        // The unlock flow now builds its response on Dispatchers.IO and
+        // finishes from lifecycleScope on main: idle the main looper until
+        // the IO hop has resumed and finished the activity.
+        val deadline = System.currentTimeMillis() + 5_000
+        while (System.currentTimeMillis() < deadline && !activity.isFinishing) {
+            shadowOf(android.os.Looper.getMainLooper()).idle()
+            Thread.sleep(10)
+        }
         assertTrue(activity.isFinishing)
         assertEquals(Activity.RESULT_OK, shadowOf(activity).resultCode)
         // The result intent carries a begin-get response (empty: no options were requested).

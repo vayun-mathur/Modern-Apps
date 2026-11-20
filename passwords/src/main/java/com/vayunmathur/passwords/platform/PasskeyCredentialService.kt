@@ -25,12 +25,26 @@ import com.vayunmathur.passwords.R
 import com.vayunmathur.passwords.data.PasswordDatabase
 import com.vayunmathur.passwords.data.PasswordRepository
 import com.vayunmathur.passwords.ui.PasskeyAuthActivity
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 
 /** Passkey Credential Service: a credential provider service implementation for passkey credential service. */
 class PasskeyCredentialService : CredentialProviderService() {
 
     private val repository by lazy { PasswordRepository.get(applicationContext) }
+
+    // Owned by the service (no lifecycleScope on a Service): cancelled in
+    // onDestroy. All repository work runs on Dispatchers.IO.
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    override fun onDestroy() {
+        serviceScope.cancel()
+        super.onDestroy()
+    }
 
     private fun buildUnlockResponse(): BeginGetCredentialResponse {
         val intent = Intent(applicationContext, PasskeyAuthActivity::class.java).apply {
@@ -60,7 +74,11 @@ class PasskeyCredentialService : CredentialProviderService() {
             callback.onResult(buildUnlockResponse())
             return
         }
-        runBlocking {
+        // Credential Manager awaits the OutcomeReceiver, so returning here
+        // without blocking is the framework's async contract: the callback
+        // is invoked exactly once, from the IO coroutine, when the vault
+        // read completes (or with the unlock fallback on IllegalState).
+        val job = serviceScope.launch {
             try {
                 val response = buildGetCredentialResponse(
                     applicationContext,
@@ -68,13 +86,22 @@ class PasskeyCredentialService : CredentialProviderService() {
                     repository,
                 )
                 callback.onResult(response)
+            } catch (expected: CancellationException) {
+                throw expected
             } catch (expected: IllegalStateException) {
                 Log.error(TAG, "onBeginGetCredentialRequest failed, falling back to unlock", expected)
                 closeCachedDatabase<PasswordDatabase>()
                 DatabaseHelper(applicationContext).deleteKey()
                 callback.onResult(buildUnlockResponse())
+            } catch (expected: Throwable) {
+                // e.g. SQLCipher native load failure opening the vault: the
+                // callback must still complete, so fall back to unlock rather
+                // than leaving Credential Manager waiting on a dead coroutine.
+                Log.error(TAG, "onBeginGetCredentialRequest failed, falling back to unlock", expected)
+                callback.onResult(buildUnlockResponse())
             }
         }
+        cancellationSignal.setOnCancelListener { job.cancel() }
     }
 
     override fun onBeginCreateCredentialRequest(

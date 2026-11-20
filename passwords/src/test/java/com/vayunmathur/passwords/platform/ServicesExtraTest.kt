@@ -75,6 +75,11 @@ class ServicesExtraTest {
                 override fun onError(e: GetCredentialException) = Unit
             },
         )
+        // Async IO callback: wait for the OutcomeReceiver to complete.
+        val deadline = System.currentTimeMillis() + 5_000
+        while (System.currentTimeMillis() < deadline && response == null) {
+            Thread.sleep(10)
+        }
         assertNotNull(response)
         assertEquals(0, response!!.credentialEntries.size)
         assertEquals(0, response!!.authenticationActions.size)
@@ -191,6 +196,11 @@ class ServicesExtraTest {
                 override fun onError(e: GetCredentialException) = Unit
             },
         )
+        // Async IO callback: wait for the OutcomeReceiver to complete.
+        val deadline = System.currentTimeMillis() + 5_000
+        while (System.currentTimeMillis() < deadline && response == null) {
+            Thread.sleep(10)
+        }
         assertNotNull(response)
         assertEquals(0, response!!.credentialEntries.size)
     }

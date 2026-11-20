@@ -21,7 +21,11 @@ import com.vayunmathur.passwords.domain.Cbor
 import com.vayunmathur.passwords.platform.PasskeyCredentialService
 import com.vayunmathur.passwords.platform.PasskeyUtils
 import com.vayunmathur.passwords.platform.buildGetCredentialResponse
-import kotlinx.coroutines.runBlocking
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.security.MessageDigest
@@ -57,37 +61,48 @@ class PasskeyAuthActivity : FragmentActivity() {
 
     private fun proceedWithFlow() {
         val flow = intent.getStringExtra(EXTRA_FLOW)
-        try {
-            when (flow) {
-                FLOW_CREATE -> handleCreate()
-                FLOW_GET -> handleGet()
-                FLOW_PASSWORD -> handlePassword()
-                FLOW_UNLOCK -> handleUnlock()
-                else -> {
-                    Log.error(TAG, "Unknown flow: $flow")
-                    setResult(RESULT_CANCELED)
+        // Repository work (SQLCipher Room open/read, key generation, signing)
+        // runs on Dispatchers.IO inside each handler; this coroutine stays on
+        // the main thread so setResult/finish keep their original ordering.
+        // lifecycleScope cancels it in onDestroy, so a destroyed activity
+        // never completes a ceremony late.
+        lifecycleScope.launch {
+            try {
+                when (flow) {
+                    FLOW_CREATE -> handleCreate()
+                    FLOW_GET -> handleGet()
+                    FLOW_PASSWORD -> handlePassword()
+                    FLOW_UNLOCK -> handleUnlock()
+                    else -> {
+                        Log.error(TAG, "Unknown flow: $flow")
+                        setResult(RESULT_CANCELED)
+                    }
                 }
+            } catch (expected: CancellationException) {
+                // Lifecycle cancellation (activity destroyed): not a flow
+                // failure, so don't overwrite the result or finish again.
+                throw expected
+            } catch (expected: IllegalStateException) {
+                Log.error(TAG, "Error in passkey $flow flow", expected)
+                setResult(RESULT_CANCELED)
+            } catch (expected: org.json.JSONException) {
+                // Calling app supplied malformed requestJson; cancel, don't crash.
+                Log.error(TAG, "Malformed passkey request JSON in $flow flow", expected)
+                setResult(RESULT_CANCELED)
+            } catch (expected: IllegalArgumentException) {
+                // Bad Base64url user handle / stored credential id from the calling app or import.
+                Log.error(TAG, "Malformed passkey data in $flow flow", expected)
+                setResult(RESULT_CANCELED)
+            } catch (expected: java.security.GeneralSecurityException) {
+                // Corrupt imported private key cannot sign; cancel the assertion.
+                Log.error(TAG, "Passkey signing failed in $flow flow", expected)
+                setResult(RESULT_CANCELED)
             }
-        } catch (expected: IllegalStateException) {
-            Log.error(TAG, "Error in passkey $flow flow", expected)
-            setResult(RESULT_CANCELED)
-        } catch (expected: org.json.JSONException) {
-            // Calling app supplied malformed requestJson; cancel, don't crash.
-            Log.error(TAG, "Malformed passkey request JSON in $flow flow", expected)
-            setResult(RESULT_CANCELED)
-        } catch (expected: IllegalArgumentException) {
-            // Bad Base64url user handle / stored credential id from the calling app or import.
-            Log.error(TAG, "Malformed passkey data in $flow flow", expected)
-            setResult(RESULT_CANCELED)
-        } catch (expected: java.security.GeneralSecurityException) {
-            // Corrupt imported private key cannot sign; cancel the assertion.
-            Log.error(TAG, "Passkey signing failed in $flow flow", expected)
-            setResult(RESULT_CANCELED)
+            finish()
         }
-        finish()
     }
 
-    private fun handleCreate() {
+    private suspend fun handleCreate() {
         val request = PendingIntentHandler.retrieveProviderCreateCredentialRequest(intent) ?: run {
             Log.error(TAG, "No create credential request in intent")
             setResult(RESULT_CANCELED)
@@ -122,7 +137,7 @@ class PasskeyAuthActivity : FragmentActivity() {
         // them must not happen.
         val excludedIds = PasskeyUtils.credentialDescriptorIds(json, "excludeCredentials")
         if (excludedIds.isNotEmpty()) {
-            val excluded = runBlocking { repository.getPasskeysByRpId(rpId) }.any { stored ->
+            val excluded = withContext(Dispatchers.IO) { repository.getPasskeysByRpId(rpId) }.any { stored ->
                 excludedIds.any { PasskeyUtils.credentialIdsMatch(stored.credentialId, it) }
             }
             if (excluded) {
@@ -140,7 +155,7 @@ class PasskeyAuthActivity : FragmentActivity() {
         Log.dev(TAG, "Create passkey for rpId=$rpId, origin=$origin, privileged=$isPrivileged")
 
         // Generate the credential and persist it; both transports share this.
-        val created = runBlocking {
+        val created = withContext(Dispatchers.IO) {
             WebAuthnAuthenticator.createCredential(
                 rpId = rpId,
                 rpName = rpName,
@@ -200,7 +215,7 @@ class PasskeyAuthActivity : FragmentActivity() {
         setResult(RESULT_OK, result)
     }
 
-    private fun handleGet() {
+    private suspend fun handleGet() {
         val providerRequest = PendingIntentHandler.retrieveProviderGetCredentialRequest(intent) ?: run {
             Log.error(TAG, "No get credential request in intent")
             setResult(RESULT_CANCELED)
@@ -212,7 +227,7 @@ class PasskeyAuthActivity : FragmentActivity() {
             return
         }
 
-        val passkey = runBlocking { repository.getPasskeyByCredentialId(credentialId) } ?: run {
+        val passkey = withContext(Dispatchers.IO) { repository.getPasskeyByCredentialId(credentialId) } ?: run {
             Log.error(TAG, "Passkey not found for credentialId=$credentialId")
             setResult(RESULT_CANCELED)
             return
@@ -264,7 +279,7 @@ class PasskeyAuthActivity : FragmentActivity() {
             clientDataJsonB64 = b64Url(clientDataJson.toByteArray())
         }
 
-        val assertion = runBlocking {
+        val assertion = withContext(Dispatchers.IO) {
             WebAuthnAuthenticator.signAssertion(passkey, clientDataHash, repository)
         }
         val authenticatorData = assertion.authenticatorData
@@ -316,7 +331,7 @@ class PasskeyAuthActivity : FragmentActivity() {
         }
     }
 
-    private fun handlePassword() {
+    private suspend fun handlePassword() {
         val providerRequest = PendingIntentHandler.retrieveProviderGetCredentialRequest(intent) ?: run {
             Log.error(TAG, "No get credential request in intent")
             setResult(RESULT_CANCELED)
@@ -328,7 +343,7 @@ class PasskeyAuthActivity : FragmentActivity() {
             setResult(RESULT_CANCELED)
             return
         }
-        val password = runBlocking { repository.getPasswordById(passwordId) }
+        val password = withContext(Dispatchers.IO) { repository.getPasswordById(passwordId) }
         if (password == null) {
             Log.error(TAG, "Password not found for id=$passwordId")
             setResult(RESULT_CANCELED)
@@ -344,7 +359,7 @@ class PasskeyAuthActivity : FragmentActivity() {
         setResult(RESULT_OK, result)
     }
 
-    private fun handleUnlock() {
+    private suspend fun handleUnlock() {
         val request = PendingIntentHandler.retrieveBeginGetCredentialRequest(intent)
         if (request == null) {
             Log.error(TAG, "No BeginGetCredentialRequest in unlock intent")
@@ -352,7 +367,7 @@ class PasskeyAuthActivity : FragmentActivity() {
             return
         }
 
-        val response = runBlocking {
+        val response = withContext(Dispatchers.IO) {
             buildGetCredentialResponse(
                 applicationContext,
                 request.beginGetCredentialOptions,

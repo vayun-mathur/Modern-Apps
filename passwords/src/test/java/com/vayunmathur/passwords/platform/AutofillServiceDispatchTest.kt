@@ -23,7 +23,6 @@ import org.robolectric.annotation.Config
 import java.lang.reflect.Proxy
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -39,8 +38,8 @@ import kotlin.test.assertTrue
  * Callbacks are the framework callbacks backed by a recording AIDL proxy,
  * so "the service answered with no datasets" is asserted, not assumed.
  * Matching itself needs the SQLCipher vault (unavailable under
- * Robolectric), so the fill/save paths that reach the vault surface its
- * [UnsatisfiedLinkError] after the parser has run.
+ * Robolectric), so the fill/save paths that reach the vault fail there
+ * on IO and complete their callback with the no-fill / failure outcome.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -229,12 +228,18 @@ class AutofillServiceDispatchTest {
         assertNull(log.calls.single().second)
     }
 
-    @Test fun fillRequestWithPasswordFieldReachesVault() {
+    @Test fun fillRequestWithPasswordFieldReachesVaultAnswersNullAsync() {
         DatabaseHelper(app).storePassphrase("vault-pw")
         val log = CallbackLog()
-        assertFailsWith<UnsatisfiedLinkError> {
-            service().onFillRequest(fillRequest(listOf(loginContext())), CancellationSignal(), fillCallback(log))
+        service().onFillRequest(fillRequest(listOf(loginContext())), CancellationSignal(), fillCallback(log))
+        // The vault read now runs on Dispatchers.IO (SQLCipher is unavailable
+        // under Robolectric, so it fails there) and the callback must still
+        // complete, with the same no-fill outcome as the old IllegalState path.
+        val deadline = System.currentTimeMillis() + 5_000
+        while (System.currentTimeMillis() < deadline && log.calls.isEmpty()) {
+            Thread.sleep(10)
         }
+        assertEquals(listOf("onSuccess" to null), log.calls.map { it.first to it.second })
     }
 
     @Test fun saveRequestWithBlankCredentialsAnswersWithoutVault() {
@@ -243,10 +248,16 @@ class AutofillServiceDispatchTest {
         assertEquals(listOf("onSuccess"), log.calls.map { it.first })
     }
 
-    @Test fun saveRequestWithCredentialsReachesVault() {
-        assertFailsWith<UnsatisfiedLinkError> {
-            service().onSaveRequest(saveRequest(listOf(loginContext())), saveCallback(CallbackLog()))
+    @Test fun saveRequestWithCredentialsReachesVaultFailsAsync() {
+        val log = CallbackLog()
+        service().onSaveRequest(saveRequest(listOf(loginContext())), saveCallback(log))
+        // Async IO vault write: SQLCipher is unavailable under Robolectric,
+        // so the callback completes with the vault-failure outcome.
+        val deadline = System.currentTimeMillis() + 5_000
+        while (System.currentTimeMillis() < deadline && log.calls.isEmpty()) {
+            Thread.sleep(10)
         }
+        assertEquals(listOf("onFailure"), log.calls.map { it.first })
     }
 
     // ---- matchesContext / createPresentations (private helpers) ----
