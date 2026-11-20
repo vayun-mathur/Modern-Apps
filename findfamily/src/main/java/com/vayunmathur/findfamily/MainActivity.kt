@@ -24,6 +24,7 @@ import com.vayunmathur.library.network.TrustBundle
 import com.vayunmathur.library.ui.AppPermissionsGate
 import com.vayunmathur.library.ui.ConfirmDialog
 import com.vayunmathur.library.ui.MaActivity
+import com.vayunmathur.library.util.OfflineAware
 
 /**
  * FindFamily entry activity: initialises the first-party network client, parses invite
@@ -71,34 +72,36 @@ class MainActivity : MaActivity() {
             if (coarseOnly) showUpgradeDialog = true
         }
 
-        AppPermissionsGate(spec = findFamilyPermissionsSpec()) {
-            val deepLinkPeerId = remember {
-                intent?.takeIf { it.hasExtra(EXTRA_UWB_PEER_ID) }
-                    ?.getLongExtra(EXTRA_UWB_PEER_ID, -1L)
-                    ?.takeIf { it != -1L }
-            }
-            Navigation(
-                platform,
-                ffViewModel,
-                ffViewModel.missingFeatures,
-                deepLinkPeerId,
-                deepLinkAddInvite.value,
-                onDeepLinkAddConsumed = { deepLinkAddInvite.value = null },
-                noShowTarget = noShowTarget.value,
-                onNoShowTargetConsumed = { noShowTarget.value = null },
-            )
-
-            // Approximate-only: explain and offer a reliable way to
-            // re-open the upgrade prompt after it has been dismissed.
-            if (coarseOnly && showUpgradeDialog) {
-                ConfirmDialog(
-                    title = stringResource(R.string.permission_upgrade_dialog_title),
-                    message = stringResource(R.string.permission_upgrade_dialog_message),
-                    confirmLabel = stringResource(R.string.permission_upgrade_dialog_confirm),
-                    dismissLabel = stringResource(R.string.permission_upgrade_dialog_dismiss),
-                    onConfirm = { showUpgradeDialog = false },
-                    onDismiss = { showUpgradeDialog = false },
+        OfflineAware {
+            AppPermissionsGate(spec = findFamilyPermissionsSpec()) {
+                val deepLinkPeerId = remember {
+                    intent?.takeIf { it.hasExtra(EXTRA_UWB_PEER_ID) }
+                        ?.getLongExtra(EXTRA_UWB_PEER_ID, -1L)
+                        ?.takeIf { it != -1L }
+                }
+                Navigation(
+                    platform,
+                    ffViewModel,
+                    ffViewModel.missingFeatures,
+                    deepLinkPeerId,
+                    deepLinkAddInvite.value,
+                    onDeepLinkAddConsumed = { deepLinkAddInvite.value = null },
+                    noShowTarget = noShowTarget.value,
+                    onNoShowTargetConsumed = { noShowTarget.value = null },
                 )
+
+                // Approximate-only: explain and offer a reliable way to
+                // re-open the upgrade prompt after it has been dismissed.
+                if (coarseOnly && showUpgradeDialog) {
+                    ConfirmDialog(
+                        title = stringResource(R.string.permission_upgrade_dialog_title),
+                        message = stringResource(R.string.permission_upgrade_dialog_message),
+                        confirmLabel = stringResource(R.string.permission_upgrade_dialog_confirm),
+                        dismissLabel = stringResource(R.string.permission_upgrade_dialog_dismiss),
+                        onConfirm = { showUpgradeDialog = false },
+                        onDismiss = { showUpgradeDialog = false },
+                    )
+                }
             }
         }
     }

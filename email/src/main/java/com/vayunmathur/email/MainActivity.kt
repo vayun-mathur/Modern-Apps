@@ -17,6 +17,7 @@ import com.vayunmathur.email.widget.EmailWidgetReceiver
 import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.library.network.TrustBundle
 import com.vayunmathur.library.ui.MaActivity
+import com.vayunmathur.library.util.OfflineAware
 import com.vayunmathur.library.widgets.updateWidgetPreviews
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -61,8 +62,10 @@ class MainActivity : MaActivity() {
 
     @Composable
     override fun Content() {
-        val viewModel: EmailViewModel = viewModel()
-        MainContent(viewModel = viewModel)
+        OfflineAware {
+            val viewModel: EmailViewModel = viewModel()
+            MainContent(viewModel = viewModel)
+        }
     }
 
     override fun onStart() {

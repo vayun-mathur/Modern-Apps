@@ -15,6 +15,7 @@ import com.vayunmathur.communicate.data.call.InAppCallRegistry
 import com.vayunmathur.communicate.intents.DeepLink
 import com.vayunmathur.communicate.intents.DeepLinks
 import com.vayunmathur.library.ui.MaActivity
+import com.vayunmathur.library.util.OfflineAware
 
 /** The single activity hosting the communicate UI: navigation, deep links and line setup. */
 class MainActivity : MaActivity() {
@@ -33,7 +34,9 @@ class MainActivity : MaActivity() {
 
     @Composable
     override fun Content() {
-        Navigation(initialDeepLink = pendingDeepLink)
+        OfflineAware {
+            Navigation(initialDeepLink = pendingDeepLink)
+        }
     }
 
     /**

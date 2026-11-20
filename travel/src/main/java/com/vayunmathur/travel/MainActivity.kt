@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.lifecycleScope
 import com.vayunmathur.library.ui.MaActivity
+import com.vayunmathur.library.util.OfflineAware
 import com.vayunmathur.travel.data.TravelRepository
 import com.vayunmathur.library.image.fetchers.HttpImageFetcher
 import com.vayunmathur.travel.platform.TravelViewModel
@@ -60,6 +61,10 @@ class MainActivity : MaActivity() {
 
     @Composable
     override fun Content() {
-        if (ready) Navigation(viewModel)
+        // Trips stored in Room stay readable offline; the banner explains
+        // why search/booking writes are gated while offline.
+        OfflineAware {
+            if (ready) Navigation(viewModel)
+        }
     }
 }
