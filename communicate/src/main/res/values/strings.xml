@@ -18,6 +18,7 @@
     <string name="permission_call_logs_message">Allow Call log access to show recent calls.</string>
     <string name="grant_permission">Grant permission</string>
     <string name="empty_messages">No conversations yet</string>
+    <string name="empty_messages_hint">Tap + to start a conversation. Use the person icon to add or manage accounts.</string>
     <string name="empty_contacts">No contacts found</string>
     <string name="empty_contacts_for_digits">No contacts match those keys</string>
     <string name="empty_call_logs">No recent calls found</string>

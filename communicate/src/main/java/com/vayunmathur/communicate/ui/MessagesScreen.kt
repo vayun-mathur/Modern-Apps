@@ -270,6 +270,7 @@ fun MessagesScreen(onOpenThread: (SmsThread) -> Unit, onOpenAccounts: () -> Unit
                     null -> com.vayunmathur.library.ui.LoadingState(Modifier.padding(padding))
                     emptyList<SmsThread>() -> EmptyState(
                         title = stringResource(R.string.empty_messages),
+                        message = stringResource(R.string.empty_messages_hint),
                         icon = { IconSms() },
                         modifier = Modifier.padding(padding),
                     )

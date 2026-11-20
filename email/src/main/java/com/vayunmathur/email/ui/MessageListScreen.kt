@@ -47,6 +47,7 @@ import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Card
 import com.vayunmathur.library.ui.CardDefaults
 import com.vayunmathur.library.ui.CircularProgressIndicator
+import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.ui.CommonSearchBar
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.FloatingActionButton
@@ -185,9 +186,10 @@ fun MessageListScreen(
                 topClearance = 8.dp,
             ) {
                 if (state.messages.isEmpty() && state.searchQuery.isEmpty()) {
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        Text(text = stringResource(R.string.no_messages_found_pull_down_to_refresh), modifier = Modifier.align(Alignment.Center))
-                    }
+                    EmptyState(
+                        title = stringResource(R.string.no_messages_found_pull_down_to_refresh),
+                        modifier = Modifier.fillMaxSize(),
+                    )
                 } else {
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
                         if (state.searchQuery.isNotEmpty() && (state.aiSummaryLoading || state.aiSummary != null)) {

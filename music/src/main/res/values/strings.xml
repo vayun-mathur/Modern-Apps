@@ -15,6 +15,14 @@
     <string name="unknown_artist">Unknown Artist</string>
     <!-- NowPlaying: Shown when track has no embedded lyrics -->
     <string name="no_lyrics_available">No lyrics available</string>
+    <string name="empty_songs_title">No songs yet</string>
+    <string name="empty_songs_message">Music on this device will appear here.</string>
+    <string name="empty_albums_title">No albums yet</string>
+    <string name="empty_albums_message">Albums from music on this device will appear here.</string>
+    <string name="empty_artists_title">No artists yet</string>
+    <string name="empty_artists_message">Artists from music on this device will appear here.</string>
+    <string name="empty_playlists_title">No playlists yet</string>
+    <string name="empty_playlists_message">Playlists you create will appear here.</string>
 
     <!-- Detail screen: Overline label for album type. Noun. -->
     <string name="label_album">Album</string>

@@ -108,6 +108,21 @@ class PhotosSlice1DbTest {
     }
 
     @Test
+    fun searchWildcardsMatchLiterally() = runTest {
+        photoDao.upsertAll(
+            listOf(
+                photo("100% crop", date = 3L),
+                photo("1000 crop", date = 2L),
+                photo("my_file", date = 1L),
+            ),
+        )
+        assertEquals(listOf("100% crop"), photoDao.searchPhotos("%").map { it.name })
+        assertEquals(listOf("100% crop"), photoDao.searchPhotos("100%").map { it.name })
+        assertEquals(listOf("my_file"), photoDao.searchPhotos("_").map { it.name })
+        assertEquals(listOf("my_file"), photoDao.searchPhotos("my_file").map { it.name })
+    }
+
+    @Test
     fun searchMatchesOcrText() = runTest {
         photoDao.upsertAll(listOf(photo("sign", date = 3L)))
         val id = photoDao.getAll().single().id

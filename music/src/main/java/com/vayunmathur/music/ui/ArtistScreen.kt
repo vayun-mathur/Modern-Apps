@@ -16,6 +16,7 @@ import androidx.core.net.toUri
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.sharedContainer
 import com.vayunmathur.library.util.sharedText
+import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.ui.ListPage
 import com.vayunmathur.music.ui.components.ShufflePlayFab
 import com.vayunmathur.music.platform.AlbumArt
@@ -27,6 +28,11 @@ import com.vayunmathur.music.data.Artist
 @Composable
 fun ArtistsTabContent(backStack: NavBackStack<Route>, musicViewModel: MusicViewModel) {
     val artists by musicViewModel.artists.collectAsState()
+    val loaded by musicViewModel.loaded.collectAsState()
+    if (artists.isEmpty() && loaded) {
+        EmptyState(title = stringResource(R.string.empty_artists_title), message = stringResource(R.string.empty_artists_message))
+        return
+    }
     ListPage<Artist, Route, Route.Song>(backStack, artists, stringResource(R.string.app_name), {
         Text(
             it.name.ifBlank { stringResource(R.string.unknown_artist) },
@@ -42,7 +48,7 @@ fun ArtistsTabContent(backStack: NavBackStack<Route>, musicViewModel: MusicViewM
         AlbumArt(albumsUris, Modifier.size(40.dp).clip(RoundedCornerShape(8.dp)).sharedContainer("music-artist-art-${artist.id}"))
     }, searchEnabled = true, fab = {
         ShufflePlayFab(musicViewModel)
-    }, searchString = { it.name },
+    }, searchString = { it.name }, loading = !loaded,
     // getArtists already returns them sorted by name.
     )
 }

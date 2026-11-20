@@ -1,6 +1,5 @@
 package com.vayunmathur.files.ui
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,6 +22,7 @@ import com.vayunmathur.files.platform.FilesUiState
 import com.vayunmathur.files.platform.ViewMode
 import com.vayunmathur.files.ui.components.DirectoryItem
 import com.vayunmathur.files.ui.components.GridItem
+import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.ui.HorizontalDivider
 import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.IconClose
@@ -127,15 +127,10 @@ internal fun DirectoryListing(
             }
 
             if (allItems.isEmpty()) {
-                Box(
-                    Modifier.weight(1f).fillMaxWidth(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        stringResource(R.string.no_files),
-                        color = MaterialTheme.colorScheme.outline,
-                    )
-                }
+                EmptyState(
+                    title = stringResource(R.string.no_files),
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                )
             } else if (viewMode == ViewMode.GRID) {
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(minSize = 104.dp),

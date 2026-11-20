@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import com.vayunmathur.library.ui.CircularProgressIndicator
+import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.ui.adaptiveGridCells
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.IconButton
@@ -273,7 +274,12 @@ fun GalleryScreen(
                     .padding(paddingValues)
                     .pinchToZoomColumns({ columnCount }, { columnCount = it })
             ) {
-                LazyVerticalGrid(
+                if (state.photos.isEmpty() && !state.isRefreshing) {
+                    EmptyState(
+                        title = stringResource(R.string.gallery_empty_title),
+                        message = stringResource(R.string.gallery_empty_message),
+                    )
+                } else LazyVerticalGrid(
                     GridCells.Fixed(columnCount.roundToInt().coerceIn(2, 8)),
                     Modifier,
                     horizontalArrangement = Arrangement.spacedBy(4.dp),

@@ -8,6 +8,7 @@ import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -129,6 +130,12 @@ fun FilesShell(
 
     if (!isFilesGranted) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.padding(32.dp),
+            ) {
+                Text(stringResource(UiR.string.permission_purpose_all_files))
             Button(
                 onClick = {
                     val intent =
@@ -139,6 +146,7 @@ fun FilesShell(
                         }
                     filesLauncher.launch(intent)
                 }) { Text(stringResource(R.string.grant_all_files_access)) }
+            }
         }
     } else {
         val bookmarks by viewModel.bookmarks.collectAsState()

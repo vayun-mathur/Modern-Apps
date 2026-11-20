@@ -17,11 +17,13 @@ import com.vayunmathur.email.platform.MessageThreadActions
 import com.vayunmathur.library.log.Log
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -99,10 +101,14 @@ class EmailViewModel(application: Application) :
     private val _selectedMessageUids = MutableStateFlow<Set<Long>>(emptySet())
     val selectedMessageUids: StateFlow<Set<Long>> = _selectedMessageUids
 
+    // 200ms search debounce: a keystroke burst re-queries Room once, not once
+    // per character. Blank (initial / cleared) bypasses the delay so the inbox
+    // and a cleared search come back instantly.
+    @OptIn(FlowPreview::class)
     private val messagesRaw: Flow<List<EmailPreview>> = combine(
         _selectedAccountEmail,
         _selectedFolderName,
-        _searchQuery
+        _searchQuery.debounce { query -> if (query.isEmpty()) 0L else SEARCH_DEBOUNCE_MS }
     ) { email, folder, query ->
         Triple(email, folder, query)
     }.flatMapLatest { (email, folder, query) ->
@@ -443,6 +449,8 @@ class EmailViewModel(application: Application) :
         }
     }
 }
+
+private const val SEARCH_DEBOUNCE_MS = 200L
 
 /** Extract the bare email address from a "Name <addr@x>" header, or "" if none. */
 private fun extractEmailAddress(from: String): String {

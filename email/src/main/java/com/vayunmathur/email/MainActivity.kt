@@ -27,11 +27,6 @@ import kotlinx.coroutines.launch
 /** Entry activity that wires the email UI, navigation and background sync startup. */
 class MainActivity : MaActivity() {
 
-    /** Holds activity-level constants such as the notification permission request code. */
-    companion object {
-        private const val REQUEST_POST_NOTIFICATIONS = 7331
-    }
-
     override fun onCreateBeforeContent() {
         NetworkClient.init(this, TrustBundle.SYSTEM)
         handleIntent(intent)
@@ -49,16 +44,6 @@ class MainActivity : MaActivity() {
             ImapIdleService.start(this@MainActivity)
             DateMillisBackfill.runIfNeeded(lifecycleScope, this@MainActivity)
             PeekContentBackfill.runIfNeeded(lifecycleScope, this@MainActivity)
-        }
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            val permission = android.Manifest.permission.POST_NOTIFICATIONS
-            val granted = android.content.pm.PackageManager.PERMISSION_GRANTED
-            if (checkSelfPermission(permission) != granted) {
-                requestPermissions(
-                    arrayOf(android.Manifest.permission.POST_NOTIFICATIONS),
-                    REQUEST_POST_NOTIFICATIONS,
-                )
-            }
         }
     }
 

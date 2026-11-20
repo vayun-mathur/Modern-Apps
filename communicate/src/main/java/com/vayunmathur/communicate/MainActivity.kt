@@ -1,10 +1,7 @@
 package com.vayunmathur.communicate
 
-import android.Manifest
 import android.app.PictureInPictureParams
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.os.Build
 import android.util.Rational
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
@@ -24,12 +21,6 @@ class MainActivity : MaActivity() {
 
     override fun onCreateBeforeContent() {
         pendingDeepLink = DeepLinks.parse(intent)
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-        ) {
-            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), REQUEST_POST_NOTIFICATIONS)
-        }
     }
 
     @Composable
@@ -72,9 +63,8 @@ class MainActivity : MaActivity() {
         }
     }
 
-    /** Notification-permission request code and splash aspect-ratio constants. */
+    /** Splash aspect-ratio constants. */
     companion object {
-        private const val REQUEST_POST_NOTIFICATIONS = 1001
         private const val PORTRAIT_WIDTH = 9
         private const val PORTRAIT_HEIGHT = 16
     }

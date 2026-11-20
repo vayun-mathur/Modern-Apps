@@ -12,6 +12,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
+import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.ui.ListPage
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.sharedContainer
@@ -27,6 +28,11 @@ import com.vayunmathur.music.ui.components.ShufflePlayFab
 @Composable
 fun PlaylistsTabContent(backStack: NavBackStack<Route>, musicViewModel: MusicViewModel) {
     val playlists by musicViewModel.playlists.collectAsState()
+    val loaded by musicViewModel.loaded.collectAsState()
+    if (playlists.isEmpty() && loaded) {
+        EmptyState(title = stringResource(R.string.empty_playlists_title), message = stringResource(R.string.empty_playlists_message), action = { NewPlaylistFab(musicViewModel) })
+        return
+    }
     // Playlists come from Room via `SELECT * FROM Playlist`, which has no ORDER BY, so unlike the
     // MediaStore-backed tabs this one still sorts client-side. Hoisted because a Comparator built
     // at the call site is a new instance every recomposition, which invalidates ListPage's
@@ -45,5 +51,5 @@ fun PlaylistsTabContent(backStack: NavBackStack<Route>, musicViewModel: MusicVie
     }, searchEnabled = true, fab = {
         NewPlaylistFab(musicViewModel)
         ShufflePlayFab(musicViewModel)
-    }, searchString = { it.name }, sortOrder = byName)
+    }, searchString = { it.name }, sortOrder = byName, loading = !loaded)
 }

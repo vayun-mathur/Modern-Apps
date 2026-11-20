@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import com.vayunmathur.library.ui.IconPlay
 import com.vayunmathur.library.ui.ListItemDefaults
+import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.ui.ListPage
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
@@ -53,6 +54,13 @@ fun SongsScreen(
         if (!state.rowOwnsSongKeys) Modifier
         else Modifier.sharedText("music-song-$slot-${song.id}")
 
+    if (state.songs.isEmpty() && !state.loading) {
+        EmptyState(
+            title = stringResource(R.string.empty_songs_title),
+            message = stringResource(R.string.empty_songs_message),
+        )
+        return
+    }
     ListPage<Music, Route, Route.Song>(backStack, state.songs, stringResource(R.string.app_name), { song ->
         val isPlaying = song.id == state.playingSongId
         Text(

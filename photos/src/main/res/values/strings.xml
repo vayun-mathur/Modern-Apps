@@ -45,6 +45,8 @@
     <string name="action_unfavorite">Remove from favorites</string>
     <!-- Empty state of the Favorites album. Sentence -->
     <string name="favorites_empty">No favorites yet. Tap the heart on a photo to add it here.</string>
+    <string name="gallery_empty_title">No photos yet</string>
+    <string name="gallery_empty_message">Photos and videos on this device will appear here.</string>
     <!-- Snackbar when the system refuses to change a photo's favorite state. Sentence -->
     <string name="favorite_failed">Couldn\'t update favorites</string>
     <!-- Title of the selection action / dialog to add the chosen photos to an album. Verb phrase -->

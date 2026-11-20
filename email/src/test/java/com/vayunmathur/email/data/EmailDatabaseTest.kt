@@ -321,6 +321,56 @@ class EmailDatabaseTest {
     }
 
     @Test
+    fun searchMultiWord_requiresEveryTokenAcrossFields() = runTest {
+        val dao = db.queryDao()
+        db.messageDao().insertMessagesRaw(
+            listOf(
+                // tokens split across subject / sender / body
+                message(1L, subject = "Quarterly report", from = "boss@work.com", body = "numbers inside"),
+                message(2L, subject = "Quarterly", from = "boss@work.com", body = "unrelated"),
+                message(3L, subject = "report", from = "someone@else.com", body = "numbers"),
+            )
+        )
+        // Every token must match somewhere (AND), in any field, any order.
+        assertEquals(listOf(1L), dao.searchMessages("quarterly numbers").map { it.id })
+        assertEquals(listOf(1L), dao.searchMessages("numbers quarterly").map { it.id })
+        assertEquals(listOf(1L), dao.searchMessages("boss numbers").map { it.id })
+        assertEquals(listOf(1L, 2L), dao.searchMessages("quarterly boss").map { it.id }.sorted())
+        assertEquals(emptyList(), dao.searchMessages("quarterly zzz-no-match"))
+        // Preview + flow variants share the tokenised path.
+        assertEquals(
+            listOf(1L),
+            dao.searchMessagesPreviewFlow("me@x.com", "INBOX", "quarterly numbers", 0L).first().map { it.id },
+        )
+        assertEquals(
+            listOf(1L),
+            dao.searchUnifiedMessagesFlow("INBOX", "quarterly numbers", 0L).first().map { it.id },
+        )
+    }
+
+    @Test
+    fun searchWildcards_matchLiterallyNotAsPatterns() = runTest {
+        val dao = db.queryDao()
+        db.messageDao().insertMessagesRaw(
+            listOf(
+                message(1L, subject = "100% coverage", from = "a@b.com", body = "plain"),
+                message(2L, subject = "1000 coverage", from = "a@b.com", body = "plain"),
+                message(3L, subject = "file_name v2", from = "a@b.com", body = "plain"),
+                message(4L, subject = "fileXname v2", from = "a@b.com", body = "plain"),
+                message(5L, subject = "back\\slash", from = "a@b.com", body = "plain"),
+            )
+        )
+        // '%' must not act as a wildcard: only the literal-percent row matches.
+        assertEquals(listOf(1L), dao.searchMessages("100%").map { it.id })
+        assertEquals(listOf(1L), dao.searchMessages("%").map { it.id })
+        // '_' must not match any single character.
+        assertEquals(listOf(3L), dao.searchMessages("file_name").map { it.id })
+        assertEquals(listOf(3L), dao.searchMessages("_").map { it.id })
+        // Backslash is literal too.
+        assertEquals(listOf(5L), dao.searchMessages("back\\slash").map { it.id })
+    }
+
+    @Test
     fun recentInbox_capsAtThirtyNewestFirst() = runTest {
         val dao = db.queryDao()
         db.messageDao().insertMessagesRaw((1L..35L).map { message(it, dateMillis = it) })

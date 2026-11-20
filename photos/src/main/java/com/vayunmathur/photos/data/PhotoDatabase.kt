@@ -73,9 +73,18 @@ interface PhotoDao {
 
     @Query(
         "SELECT * FROM Photo WHERE isTrashed = 0 AND " +
-            "(ocrText LIKE '%' || :query || '%' OR name LIKE '%' || :query || '%') ORDER BY date DESC"
+            "(ocrText LIKE :pattern ESCAPE '\\' OR name LIKE :pattern ESCAPE '\\') ORDER BY date DESC"
     )
-    suspend fun searchPhotos(query: String): List<Photo>
+    suspend fun searchPhotosByPattern(pattern: String): List<Photo>
+
+    /**
+     * Plain substring search over OCR text and file name. The user-typed
+     * [query] is wildcard-escaped first (`%`, `_`, `\` match literally, via
+     * `ESCAPE '\'`), so typing `%` finds only names/text containing a percent
+     * sign instead of matching the whole library.
+     */
+    suspend fun searchPhotos(query: String): List<Photo> =
+        searchPhotosByPattern(photoSearchPattern(query))
 
     /** Photos already scanned by OCR (numerator of the search-index progress bar). */
     @Query("SELECT count(*) FROM Photo WHERE ocrScanned = 1 AND isTrashed = 0 AND duration IS NULL")
@@ -248,6 +257,10 @@ interface PhotoScanDao {
     @Query("UPDATE Photo SET ocrBoxes = :json WHERE id = :id")
     suspend fun setOcrBoxes(id: Long, json: String?)
 }
+
+/** Builds a literal substring `LIKE` pattern from user input: wildcards escaped, wrapped in `%…%`. */
+internal fun photoSearchPattern(query: String): String =
+    "%" + query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
 
 /** Lightweight projection of a photo's CLIP embedding for in-memory search. */
 data class PhotoEmbedding(
