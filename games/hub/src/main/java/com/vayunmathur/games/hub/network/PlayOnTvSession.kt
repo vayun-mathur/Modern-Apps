@@ -46,8 +46,7 @@ private val Context.controllerStore by preferencesDataStore(name = "hub_controll
  * duration alongside.
  *
  * Secrets follow the same rule as the kart TV host: the per-TV device keys live in their own
- * `hub_controller` DataStore file, NOT in the shared `datastore_default` that [com.vayunmathur.games.hub.util.AppBackupAgent]
- * ships to cloud. A restored backup must not silently inherit this phone's pairings.
+ * `hub_controller` DataStore file, NOT in the shared `datastore_default`. A restored backup must not silently inherit this phone's pairings.
  * Sealing to the TV's bundle is plain `Pqc.encryptTo` (the cast `SecretSealing` shape, without
  * depending on `:cast:protocol`); the phone holds no long-term PQC identity of its own — the
  * session secret is fresh per connection and the device key is the only thing persisted.

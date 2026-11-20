@@ -2,18 +2,15 @@ package com.vayunmathur.openassistant.util
 
 import android.net.Uri
 import androidx.test.core.app.ApplicationProvider
-import com.vayunmathur.library.room.SqlCipherDbCodec
 import com.vayunmathur.openassistant.Route
-import com.vayunmathur.openassistant.platform.FakeAndroidKeyStore
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import com.vayunmathur.openassistant.platform.copyUriToFile
-import com.vayunmathur.openassistant.platform.AppBackupAgent
 
-/** copyUriToFile against the Robolectric content resolver, routes, backup agent config. */
+/** copyUriToFile against the Robolectric content resolver, routes, backup contract. */
 @org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
 class CopyUriAndRouteTest {
 
@@ -48,12 +45,12 @@ class CopyUriAndRouteTest {
         assertTrue(Route.ConversationPage(1L) != Route.ConversationPage(2L))
     }
 
-    @Test fun backupAgentConfigWithoutKey() {
-        FakeAndroidKeyStore.install()
-        val agent = AppBackupAgent()
-        assertEquals(SqlCipherDbCodec, agent.dbCodec)
-        assertEquals(emptyList(), agent.extraFiles)
-        // No passphrase key has been generated in this environment.
-        assertEquals(emptyList(), agent.dbConfigs)
+    @Test fun manifestHasNoBackupAgentAndExtractionRulesGovern() {
+        // The legacy backup agent was removed (it exported conversation history
+        // decrypted, bypassing the deny-all cloud rules); data_extraction_
+        // rules.xml now governs both cloud backup and device transfer.
+        val info = ctx.packageManager.getApplicationInfo(ctx.packageName, 0)
+        assertEquals(null, info.backupAgentName)
+        assertTrue(ctx.resources.getIdentifier("data_extraction_rules", "xml", ctx.packageName) != 0)
     }
 }

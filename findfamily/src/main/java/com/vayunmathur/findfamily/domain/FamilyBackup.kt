@@ -11,12 +11,13 @@ package com.vayunmathur.findfamily.domain
  * app version restore with the current code, because the reader derives the
  * same names from [dbName]/[datastoreName].
  *
- * The manual backup covers the same payload as the OS-triggered one
- * ([com.vayunmathur.findfamily.platform.AppBackupAgent]): the encrypted Room
- * database plus the default DataStore, which holds the stable device identity
- * and the E2EE key material. Pre-removal manual backups contained only the
- * database entry; such legacy files still restore — the missing DataStore
- * entry is simply skipped by the reader.
+ * The manual backup covers the encrypted Room database plus the default
+ * DataStore, which holds the stable device identity and the E2EE key material.
+ * It is a user-triggered export to a user-chosen file only: OS backup no longer
+ * carries this payload (no backupAgent is declared, and data_extraction_rules
+ * deny cloud backup; D2D carries the database file alone, without the keys).
+ * Pre-removal manual backups contained only the database entry; such legacy
+ * files still restore — the missing DataStore entry is simply skipped by the reader.
  */
 object FamilyBackup {
     /** Room database name, shared with [com.vayunmathur.findfamily.data.FindFamilyRepository]. */

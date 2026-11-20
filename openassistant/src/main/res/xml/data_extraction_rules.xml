@@ -17,16 +17,12 @@
      No API keys or remote credentials were found - inference runs on-device - so the only
      secret-grade material is the keystore passphrase.
 
-     SCOPE: openassistant declares android:backupAgent=".util.AppBackupAgent" and does NOT set
-     android:fullBackupOnly, so cloud backup runs through the agent and the <cloud-backup>
-     section below is NOT consulted. What actually reaches the cloud is the agent's
-     dbConfigs = ["passwords-db"], i.e. the conversation history, exported decrypted by
-     SqlCipherDbCodec. That is deliberate: losing a new phone's whole assistant history is
-     worse than the exposure, and the history is the only thing here that is not
-     regenerable. The <cloud-backup> denials below are kept as the policy that applies if
-     the agent is ever removed and Auto Backup takes over: the models are gigabytes and
-     re-downloadable, and the download markers are meaningless without them.
-     <device-transfer> IS governed here and carries the history and nothing else. -->
+     These rules now govern cloud backup too: the legacy android:backupAgent was removed.
+     It exported the conversation history DECRYPTED via SqlCipherDbCodec, bypassing the
+     <cloud-backup> denials below. (Its "passwords-db" name was the shared RoomRepository
+     default file name, not a distinct passwords database.) Cloud stays deny-all: the
+     models are gigabytes and re-downloadable, and the download markers are meaningless
+     without them. <device-transfer> carries the history and nothing else. -->
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="root" path="." />

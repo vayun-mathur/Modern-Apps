@@ -16,7 +16,7 @@ import kotlinx.coroutines.flow.Flow
 
 const val DB_NAME = "notes-db"
 
-/** Backup config shared by [AppBackupAgent] and the in-app backup buttons. */
+/** Backup config for the in-app backup buttons. */
 fun noteDbConfigs(context: Context): List<Pair<String, String>> =
     listOf(DB_NAME to DatabaseHelper(context).getPassphrase())
 

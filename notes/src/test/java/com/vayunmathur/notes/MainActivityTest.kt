@@ -39,15 +39,12 @@ class MainActivityTest {
         controller.pause().stop().destroy()
     }
 
-    @Test fun manifestBackupAgentClassExists() {
+    @Test fun manifestHasNoBackupAgentAndExtractionRulesGovern() {
+        // The legacy backup agent was removed; data_extraction_rules.xml now
+        // governs both cloud backup and device transfer.
         val info = app.packageManager.getApplicationInfo(app.packageName, 0)
-        val agentName = info.backupAgentName
-        assertEquals("com.vayunmathur.notes.platform.AppBackupAgent", agentName)
-        // The named class must actually load, or Android backup silently never runs.
-        assertEquals(
-            com.vayunmathur.notes.platform.AppBackupAgent::class.java,
-            Class.forName(agentName),
-        )
+        assertEquals(null, info.backupAgentName)
+        assertTrue(app.resources.getIdentifier("data_extraction_rules", "xml", app.packageName) != 0)
     }
 
     @Test fun onNewIntentWithDataUriDoesNotCrash() {

@@ -1,20 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  SCOPE LIMIT — READ BEFORE TRUSTING THE <cloud-backup> SECTION BELOW.
-  This app declares android:backupAgent=".util.AppBackupAgent" and does not set
-  android:fullBackupOnly="true". AppBackupAgent extends BaseBackupAgent, which overrides
-  onBackup()/onRestore() (library/src/main/java/com/vayunmathur/library/util/BackupAgent.kt:21,48),
-  so cloud backup for this app runs through the KEY/VALUE transport and the <cloud-backup>
-  section here is NOT consulted. What actually leaves the device is whatever the agent puts
-  in its stream: today that is dbConfigs = listOf("passwords-db" to passphrase), which
-  BackupHelper exports DECRYPTED via SqlCipherDbCodec. That is a plaintext vault going to
-  Google, and no XML in this file can stop it. Fixing it requires a code change to the
-  agent, or android:fullBackupOnly="true" to route cloud through these rules instead.
-
-  The <device-transfer> section below IS effective: BaseBackupAgent does not override
-  onFullBackup(), so the default BackupAgent.onFullBackup() runs for D2D and honours these
-  rules. The <cloud-backup> section is kept deliberately, as correct-by-default policy for
-  the day the agent is removed or fullBackupOnly is set.
+  These rules govern both cloud backup and device transfer. This app declares no
+  android:backupAgent (the legacy key/value agent was removed): it exported the vault
+  DECRYPTED via SqlCipherDbCodec (sqlcipher_export with KEY ''), shipping a plaintext
+  vault to Google and bypassing this file entirely. With no agent declared, Auto
+  Backup and D2D both honour the sections below. The app's own KDBX sync and its
+  in-app BackupButtons flow are separate user-triggered paths and are unaffected.
 
   Deny-all. Overrides the permissive include-everything default in the shared :library module.
 

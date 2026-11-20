@@ -101,19 +101,16 @@ class NotesShareCoverageTest {
         assertEquals("\n", exportNoteMarkdown(app, Note(title = "Empty", content = "")))
     }
 
-    @Test fun backupAgentExposesDbConfigsAndImageFiles() {
-        val agent = AppBackupAgent()
-        // BackupAgent.attachBaseContext is hidden; Robolectric allows the
-        // reflective attach so the agent getters can run as Android runs them.
-        val attach = android.content.ContextWrapper::class.java
-            .getDeclaredMethod("attachBaseContext", android.content.Context::class.java)
-            .apply { isAccessible = true }
-        attach.invoke(agent, app)
-        assertEquals(com.vayunmathur.notes.data.DB_NAME, agent.dbConfigs.single().first)
-        assertTrue(agent.dbConfigs.single().second.isNotEmpty())
+    @Test fun inAppBackupInputsCoverDbAndImageFiles() {
+        // No backupAgent any more (extraction rules govern cloud/device
+        // backup); noteDbConfigs + NoteImageStore.backupFiles are the inputs
+        // to the user-triggered in-app backup buttons.
+        val configs = com.vayunmathur.notes.data.noteDbConfigs(app)
+        assertEquals(com.vayunmathur.notes.data.DB_NAME, configs.single().first)
+        assertTrue(configs.single().second.isNotEmpty())
         assertEquals(
             listOf(java.io.File(app.filesDir, "note_images").absolutePath),
-            agent.extraFiles.map { it.absolutePath },
+            NoteImageStore.backupFiles(app).map { it.absolutePath },
         )
     }
 

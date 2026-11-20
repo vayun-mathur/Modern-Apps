@@ -97,23 +97,17 @@ class IntentsAndRouteTest {
         assertNotNull(Route.InkEditor.serializer())
     }
 
-    @Test fun backupAgentProperties() {
-        val agent = com.vayunmathur.notes.platform.AppBackupAgent()
-        assertNotNull(agent.dbCodec)
-        // The agent getters use the agent itself as the Context, and an
-        // unattached agent has no base context, so exercise the delegates
-        // directly with the app context: the note_images dir must travel
-        // with the database backup, or a restore renders embedded images
-        // blank.
+    @Test fun inAppBackupInputsCoverDbAndImages() {
+        // Cloud/device backup is governed by data_extraction_rules.xml (no
+        // backupAgent). These delegates now feed only the user-triggered
+        // in-app backup buttons: the note_images dir must travel with the
+        // database backup, or a restore renders embedded images blank.
         assertEquals(
             listOf(java.io.File(context.filesDir, "note_images").absolutePath),
             com.vayunmathur.notes.platform.NoteImageStore.backupFiles(context).map { it.absolutePath },
         )
         FakeAndroidKeyStore.install()
         runCatching { com.vayunmathur.library.util.DatabaseHelper(context).storePassphrase("test-passphrase") }
-        // AppBackupAgent.dbConfigs delegates to noteDbConfigs with the agent as
-        // context; an unattached agent has no base context, so exercise the
-        // delegate directly with the app context.
         val configs = com.vayunmathur.notes.data.noteDbConfigs(context)
         assertEquals(1, configs.size)
         assertEquals(com.vayunmathur.notes.data.DB_NAME, configs.single().first)

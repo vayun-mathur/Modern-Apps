@@ -1,5 +1,4 @@
 package com.vayunmathur.flashcards.util
-import com.vayunmathur.flashcards.platform.AppBackupAgent
 import com.vayunmathur.flashcards.platform.MediaStore
 import com.vayunmathur.flashcards.platform.ReviewReminder
 import com.vayunmathur.flashcards.platform.ReviewReminderWorker
@@ -63,11 +62,12 @@ class FlashcardsMiscTest {
     }
 
     @Test
-    fun backupAgentConfig() {
-        val agent = AppBackupAgent()
-        assertEquals(listOf("datastore_default"), agent.datastoreNames)
-        assertTrue(agent.extraFiles.isEmpty())
-        assertEquals(com.vayunmathur.library.room.SqlCipherDbCodec, agent.dbCodec)
+    fun manifestHasNoBackupAgentAndExtractionRulesGovern() {
+        // The legacy backup agent was removed; data_extraction_rules.xml now
+        // governs both cloud backup and device transfer.
+        val info = ctx.packageManager.getApplicationInfo(ctx.packageName, 0)
+        assertEquals(null, info.backupAgentName)
+        assertTrue(ctx.resources.getIdentifier("data_extraction_rules", "xml", ctx.packageName) != 0)
     }
 
     @Test

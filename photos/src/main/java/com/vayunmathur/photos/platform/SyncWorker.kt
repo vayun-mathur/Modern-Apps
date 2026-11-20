@@ -290,9 +290,6 @@ private const val MILLIS_PER_SECOND = 1000L
 /** SQLite bind-variable ceiling; deletions and favourite writes are chunked under it. */
 private const val DELETE_ID_CHUNK_SIZE = 900
 
-/** OCR preview length in the worker log line. */
-private const val OCR_LOG_PREVIEW_CHARS = 50
-
 private fun isPhotoChanged(
     existing: Photo?,
     date: Long,
@@ -650,7 +647,7 @@ suspend fun runOCR(scanRepository: PhotoScanRepository, context: Context) = coro
                 boxes = result?.takeIf { it.boxes.isNotEmpty() }?.toJson(),
             )
             if (pendingResults.size >= INDEX_FLUSH_EVERY) flush()
-            Log.status("OCRWorker", "OCR for ${photo.id}: ${text?.take(OCR_LOG_PREVIEW_CHARS)?.replace("\n", " ")}")
+            Log.status("OCRWorker", "OCR for ${photo.id}: ${if (text.isNullOrEmpty()) "no text" else "text found"}")
 
             // Short pause between images keeps sustained CPU/battery use low.
             delay(OCR_INTER_ITEM_DELAY_MS)

@@ -730,7 +730,7 @@ suspend fun runKdbxSync(context: Context, db: PasswordDatabase): KdbxSyncResult 
         KdbxSyncEngine(db, NativeKdbxCodec).sync(
             document = SafKdbxDocument(context, uri.toUri()),
             vaultPassword = passwordHelper.getPassphrase(),
-            onBackup = { previous -> File(context.filesDir, BACKUP_FILE_NAME).writeBytes(previous) },
+            onBackup = { previous -> writeBytesAtomically(File(context.filesDir, BACKUP_FILE_NAME), previous) },
         )
     }
 
@@ -774,7 +774,7 @@ suspend fun runKdbxSync(context: Context, repository: PasswordRepository): KdbxS
         KdbxSyncEngine(repository, NativeKdbxCodec).sync(
             document = SafKdbxDocument(context, uri.toUri()),
             vaultPassword = passwordHelper.getPassphrase(),
-            onBackup = { previous -> File(context.filesDir, BACKUP_FILE_NAME).writeBytes(previous) },
+            onBackup = { previous -> writeBytesAtomically(File(context.filesDir, BACKUP_FILE_NAME), previous) },
         )
     }
 
@@ -794,3 +794,25 @@ suspend fun runKdbxSync(context: Context, repository: PasswordRepository): KdbxS
 }
 
 private const val BACKUP_FILE_NAME = "kdbx-sync-backup.kdbx"
+
+/**
+ * Write [bytes] to [target] via tmp file + rename, so a crash mid-backup never leaves a
+ * torn KDBX backup in place of the last good one. Same shape as `AndroidFileBlobStore.put`
+ * (library/everysync-core): temp in the same directory, rename, delete+rename fallback
+ * where rename cannot replace, temp always cleaned up. (No `FileFiles.writeBytes` exists
+ * in library/ — verified, it does not do this.)
+ */
+private fun writeBytesAtomically(target: File, bytes: ByteArray) {
+    val dir = target.parentFile
+    if (dir != null) dir.mkdirs()
+    val tmp = File.createTempFile("kdbx-backup-", ".tmp", dir)
+    try {
+        tmp.writeBytes(bytes)
+        if (!tmp.renameTo(target)) {
+            target.delete()
+            tmp.renameTo(target)
+        }
+    } finally {
+        if (tmp.exists()) tmp.delete()
+    }
+}

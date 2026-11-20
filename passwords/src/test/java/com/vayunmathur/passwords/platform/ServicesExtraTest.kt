@@ -129,18 +129,15 @@ class ServicesExtraTest {
         assertEquals("X-caBLE-Routing-ID", CableTunnel.ROUTING_ID_HEADER)
     }
 
-    // ---- AppBackupAgent ----
+    // ---- Backup contract (no legacy agent) ----
 
-    @Test fun backupAgentConfig() {
-        // dbConfigs decrypts the stored vault passphrase; without one it is
-        // expected to fail, so store one first like an unlocked vault would.
-        DatabaseHelper(app).storePassphrase("backup-pw")
-        val agent = Robolectric.buildBackupAgent(
-            com.vayunmathur.passwords.platform.AppBackupAgent::class.java,
-        ).create().get()
-        assertEquals(listOf("passwords-db" to "backup-pw"), agent.dbConfigs)
-        assertTrue(agent.extraFiles.isEmpty())
-        assertNotNull(agent.dbCodec)
+    @Test fun manifestHasNoBackupAgentAndExtractionRulesGovern() {
+        // The legacy backup agent was removed: it exported the vault decrypted,
+        // bypassing data_extraction_rules.xml. Cloud/device backup is now
+        // governed solely by those (deny-all) extraction rules.
+        val info = app.packageManager.getApplicationInfo(app.packageName, 0)
+        assertEquals(null, info.backupAgentName)
+        assertTrue(app.resources.getIdentifier("data_extraction_rules", "xml", app.packageName) != 0)
     }
 
     @Test fun credentialServiceCreateCustomCredentialReturnsEmptyResponse() {

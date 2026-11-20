@@ -7,7 +7,6 @@ import android.content.Intent
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.findfamily.notifications.FindFamilyNotificationChannels
-import com.vayunmathur.findfamily.platform.AppBackupAgent
 import com.vayunmathur.findfamily.platform.BootReceiver
 import com.vayunmathur.findfamily.platform.LocationServiceController
 import com.vayunmathur.library.util.DataStoreUtils
@@ -26,8 +25,8 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /**
- * Quick Settings tiles, boot receiver, notification channels and the backup agent
- * in the sandbox: tile clicks flip the persisted switches, the boot receiver
+ * Quick Settings tiles, boot receiver, notification channels and the no-agent
+ * backup contract in the sandbox: tile clicks flip the persisted switches, the boot receiver
  * ignores unrelated broadcasts and unpermitted boots, and channels are created
  * per person with the documented ids.
  */
@@ -140,15 +139,12 @@ class TilesBootAndChannelsTest {
         )
     }
 
-    @Test fun backupAgentDeclaresDbAndDatastore() {
-        com.vayunmathur.findfamily.platform.FakeAndroidKeyStore.install()
-        // Production stores the SQLCipher passphrase at first database setup;
-        // the backup agent only ever reads it back.
-        com.vayunmathur.library.util.DatabaseHelper(ctx).storePassphrase("backup-test-pass")
-        val agent = Robolectric.buildBackupAgent(AppBackupAgent::class.java).create().get()
-        assertEquals(listOf("datastore_default"), agent.datastoreNames)
-        assertTrue(agent.extraFiles.isEmpty())
-        assertEquals(listOf("passwords-db" to "backup-test-pass"), agent.dbConfigs)
+    @Test fun manifestHasNoBackupAgentAndExtractionRulesGovern() {
+        // The legacy backup agent was removed (it bypassed the deny-all cloud
+        // rules); data_extraction_rules.xml now governs both channels.
+        val info = app.packageManager.getApplicationInfo(app.packageName, 0)
+        assertEquals(null, info.backupAgentName)
+        assertTrue(app.resources.getIdentifier("data_extraction_rules", "xml", app.packageName) != 0)
         assertNotNull(DataStoreUtils.getInstance(ctx))
     }
 }

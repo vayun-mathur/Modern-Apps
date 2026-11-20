@@ -45,7 +45,6 @@
     <application
         android:name=".TodoApplication"
         android:allowBackup="true"
-        android:backupAgent=".platform.AppBackupAgent"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"

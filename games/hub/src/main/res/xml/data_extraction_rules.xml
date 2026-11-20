@@ -27,27 +27,15 @@
   of the passphrase, which is undecryptable off-device and is regenerated on
   first launch anyway.
 
-  SCOPE — READ BEFORE RELYING ON THE <cloud-backup> SECTION BELOW.
-  hub declares android:backupAgent=".util.AppBackupAgent" and does NOT set
-  android:fullBackupOnly, so Android uses key/value backup for this app and the
-  <cloud-backup> section here is NOT consulted. What actually leaves the device
-  for cloud is whatever AppBackupAgent lists: dbConfigs (games-hub-db, exported
-  by SqlCipherDbCodec) and datastoreNames (datastore_default). The rules below
-  govern <device-transfer>, and they are the correct control if the backupAgent
-  is ever removed.
-
-  Privacy note, corrected: hub's DB is a cross-app behavioural profile (what the
-  user plays and for how long, across eight apps). An earlier version of this
-  comment claimed the exclusion below keeps that profile off Google's servers.
-  That is WRONG. Because this app is key/value, the agent ships games-hub-db to
-  cloud regardless of this file — and SqlCipherDbCodec.exportDatabase()
-  sqlcipher_export()s it to PLAINTEXT inside the backup payload first. If that
-  profile should not leave the device, the fix is to drop DB_NAME from
-  AppBackupAgent.dbConfigs, not to edit this XML.
+  These rules govern both cloud backup and device transfer. The legacy
+  android:backupAgent was removed: it shipped games-hub-db — a cross-app
+  behavioural profile (what the user plays and for how long, across eight apps) —
+  to cloud as PLAINTEXT via SqlCipherDbCodec.exportDatabase() (sqlcipher_export
+  with KEY ''), regardless of the exclusions below. With no agent declared, the
+  hub DB stays off both channels, as excluded below.
 -->
 <data-extraction-rules>
-    <!-- Not consulted while android:backupAgent is declared; see SCOPE above.
-         Kept correct so behaviour is right if the agent is ever removed. -->
+    <!-- Effective for cloud backup now that no backupAgent is declared. -->
     <cloud-backup>
         <include domain="root" path="." />
         <include domain="file" path="." />
