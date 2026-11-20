@@ -1,13 +1,16 @@
 package com.vayunmathur.files.platform
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.content.pm.ServiceInfo
 import androidx.annotation.StringRes
 import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
+import com.vayunmathur.files.MainActivity
 import com.vayunmathur.files.R
 
 /**
@@ -42,13 +45,24 @@ abstract class ProgressNotificationWorker(
         )
     }
 
-    private fun buildNotification(progress: Int) =
-        NotificationCompat.Builder(applicationContext, channelId)
+    private fun buildNotification(progress: Int): android.app.Notification {
+        // Tap opens the app: the ongoing foreground notification was a dead tap before.
+        val contentIntent = PendingIntent.getActivity(
+            applicationContext,
+            notificationId,
+            Intent(applicationContext, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        return NotificationCompat.Builder(applicationContext, channelId)
             .setContentTitle(applicationContext.getString(contentTitleRes))
+            .setContentIntent(contentIntent)
             .setSmallIcon(R.drawable.folder_24px)
             .setProgress(FULL_PROGRESS, progress, false)
             .setOngoing(true)
             .build()
+    }
 
     protected fun createForegroundInfo(progress: Int) =
         ForegroundInfo(

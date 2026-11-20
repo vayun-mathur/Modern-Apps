@@ -71,9 +71,19 @@ class MailSocketService : Service() {
     }
 
     private fun buildNotification(): android.app.Notification {
+        // Tap opens the app: the ongoing foreground notification was a dead tap before.
+        val contentIntent = android.app.PendingIntent.getActivity(
+            this,
+            NOTIFICATION_ID,
+            Intent(this, com.vayunmathur.securemail.MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            },
+            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE,
+        )
         val builder = androidx.core.app.NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("SecureMail relay")
             .setContentText("Listening for encrypted mail")
+            .setContentIntent(contentIntent)
             .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth)
             .setOngoing(true)
         return builder.build()

@@ -37,21 +37,27 @@ private const val TAG = "ShareNotifier"
 /**
  * Everything the user is meant to react to — requests, progress, and outcomes.
  *
- * Both `IMPORTANCE_MAX`, so all of them heads-up rather than sitting in the shade. The only
- * quiet notification `:share` posts is the foreground service's own "Ready to receive", which
- * has its own `IMPORTANCE_LOW` channel in [ShareTransferService]; the two are deliberately
- * separate so silencing the always-on status indicator does not silence an incoming transfer.
+ * Requests are `IMPORTANCE_MAX`, so they heads-up rather than sitting in the shade; transfers
+ * are `IMPORTANCE_HIGH` (see [CHANNEL_TRANSFERS]). The only quiet notification `:share` posts
+ * is the foreground service's own "Ready to receive", which has its own `IMPORTANCE_LOW`
+ * channel in [ShareTransferService]; the two are deliberately separate so silencing the
+ * always-on status indicator does not silence an incoming transfer.
  *
  * [CHANNEL_REQUESTS] carries a `_v2` suffix because the first cut of it was `IMPORTANCE_HIGH`,
  * and a channel's importance is fixed for good: `createNotificationChannel` refreshes a
  * channel's name and description, but the system ignores any later change to its importance
  * and remembers the settings of deleted channels, so raising it needs a new id.
+ * [CHANNEL_TRANSFERS] follows the same precedent: it was `IMPORTANCE_MAX`, so lowering it
+ * to `IMPORTANCE_HIGH` needs the new `_v2` id and deletion of the old channel.
  */
 private const val CHANNEL_REQUESTS = "share_requests_v2"
-private const val CHANNEL_TRANSFERS = "share_transfers"
+private const val CHANNEL_TRANSFERS = "share_transfers_v2"
 
 /** The `IMPORTANCE_HIGH` requests channel that [CHANNEL_REQUESTS] replaces. */
 private const val CHANNEL_LEGACY_REQUESTS = "share_requests"
+
+/** The `IMPORTANCE_MAX` transfers channel that [CHANNEL_TRANSFERS] replaces. */
+private const val CHANNEL_LEGACY_TRANSFERS = "share_transfers"
 
 /** Concurrent transfers bundle under one summary instead of stacking. */
 private const val GROUP_KEY = "com.vayunmathur.share.TRANSFERS"
@@ -89,11 +95,12 @@ private const val HASH_MULTIPLIER = 31
 private const val MAX_PREVIEW_PX = 1024
 
 /**
- * Request codes reserved per notification, so Share and Save cannot collide.
+ * Request codes reserved per notification, so Share, Save and the body tap cannot collide.
  *
- * Two per notification id: `id * N` for Share and `id * N + 1` for Save.
+ * Three per notification id: `id * N` for Share, `id * N + 1` for Save and
+ * `id * N + 2` for the content (body-tap) intent.
  */
-private const val REQUEST_CODES_PER_NOTIF = 2
+private const val REQUEST_CODES_PER_NOTIF = 3
 
 /**
  * Turns incoming transfers — Quick Share and AirDrop alike — into notifications, which are the
@@ -145,6 +152,7 @@ class ShareReceiveNotifier(
 
     private fun ensureChannels() {
         appContext.deleteNotificationChannel(CHANNEL_LEGACY_REQUESTS)
+        appContext.deleteNotificationChannel(CHANNEL_LEGACY_TRANSFERS)
         appContext.ensureNotificationChannel(
             id = CHANNEL_REQUESTS,
             name = appContext.getString(R.string.share_channel_requests_name),
@@ -154,8 +162,24 @@ class ShareReceiveNotifier(
         appContext.ensureNotificationChannel(
             id = CHANNEL_TRANSFERS,
             name = appContext.getString(R.string.share_channel_transfers_name),
-            importance = NotificationManager.IMPORTANCE_MAX,
+            importance = NotificationManager.IMPORTANCE_HIGH,
             description = appContext.getString(R.string.share_channel_transfers_desc),
+        )
+    }
+
+    /**
+     * Body-tap intent opening the app. Request and Done notifications carried only
+     * action buttons before, so tapping the body itself was a dead tap.
+     */
+    private fun mainActivityIntent(notifId: Int): PendingIntent {
+        val intent = Intent(appContext, com.vayunmathur.share.MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        return PendingIntent.getActivity(
+            appContext,
+            notifId * REQUEST_CODES_PER_NOTIF + 2,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
     }
 
@@ -285,6 +309,7 @@ class ShareReceiveNotifier(
         return base(CHANNEL_REQUESTS)
             .setContentTitle(conn.displayName)
             .setContentText(text)
+            .setContentIntent(mainActivityIntent(id))
             .setCategory(NotificationCompat.CATEGORY_SOCIAL)
             .setOngoing(true)
             .setTimeoutAfter(REQUEST_TIMEOUT_MS)
@@ -347,6 +372,7 @@ class ShareReceiveNotifier(
             .setContentText(
                 appContext.resources.getQuantityString(R.plurals.share_received_count, received.size, received.size),
             )
+            .setContentIntent(mainActivityIntent(id))
             .setAutoCancel(true)
         previewBitmap(received)?.let { preview ->
             // `bigLargeIcon(null)` so expanding drops the thumbnail instead of showing the same

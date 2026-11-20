@@ -1,17 +1,25 @@
 package com.vayunmathur.library.downloadservice
 
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
+import android.content.pm.ServiceInfo
+import android.os.Build
+import androidx.core.app.NotificationCompat
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.Data
 import androidx.work.ExistingWorkPolicy
+import androidx.work.ForegroundInfo
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.library.util.DataStoreUtils
+import com.vayunmathur.library.util.ensureNotificationChannel
 import java.io.File
 import java.io.IOException
 import java.util.concurrent.TimeUnit
@@ -26,10 +34,12 @@ import kotlinx.coroutines.CancellationException
  * those, and a failed run is retried by WorkManager with exponential backoff instead of being
  * swallowed.
  *
- * This is a plain background worker, so the platform stops it after roughly ten minutes of
- * execution. That is fine because the work is resumable: partial bytes live in `<fileName>.part`
- * and the next run continues with a `Range` request, so a large bundle completes across several
- * runs. Promote it to a foreground worker (`setForeground`) if it needs to finish in one pass.
+ * This is a foreground worker: [doWork] calls `setForeground` with a LOW progress
+ * notification so a large bundle can finish in one pass instead of being stopped
+ * after roughly ten minutes of background execution. The work stays resumable
+ * regardless — partial bytes live in `<fileName>.part` and a later run continues
+ * with a `Range` request — so a foreground promotion failure (or the platform
+ * reclaiming the service) degrades to the old multi-run behaviour, not data loss.
  */
 class ModelDownloadWorker(context: Context, params: WorkerParameters) :
     CoroutineWorker(context, params) {
@@ -42,6 +52,16 @@ class ModelDownloadWorker(context: Context, params: WorkerParameters) :
     override suspend fun doWork(): Result {
         val specs = readSpecs(inputData)
         if (specs.isEmpty()) return Result.failure()
+
+        // Foreground promotion (see class doc): a failure here must not fail the
+        // download — the resumable background path still completes it across runs.
+        try {
+            setForeground(createForegroundInfo(specs))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.status(TAG, "could not promote to foreground; continuing in background", e)
+        }
 
         val targetDir = inputData.getString(KEY_TARGET_DIR)?.let(::File)
         val ds = DataStoreUtils.getInstance(applicationContext)
@@ -64,8 +84,63 @@ class ModelDownloadWorker(context: Context, params: WorkerParameters) :
         }
     }
 
+    /**
+     * LOW, indeterminate progress notification for the foreground promotion.
+     *
+     * Kept local to downloadservice: this library has no host `MainActivity` to
+     * target, so the tap intent is the hosting app's launcher intent
+     * (`getLaunchIntentForPackage`), falling back to no content intent when the
+     * host has no launcher entry. Indeterminate because [runDownloadsCore]
+     * reports no per-byte progress to the worker.
+     */
+    private fun createForegroundInfo(specs: List<DownloadSpec>): ForegroundInfo {
+        applicationContext.ensureNotificationChannel(
+            id = CHANNEL_ID,
+            name = applicationContext.getString(R.string.downloading),
+            importance = NotificationManager.IMPORTANCE_LOW,
+            description = applicationContext.getString(
+                R.string.downloading_required_components_for_this
+            ),
+        )
+        val launchIntent = applicationContext.packageManager
+            .getLaunchIntentForPackage(applicationContext.packageName)
+            ?.apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP }
+        val builder = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.stat_sys_download)
+            .setContentTitle(applicationContext.getString(R.string.downloading))
+            .setContentText(
+                specs.firstOrNull()?.description
+                    ?: applicationContext.getString(R.string.downloading_required_components_for_this)
+            )
+            .setProgress(0, 0, true)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+        if (launchIntent != null) {
+            builder.setContentIntent(
+                PendingIntent.getActivity(
+                    applicationContext,
+                    NOTIFICATION_ID,
+                    launchIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                )
+            )
+        }
+        val foregroundInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ForegroundInfo(
+                NOTIFICATION_ID,
+                builder.build(),
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
+            )
+        } else {
+            ForegroundInfo(NOTIFICATION_ID, builder.build())
+        }
+        return foregroundInfo
+    }
+
     /** WorkManager input keys, enqueue entry points and spec decoding for [ModelDownloadWorker]. */
     companion object {
+        private const val CHANNEL_ID = "model_downloads"
+        private const val NOTIFICATION_ID = 9101
         private const val TAG = "ModelDownloadWorker"
         private const val KEY_URLS = "urls"
         private const val KEY_FILE_NAMES = "fileNames"

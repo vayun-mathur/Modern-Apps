@@ -15,6 +15,7 @@ import com.vayunmathur.communicate.data.markSignalRead
 import com.vayunmathur.communicate.data.markSimThreadRead
 import com.vayunmathur.communicate.data.markWhatsAppRead
 import com.vayunmathur.communicate.data.updateGoogleVoiceThread
+import com.vayunmathur.communicate.notifications.ConversationSpace
 
 /**
  * Per-line side effects for an open conversation: mark-read dispatch plus the
@@ -33,6 +34,11 @@ fun ConversationReadEffects(
     address: String,
     onRefreshTick: () -> Unit,
 ) {
+    // Cancel-on-read: opening the conversation clears its notification from the shade,
+    // matching the tag/id ConversationSpace.notifyIncoming posted it under.
+    LaunchedEffect(line, remoteId, threadId, address) {
+        ConversationSpace.cancelIncoming(context, line, address, remoteId, threadId)
+    }
     // Opening a SIM thread clears the provider's unread flags. Nothing else writes them back, and
     // the badge is recomputed from the provider, so imported rows would stay unread forever (#562).
     LaunchedEffect(threadId, line) {

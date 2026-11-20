@@ -3,6 +3,7 @@ package com.vayunmathur.euicc.service
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -12,6 +13,7 @@ import android.os.IBinder
 import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import com.vayunmathur.euicc.R
+import com.vayunmathur.euicc.platform.LuiActivity
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -47,9 +49,21 @@ class DownloadService : Service() {
             acquire(WAKE_LOCK_TIMEOUT_MS)
         }
         ensureChannel()
+        // Tap opens the app. euicc has no MainActivity (deliberately no launcher
+        // activity): LuiActivity is the single home-screen entry, showing the same
+        // Navigation/Home, so it is the tap target here.
+        val contentIntent = PendingIntent.getActivity(
+            this,
+            FOREGROUND_ID,
+            Intent(this, LuiActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.installing_title))
             .setContentText(getString(R.string.installing_text))
+            .setContentIntent(contentIntent)
             .setSmallIcon(android.R.drawable.stat_sys_download)
             .setOngoing(true)
             .setProgress(PROGRESS_MAX, PROGRESS_CURRENT, true)

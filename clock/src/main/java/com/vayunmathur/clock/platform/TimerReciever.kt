@@ -1,10 +1,12 @@
 package com.vayunmathur.clock.platform
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import com.vayunmathur.library.log.Log
 import androidx.core.app.NotificationCompat
+import com.vayunmathur.clock.MainActivity
 import com.vayunmathur.clock.data.ClockRepository
 import com.vayunmathur.clock.data.Timer
 import com.vayunmathur.clock.R
@@ -30,10 +32,21 @@ class TimerReceiver : BroadcastReceiver() {
             try {
                 nm.cancel(id.hashCode())
 
+                // Tap opens the app (same pattern as StopwatchNotificationHelper):
+                // without a content intent the finished-timer notification was a dead tap.
+                val contentIntent = PendingIntent.getActivity(
+                    context,
+                    id.hashCode(),
+                    Intent(context, MainActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    },
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                )
                 val notification = NotificationCompat.Builder(context, "finished_timers_channel")
                     .setSmallIcon(R.drawable.outline_timer_24)
                     .setContentTitle(context.getString(R.string.timer_finished_title))
                     .setContentText(context.getString(R.string.timer_finished_text, name))
+                    .setContentIntent(contentIntent)
                     .setPriority(NotificationCompat.PRIORITY_HIGH)
                     .setCategory(NotificationCompat.CATEGORY_ALARM)
                     .setAutoCancel(true)

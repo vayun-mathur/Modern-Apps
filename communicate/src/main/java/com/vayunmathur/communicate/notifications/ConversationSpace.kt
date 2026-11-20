@@ -128,6 +128,38 @@ object ConversationSpace {
     }
 
     /**
+     * Cancel the incoming-message notification for a conversation, matching the
+     * tag/id [notifyIncoming] posted it under (`shortcutId` tag, [MESSAGE_NOTIFICATION_ID]).
+     * Called when the conversation is opened: the tapped notification auto-cancels
+     * itself, but opening from the list (or a second message replacing the first
+     * under the same tag) leaves it in the shade until cancelled here.
+     */
+    fun cancelIncoming(context: Context, target: ConversationTarget) {
+        val nm = context.getSystemService(NotificationManager::class.java) ?: return
+        runCatching { nm.cancel(shortcutId(target), MESSAGE_NOTIFICATION_ID) }
+    }
+
+    /** [cancelIncoming] from the primitives a conversation screen already holds. */
+    fun cancelIncoming(
+        context: Context,
+        line: CommunicateLine,
+        address: String,
+        remoteId: String? = null,
+        threadId: Long = -1L,
+    ) {
+        cancelIncoming(
+            context,
+            ConversationTarget(
+                line = line,
+                address = address,
+                remoteId = remoteId,
+                threadId = threadId,
+                personName = address,
+            ),
+        )
+    }
+
+    /**
      * Post a conversation-style notification for an inbound message, pushing the backing shortcut and
      * attaching bubble metadata first so the system can surface it in the conversations section.
      */
