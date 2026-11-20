@@ -935,6 +935,20 @@ fun Project.wireRustHostLibsForUnitTests() {
             // so mixing both in one JVM fails with "already loaded in another classloader".
             // One JVM per test class keeps each loader's System.loadLibrary isolated.
             forkEvery = 1
+            // forkEvery = 1 alone would run those per-class JVMs one at a time
+            // (Gradle's default maxParallelForks = 1): e.g. appstore's 152 test
+            // classes become 152 sequential JVM + Robolectric sandbox startups.
+            // Run several class-forks concurrently instead. Each Robolectric
+            // fork costs roughly 1-2 GB (JVM + sandbox + resources + JaCoCo),
+            // so the cap is memory-bounded, not core-proportional: half the
+            // processors, clamped to 1..6. On 6-vCPU / 14 GB CI that is 3
+            // forks (~3-6 GB of test JVMs beside the Gradle daemon); on a
+            // many-core dev box it still stops at 6. Computed from a plain
+            // Int at configuration time, so the configuration cache is
+            // unaffected. Applies per Test task: smaller rustNativeLib
+            // modules get the same parallelism headroom but only ever fork
+            // as many JVMs as they have test classes queued.
+            maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).coerceIn(1, 6)
         }
     }
 }
