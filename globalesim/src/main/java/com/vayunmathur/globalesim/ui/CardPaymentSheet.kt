@@ -17,11 +17,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.vayunmathur.globalesim.R
 import com.vayunmathur.globalesim.domain.CardValidation
 import com.vayunmathur.globalesim.domain.CardValidation.ValidCard
 import com.vayunmathur.globalesim.domain.QuoteMath
@@ -53,11 +55,11 @@ fun CardPaymentSheet(
                 .padding(horizontal = 16.dp).padding(bottom = 24.dp),
         ) {
             Text(
-                "Pay ${QuoteMath.formatCents(amountCents)}",
+                stringResource(R.string.pay_amount, QuoteMath.formatCents(amountCents)),
                 style = MaterialTheme.typography.titleLarge,
             )
             Text(
-                "Credit lands in your eSIM wallet shortly.",
+                stringResource(R.string.card_credit_hint),
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 2.dp),
             )
@@ -83,7 +85,7 @@ fun CardPaymentSheet(
             OutlinedTextField(
                 value = number,
                 onValueChange = { number = it.filter { c -> c.isDigit() || c == ' ' }.take(23); touched = true },
-                label = { Text("Card number") },
+                label = { Text(stringResource(R.string.card_number_label)) },
                 placeholder = { Text("4242 4242 4242 4242") },
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Number,
@@ -103,8 +105,8 @@ fun CardPaymentSheet(
                 OutlinedTextField(
                     value = expiry,
                     onValueChange = { expiry = it.take(7); touched = true },
-                    label = { Text("Expiry") },
-                    placeholder = { Text("MM/YY") },
+                    label = { Text(stringResource(R.string.expiry_label)) },
+                    placeholder = { Text(stringResource(R.string.expiry_placeholder)) },
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Number,
                         imeAction = ImeAction.Next,
@@ -119,7 +121,7 @@ fun CardPaymentSheet(
                 OutlinedTextField(
                     value = cvc,
                     onValueChange = { cvc = it.filter { c -> c.isDigit() }.take(4); touched = true },
-                    label = { Text("CVC") },
+                    label = { Text(stringResource(R.string.cvc_label)) },
                     placeholder = { Text("123") },
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(
@@ -143,7 +145,7 @@ fun CardPaymentSheet(
                 enabled = !paying && validCard != null,
                 modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
             ) {
-                Text(if (confirming) "Confirming…" else "Pay ${QuoteMath.formatCents(amountCents)}")
+                Text(if (confirming) stringResource(R.string.confirming) else stringResource(R.string.pay_amount, QuoteMath.formatCents(amountCents)))
             }
         }
     }

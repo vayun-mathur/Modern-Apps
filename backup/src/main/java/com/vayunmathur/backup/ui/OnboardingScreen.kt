@@ -15,7 +15,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.vayunmathur.backup.R
 import com.vayunmathur.backup.platform.BackupUiState
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Button
@@ -40,7 +42,7 @@ fun OnboardingScreen(
     onRestoreWithCode: (List<String>) -> Unit,
     onDismissMessages: () -> Unit,
 ) {
-    AppScaffold(title = "Set up Backup") { padding ->
+    AppScaffold(title = stringResource(R.string.onboarding_title)) { padding ->
         // Letterboxed on expanded windows so the form keeps a readable measure.
         DesktopMaxWidthContainer(Modifier.padding(padding)) {
             Column(
@@ -54,8 +56,7 @@ fun OnboardingScreen(
             state.message?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
 
             Text(
-                "Your backups are encrypted with a 12-word recovery code. Write it down — it is the " +
-                    "only way to restore on a new device.",
+                stringResource(R.string.onboarding_recovery_explanation),
                 style = MaterialTheme.typography.bodyMedium,
             )
 
@@ -88,19 +89,19 @@ private fun RecoveryCodeCard(
             modifier = Modifier.padding(16.dp).fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text("Recovery code", style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.recovery_code_title), style = MaterialTheme.typography.titleMedium)
 
             Row(modifier = Modifier.fillMaxWidth()) {
                 FilterChip(
                     selected = mode == SetupMode.NEW,
                     onClick = { mode = SetupMode.NEW },
-                    label = { Text("New backup") },
+                    label = { Text(stringResource(R.string.recovery_new_backup)) },
                 )
                 Spacer(Modifier.width(8.dp))
                 FilterChip(
                     selected = mode == SetupMode.RESTORE,
                     onClick = { mode = SetupMode.RESTORE },
-                    label = { Text("Restore existing") },
+                    label = { Text(stringResource(R.string.recovery_restore_existing)) },
                 )
             }
 
@@ -123,10 +124,10 @@ private fun NewCodeSection(
         Button(
             onClick = { onInteract(); onGenerate() },
             modifier = Modifier.fillMaxWidth(),
-        ) { Text("Generate recovery code") }
+        ) { Text(stringResource(R.string.recovery_generate)) }
         return
     }
-    val numbered = generatedCode.mapIndexed { i, w -> "${i + 1}. $w" }.joinToString("\n")
+    val numbered = generatedCode.mapIndexed { i, w -> stringResource(R.string.recovery_word_numbered, i + 1, w) }.joinToString("\n")
     Text(
         numbered,
         style = MaterialTheme.typography.bodyLarge,
@@ -135,7 +136,7 @@ private fun NewCodeSection(
     Button(
         onClick = { onConfirmNew(generatedCode) },
         modifier = Modifier.fillMaxWidth(),
-    ) { Text("I saved it — enable encrypted backups") }
+    ) { Text(stringResource(R.string.recovery_confirm_saved)) }
 }
 
 @Composable
@@ -147,7 +148,7 @@ private fun RestoreCodeSection(
     OutlinedTextField(
         value = text,
         onValueChange = { text = it; onInteract() },
-        label = { Text("Enter your 12-word recovery code") },
+        label = { Text(stringResource(R.string.recovery_enter_code)) },
         modifier = Modifier.fillMaxWidth(),
         minLines = 3,
     )
@@ -155,5 +156,5 @@ private fun RestoreCodeSection(
         onClick = { onRestoreWithCode(text.trim().split(Regex("\\s+"))) },
         enabled = text.isNotBlank(),
         modifier = Modifier.fillMaxWidth(),
-    ) { Text("Restore with recovery code") }
+    ) { Text(stringResource(R.string.recovery_restore_with_code)) }
 }

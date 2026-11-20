@@ -34,6 +34,7 @@ import com.vayunmathur.library.ui.IconShoppingCart
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.rememberMessenger
+import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.library.util.AppMessages
 import com.vayunmathur.shop.R
 import com.vayunmathur.shop.data.CartLine
@@ -106,7 +107,7 @@ internal fun CartContent(
             byShop.forEach { (store, lines) ->
                 item(key = "header-${store.first}|${store.second}") {
                     Text(
-                        lines.first().displayName.ifBlank { "Unknown store" },
+                        lines.first().displayName.ifBlank { stringResource(R.string.unknown_store) },
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -121,7 +122,13 @@ internal fun CartContent(
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         if (startingStore == store) CircularProgressIndicator(Modifier.size(20.dp))
-                        else Text(if (byShop.size > 1) "Checkout with ${lines.first().displayName}" else stringResource(R.string.checkout))
+                        else Text(
+                            if (byShop.size > 1) {
+                                stringResource(R.string.checkout_with_store, lines.first().displayName)
+                            } else {
+                                stringResource(R.string.checkout)
+                            },
+                        )
                     }
                 }
             }
@@ -156,12 +163,12 @@ private fun CartRow(line: CartLine, onRemove: () -> Unit) {
                     )
                 }
                 Text(
-                    "${MoneyFormat.format(line.unitPrice)} × ${line.quantity}",
+                    stringResource(R.string.price_times_quantity, MoneyFormat.format(line.unitPrice), line.quantity),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.primary,
                 )
             }
-            Button(onClick = onRemove) { Text("Remove") }
+            Button(onClick = onRemove) { Text(stringResource(UiR.string.remove)) }
         }
     }
 }
@@ -193,7 +200,7 @@ private fun CartFooter(cart: List<CartLine>) {
  */
 fun openContinueUrl(context: Context, url: String) {
     if (com.vayunmathur.shop.domain.MerchantUrls.httpsUrl(url) == null) {
-        AppMessages.show("Payment link is missing. Please try again.")
+        AppMessages.show(context.getString(R.string.payment_link_missing))
         return
     }
     runCatching {
@@ -212,7 +219,7 @@ fun openContinueUrl(context: Context, url: String) {
             ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(view)
         }.onFailure {
-            AppMessages.show("No app can open the payment page.")
+            AppMessages.show(context.getString(R.string.payment_page_no_app))
         }
     }
 }

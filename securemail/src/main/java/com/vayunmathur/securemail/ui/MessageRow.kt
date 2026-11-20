@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -37,6 +38,7 @@ import com.vayunmathur.library.ui.Surface
 import com.vayunmathur.library.ui.SwipeActionSide
 import com.vayunmathur.library.ui.SwipeActionsBox
 import com.vayunmathur.library.ui.Text
+import com.vayunmathur.securemail.R
 import com.vayunmathur.securemail.data.StoredMessage
 import java.text.DateFormat
 import java.util.Date
@@ -94,7 +96,7 @@ fun MessageRow(
                 colors = ListItemDefaults.colors(containerColor = Color.Transparent),
             ) {
                 Text(
-                    msg.decryptedSubject?.ifBlank { "(no subject)" } ?: "Encrypted message",
+                    msg.decryptedSubject?.ifBlank { stringResource(R.string.no_subject) } ?: stringResource(R.string.message_encrypted),
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = if (msg.isRead) FontWeight.Normal else FontWeight.Bold,
                     maxLines = 1,
@@ -110,7 +112,7 @@ fun MessageRow(
 private fun RowSupport(msg: StoredMessage, showRecipient: Boolean) {
     Column {
         Text(
-            if (showRecipient) "To: ${msg.toJson.ifBlank { "(unknown)" }}" else msg.from.ifBlank { "(encrypted sender)" },
+            if (showRecipient) stringResource(R.string.message_to_format, msg.toJson.ifBlank { stringResource(R.string.unknown_parenthesized) }) else msg.from.ifBlank { stringResource(R.string.encrypted_sender_parenthesized) },
             style = MaterialTheme.typography.titleSmall,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -119,7 +121,7 @@ private fun RowSupport(msg: StoredMessage, showRecipient: Boolean) {
             msg.decryptedBody?.lineSequence()?.map { it.trim() }?.firstOrNull { it.isNotEmpty() }
         }
         Text(
-            preview ?: if (msg.unencrypted) "" else "Open to decrypt",
+            preview ?: if (msg.unencrypted) "" else stringResource(R.string.message_open_to_decrypt),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,

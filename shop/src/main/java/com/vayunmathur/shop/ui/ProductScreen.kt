@@ -41,6 +41,7 @@ import com.vayunmathur.library.ui.DetailSection
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.rememberMessenger
+import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.shop.R
 import com.vayunmathur.shop.data.CatalogOptionSelection
 import com.vayunmathur.shop.data.ProductVariant
@@ -70,6 +71,11 @@ fun ProductScreen(
     val dark = isSystemInDarkTheme()
     val context = LocalContext.current
     val messenger = rememberMessenger()
+    // Captured at composition: refresh failures are set inside LaunchedEffect.
+    val domainMissingMessage = stringResource(R.string.product_domain_missing)
+    val variantMissingMessage = stringResource(R.string.product_variant_missing)
+    val refreshFailedMessage = stringResource(R.string.product_refresh_failed)
+    val addedToCartMessage = stringResource(R.string.added_to_cart)
     var product by remember(variantId, platformId, shopDomain) {
         mutableStateOf((viewModel.results + viewModel.linkedProducts).firstOrNull { candidate ->
             candidate.platformId == platformId && candidate.variants.any {
@@ -100,7 +106,7 @@ fun ProductScreen(
             ?: snapshot?.takeIf { it.shopDomain == publisherDomain }?.storeName.orEmpty()
         try {
             if (publisherDomain.isBlank()) {
-                failure = "The publishing store domain is missing. Cart actions are disabled."
+                failure = domainMissingMessage
             } else {
                 AppInit.awaitReady()
                 backend.getProduct(
@@ -109,7 +115,7 @@ fun ProductScreen(
                 ).fold(
                     onSuccess = { live ->
                         if (live.variants.none { it.id == selectedVariant }) {
-                            failure = "The store no longer lists this exact variant. Cart actions are disabled."
+                            failure = variantMissingMessage
                         } else {
                             // Detail responses can narrow to one option. Other choices stay unverified until selected.
                             val choices = snapshot?.variants?.map { previous ->
@@ -131,7 +137,7 @@ fun ProductScreen(
                     onFailure = { error ->
                         if (error is CancellationException) throw error
                         failure = (error as? ShopBackendException)?.error?.message()
-                            ?: "Couldn't refresh this product from the publishing store. Check your connection and retry."
+                            ?: refreshFailedMessage
                     },
                 )
             }
@@ -139,7 +145,7 @@ fun ProductScreen(
             throw error
         } catch (error: Exception) {
             failure = (error as? ShopBackendException)?.error?.message()
-                ?: "Couldn't refresh this product from the publishing store. Check your connection and retry."
+                ?: refreshFailedMessage
         } finally {
             refreshing = false
         }
@@ -166,10 +172,10 @@ fun ProductScreen(
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     if (loading) {
                         CircularProgressIndicator()
-                        Text("Checking live price and availability...")
+                        Text(stringResource(R.string.product_checking))
                     } else {
-                        Text(failure ?: "This product is unavailable. Please retry.")
-                        Button(onClick = { retry += 1 }) { Text("Retry") }
+                        Text(failure ?: stringResource(R.string.product_unavailable))
+                        Button(onClick = { retry += 1 }) { Text(stringResource(UiR.string.retry)) }
                     }
                 }
             }
@@ -184,7 +190,7 @@ fun ProductScreen(
                 onSelectVariant = { selectedVariant = it },
                 onQuantityChange = { quantity = it },
                 onRetry = { retry += 1 },
-                onAddToCart = { if (canAdd) { addToCart(); messenger.show("Added to cart") } },
+                onAddToCart = { if (canAdd) { addToCart(); messenger.show(addedToCartMessage) } },
                 onBuyNow = {
                     addToCart()?.let { (store, shop) ->
                         viewModel.checkoutStore(store, shop, context, dark, onReady = onPayInApp, onError = messenger::show)
@@ -252,14 +258,17 @@ internal fun ProductDetailContent(
             }
         }
         item {
-            DetailSection("Store") {
-                Text(storeName.ifBlank { storeDomain.ifBlank { "Store" } }, style = MaterialTheme.typography.titleMedium)
+            DetailSection(stringResource(R.string.store_label)) {
+                Text(
+                    storeName.ifBlank { storeDomain.ifBlank { stringResource(R.string.store_label) } },
+                    style = MaterialTheme.typography.titleMedium,
+                )
             }
         }
         item {
-            DetailSection("Price") {
+            DetailSection(stringResource(R.string.price_label)) {
                 Text(
-                    variant?.price?.let { MoneyFormat.format(it) } ?: "Select an option to see its price",
+                    variant?.price?.let { MoneyFormat.format(it) } ?: stringResource(R.string.select_option_price),
                     style = MaterialTheme.typography.headlineSmall,
                     color = MaterialTheme.colorScheme.primary,
                 )
@@ -267,7 +276,7 @@ internal fun ProductDetailContent(
         }
         if (product.variants.size > 1) {
             item {
-                DetailSection("Options") {
+                DetailSection(stringResource(R.string.options_label)) {
                     VariantPicker(product.variants, selectedVariantId, onSelectVariant)
                 }
             }
@@ -276,12 +285,12 @@ internal fun ProductDetailContent(
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 when {
-                    loading -> Text("Checking live price and availability...")
+                    loading -> Text(stringResource(R.string.product_checking))
                     !verified -> {
-                        Text(failure ?: "Live price and availability are not verified. Cart actions are disabled.")
-                        Button(onClick = onRetry) { Text("Retry") }
+                        Text(failure ?: stringResource(R.string.product_not_verified))
+                        Button(onClick = onRetry) { Text(stringResource(UiR.string.retry)) }
                     }
-                    variant?.available != true -> Text("This variant is out of stock.")
+                    variant?.available != true -> Text(stringResource(R.string.product_variant_out_of_stock))
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = onAddToCart, enabled = canAdd, modifier = Modifier.weight(1f)) {
@@ -293,9 +302,9 @@ internal fun ProductDetailContent(
                     }
                 }
                 if ((!product.checkoutEligible || !verified && !loading) && MerchantUrls.httpsUrl(product.url) != null) {
-                    Button(onClick = { onOpenUrl(product.url) }) { Text("View on merchant site") }
+                    Button(onClick = { onOpenUrl(product.url) }) { Text(stringResource(R.string.view_on_merchant_site)) }
                     Text(
-                        "Completes on the merchant site.",
+                        stringResource(R.string.completes_on_merchant_site),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -304,7 +313,7 @@ internal fun ProductDetailContent(
         }
         if (description.isNotBlank()) {
             item {
-                DetailSection("Details") {
+                DetailSection(stringResource(R.string.details_label)) {
                     Text(description, style = MaterialTheme.typography.bodyMedium)
                 }
             }

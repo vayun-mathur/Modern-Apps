@@ -69,9 +69,16 @@ internal fun VariantPicker(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text(variant.title.ifBlank { "Default" }, style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        variant.title.ifBlank { stringResource(R.string.variant_default) },
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
                     if (!variant.available) {
-                        Text("Out of stock", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                        Text(
+                            stringResource(R.string.out_of_stock),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
                     }
                 }
                 Spacer(Modifier.width(8.dp))
@@ -82,7 +89,7 @@ internal fun VariantPicker(
                 )
                 Spacer(Modifier.width(8.dp))
                 Button(onClick = { onSelect(variant.id) }, enabled = variant.available && !selected) {
-                    Text(if (selected) "Selected" else "Select")
+                    Text(if (selected) stringResource(R.string.selected_label) else stringResource(R.string.select_label))
                 }
             }
         }

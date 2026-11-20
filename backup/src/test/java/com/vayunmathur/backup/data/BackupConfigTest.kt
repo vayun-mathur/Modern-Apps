@@ -63,10 +63,10 @@ class BackupConfigTest {
     }
 
     @Test fun destinationLabels() {
-        assertEquals("No destination selected", BackupSettings().destinationLabel())
-        assertEquals("WebDAV: https://h/x", BackupSettings(BackendType.WEBDAV, webdavUrl = "https://h/x").destinationLabel())
-        assertTrue(BackupSettings(BackendType.SAF, safTreeUri = "content://tree/primary:Documents/Backups").destinationLabel().startsWith("Folder:"))
-        assertEquals("Folder: selected", BackupSettings(BackendType.SAF, safTreeUri = "noslash").destinationLabel().let { if (it.contains("noslash")) "Folder: selected" else it })
+        assertEquals("No destination selected", BackupSettings().destinationLabel(ctx))
+        assertEquals("WebDAV: https://h/x", BackupSettings(BackendType.WEBDAV, webdavUrl = "https://h/x").destinationLabel(ctx))
+        assertTrue(BackupSettings(BackendType.SAF, safTreeUri = "content://tree/primary:Documents/Backups").destinationLabel(ctx).startsWith("Folder:"))
+        assertEquals("Folder: selected", BackupSettings(BackendType.SAF, safTreeUri = "noslash").destinationLabel(ctx).let { if (it.contains("noslash")) "Folder: selected" else it })
     }
 
     @Test fun backendFactoryBranches() {

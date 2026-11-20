@@ -18,11 +18,13 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.HtmlText
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
+import com.vayunmathur.securemail.R
 import com.vayunmathur.securemail.data.StoredMessage
 
 /**
@@ -51,11 +53,11 @@ private fun HtmlBody(id: String, html: String) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    "Remote content blocked",
+                    stringResource(R.string.body_remote_content_blocked),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                TextButton(onClick = { loadRemote = true }) { Text("Load") }
+                TextButton(onClick = { loadRemote = true }) { Text(stringResource(R.string.body_load)) }
             }
         }
         HtmlText(
@@ -68,7 +70,7 @@ private fun HtmlBody(id: String, html: String) {
         )
         if (hasQuotes) {
             TextButton(onClick = { showQuotes = !showQuotes }, modifier = Modifier.padding(horizontal = 8.dp)) {
-                Text(if (showQuotes) "Hide quoted text" else "Show quoted text")
+                Text(if (showQuotes) stringResource(R.string.body_hide_quoted) else stringResource(R.string.body_show_quoted))
             }
         }
     }
@@ -76,7 +78,7 @@ private fun HtmlBody(id: String, html: String) {
 
 @Composable
 private fun PlainBody(msg: StoredMessage) {
-    val body = msg.decryptedBody ?: "(decrypting\u2026)"
+    val body = msg.decryptedBody ?: stringResource(R.string.body_decrypting)
     var showQuotes by remember(msg.id) { mutableStateOf(false) }
     val (main, quoted) = remember(body) { splitQuotedText(body) }
     val linkColor = MaterialTheme.colorScheme.primary
@@ -89,7 +91,7 @@ private fun PlainBody(msg: StoredMessage) {
     )
     if (quoted.isNotEmpty()) {
         TextButton(onClick = { showQuotes = !showQuotes }, modifier = Modifier.padding(horizontal = 8.dp)) {
-            Text(if (showQuotes) "Hide quoted text" else "Show quoted text")
+            Text(if (showQuotes) stringResource(R.string.body_hide_quoted) else stringResource(R.string.body_show_quoted))
         }
     }
 }

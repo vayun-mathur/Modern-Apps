@@ -29,6 +29,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -41,6 +42,7 @@ import com.vayunmathur.library.ui.OutlinedTextField
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.library.ui.rememberMessenger
+import com.vayunmathur.securemail.R
 import com.vayunmathur.securemail.data.MailIdentity
 import com.vayunmathur.securemail.platform.MailUiState
 import kotlinx.coroutines.launch
@@ -71,6 +73,8 @@ fun ComposeScreen(
 ) {
     val context = LocalContext.current
     val messenger = rememberMessenger()
+    val invalidOrDuplicateAddress = stringResource(R.string.compose_invalid_or_duplicate_address)
+    val enterValidEmail = stringResource(R.string.compose_enter_valid_email)
     ConsumeMessage(state.message, messenger, onConsumeMessage)
     var subject by remember { mutableStateOf(initialSubject) }
     var body by remember { mutableStateOf(initialBody) }
@@ -84,7 +88,7 @@ fun ComposeScreen(
             val email = result.data?.data?.let { contactEmail(context, it) }
             if (!email.isNullOrBlank()) {
                 if (!onAddRecipient(pickTarget, email)) {
-                    scope.launch { messenger.show("Invalid or duplicate address.") }
+                    scope.launch { messenger.show(invalidOrDuplicateAddress) }
                 }
             }
         }
@@ -121,33 +125,33 @@ fun ComposeScreen(
                 FromPicker(identities, draftFrom, onSelectFrom)
             }
             RecipientChipField(
-                label = "To",
+                label = stringResource(R.string.to_label),
                 recipients = draftTo,
                 onAdd = { onAddRecipient(0, it) },
                 onRemove = { onRemoveRecipient(0, it) },
                 onPickContact = { pickTarget = 0; pickTick++ },
-                onInvalid = { scope.launch { messenger.show("Enter a valid email address.") } },
+                onInvalid = { scope.launch { messenger.show(enterValidEmail) } },
             )
             RecipientChipField(
-                label = "Cc",
+                label = stringResource(R.string.compose_cc),
                 recipients = draftCc,
                 onAdd = { onAddRecipient(1, it) },
                 onRemove = { onRemoveRecipient(1, it) },
                 onPickContact = { pickTarget = 1; pickTick++ },
-                onInvalid = { scope.launch { messenger.show("Enter a valid email address.") } },
+                onInvalid = { scope.launch { messenger.show(enterValidEmail) } },
             )
             RecipientChipField(
-                label = "Bcc",
+                label = stringResource(R.string.compose_bcc),
                 recipients = draftBcc,
                 onAdd = { onAddRecipient(2, it) },
                 onRemove = { onRemoveRecipient(2, it) },
                 onPickContact = { pickTarget = 2; pickTick++ },
-                onInvalid = { scope.launch { messenger.show("Enter a valid email address.") } },
+                onInvalid = { scope.launch { messenger.show(enterValidEmail) } },
             )
             OutlinedTextField(
                 value = subject,
                 onValueChange = { subject = it },
-                label = { Text("Subject") },
+                label = { Text(stringResource(R.string.compose_subject)) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
@@ -158,7 +162,7 @@ fun ComposeScreen(
             OutlinedTextField(
                 value = body,
                 onValueChange = { body = it },
-                label = { Text("Message") },
+                label = { Text(stringResource(R.string.message_label)) },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 8,
                 keyboardOptions = KeyboardOptions(
@@ -176,8 +180,8 @@ fun ComposeScreen(
                     },
                     enabled = !state.busy && allRecipients.isNotEmpty() && body.isNotBlank(),
                     modifier = Modifier.weight(1f),
-                ) { Text(if (state.busy) "Sending…" else "Send") }
-                Button(onClick = onDiscard, modifier = Modifier.weight(1f)) { Text("Discard") }
+                ) { Text(if (state.busy) stringResource(R.string.compose_sending) else stringResource(R.string.compose_send)) }
+                Button(onClick = onDiscard, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.compose_discard)) }
             }
         }
     }
@@ -190,7 +194,7 @@ private fun FromPicker(identities: List<MailIdentity>, selected: String?, onSele
     val current = identities.firstOrNull { it.address == selected } ?: identities.first()
     Box {
         TextButton(onClick = { open = true }) {
-            Text("From: ${current.address}", style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(R.string.compose_from_format, current.address), style = MaterialTheme.typography.bodyMedium)
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             identities.forEach { identity ->
@@ -198,7 +202,7 @@ private fun FromPicker(identities: List<MailIdentity>, selected: String?, onSele
                     text = {
                         Column {
                             Text(identity.address)
-                            val label = if (identity.isPrimary) "Primary" else identity.label
+                            val label = if (identity.isPrimary) stringResource(R.string.identity_primary) else identity.label
                             if (label.isNotBlank()) {
                                 Text(
                                     label,

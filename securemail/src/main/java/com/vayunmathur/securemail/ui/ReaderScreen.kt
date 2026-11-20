@@ -20,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -38,6 +39,7 @@ import com.vayunmathur.library.ui.OutlinedButton
 import com.vayunmathur.library.ui.Surface
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.rememberModalBottomSheetState
+import com.vayunmathur.securemail.R
 import com.vayunmathur.securemail.data.MailFolder
 import com.vayunmathur.securemail.data.StoredMessage
 import com.vayunmathur.securemail.platform.MailUiState
@@ -59,7 +61,7 @@ fun ReaderScreen(
 ) {
     val msg = message
     AppScaffold(
-        title = msg?.decryptedSubject?.ifBlank { "(no subject)" } ?: "Message",
+        title = msg?.decryptedSubject?.ifBlank { stringResource(R.string.no_subject) } ?: stringResource(R.string.message_label),
         onNavigateBack = onBack,
         actions = {
             if (msg != null) {
@@ -71,7 +73,7 @@ fun ReaderScreen(
             Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
                 if (msg == null) {
                     Text(
-                        "Message not found.",
+                        stringResource(R.string.reader_not_found),
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(16.dp),
                     )
@@ -88,7 +90,7 @@ fun ReaderScreen(
 private fun MessageBody(msg: StoredMessage, ownAddress: String, onReply: () -> Unit) {
     var showDetails by remember { mutableStateOf(false) }
     val sent = msg.folder == MailFolder.SENT
-    val counterpart = if (sent) msg.toJson.ifBlank { "(unknown)" } else msg.from.ifBlank { "(encrypted sender)" }
+    val counterpart = if (sent) msg.toJson.ifBlank { stringResource(R.string.unknown_parenthesized) } else msg.from.ifBlank { stringResource(R.string.encrypted_sender_parenthesized) }
     val date = remember(msg.dateMillis) {
         DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(msg.dateMillis))
     }
@@ -109,7 +111,7 @@ private fun MessageBody(msg: StoredMessage, ownAddress: String, onReply: () -> U
                     modifier = Modifier.weight(1f, fill = false),
                 )
                 Text(
-                    "  \u2022  $date",
+                    stringResource(R.string.reader_date_separator_format, date),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -117,7 +119,7 @@ private fun MessageBody(msg: StoredMessage, ownAddress: String, onReply: () -> U
                 )
             }
             Text(
-                if (sent) "from me" else "to me",
+                if (sent) stringResource(R.string.reader_from_me) else stringResource(R.string.reader_to_me),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -131,7 +133,7 @@ private fun MessageBody(msg: StoredMessage, ownAddress: String, onReply: () -> U
         OutlinedButton(onClick = onReply, modifier = Modifier.weight(1f)) {
             IconUndo(modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
-            Text("Reply")
+            Text(stringResource(R.string.reader_reply))
         }
     }
     HorizontalDivider()
@@ -143,11 +145,11 @@ private fun MessageBody(msg: StoredMessage, ownAddress: String, onReply: () -> U
         ) {
             Column(modifier = Modifier.padding(16.dp).fillMaxWidth()) {
                 Text(date, style = MaterialTheme.typography.labelSmall, modifier = Modifier.align(Alignment.End))
-                DetailRow("From", if (sent) ownAddress else msg.from.ifBlank { "(encrypted sender)" }, avatarColor)
-                DetailRow("To", if (sent) msg.toJson.ifBlank { "(unknown)" } else ownAddress, MaterialTheme.colorScheme.surfaceVariant)
+                DetailRow(stringResource(R.string.from_label), if (sent) ownAddress else msg.from.ifBlank { stringResource(R.string.encrypted_sender_parenthesized) }, avatarColor)
+                DetailRow(stringResource(R.string.to_label), if (sent) msg.toJson.ifBlank { stringResource(R.string.unknown_parenthesized) } else ownAddress, MaterialTheme.colorScheme.surfaceVariant)
                 if (msg.verifiedSigner != null) {
                     Spacer(Modifier.height(8.dp))
-                    Text("Signer fingerprint", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                    Text(stringResource(R.string.reader_signer_fingerprint), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                     Text(
                         msg.verifiedSigner.chunked(4).joinToString(" "),
                         style = MaterialTheme.typography.bodySmall,
@@ -165,12 +167,12 @@ private fun TrustLine(msg: StoredMessage) {
     val colors = MaterialTheme.colorScheme
     val sent = msg.folder == MailFolder.SENT
     val (label, color) = when {
-        sent && msg.unencrypted -> "Sent unencrypted \u00b7 no key for a recipient" to colors.error
-        sent -> "Sent encrypted" to colors.primary
-        msg.unencrypted -> "Not encrypted" to colors.error
-        msg.verifiedSigner != null -> "Encrypted \u00b7 signature verified" to colors.primary
-        msg.decryptedBody != null -> "Encrypted \u00b7 signature not verified" to colors.onSurfaceVariant
-        else -> "Locked \u00b7 decrypting\u2026" to colors.onSurfaceVariant
+        sent && msg.unencrypted -> stringResource(R.string.reader_sent_unencrypted) to colors.error
+        sent -> stringResource(R.string.reader_sent_encrypted) to colors.primary
+        msg.unencrypted -> stringResource(R.string.reader_not_encrypted) to colors.error
+        msg.verifiedSigner != null -> stringResource(R.string.reader_encrypted_verified) to colors.primary
+        msg.decryptedBody != null -> stringResource(R.string.reader_encrypted_not_verified) to colors.onSurfaceVariant
+        else -> stringResource(R.string.reader_locked_decrypting) to colors.onSurfaceVariant
     }
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
         val iconModifier = Modifier.size(14.dp)

@@ -119,7 +119,7 @@ internal fun SearchContent(
                 InputChip(
                     selected = true,
                     onClick = onClearScope,
-                    label = { Text("Results from $name") },
+                    label = { Text(stringResource(R.string.results_from_store, name)) },
                     trailingIcon = { IconClose() },
                     modifier = Modifier.padding(horizontal = 16.dp),
                 )
@@ -174,14 +174,14 @@ private fun SearchTopBar(
 private fun LinkPromptCard(prompt: LinkPrompt) {
     Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
         Column(Modifier.padding(16.dp)) {
-            Text("Open store links in Shop", style = MaterialTheme.typography.titleSmall)
+            Text(stringResource(R.string.open_store_links_title), style = MaterialTheme.typography.titleSmall)
             Text(
-                "In the next screen, tap \"Add link\" and select all to open store links here.",
+                stringResource(R.string.open_store_links_body),
                 style = MaterialTheme.typography.bodySmall,
             )
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TextButton(onClick = prompt.onDismiss) { Text("Not now") }
-                TextButton(onClick = prompt.onOpenSettings) { Text("Open settings") }
+                TextButton(onClick = prompt.onDismiss) { Text(stringResource(R.string.not_now)) }
+                TextButton(onClick = prompt.onOpenSettings) { Text(stringResource(R.string.open_settings)) }
             }
         }
     }

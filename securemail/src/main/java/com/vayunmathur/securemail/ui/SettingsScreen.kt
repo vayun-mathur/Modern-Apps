@@ -15,6 +15,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Button
@@ -28,6 +29,8 @@ import com.vayunmathur.library.ui.OutlinedTextField
 import com.vayunmathur.library.ui.Switch
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.rememberMessenger
+import com.vayunmathur.library.ui.R as UiR
+import com.vayunmathur.securemail.R
 import com.vayunmathur.securemail.data.MailIdentity
 import com.vayunmathur.securemail.platform.MailUiState
 
@@ -46,7 +49,7 @@ fun SettingsScreen(
     val context = LocalContext.current
     ConsumeMessage(state.message, messenger, onDismissMessages)
     var newLabel by remember { mutableStateOf("") }
-    AppScaffold(title = "Settings") { padding ->
+    AppScaffold(title = stringResource(UiR.string.settings)) { padding ->
         DesktopMaxWidthContainer(Modifier.padding(padding)) {
             Column(
                 modifier = Modifier
@@ -61,9 +64,9 @@ fun SettingsScreen(
                         modifier = Modifier.padding(16.dp).fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Text("Addresses", style = MaterialTheme.typography.titleMedium)
+                        Text(stringResource(R.string.settings_addresses), style = MaterialTheme.typography.titleMedium)
                         Text(
-                            "Mail to any address lands in this inbox, and you can send from any of them.",
+                            stringResource(R.string.settings_addresses_explainer),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.secondary,
                         )
@@ -77,7 +80,7 @@ fun SettingsScreen(
                         OutlinedTextField(
                             value = newLabel,
                             onValueChange = { newLabel = it },
-                            label = { Text("Label for new alias (optional)") },
+                            label = { Text(stringResource(R.string.settings_alias_label)) },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth(),
                         )
@@ -91,21 +94,21 @@ fun SettingsScreen(
                         ) {
                             Text(
                                 when {
-                                    state.busy -> "Creating…"
-                                    !state.socketConnected -> "Relay offline"
-                                    else -> "New random alias"
+                                    state.busy -> stringResource(R.string.settings_creating)
+                                    !state.socketConnected -> stringResource(R.string.settings_relay_offline)
+                                    else -> stringResource(R.string.settings_new_random_alias)
                                 },
                             )
                         }
                         Text(
-                            if (state.socketConnected) "Relay: connected" else "Relay: offline",
+                            stringResource(R.string.settings_relay_format, if (state.socketConnected) stringResource(R.string.settings_relay_connected) else stringResource(R.string.settings_relay_offline_word)),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.secondary,
                         )
                     }
                 }
                 Button(onClick = onExportPublicKey, modifier = Modifier.fillMaxWidth()) {
-                    Text("Show public key")
+                    Text(stringResource(R.string.settings_show_public_key))
                 }
                 state.exportArmor?.let { armor ->
                     Card(modifier = Modifier.fillMaxWidth()) {
@@ -117,7 +120,7 @@ fun SettingsScreen(
                     }
                 }
                 Button(onClick = onForget, modifier = Modifier.fillMaxWidth()) {
-                    Text("Forget identity on this device")
+                    Text(stringResource(R.string.settings_forget_identity))
                 }
             }
         }
@@ -137,15 +140,15 @@ private fun AddressRow(
     ) {
         Column(Modifier.weight(1f)) {
             val title = when {
-                identity.isPrimary -> "Primary"
+                identity.isPrimary -> stringResource(R.string.identity_primary)
                 identity.label.isNotBlank() -> identity.label
-                else -> "Alias"
+                else -> stringResource(R.string.settings_alias)
             }
             Text(title, style = MaterialTheme.typography.labelMedium)
             Text(identity.address, style = MaterialTheme.typography.bodyMedium)
             Text(
-                "Key: ${identity.fingerprintHex.take(16)}…" +
-                    if (identity.disabled) " · disabled, mail held" else "",
+                stringResource(R.string.settings_key_format, identity.fingerprintHex.take(16)) +
+                    if (identity.disabled) stringResource(R.string.settings_disabled_suffix) else "",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.secondary,
             )

@@ -26,6 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.webkit.WebSettingsCompat
@@ -36,6 +37,7 @@ import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.rememberMessenger
+import com.vayunmathur.shop.R
 import com.vayunmathur.shop.data.EmbeddedCheckoutRequest
 import com.vayunmathur.shop.domain.EcAction
 import com.vayunmathur.shop.domain.EmbeddedCheckout
@@ -67,6 +69,8 @@ fun EmbeddedCheckoutScreen(viewModel: ShopViewModel, onClose: () -> Unit) {
     }
     val context = LocalContext.current
     val messenger = rememberMessenger()
+    // Captured at composition: the completion callback fires outside composition.
+    val orderPlacedMessage = stringResource(R.string.order_placed_with_store, request.storeName)
     var loading by remember { mutableStateOf(true) }
     var failed by remember { mutableStateOf(false) }
     var webView by remember { mutableStateOf<WebView?>(null) }
@@ -91,8 +95,10 @@ fun EmbeddedCheckoutScreen(viewModel: ShopViewModel, onClose: () -> Unit) {
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Text("The store's checkout didn't load.")
-                    Button(onClick = { openContinueUrl(context, request.browserUrl) }) { Text("Open in browser") }
+                    Text(stringResource(R.string.checkout_load_failed))
+                    Button(onClick = { openContinueUrl(context, request.browserUrl) }) {
+                        Text(stringResource(R.string.open_in_browser))
+                    }
                 }
             } else {
                 CheckoutWebView(
@@ -109,7 +115,7 @@ fun EmbeddedCheckoutScreen(viewModel: ShopViewModel, onClose: () -> Unit) {
                             }
                             is EcAction.Completed -> {
                                 viewModel.embeddedCheckoutCompleted(action.orderId, action.permalinkUrl, action.totalMinor, context)
-                                messenger.show("Order placed with ${request.storeName}")
+                                messenger.show(orderPlacedMessage)
                                 close()
                             }
                             is EcAction.Failed -> messenger.show(action.message)

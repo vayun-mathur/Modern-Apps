@@ -23,8 +23,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
+import com.vayunmathur.globalesim.R
 import com.vayunmathur.globalesim.network.ProfileDto
 import com.vayunmathur.globalesim.domain.QuoteMath
 import com.vayunmathur.globalesim.domain.buildActivationCode
@@ -79,7 +81,7 @@ fun HomeScreen(
         onPresentPaymentSheet = onPresentPaymentSheet,
     )
     AppScaffold(
-        title = "Purchase",
+        title = stringResource(R.string.purchase_title),
     ) { padding ->
         AppPullToRefreshBox(
             isRefreshing = state.refreshing,
@@ -96,9 +98,9 @@ fun HomeScreen(
                         when {
                             !state.statusLoaded -> LoadingIndicator()
                             profile == null && state.pendingCreditCents > 0 -> {
-                                Text("Payment received", style = MaterialTheme.typography.titleMedium)
+                                Text(stringResource(R.string.payment_received), style = MaterialTheme.typography.titleMedium)
                                 Text(
-                                    "Creating your eSIM. This page updates on its own.",
+                                    stringResource(R.string.creating_esim),
                                     modifier = Modifier.padding(top = 4.dp),
                                 )
                             }
@@ -142,24 +144,24 @@ fun HomeScreen(
                                 try {
                                     context.startActivity(intent)
                                 } catch (_: ActivityNotFoundException) {
-                                    messenger.show("This phone doesn't have the eSIM installer.")
+                                    messenger.show(context.getString(R.string.no_esim_installer))
                                 }
                             },
                             modifier = Modifier.weight(1f),
                         ) {
-                            Text("Install eSIM")
+                            Text(stringResource(R.string.install_esim))
                         }
                         OutlinedButton(
                             onClick = {
                                 state.simId?.let {
                                     copySimId(context, it)
-                                    messenger.show("SIM ID copied. Paste it into Claim on your new phone.")
+                                    messenger.show(context.getString(R.string.sim_id_copied))
                                 }
                             },
                             enabled = state.simId != null,
                             modifier = Modifier.weight(1f),
                         ) {
-                            Text("Copy SIM ID")
+                            Text(stringResource(R.string.copy_sim_id))
                         }
                     }
                 }
@@ -171,19 +173,19 @@ fun HomeScreen(
 /** Setup terms for a phone with no eSIM yet. The $3 fee gets its own line. */
 @Composable
 private fun SetupTerms() {
-    Text("One global eSIM for 200+ countries", style = MaterialTheme.typography.titleMedium)
+    Text(stringResource(R.string.setup_headline), style = MaterialTheme.typography.titleMedium)
     Text(
-        "Pay as you go, credit never expires. No email, phone number or KYC.",
+        stringResource(R.string.setup_subtitle),
         modifier = Modifier.padding(top = 4.dp),
     )
     Text(
-        "$3 one-time setup fee",
+        stringResource(R.string.setup_fee_title),
         style = MaterialTheme.typography.titleSmall,
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(top = 12.dp),
     )
     Text(
-        "Taken from your first top-up ($5 minimum). A $5 top-up leaves $2 of credit.",
+        stringResource(R.string.setup_fee_detail),
         style = MaterialTheme.typography.bodyMedium,
         modifier = Modifier.padding(top = 2.dp),
     )
@@ -198,12 +200,16 @@ private fun BalanceSummary(profile: ProfileDto, stale: Boolean, pendingCreditCen
         style = MaterialTheme.typography.headlineMedium,
     )
     Text(
-        "Balance · ${statusLabel(profile.status)}" + if (stale && !unknown) " · last known" else "",
+        if (stale && !unknown) {
+            stringResource(R.string.balance_with_status_last_known, statusLabel(profile.status))
+        } else {
+            stringResource(R.string.balance_with_status, statusLabel(profile.status))
+        },
         style = MaterialTheme.typography.bodyMedium,
     )
     if (pendingCreditCents > 0) {
         Text(
-            "${QuoteMath.formatCents(pendingCreditCents)} on its way. No need to pay again.",
+            stringResource(R.string.pending_credit_on_its_way, QuoteMath.formatCents(pendingCreditCents)),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(top = 4.dp),
@@ -211,19 +217,20 @@ private fun BalanceSummary(profile: ProfileDto, stale: Boolean, pendingCreditCen
     }
 }
 
+@Composable
 private fun statusLabel(status: String): String = when (status) {
-    "pending" -> "Activating"
-    "active" -> "Active"
-    "suspended" -> "Paused"
-    "terminated" -> "Terminated"
-    "unknown" -> "Checking…"
+    "pending" -> stringResource(R.string.status_activating)
+    "active" -> stringResource(R.string.status_active)
+    "suspended" -> stringResource(R.string.status_paused)
+    "terminated" -> stringResource(R.string.status_terminated)
+    "unknown" -> stringResource(R.string.status_checking)
     else -> status.replaceFirstChar { it.uppercase() }
 }
 
 /** The SIM ID is the account's only credential: flag the clip as sensitive so it isn't previewed. */
 @SuppressLint("InlinedApi") // Before Android 13 the extra is ignored; the copy still works.
 private fun copySimId(context: Context, simId: String) {
-    val clip = ClipData.newPlainText("SIM ID", simId).apply {
+    val clip = ClipData.newPlainText(context.getString(R.string.sim_id), simId).apply {
         description.extras = PersistableBundle().apply {
             putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true)
         }

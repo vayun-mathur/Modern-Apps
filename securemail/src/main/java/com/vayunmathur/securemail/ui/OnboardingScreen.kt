@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Button
@@ -24,6 +25,7 @@ import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.OutlinedTextField
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.rememberMessenger
+import com.vayunmathur.securemail.R
 import com.vayunmathur.securemail.platform.MailUiState
 
 /** First-run: claim an @maemail.org address and generate the PGP identity. */
@@ -35,7 +37,7 @@ fun OnboardingScreen(
 ) {
     val messenger = rememberMessenger()
     ConsumeMessage(state.message, messenger, onDismissMessages)
-    AppScaffold(title = "Set up SecureMail") { padding ->
+    AppScaffold(title = stringResource(R.string.onboarding_title)) { padding ->
         DesktopMaxWidthContainer(Modifier.padding(padding)) {
             Column(
                 modifier = Modifier
@@ -46,8 +48,7 @@ fun OnboardingScreen(
             ) {
                 state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 Text(
-                    "Claim an @maemail.org address. A PGP key (Ed25519 + X25519) is " +
-                        "generated on this device — the private key never leaves it.",
+stringResource(R.string.onboarding_claim_explainer),
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 ClaimCard(
@@ -68,18 +69,18 @@ private fun ClaimCard(busy: Boolean, onClaim: (String, String) -> Unit) {
             modifier = Modifier.padding(16.dp).fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text("Your address", style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.onboarding_your_address), style = MaterialTheme.typography.titleMedium)
             OutlinedTextField(
                 value = local,
                 onValueChange = { local = it },
-                label = { Text("name (→ name@maemail.org)") },
+                label = { Text(stringResource(R.string.onboarding_address_label)) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
             )
             OutlinedTextField(
                 value = passphrase,
                 onValueChange = { passphrase = it },
-                label = { Text("Key passphrase (min 8 chars)") },
+                label = { Text(stringResource(R.string.onboarding_passphrase_label)) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 visualTransformation = PasswordVisualTransformation(),
@@ -89,7 +90,7 @@ private fun ClaimCard(busy: Boolean, onClaim: (String, String) -> Unit) {
                 onClick = { onClaim(local.trim(), passphrase) },
                 enabled = !busy && local.isNotBlank() && passphrase.isNotBlank(),
                 modifier = Modifier.fillMaxWidth(),
-            ) { Text(if (busy) "Generating…" else "Claim address + generate key") }
+            ) { Text(if (busy) stringResource(R.string.onboarding_generating) else stringResource(R.string.onboarding_claim)) }
         }
     }
 }

@@ -15,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.AppScaffold
@@ -29,6 +30,7 @@ import com.vayunmathur.library.ui.SwipeActionsBox
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.library.ui.rememberMessenger
+import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.securemail.R
 import com.vayunmathur.securemail.data.OutboxMessage
 import com.vayunmathur.securemail.data.StoredMessage
@@ -60,12 +62,21 @@ fun OutScreen(
     actions: OutActions,
 ) {
     val messenger = rememberMessenger()
+    val undoLabel = stringResource(UiR.string.undo)
+    val draftDeleted = stringResource(R.string.out_draft_deleted)
+    val movedToTrash = pluralStringResource(R.plurals.moved_to_trash, 1, 1)
+    val draftsTitle = stringResource(R.string.out_drafts)
+    val noDrafts = stringResource(R.string.empty_no_drafts)
+    val outboxTitle = stringResource(R.string.out_outbox)
+    val nothingWaiting = stringResource(R.string.out_nothing_waiting)
+    val sentTitle = stringResource(R.string.out_sent)
+    val nothingSent = stringResource(R.string.empty_nothing_sent)
     AppScaffold(
         topBar = {},
         floatingActionButton = { FloatingActionButton(onClick = actions.onCompose) { IconAdd() } },
     ) { padding ->
         LazyColumn(Modifier.padding(padding).fillMaxSize()) {
-            section("Drafts", drafts.isEmpty(), "No drafts.")
+            section(draftsTitle, drafts.isEmpty(), noDrafts)
             itemsIndexed(drafts, key = { _, row -> "d-${row.id}" }) { i, row ->
                 val draft = DraftsController.decode(row)
                 DraftRow(
@@ -73,17 +84,17 @@ fun OutScreen(
                     onOpen = { actions.onOpenDraft(draft) },
                     onDelete = {
                         actions.onDeleteDraft(draft.id)
-                        messenger.show("Draft deleted", actionLabel = "Undo") { actions.onRestoreDraft(draft) }
+                        messenger.show(draftDeleted, actionLabel = undoLabel) { actions.onRestoreDraft(draft) }
                     },
                 )
                 if (i < drafts.lastIndex) HorizontalDivider()
             }
             item(key = "div-outbox") { SectionDivider() }
-            section("Outbox", outbox.isEmpty(), "Nothing waiting to send.")
+            section(outboxTitle, outbox.isEmpty(), nothingWaiting)
             if (outbox.isNotEmpty()) {
                 item(key = "retry") {
                     TextButton(onClick = actions.onRetryOutbox, modifier = Modifier.padding(horizontal = 8.dp)) {
-                        Text("Retry all")
+                        Text(stringResource(R.string.out_retry_all))
                     }
                 }
             }
@@ -92,7 +103,7 @@ fun OutScreen(
                 if (i < outbox.lastIndex) HorizontalDivider()
             }
             item(key = "div-sent") { SectionDivider() }
-            section("Sent", sent.isEmpty(), "Nothing sent yet.")
+            section(sentTitle, sent.isEmpty(), nothingSent)
             items(sent, key = { "s-${it.id}" }) { msg ->
                 MessageRow(
                     msg = msg,
@@ -103,7 +114,7 @@ fun OutScreen(
                     onToggleRead = { actions.onSetRead(listOf(msg.id), !msg.isRead) },
                     onSwipeDelete = {
                         actions.onTrashSent(listOf(msg.id))
-                        messenger.show("Moved to Trash", actionLabel = "Undo") { actions.onUntrashSent(listOf(msg.id)) }
+                        messenger.show(movedToTrash, actionLabel = undoLabel) { actions.onUntrashSent(listOf(msg.id)) }
                     },
                     inTrash = false,
                 )
@@ -158,7 +169,7 @@ private fun DraftRow(draft: Draft, onOpen: () -> Unit, onDelete: () -> Unit) {
                 Column {
                     val recipients = (draft.to + draft.cc + draft.bcc).joinToString(", ")
                     Text(
-                        if (recipients.isEmpty()) "No recipients" else "To: $recipients",
+                        if (recipients.isEmpty()) stringResource(R.string.out_no_recipients) else stringResource(R.string.message_to_format, recipients),
                         style = MaterialTheme.typography.titleSmall,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -174,7 +185,7 @@ private fun DraftRow(draft: Draft, onOpen: () -> Unit, onDelete: () -> Unit) {
             },
         ) {
             Text(
-                draft.subject.ifBlank { "(no subject)" },
+                draft.subject.ifBlank { stringResource(R.string.no_subject) },
                 style = MaterialTheme.typography.bodyLarge,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -190,7 +201,7 @@ private fun OutboxRow(entry: OutboxMessage) {
         supportingContent = {
             Column {
                 Text(
-                    "To: ${entry.toJson}",
+                    stringResource(R.string.message_to_format, entry.toJson),
                     style = MaterialTheme.typography.titleSmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -214,7 +225,7 @@ private fun OutboxRow(entry: OutboxMessage) {
         },
     ) {
         Text(
-            entry.subject.ifBlank { "(no subject)" },
+            entry.subject.ifBlank { stringResource(R.string.no_subject) },
             style = MaterialTheme.typography.bodyLarge,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,

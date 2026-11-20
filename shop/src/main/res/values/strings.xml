@@ -40,4 +40,100 @@
         <item quantity="one">%1$d item</item>
         <item quantity="other">%1$d items</item>
     </plurals>
+    <!-- CartScreen: section header fallback when a cart line has no store name -->
+    <string name="unknown_store">Unknown store</string>
+    <!-- CartScreen: checkout button when the cart spans multiple stores. %1$s is the store name -->
+    <string name="checkout_with_store">Checkout with %1$s</string>
+    <!-- CartScreen: cart line price summary. %1$s is the formatted unit price, %2$d is the quantity -->
+    <string name="price_times_quantity">%1$s × %2$d</string>
+    <!-- CartScreen: message when a checkout continue URL is missing or not HTTPS -->
+    <string name="payment_link_missing">Payment link is missing. Please try again.</string>
+    <!-- CartScreen: message when no installed app can open the payment page -->
+    <string name="payment_page_no_app">No app can open the payment page.</string>
+    <!-- EmbeddedCheckoutScreen: shown when the merchant checkout WebView fails to load -->
+    <string name="checkout_load_failed">The store\'s checkout didn\'t load.</string>
+    <!-- EmbeddedCheckoutScreen: button opening the merchant checkout in a browser instead -->
+    <string name="open_in_browser">Open in browser</string>
+    <!-- EmbeddedCheckoutScreen: confirmation after the merchant reports checkout completion. %1$s is the store name -->
+    <string name="order_placed_with_store">Order placed with %1$s</string>
+    <!-- ProductScreen: refresh failure when the publishing store domain is missing; cart actions stay disabled -->
+    <string name="product_domain_missing">The publishing store domain is missing. Cart actions are disabled.</string>
+    <!-- ProductScreen: refresh failure when the store no longer lists the exact variant; cart actions stay disabled -->
+    <string name="product_variant_missing">The store no longer lists this exact variant. Cart actions are disabled.</string>
+    <!-- ProductScreen: refresh failure fallback when live product data cannot be loaded -->
+    <string name="product_refresh_failed">Couldn\'t refresh this product from the publishing store. Check your connection and retry.</string>
+    <!-- ProductScreen: status while live price and availability are being checked -->
+    <string name="product_checking">Checking live price and availability...</string>
+    <!-- ProductScreen: shown when the product cannot be loaded and no specific failure is known -->
+    <string name="product_unavailable">This product is unavailable. Please retry.</string>
+    <!-- ProductScreen: shown when live price and availability could not be verified; cart actions stay disabled -->
+    <string name="product_not_verified">Live price and availability are not verified. Cart actions are disabled.</string>
+    <!-- ProductScreen: confirmation after the selected variant is added to the cart -->
+    <string name="added_to_cart">Added to cart</string>
+    <!-- ProductScreen: section header for the selling store -->
+    <string name="store_label">Store</string>
+    <!-- ProductScreen: section header for the selected variant price -->
+    <string name="price_label">Price</string>
+    <!-- ProductScreen: placeholder price before an option with a price is selected -->
+    <string name="select_option_price">Select an option to see its price</string>
+    <!-- ProductScreen: section header for the variant options picker -->
+    <string name="options_label">Options</string>
+    <!-- ProductScreen: shown when the selected variant is unavailable for purchase -->
+    <string name="product_variant_out_of_stock">This variant is out of stock.</string>
+    <!-- ProductScreen: button opening the product page on the merchant site -->
+    <string name="view_on_merchant_site">View on merchant site</string>
+    <!-- ProductScreen: note under the merchant-site button explaining where checkout completes -->
+    <string name="completes_on_merchant_site">Completes on the merchant site.</string>
+    <!-- ProductScreen: section header for the product description -->
+    <string name="details_label">Details</string>
+    <!-- ProfileScreen: top bar title for the buyer profile form -->
+    <string name="profile_title">Profile</string>
+    <!-- ProfileScreen: first-run gate headline above the profile form -->
+    <string name="profile_add_details">Add your details to start shopping.</string>
+    <!-- ProfileScreen: explainer under the headline describing on-device encryption and checkout use -->
+    <string name="profile_explainer">Encrypted on this device. Checkout uses these details and sends them to a merchant only when you create or update a session.</string>
+    <!-- ProfileScreen: label for the first name field -->
+    <string name="first_name">First name</string>
+    <!-- ProfileScreen: label for the last name field -->
+    <string name="last_name">Last name</string>
+    <!-- ProfileScreen: label for the phone field, international format. Keep the example number untranslated -->
+    <string name="phone_international">Phone (international, e.g. +14155550123)</string>
+    <!-- ProfileScreen: section header for the optional delivery address -->
+    <string name="delivery_address_optional">Delivery address (optional)</string>
+    <!-- ProfileScreen: hint under the delivery address header -->
+    <string name="delivery_address_hint">Needed when a merchant ships your order.</string>
+    <!-- ProfileScreen: label for the street address field -->
+    <string name="street_address">Street address</string>
+    <!-- ProfileScreen: label for the apartment / additional address field -->
+    <string name="apartment_address">Apartment / additional address</string>
+    <!-- ProfileScreen: label for the city field -->
+    <string name="city">City</string>
+    <!-- ProfileScreen: label for the state or province field -->
+    <string name="state_province">State / province</string>
+    <!-- ProfileScreen: label for the two-letter country code field -->
+    <string name="country_code">Country (two-letter code)</string>
+    <!-- ProfileScreen: label for the postal code field -->
+    <string name="postal_code">Postal code</string>
+    <!-- ProfileScreen: confirmation after the profile is saved from the Profile tab -->
+    <string name="profile_saved">Profile saved</string>
+    <!-- SearchScreen: scope chip label for merchant-scoped results. %1$s is the store name -->
+    <string name="results_from_store">Results from %1$s</string>
+    <!-- SearchScreen: link-defaults prompt card title -->
+    <string name="open_store_links_title">Open store links in Shop</string>
+    <!-- SearchScreen: link-defaults prompt card body. Keep the quoted button label in double quotes -->
+    <string name="open_store_links_body">In the next screen, tap \"Add link\" and select all to open store links here.</string>
+    <!-- SearchScreen: link-defaults prompt dismiss button -->
+    <string name="not_now">Not now</string>
+    <!-- SearchScreen: link-defaults prompt button opening system settings -->
+    <string name="open_settings">Open settings</string>
+    <!-- VariantPicker: fallback title for the default variant -->
+    <string name="variant_default">Default</string>
+    <!-- VariantPicker: availability label for an unavailable variant -->
+    <string name="out_of_stock">Out of stock</string>
+    <!-- VariantPicker: button label for the currently selected variant -->
+    <string name="selected_label">Selected</string>
+    <!-- VariantPicker: button label to select a variant -->
+    <string name="select_label">Select</string>
+    <!-- OrdersScreen: order row summary. %1$s is the item-count text, %2$s is the formatted order total -->
+    <string name="order_summary_format">%1$s · %2$s</string>
 </resources>

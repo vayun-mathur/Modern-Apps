@@ -17,6 +17,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.AlertDialog
 import com.vayunmathur.library.ui.AppScaffold
@@ -38,6 +40,7 @@ import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.library.ui.friendlyErrorMessage
 import com.vayunmathur.library.ui.TopAppBar
 import com.vayunmathur.library.ui.rememberMessenger
+import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.securemail.R
 import com.vayunmathur.securemail.data.MailFolder
 import com.vayunmathur.securemail.data.StoredMessage
@@ -73,6 +76,7 @@ fun InboxScreen(
 ) {
     val messenger = rememberMessenger()
     val context = LocalContext.current
+    val undoLabel = stringResource(UiR.string.undo)
     ConsumeMessage(state.message, messenger, actions.onConsumeMessage)
     var selected by remember(folder) { mutableStateOf(emptySet<String>()) }
     var confirmDelete by remember { mutableStateOf<List<String>?>(null) }
@@ -89,7 +93,7 @@ fun InboxScreen(
             actions.onTrash(ids)
             messenger.show(
                 context.resources.getQuantityString(R.plurals.moved_to_trash, ids.size, ids.size),
-                actionLabel = "Undo",
+                actionLabel = undoLabel,
             ) { actions.onMoveTo(ids, folder) }
         }
         selected = emptySet()
@@ -115,9 +119,9 @@ fun InboxScreen(
         Column(Modifier.padding(padding).fillMaxSize()) {
             state.error?.let {
                 ErrorState(
-                    title = "Something went wrong",
+                    title = stringResource(R.string.inbox_something_went_wrong),
                     message = friendlyErrorMessage(it),
-                    retryLabel = "Retry",
+                    retryLabel = stringResource(UiR.string.retry),
                     onRetry = actions.onRetry,
                 )
             }
@@ -125,7 +129,7 @@ fun InboxScreen(
                 TextButton(
                     onClick = { confirmDelete = messages.map { it.id } },
                     modifier = Modifier.padding(horizontal = 8.dp),
-                ) { Text("Empty trash") }
+                ) { Text(stringResource(R.string.inbox_empty_trash)) }
             }
             if (messages.isEmpty()) {
                 Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
@@ -163,21 +167,18 @@ fun InboxScreen(
         val everything = ids.size == messages.size
         AlertDialog(
             onDismissRequest = { confirmDelete = null; swipeGeneration++ },
-            title = { Text(if (everything) "Empty trash?" else "Delete forever?") },
+            title = { Text(if (everything) stringResource(R.string.inbox_empty_trash_title) else stringResource(R.string.inbox_delete_forever_title)) },
             text = {
-                Text(
-                    if (ids.size == 1) "This message will be permanently deleted from this device."
-                    else "${ids.size} messages will be permanently deleted from this device.",
-                )
+                Text(pluralStringResource(R.plurals.inbox_permanent_delete_message, ids.size, ids.size))
             },
             confirmButton = {
                 TextButton(onClick = {
                     if (everything) actions.onEmptyTrash() else actions.onDeleteForever(ids)
                     confirmDelete = null
-                }) { Text("Delete") }
+                }) { Text(stringResource(UiR.string.delete)) }
             },
             dismissButton = {
-                TextButton(onClick = { confirmDelete = null; swipeGeneration++ }) { Text("Cancel") }
+                TextButton(onClick = { confirmDelete = null; swipeGeneration++ }) { Text(stringResource(UiR.string.cancel)) }
             },
         )
     }
@@ -194,7 +195,7 @@ private fun SelectionBar(
     onDelete: () -> Unit,
 ) {
     TopAppBar(
-        title = { Text("$count selected") },
+        title = { Text(stringResource(R.string.inbox_selected_format, count)) },
         navigationIcon = { IconButton(onClick = onClose) { IconClose() } },
         actions = {
             IconButton(onClick = { onSetRead(true) }) { IconMarkRead() }
@@ -209,12 +210,13 @@ private fun SelectionBar(
     )
 }
 
+@Composable
 private fun emptyText(folder: MailFolder): String = when (folder) {
-    MailFolder.INBOX -> "No mail yet. Share your address to receive encrypted mail."
-    MailFolder.SENT -> "Nothing sent yet."
-    MailFolder.DRAFTS -> "No drafts."
-    MailFolder.SPAM -> "No spam. Verification failures land here."
-    MailFolder.TRASH -> "Trash is empty."
+    MailFolder.INBOX -> stringResource(R.string.inbox_empty_inbox)
+    MailFolder.SENT -> stringResource(R.string.empty_nothing_sent)
+    MailFolder.DRAFTS -> stringResource(R.string.empty_no_drafts)
+    MailFolder.SPAM -> stringResource(R.string.inbox_empty_spam)
+    MailFolder.TRASH -> stringResource(R.string.inbox_empty_trash_state)
 }
 
 private fun Set<String>.toggle(id: String): Set<String> = if (id in this) this - id else this + id

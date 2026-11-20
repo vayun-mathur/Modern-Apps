@@ -17,8 +17,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.vayunmathur.globalesim.R
 import com.vayunmathur.globalesim.domain.QuoteMath
 import com.vayunmathur.globalesim.platform.EsimUiState
 import com.vayunmathur.library.ui.CommonSearchBar
@@ -33,6 +35,7 @@ import com.vayunmathur.library.ui.OutlinedButton
 import com.vayunmathur.library.ui.Surface
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TopAppBar
+import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.library.ui.animatedColor
 import com.vayunmathur.library.ui.animatedDp
 
@@ -65,7 +68,7 @@ fun PricingScreen(
                     CommonSearchBar(
                         value = query,
                         onValueChange = { query = it },
-                        placeholder = "Search countries",
+                        placeholder = stringResource(R.string.search_countries),
                         padding = PaddingValues(bottom = 8.dp),
                     )
                 },
@@ -78,15 +81,15 @@ fun PricingScreen(
             item(key = "pricing-empty") {
                 if (query.isBlank()) {
                     EmptyState(
-                        title = "No rates yet",
-                        message = "Rates couldn't be loaded.",
+                        title = stringResource(R.string.no_rates_yet),
+                        message = stringResource(R.string.rates_load_failed),
                         icon = { IconSim() },
-                        action = { OutlinedButton(onClick = onRefresh) { Text("Retry") } },
+                        action = { OutlinedButton(onClick = onRefresh) { Text(stringResource(UiR.string.retry)) } },
                     )
                 } else {
                     EmptyState(
-                        title = "No matches",
-                        message = "Try another country name or code.",
+                        title = stringResource(R.string.no_matches),
+                        message = stringResource(R.string.no_matches_hint),
                         icon = { IconSim() },
                     )
                 }
@@ -123,7 +126,7 @@ fun PricingScreen(
                                 )
                             },
                             supportingContent = {
-                                Text("from ${QuoteMath.formatCents(rate.pricePerGbUsdCents)} / GB")
+                                Text(stringResource(R.string.price_from_per_gb, QuoteMath.formatCents(rate.pricePerGbUsdCents)))
                             },
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                         )
@@ -141,8 +144,10 @@ fun PricingScreen(
                                         ListItem(
                                             content = {
                                                 Text(
-                                                    "Carrier breakdown unavailable — " +
-                                                        "charged at ${QuoteMath.formatCents(rate.pricePerGbUsdCents)} / GB.",
+                                                    stringResource(
+                                                        R.string.carrier_breakdown_unavailable,
+                                                        QuoteMath.formatCents(rate.pricePerGbUsdCents),
+                                                    ),
                                                 )
                                             },
                                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
@@ -152,7 +157,7 @@ fun PricingScreen(
                                             ListItem(
                                                 content = { Text(net.operator) },
                                                 supportingContent = {
-                                                    Text(QuoteMath.formatCents(net.pricePerGbUsdCents) + " / GB")
+                                                    Text(stringResource(R.string.price_per_gb, QuoteMath.formatCents(net.pricePerGbUsdCents)))
                                                 },
                                                 colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                                             )

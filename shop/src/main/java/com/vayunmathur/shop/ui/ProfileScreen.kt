@@ -14,6 +14,7 @@ import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.AppScaffold
@@ -22,6 +23,8 @@ import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.OutlinedTextField
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.rememberMessenger
+import com.vayunmathur.library.ui.R as UiR
+import com.vayunmathur.shop.R
 import com.vayunmathur.shop.data.ShopProfile
 import com.vayunmathur.shop.platform.ShopViewModel
 
@@ -48,32 +51,44 @@ fun ProfileScreen(viewModel: ShopViewModel, required: Boolean) {
     val saved = viewModel.profile
     var draft by rememberSaveable(saved, stateSaver = ShopProfileSaver) { mutableStateOf(saved ?: ShopProfile()) }
     val error = draft.validationError()
-    AppScaffold(title = "Profile") { padding ->
+    // Captured at composition: the saved confirmation fires from a click callback.
+    val profileSavedMessage = stringResource(R.string.profile_saved)
+    AppScaffold(title = stringResource(R.string.profile_title)) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             item {
-                if (required) Text("Add your details to start shopping.", style = MaterialTheme.typography.titleMedium)
-                Text("Encrypted on this device. Checkout uses these details and sends them to a merchant only when you create or update a session.",
-                    style = MaterialTheme.typography.bodySmall)
+                if (required) {
+                    Text(stringResource(R.string.profile_add_details), style = MaterialTheme.typography.titleMedium)
+                }
+                Text(
+                    stringResource(R.string.profile_explainer),
+                    style = MaterialTheme.typography.bodySmall,
+                )
             }
             item {
-                ProfileField("First name", draft.firstName) { draft = draft.copy(firstName = it) }
-                ProfileField("Last name", draft.lastName) { draft = draft.copy(lastName = it) }
-                ProfileField("Email", draft.email, KeyboardType.Email) { draft = draft.copy(email = it) }
-                ProfileField("Phone (international, e.g. +14155550123)", draft.phone, KeyboardType.Phone) { draft = draft.copy(phone = it) }
+                ProfileField(stringResource(R.string.first_name), draft.firstName) { draft = draft.copy(firstName = it) }
+                ProfileField(stringResource(R.string.last_name), draft.lastName) { draft = draft.copy(lastName = it) }
+                ProfileField(stringResource(UiR.string.email), draft.email, KeyboardType.Email) { draft = draft.copy(email = it) }
+                ProfileField(stringResource(R.string.phone_international), draft.phone, KeyboardType.Phone) {
+                    draft = draft.copy(phone = it)
+                }
             }
             item {
-                Text("Delivery address (optional)", style = MaterialTheme.typography.titleSmall)
-                Text("Needed when a merchant ships your order.", style = MaterialTheme.typography.bodySmall)
-                ProfileField("Street address", draft.street) { draft = draft.copy(street = it) }
-                ProfileField("Apartment / additional address", draft.extendedAddress) { draft = draft.copy(extendedAddress = it) }
-                ProfileField("City", draft.city) { draft = draft.copy(city = it) }
-                ProfileField("State / province", draft.region) { draft = draft.copy(region = it) }
-                ProfileField("Country (two-letter code)", draft.country) { draft = draft.copy(country = it.uppercase()) }
-                ProfileField("Postal code", draft.postalCode) { draft = draft.copy(postalCode = it) }
+                Text(stringResource(R.string.delivery_address_optional), style = MaterialTheme.typography.titleSmall)
+                Text(stringResource(R.string.delivery_address_hint), style = MaterialTheme.typography.bodySmall)
+                ProfileField(stringResource(R.string.street_address), draft.street) { draft = draft.copy(street = it) }
+                ProfileField(stringResource(R.string.apartment_address), draft.extendedAddress) {
+                    draft = draft.copy(extendedAddress = it)
+                }
+                ProfileField(stringResource(R.string.city), draft.city) { draft = draft.copy(city = it) }
+                ProfileField(stringResource(R.string.state_province), draft.region) { draft = draft.copy(region = it) }
+                ProfileField(stringResource(R.string.country_code), draft.country) {
+                    draft = draft.copy(country = it.uppercase())
+                }
+                ProfileField(stringResource(R.string.postal_code), draft.postalCode) { draft = draft.copy(postalCode = it) }
             }
             item {
                 if (error != null && (draft != ShopProfile() || saved != null)) Text(error, color = MaterialTheme.colorScheme.error)
@@ -82,9 +97,13 @@ fun ProfileScreen(viewModel: ShopViewModel, required: Boolean) {
                     enabled = error == null && draft != saved,
                     onClick = {
                         viewModel.saveProfile(draft)
-                        if (!required) messenger.show("Profile saved")
+                        if (!required) messenger.show(profileSavedMessage)
                     },
-                ) { Text(if (required) "Continue" else "Save") }
+                ) {
+                    Text(
+                        if (required) stringResource(UiR.string.continue_label) else stringResource(UiR.string.save),
+                    )
+                }
             }
         }
     }

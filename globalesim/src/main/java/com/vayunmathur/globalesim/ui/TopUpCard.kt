@@ -18,9 +18,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
+import com.vayunmathur.globalesim.R
 import com.vayunmathur.globalesim.domain.QuoteMath
 import com.vayunmathur.globalesim.domain.QuoteMath.PAYMENT_MAX_CENTS
 import com.vayunmathur.globalesim.domain.QuoteMath.PAYMENT_MIN_CENTS
@@ -31,6 +33,7 @@ import com.vayunmathur.library.ui.OutlinedButton
 import com.vayunmathur.library.ui.OutlinedTextField
 import com.vayunmathur.library.ui.Surface
 import com.vayunmathur.library.ui.Text
+import com.vayunmathur.library.ui.R as UiR
 
 /**
  * Custom-amount top-up: any dollar amount from $5 to $20, paid by card or
@@ -52,9 +55,9 @@ fun TopUpCard(
     val amountOk = amountCents != null && amountCents in PAYMENT_MIN_CENTS..PAYMENT_MAX_CENTS
     val inputError: String? = when {
         amountText.isBlank() -> null
-        amountCents == null -> "Enter an amount like 10 or 12.50."
-        amountCents < PAYMENT_MIN_CENTS -> "Minimum ${QuoteMath.formatCents(PAYMENT_MIN_CENTS)} payment."
-        amountCents > PAYMENT_MAX_CENTS -> "${QuoteMath.formatCents(PAYMENT_MAX_CENTS)} max payment."
+        amountCents == null -> stringResource(R.string.topup_invalid_amount)
+        amountCents < PAYMENT_MIN_CENTS -> stringResource(R.string.topup_minimum_payment, QuoteMath.formatCents(PAYMENT_MIN_CENTS))
+        amountCents > PAYMENT_MAX_CENTS -> stringResource(R.string.topup_max_payment, QuoteMath.formatCents(PAYMENT_MAX_CENTS))
         else -> null
     }
     Card(modifier.fillMaxWidth()) {
@@ -62,7 +65,7 @@ fun TopUpCard(
             OutlinedTextField(
                 value = amountText,
                 onValueChange = { amountText = it },
-                label = { Text("Top up amount (USD)") },
+                label = { Text(stringResource(R.string.topup_amount_label)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 singleLine = true,
                 isError = inputError != null,
@@ -85,7 +88,7 @@ fun TopUpCard(
                     enabled = !busy && amountOk,
                     modifier = Modifier.weight(1f),
                 ) {
-                    Text("Card topup")
+                    Text(stringResource(R.string.card_topup))
                 }
                 BadgedBox(badge = "+5%", modifier = Modifier.weight(1f)) {
                     Button(
@@ -93,7 +96,7 @@ fun TopUpCard(
                         enabled = !busy && amountOk && pendingInvoiceUrl == null,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("Crypto topup")
+                        Text(stringResource(R.string.crypto_topup))
                     }
                 }
             }
@@ -108,13 +111,13 @@ fun TopUpCard(
                         },
                         modifier = Modifier.weight(1f),
                     ) {
-                        Text("Reopen checkout")
+                        Text(stringResource(R.string.reopen_checkout))
                     }
                     OutlinedButton(
                         onClick = onClearCryptoInvoice,
                         modifier = Modifier.weight(1f),
                     ) {
-                        Text("Cancel")
+                        Text(stringResource(UiR.string.cancel))
                     }
                 }
             }

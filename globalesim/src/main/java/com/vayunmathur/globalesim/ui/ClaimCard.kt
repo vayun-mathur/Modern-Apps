@@ -9,7 +9,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.vayunmathur.globalesim.R
 import com.vayunmathur.library.ui.Card
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.OutlinedButton
@@ -22,11 +24,11 @@ fun ClaimCard(busy: Boolean, onClaim: (String) -> Unit, modifier: Modifier = Mod
     var simId by rememberSaveable { mutableStateOf("") }
     Card(modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
-            Text("Already have an eSIM on another phone?", style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(R.string.claim_title), style = MaterialTheme.typography.bodyMedium)
             OutlinedTextField(
                 value = simId,
                 onValueChange = { simId = it },
-                label = { Text("SIM ID") },
+                label = { Text(stringResource(R.string.sim_id)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
             )
@@ -35,7 +37,7 @@ fun ClaimCard(busy: Boolean, onClaim: (String) -> Unit, modifier: Modifier = Mod
                 enabled = !busy && simId.isNotBlank(),
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
             ) {
-                Text("Claim on this phone")
+                Text(stringResource(R.string.claim_action))
             }
         }
     }

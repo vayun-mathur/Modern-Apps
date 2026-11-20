@@ -93,7 +93,11 @@ private fun OrderRow(order: PlacedOrder, onOpen: (String) -> Unit) {
                 tracking?.label?.let { Text(it, style = MaterialTheme.typography.labelMedium) }
             }
             Text(
-                "${pluralStringResource(R.plurals.order_items, order.itemCount, order.itemCount)} · ${MoneyFormat.format(order.total)}",
+                stringResource(
+                    R.string.order_summary_format,
+                    pluralStringResource(R.plurals.order_items, order.itemCount, order.itemCount),
+                    MoneyFormat.format(order.total),
+                ),
                 style = MaterialTheme.typography.bodySmall,
             )
             Text(

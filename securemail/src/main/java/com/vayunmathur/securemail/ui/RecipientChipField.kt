@@ -11,6 +11,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -20,6 +21,7 @@ import com.vayunmathur.library.ui.IconRemoveCircle
 import com.vayunmathur.library.ui.InputChip
 import com.vayunmathur.library.ui.OutlinedTextField
 import com.vayunmathur.library.ui.Text
+import com.vayunmathur.securemail.R
 
 /**
  * Recipient field (shared by To/Cc/Bcc): chips above a single-line input.
@@ -67,7 +69,7 @@ fun RecipientChipField(
         value = text,
         onValueChange = { text = it },
         label = { Text(label) },
-        placeholder = { Text("Type address, Enter to add") },
+        placeholder = { Text(stringResource(R.string.recipient_type_address)) },
         modifier = Modifier.fillMaxWidth(),
         singleLine = true,
         keyboardOptions = KeyboardOptions(

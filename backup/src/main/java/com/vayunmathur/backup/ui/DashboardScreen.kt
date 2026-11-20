@@ -11,7 +11,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.vayunmathur.backup.R
 import com.vayunmathur.backup.platform.BackupUiState
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Button
@@ -37,7 +40,7 @@ fun DashboardScreen(
     onBackupNow: () -> Unit,
     onRestoreNow: () -> Unit,
 ) {
-    AppScaffold(title = "Backup") { padding ->
+    AppScaffold(title = stringResource(R.string.app_name)) { padding ->
         // Letterboxed on expanded windows so the form keeps a readable measure.
         DesktopMaxWidthContainer(Modifier.padding(padding)) {
             Column(
@@ -53,17 +56,20 @@ fun DashboardScreen(
                 Row {
                     CircularProgressIndicator()
                     Spacer(Modifier.width(12.dp))
-                    Text("Working…")
+                    Text(stringResource(R.string.dashboard_working))
                 }
             }
 
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("Status", style = MaterialTheme.typography.titleMedium)
-                    Text(state.settings.destinationLabel())
+                    Text(stringResource(R.string.dashboard_status), style = MaterialTheme.typography.titleMedium)
+                    Text(state.settings.destinationLabel(LocalContext.current))
                     Text(
-                        if (state.settings.lastRun > 0) "Last run: ${state.settings.lastRun.asDateTime()}"
-                        else "No backup has run yet.",
+                        if (state.settings.lastRun > 0) stringResource(
+                            R.string.dashboard_last_run,
+                            state.settings.lastRun.asDateTime(),
+                        )
+                        else stringResource(R.string.dashboard_no_backup_yet),
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }
@@ -72,20 +78,20 @@ fun DashboardScreen(
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(vertical = 8.dp).fillMaxWidth()) {
                     Text(
-                        "What to back up",
+                        stringResource(R.string.dashboard_what_to_back_up),
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     )
                     ListItem(
-                        headlineContent = { Text("App data (system transport)") },
-                        supportingContent = { Text("Requires a platform-signed system install.") },
+                        headlineContent = { Text(stringResource(R.string.dashboard_app_data)) },
+                        supportingContent = { Text(stringResource(R.string.dashboard_app_data_hint)) },
                         trailingContent = {
                             Switch(checked = state.settings.appBackupEnabled, onCheckedChange = onAppBackupToggle)
                         },
                     )
                     ListItem(
-                        headlineContent = { Text("Photos, videos & audio") },
-                        supportingContent = { Text("Encrypted file backup on a schedule.") },
+                        headlineContent = { Text(stringResource(R.string.dashboard_media)) },
+                        supportingContent = { Text(stringResource(R.string.dashboard_media_hint)) },
                         trailingContent = {
                             Switch(checked = state.settings.fileBackupEnabled, onCheckedChange = onFileBackupToggle)
                         },
@@ -97,13 +103,13 @@ fun DashboardScreen(
                 onClick = onBackupNow,
                 enabled = !state.busy,
                 modifier = Modifier.fillMaxWidth(),
-            ) { Text("Back up files now") }
+            ) { Text(stringResource(R.string.dashboard_backup_now)) }
 
             OutlinedButton(
                 onClick = onRestoreNow,
                 enabled = !state.busy,
                 modifier = Modifier.fillMaxWidth(),
-            ) { Text("Restore files") }
+            ) { Text(stringResource(R.string.dashboard_restore_files)) }
 
             BackendSection(state.settings, onPickFolder, onSetWebDav)
             }

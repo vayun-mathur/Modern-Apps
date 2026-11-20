@@ -8,4 +8,71 @@
     -->
     <string name="data_management_label">Backup settings</string>
     <string name="destination_not_configured">Not configured</string>
+
+    <!-- DashboardScreen: progress label shown while a backup or restore is running. -->
+    <string name="dashboard_working">Working…</string>
+    <!-- DashboardScreen: heading of the status card. Noun. -->
+    <string name="dashboard_status">Status</string>
+    <!-- DashboardScreen: last backup time in the status card. %1$s is the formatted date and time. -->
+    <string name="dashboard_last_run">Last run: %1$s</string>
+    <!-- DashboardScreen: status text shown before any backup has run. -->
+    <string name="dashboard_no_backup_yet">No backup has run yet.</string>
+    <!-- DashboardScreen: heading of the card with the per-category backup toggles. -->
+    <string name="dashboard_what_to_back_up">What to back up</string>
+    <!-- DashboardScreen: toggle label for app data backed up via the system transport. -->
+    <string name="dashboard_app_data">App data (system transport)</string>
+    <!-- DashboardScreen: supporting text under the app-data toggle. -->
+    <string name="dashboard_app_data_hint">Requires a platform-signed system install.</string>
+    <!-- DashboardScreen: toggle label for media file backup. -->
+    <string name="dashboard_media">Photos, videos &amp; audio</string>
+    <!-- DashboardScreen: supporting text under the media toggle. -->
+    <string name="dashboard_media_hint">Encrypted file backup on a schedule.</string>
+    <!-- DashboardScreen: button that starts a file backup immediately. Verb phrase. -->
+    <string name="dashboard_backup_now">Back up files now</string>
+    <!-- DashboardScreen: button that restores files from the destination. Verb phrase. -->
+    <string name="dashboard_restore_files">Restore files</string>
+
+    <!-- OnboardingScreen: top-bar title of the first-run setup screen. -->
+    <string name="onboarding_title">Set up Backup</string>
+    <!-- OnboardingScreen: explanation of the recovery code shown at the top of setup. -->
+    <string name="onboarding_recovery_explanation">Your backups are encrypted with a 12-word recovery code. Write it down — it is the only way to restore on a new device.</string>
+    <!-- OnboardingScreen: heading of the recovery code card. Noun phrase. -->
+    <string name="recovery_code_title">Recovery code</string>
+    <!-- OnboardingScreen: chip for creating a new backup with a fresh recovery code. -->
+    <string name="recovery_new_backup">New backup</string>
+    <!-- OnboardingScreen: chip for restoring an existing backup with its recovery code. -->
+    <string name="recovery_restore_existing">Restore existing</string>
+    <!-- OnboardingScreen: button that generates a new 12-word recovery code. Verb phrase. -->
+    <string name="recovery_generate">Generate recovery code</string>
+    <!-- OnboardingScreen: button confirming the user saved the generated code, enabling backups. -->
+    <string name="recovery_confirm_saved">I saved it — enable encrypted backups</string>
+    <!-- OnboardingScreen: one numbered word of the generated recovery code. %1$d is the word position, %2$s is the word. -->
+    <string name="recovery_word_numbered">%1$d. %2$s</string>
+    <!-- OnboardingScreen: label of the field where an existing 12-word recovery code is entered. -->
+    <string name="recovery_enter_code">Enter your 12-word recovery code</string>
+    <!-- OnboardingScreen: button that restores using the entered recovery code. Verb phrase. -->
+    <string name="recovery_restore_with_code">Restore with recovery code</string>
+
+    <!-- BackendSection: destination summary when no destination has been selected. -->
+    <string name="destination_none">No destination selected</string>
+    <!-- BackendSection: destination summary for a picked folder. %1$s is the folder name. -->
+    <string name="destination_folder">Folder: %1$s</string>
+    <!-- BackendSection: fallback folder name in the destination summary when the folder name cannot be read. -->
+    <string name="destination_selected">selected</string>
+    <!-- BackendSection: destination summary for a WebDAV remote. %1$s is the WebDAV URL. -->
+    <string name="destination_webdav">WebDAV: %1$s</string>
+    <!-- BackendSection: heading of the backup destination card. Noun phrase. -->
+    <string name="backend_title">Backup destination</string>
+    <!-- BackendSection: button that opens the folder picker. Verb phrase. -->
+    <string name="backend_choose_folder">Choose folder (USB / SD / internal)</string>
+    <!-- BackendSection: divider label introducing the WebDAV remote option. -->
+    <string name="backend_or_webdav">or a WebDAV / Nextcloud remote</string>
+    <!-- BackendSection: label of the WebDAV URL field. Noun phrase. -->
+    <string name="backend_webdav_url">WebDAV URL</string>
+    <!-- BackendSection: label of the WebDAV username field. Noun. -->
+    <string name="backend_username">Username</string>
+    <!-- BackendSection: label of the WebDAV password field. Noun. -->
+    <string name="backend_password">Password</string>
+    <!-- BackendSection: button that saves the entered WebDAV destination. Verb phrase. -->
+    <string name="backend_save_webdav">Save WebDAV destination</string>
 </resources>

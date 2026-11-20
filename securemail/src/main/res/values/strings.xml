@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- App name displayed in launcher -->
     <string name="app_name">SecureMail</string>
     <!-- Outbox row: send attempt count. %1$d = number of attempts -->
     <plurals name="outbox_tries">
@@ -11,4 +12,191 @@
         <item quantity="one">Moved to Trash</item>
         <item quantity="other">%1$d moved to Trash</item>
     </plurals>
+
+    <!-- ComposeScreen: snackbar when a picked contact address is invalid or already added. Sentence. -->
+    <string name="compose_invalid_or_duplicate_address">Invalid or duplicate address.</string>
+    <!-- ComposeScreen: snackbar when a typed recipient address is invalid. Sentence. Reused for To/Cc/Bcc. -->
+    <string name="compose_enter_valid_email">Enter a valid email address.</string>
+    <!-- RecipientChipField: label for the To recipient field. Noun. Also ReaderScreen details To row. -->
+    <string name="to_label">To</string>
+    <!-- ComposeScreen: label for the Cc recipient field. Abbreviation. -->
+    <string name="compose_cc">Cc</string>
+    <!-- ComposeScreen: label for the Bcc recipient field. Abbreviation. -->
+    <string name="compose_bcc">Bcc</string>
+    <!-- ComposeScreen: label for the subject field. Noun. -->
+    <string name="compose_subject">Subject</string>
+    <!-- ComposeScreen: label for the body field. Noun. ReaderScreen: fallback app-bar title. -->
+    <string name="message_label">Message</string>
+    <!-- ComposeScreen: Send button label while sending. Verb, progressive. -->
+    <string name="compose_sending">Sending…</string>
+    <!-- ComposeScreen: Send button label. Verb. -->
+    <string name="compose_send">Send</string>
+    <!-- ComposeScreen: Discard button label. Verb. -->
+    <string name="compose_discard">Discard</string>
+    <!-- ComposeScreen: From picker showing the sending address. %1$s is the address. -->
+    <string name="compose_from_format">From: %1$s</string>
+    <!-- Identity label for the primary address. Noun. Used in ComposeScreen From picker and SettingsScreen. -->
+    <string name="identity_primary">Primary</string>
+
+    <!-- InboxScreen: ErrorState title when loading fails. Sentence fragment. -->
+    <string name="inbox_something_went_wrong">Something went wrong</string>
+    <!-- InboxScreen: button to delete all Trash messages. Verb phrase. -->
+    <string name="inbox_empty_trash">Empty trash</string>
+    <!-- InboxScreen: confirm dialog title when emptying Trash. Question. -->
+    <string name="inbox_empty_trash_title">Empty trash?</string>
+    <!-- InboxScreen: confirm dialog title when deleting selected Trash messages forever. Question. -->
+    <string name="inbox_delete_forever_title">Delete forever?</string>
+    <!-- InboxScreen: confirm dialog body for permanent deletion. Singular has no count; plural %1$d is the message count. -->
+    <plurals name="inbox_permanent_delete_message">
+        <item quantity="one">This message will be permanently deleted from this device.</item>
+        <item quantity="other">%1$d messages will be permanently deleted from this device.</item>
+    </plurals>
+    <!-- InboxScreen: selection bar title. %1$d is the selected count. -->
+    <string name="inbox_selected_format">%1$d selected</string>
+    <!-- InboxScreen: empty Inbox state. Sentences. -->
+    <string name="inbox_empty_inbox">No mail yet. Share your address to receive encrypted mail.</string>
+    <!-- Empty Sent state. Sentence. Used in InboxScreen and OutScreen. -->
+    <string name="empty_nothing_sent">Nothing sent yet.</string>
+    <!-- Empty Drafts state. Sentence. Used in InboxScreen and OutScreen. -->
+    <string name="empty_no_drafts">No drafts.</string>
+    <!-- InboxScreen: empty Spam state. Sentences. -->
+    <string name="inbox_empty_spam">No spam. Verification failures land here.</string>
+    <!-- InboxScreen: empty Trash state. Sentence. -->
+    <string name="inbox_empty_trash_state">Trash is empty.</string>
+
+    <!-- LockScreen: app-bar title while locked. Noun phrase. -->
+    <string name="lock_title">SecureMail locked</string>
+    <!-- LockScreen: card heading. Sentence fragment. -->
+    <string name="lock_unlock_to_read">Unlock to read your mail</string>
+    <!-- LockScreen: explainer that the PGP private key is sealed until authentication. Sentence. -->
+    <string name="lock_pgp_explainer">Your PGP private key is sealed until you authenticate.</string>
+    <!-- LockScreen: Unlock button. Verb. -->
+    <string name="lock_unlock">Unlock</string>
+
+    <!-- MailBottomBar: Inbox tab label. Noun. -->
+    <string name="tab_inbox">Inbox</string>
+    <!-- MailBottomBar: Spam tab label. Noun. -->
+    <string name="tab_spam">Spam</string>
+    <!-- MailBottomBar: Out tab label (Drafts/Outbox/Sent). Noun. -->
+    <string name="tab_out">Out</string>
+    <!-- MailBottomBar: Trash tab label. Noun. -->
+    <string name="tab_trash">Trash</string>
+
+    <!-- MessageBodyView: banner when remote content is blocked. Sentence fragment. -->
+    <string name="body_remote_content_blocked">Remote content blocked</string>
+    <!-- MessageBodyView: button to load remote content. Verb. -->
+    <string name="body_load">Load</string>
+    <!-- MessageBodyView: button to hide quoted text. Verb phrase. -->
+    <string name="body_hide_quoted">Hide quoted text</string>
+    <!-- MessageBodyView: button to show quoted text. Verb phrase. -->
+    <string name="body_show_quoted">Show quoted text</string>
+    <!-- MessageBodyView: placeholder body while decrypting. Parenthesised, progressive. -->
+    <string name="body_decrypting">(decrypting…)</string>
+
+    <!-- Message row/reader: placeholder subject when none. Parenthesised noun phrase. -->
+    <string name="no_subject">(no subject)</string>
+    <!-- MessageRow: placeholder subject for an encrypted message. Noun phrase. -->
+    <string name="message_encrypted">Encrypted message</string>
+    <!-- Message row/outbox/draft: recipient line. %1$s is the recipient list. -->
+    <string name="message_to_format">To: %1$s</string>
+    <!-- Placeholder when an address is unknown. Parenthesised adjective. -->
+    <string name="unknown_parenthesized">(unknown)</string>
+    <!-- Placeholder when the sender is encrypted. Parenthesised noun phrase. -->
+    <string name="encrypted_sender_parenthesized">(encrypted sender)</string>
+    <!-- MessageRow: preview placeholder prompting to open an encrypted message. Verb phrase. -->
+    <string name="message_open_to_decrypt">Open to decrypt</string>
+
+    <!-- NavigationEntries: reply subject prefix. %1$s is the original subject. -->
+    <string name="reply_subject_format">Re: %1$s</string>
+    <!-- NavigationEntries: snackbar after saving a draft. Sentence fragment. -->
+    <string name="draft_saved">Draft saved</string>
+
+    <!-- OnboardingScreen: app-bar title. Verb phrase. -->
+    <string name="onboarding_title">Set up SecureMail</string>
+    <!-- OnboardingScreen: explainer for claiming an address and generating a PGP key. Sentences. -->
+    <string name="onboarding_claim_explainer">Claim an @maemail.org address. A PGP key (Ed25519 + X25519) is generated on this device — the private key never leaves it.</string>
+    <!-- OnboardingScreen: address section heading. Noun phrase. -->
+    <string name="onboarding_your_address">Your address</string>
+    <!-- OnboardingScreen: address field label showing the resulting address format. -->
+    <string name="onboarding_address_label">name (→ name@maemail.org)</string>
+    <!-- OnboardingScreen: passphrase field label with minimum length. Noun phrase. -->
+    <string name="onboarding_passphrase_label">Key passphrase (min 8 chars)</string>
+    <!-- OnboardingScreen: claim button label while generating. Verb, progressive. -->
+    <string name="onboarding_generating">Generating…</string>
+    <!-- OnboardingScreen: claim button label. Verb phrase. -->
+    <string name="onboarding_claim">Claim address + generate key</string>
+
+    <!-- OutScreen: Drafts section title. Noun, plural. -->
+    <string name="out_drafts">Drafts</string>
+    <!-- OutScreen: snackbar after deleting a draft. Sentence fragment. -->
+    <string name="out_draft_deleted">Draft deleted</string>
+    <!-- OutScreen: Outbox section title. Noun. -->
+    <string name="out_outbox">Outbox</string>
+    <!-- OutScreen: empty Outbox state. Sentence. -->
+    <string name="out_nothing_waiting">Nothing waiting to send.</string>
+    <!-- OutScreen: button to retry all queued sends. Verb phrase. -->
+    <string name="out_retry_all">Retry all</string>
+    <!-- OutScreen: Sent section title. Verb participle. -->
+    <string name="out_sent">Sent</string>
+    <!-- OutScreen: draft recipient placeholder when there are no recipients. Noun phrase. -->
+    <string name="out_no_recipients">No recipients</string>
+
+    <!-- ReaderScreen: placeholder when the message is missing. Sentence. -->
+    <string name="reader_not_found">Message not found.</string>
+    <!-- ReaderScreen: date shown after the sender, separated by a bullet. %1$s is the formatted date. -->
+    <string name="reader_date_separator_format">  •  %1$s</string>
+    <!-- ReaderScreen: label for a sent message counterpart. Adverb phrase. -->
+    <string name="reader_from_me">from me</string>
+    <!-- ReaderScreen: label for a received message counterpart. Adverb phrase. -->
+    <string name="reader_to_me">to me</string>
+    <!-- ReaderScreen: Reply button. Verb. -->
+    <string name="reader_reply">Reply</string>
+    <!-- ReaderScreen: details From row label. Adverb. -->
+    <string name="from_label">From</string>
+    <!-- ReaderScreen: details signer heading. Noun phrase. -->
+    <string name="reader_signer_fingerprint">Signer fingerprint</string>
+    <!-- ReaderScreen: trust line for a sent unencrypted message. Sentence fragment. -->
+    <string name="reader_sent_unencrypted">Sent unencrypted · no key for a recipient</string>
+    <!-- ReaderScreen: trust line for a sent encrypted message. Sentence fragment. -->
+    <string name="reader_sent_encrypted">Sent encrypted</string>
+    <!-- ReaderScreen: trust line for an unencrypted message. Sentence fragment. -->
+    <string name="reader_not_encrypted">Not encrypted</string>
+    <!-- ReaderScreen: trust line for a verified encrypted message. Sentence fragment. -->
+    <string name="reader_encrypted_verified">Encrypted · signature verified</string>
+    <!-- ReaderScreen: trust line for an unverified encrypted message. Sentence fragment. -->
+    <string name="reader_encrypted_not_verified">Encrypted · signature not verified</string>
+    <!-- ReaderScreen: trust line while locked/decrypting. Sentence fragment, progressive. -->
+    <string name="reader_locked_decrypting">Locked · decrypting…</string>
+
+    <!-- RecipientChipField: input placeholder. Instruction. -->
+    <string name="recipient_type_address">Type address, Enter to add</string>
+
+    <!-- SettingsScreen: Addresses section heading. Noun, plural. -->
+    <string name="settings_addresses">Addresses</string>
+    <!-- SettingsScreen: explainer under Addresses. Sentence. -->
+    <string name="settings_addresses_explainer">Mail to any address lands in this inbox, and you can send from any of them.</string>
+    <!-- SettingsScreen: label for the optional new-alias label field. Noun phrase. -->
+    <string name="settings_alias_label">Label for new alias (optional)</string>
+    <!-- SettingsScreen: new-alias button label while creating. Verb, progressive. -->
+    <string name="settings_creating">Creating…</string>
+    <!-- SettingsScreen: new-alias button label when the relay is offline. Noun phrase. -->
+    <string name="settings_relay_offline">Relay offline</string>
+    <!-- SettingsScreen: new-alias button label. Noun phrase. -->
+    <string name="settings_new_random_alias">New random alias</string>
+    <!-- SettingsScreen: relay status line. %1$s is connected or offline. -->
+    <string name="settings_relay_format">Relay: %1$s</string>
+    <!-- SettingsScreen: relay connected status word used in settings_relay_format. Adjective. -->
+    <string name="settings_relay_connected">connected</string>
+    <!-- SettingsScreen: relay offline status word used in settings_relay_format. Adjective. -->
+    <string name="settings_relay_offline_word">offline</string>
+    <!-- SettingsScreen: button to show the public key. Verb phrase. -->
+    <string name="settings_show_public_key">Show public key</string>
+    <!-- SettingsScreen: button to forget the identity on this device. Verb phrase. -->
+    <string name="settings_forget_identity">Forget identity on this device</string>
+    <!-- SettingsScreen: alias title when no label is set. Noun. -->
+    <string name="settings_alias">Alias</string>
+    <!-- SettingsScreen: key fingerprint line. %1$s is the truncated fingerprint. -->
+    <string name="settings_key_format">Key: %1$s…</string>
+    <!-- SettingsScreen: suffix on the key line for a disabled identity. Sentence fragment. -->
+    <string name="settings_disabled_suffix"> · disabled, mail held</string>
 </resources>

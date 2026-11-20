@@ -13,7 +13,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import android.content.Context
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.vayunmathur.backup.R
 import com.vayunmathur.backup.data.BackendType
 import com.vayunmathur.backup.data.BackupSettings
 import com.vayunmathur.library.ui.Button
@@ -24,10 +28,14 @@ import com.vayunmathur.library.ui.OutlinedTextField
 import com.vayunmathur.library.ui.Text
 
 /** Human-readable summary of the currently selected destination. */
-fun BackupSettings.destinationLabel(): String = when (backendType) {
-    BackendType.NONE -> "No destination selected"
-    BackendType.SAF -> "Folder: " + (safTreeUri?.substringAfterLast(':')?.substringAfterLast('/') ?: "selected")
-    BackendType.WEBDAV -> "WebDAV: $webdavUrl"
+fun BackupSettings.destinationLabel(context: Context): String = when (backendType) {
+    BackendType.NONE -> context.getString(R.string.destination_none)
+    BackendType.SAF -> context.getString(
+        R.string.destination_folder,
+        safTreeUri?.substringAfterLast(':')?.substringAfterLast('/')
+            ?: context.getString(R.string.destination_selected),
+    )
+    BackendType.WEBDAV -> context.getString(R.string.destination_webdav, webdavUrl)
 }
 
 /** Lets the user pick a SAF folder or configure a WebDAV/Nextcloud remote. */
@@ -42,15 +50,15 @@ fun BackendSection(
             modifier = Modifier.padding(16.dp).fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text("Backup destination", style = MaterialTheme.typography.titleMedium)
-            Text(settings.destinationLabel(), style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(R.string.backend_title), style = MaterialTheme.typography.titleMedium)
+            Text(settings.destinationLabel(LocalContext.current), style = MaterialTheme.typography.bodyMedium)
 
             Button(onClick = onPickFolder, modifier = Modifier.fillMaxWidth()) {
-                Text("Choose folder (USB / SD / internal)")
+                Text(stringResource(R.string.backend_choose_folder))
             }
 
             HorizontalDivider()
-            Text("or a WebDAV / Nextcloud remote", style = MaterialTheme.typography.labelLarge)
+            Text(stringResource(R.string.backend_or_webdav), style = MaterialTheme.typography.labelLarge)
 
             var url by remember(settings.webdavUrl) { mutableStateOf(settings.webdavUrl) }
             var user by remember(settings.webdavUser) { mutableStateOf(settings.webdavUser) }
@@ -59,7 +67,7 @@ fun BackendSection(
             OutlinedTextField(
                 value = url,
                 onValueChange = { url = it },
-                label = { Text("WebDAV URL") },
+                label = { Text(stringResource(R.string.backend_webdav_url)) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
                 modifier = Modifier.fillMaxWidth(),
@@ -67,14 +75,14 @@ fun BackendSection(
             OutlinedTextField(
                 value = user,
                 onValueChange = { user = it },
-                label = { Text("Username") },
+                label = { Text(stringResource(R.string.backend_username)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
-                label = { Text("Password") },
+                label = { Text(stringResource(R.string.backend_password)) },
                 singleLine = true,
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -84,7 +92,7 @@ fun BackendSection(
                 onClick = { onSetWebDav(url, user, password) },
                 enabled = url.isNotBlank(),
                 modifier = Modifier.fillMaxWidth(),
-            ) { Text("Save WebDAV destination") }
+            ) { Text(stringResource(R.string.backend_save_webdav)) }
         }
     }
 }

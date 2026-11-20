@@ -5,6 +5,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.fragment.app.FragmentActivity
 import com.vayunmathur.library.util.AppMessages
 import com.vayunmathur.library.util.EntryProviderScope
@@ -25,6 +26,7 @@ import com.vayunmathur.securemail.platform.moveTo
 import com.vayunmathur.securemail.platform.moveToTrash
 import com.vayunmathur.securemail.platform.restoreFromTrash
 import com.vayunmathur.securemail.platform.setRead
+import com.vayunmathur.securemail.R
 import com.vayunmathur.securemail.Route
 
 /** Onboarding, lock, inbox, reader and settings destinations. */
@@ -92,6 +94,7 @@ internal fun EntryProviderScope<Route>.readerEntry(
     allMessages: List<StoredMessage>,
 ) {
 entry<Route.Reader> { route ->
+    val context = LocalContext.current
     val msg = remember(route.messageId, allMessages) {
         allMessages.firstOrNull { it.id == route.messageId }
     }
@@ -105,7 +108,7 @@ entry<Route.Reader> { route ->
             backStack.add(
                 Route.Composer(
                     to = m.from,
-                    subject = "Re: ${m.decryptedSubject ?: ""}",
+                    subject = context.getString(R.string.reply_subject_format, m.decryptedSubject ?: ""),
                     inReplyTo = m.id,
                     from = m.deliveredTo,
                 ),
@@ -132,6 +135,7 @@ internal fun EntryProviderScope<Route>.composerEntry(viewModel: MailViewModel, b
                 from = route.from,
             )
         }
+        val draftSaved = stringResource(R.string.draft_saved)
         fun close() {
             viewModel.clearDraft()
             backStack.pop()
@@ -167,7 +171,7 @@ internal fun EntryProviderScope<Route>.composerEntry(viewModel: MailViewModel, b
                 )
             },
             onLeave = { subject, body ->
-                saveOrDropDraft(viewModel, draftId, subject, body, route.inReplyTo)
+                saveOrDropDraft(viewModel, draftId, subject, body, route.inReplyTo, draftSaved)
                 close()
             },
             onDiscard = {
@@ -186,6 +190,7 @@ internal fun saveOrDropDraft(
     subject: String,
     body: String,
     inReplyTo: String?,
+    draftSaved: String,
 ) {
     val draft = Draft(
         id = draftId,
@@ -201,7 +206,7 @@ internal fun saveOrDropDraft(
         viewModel.drafts.delete(draftId)
     } else {
         viewModel.drafts.save(draft)
-        AppMessages.show("Draft saved")
+        AppMessages.show(draftSaved)
     }
 }
 
