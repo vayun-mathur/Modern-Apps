@@ -19,7 +19,9 @@ import com.vayunmathur.flashcards.R
 import com.vayunmathur.flashcards.data.CardState
 import com.vayunmathur.flashcards.data.FlashcardsRepository
 import com.vayunmathur.flashcards.data.getAllCardsImpl
+import com.vayunmathur.library.log.Log
 import com.vayunmathur.library.util.ensureNotificationChannel
+import java.io.IOException
 import java.util.Calendar
 import java.util.concurrent.TimeUnit
 
@@ -63,15 +65,29 @@ class ReviewReminderWorker(
     params: WorkerParameters,
 ) : CoroutineWorker(appContext, params) {
 
+    // WorkManager contract (everysync pattern): return a Result, never throw.
+    // Cancellation rethrows, transient I/O retries with WorkManager backoff,
+    // and anything else fails this run — the daily period runs again tomorrow.
+    @Suppress("TooGenericExceptionCaught")
     override suspend fun doWork(): Result {
-        val now = System.currentTimeMillis()
-        val repository = FlashcardsRepository.get(applicationContext)
-        val cards = repository.getAllCardsImpl()
-        val due = cards.count {
-            !it.isSuspended && ((it.state != CardState.NEW && it.dueDate <= now) || it.state == CardState.NEW)
+        return try {
+            val now = System.currentTimeMillis()
+            val repository = FlashcardsRepository.get(applicationContext)
+            val cards = repository.getAllCardsImpl()
+            val due = cards.count {
+                !it.isSuspended && ((it.state != CardState.NEW && it.dueDate <= now) || it.state == CardState.NEW)
+            }
+            if (due > 0) notify(due)
+            Result.success()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: IOException) {
+            Log.error(TAG, "review reminder failed; will retry", e)
+            Result.retry()
+        } catch (e: Exception) {
+            Log.error(TAG, "review reminder failed", e)
+            Result.failure()
         }
-        if (due > 0) notify(due)
-        return Result.success()
     }
 
     private fun notify(due: Int) {
@@ -107,6 +123,7 @@ class ReviewReminderWorker(
 
     /** Notification id for the review reminder. */
     companion object {
+        private const val TAG = "ReviewReminderWorker"
         private const val REMINDER_NOTIFICATION_ID = 4201
     }
 }

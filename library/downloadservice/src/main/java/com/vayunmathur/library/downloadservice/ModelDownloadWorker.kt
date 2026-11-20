@@ -10,9 +10,12 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import com.vayunmathur.library.log.Log
 import com.vayunmathur.library.util.DataStoreUtils
 import java.io.File
+import java.io.IOException
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CancellationException
 
 /**
  * Runs the model download outside any composition.
@@ -31,23 +34,39 @@ import java.util.concurrent.TimeUnit
 class ModelDownloadWorker(context: Context, params: WorkerParameters) :
     CoroutineWorker(context, params) {
 
+    // WorkManager contract (everysync pattern): return a Result, never throw.
+    // Cancellation rethrows (runDownloadsCore keeps the `.part` for resume);
+    // a thrown transient I/O error takes the same capped-retry path as a
+    // `false` return below, and anything else fails at once.
+    @Suppress("TooGenericExceptionCaught")
     override suspend fun doWork(): Result {
         val specs = readSpecs(inputData)
         if (specs.isEmpty()) return Result.failure()
 
         val targetDir = inputData.getString(KEY_TARGET_DIR)?.let(::File)
         val ds = DataStoreUtils.getInstance(applicationContext)
-        return when {
-            runDownloadsCore(applicationContext, ds, specs, targetDir) -> Result.success()
-            // Keep retrying transient problems (flaky network, mirror hiccup) but eventually stop so
-            // the screen can offer a retry rather than backing off forever.
-            runAttemptCount + 1 >= MAX_RUN_ATTEMPTS -> Result.failure()
-            else -> Result.retry()
+        return try {
+            when {
+                runDownloadsCore(applicationContext, ds, specs, targetDir) -> Result.success()
+                // Keep retrying transient problems (flaky network, mirror hiccup) but eventually stop so
+                // the screen can offer a retry rather than backing off forever.
+                runAttemptCount + 1 >= MAX_RUN_ATTEMPTS -> Result.failure()
+                else -> Result.retry()
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: IOException) {
+            Log.error(TAG, "model download failed; will retry", e)
+            if (runAttemptCount + 1 >= MAX_RUN_ATTEMPTS) Result.failure() else Result.retry()
+        } catch (e: Exception) {
+            Log.error(TAG, "model download failed", e)
+            Result.failure()
         }
     }
 
     /** WorkManager input keys, enqueue entry points and spec decoding for [ModelDownloadWorker]. */
     companion object {
+        private const val TAG = "ModelDownloadWorker"
         private const val KEY_URLS = "urls"
         private const val KEY_FILE_NAMES = "fileNames"
         private const val KEY_DESCRIPTIONS = "descriptions"

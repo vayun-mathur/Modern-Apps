@@ -5,7 +5,10 @@ import androidx.work.CoroutineWorker
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import com.vayunmathur.library.log.Log
+import java.io.IOException
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CancellationException
 
 /**
  * Wakes snoozed messages whose time has arrived: clears their `snoozedUntil`
@@ -17,14 +20,30 @@ class SnoozeWorker(
     params: WorkerParameters,
 ) : CoroutineWorker(appContext, params) {
 
+    // WorkManager contract (everysync pattern): return a Result, never throw.
+    // Cancellation rethrows; transient DB I/O retries (this one-shot would
+    // otherwise lose the wake-up); anything else fails rather than retrying
+    // a corrupt row set forever.
+    @Suppress("TooGenericExceptionCaught")
     override suspend fun doWork(): Result {
-        val dao = EmailRepository.get(applicationContext).getDatabase().messageDao()
-        dao.wakeDueSnoozed(System.currentTimeMillis())
-        return Result.success()
+        return try {
+            val dao = EmailRepository.get(applicationContext).getDatabase().messageDao()
+            dao.wakeDueSnoozed(System.currentTimeMillis())
+            Result.success()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: IOException) {
+            Log.error(TAG, "snooze wake-up failed; will retry", e)
+            Result.retry()
+        } catch (e: Exception) {
+            Log.error(TAG, "snooze wake-up failed", e)
+            Result.failure()
+        }
     }
 
     /** Schedules the one-shot worker that un-snoozes messages at the requested time. */
     companion object {
+        private const val TAG = "SnoozeWorker"
         fun scheduleNext(context: Context, atMillis: Long) {
             val delay = (atMillis - System.currentTimeMillis()).coerceAtLeast(1_000L)
             val request = OneTimeWorkRequestBuilder<SnoozeWorker>()

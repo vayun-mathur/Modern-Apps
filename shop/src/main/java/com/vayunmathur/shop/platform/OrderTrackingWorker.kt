@@ -11,8 +11,11 @@ import androidx.core.content.ContextCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import com.vayunmathur.library.log.Log
 import com.vayunmathur.library.util.MaNotifications
 import com.vayunmathur.library.work.startRepeatedTask
+import java.io.IOException
+import kotlinx.coroutines.CancellationException
 import com.vayunmathur.shop.MainActivity
 import com.vayunmathur.shop.R
 import com.vayunmathur.shop.data.OrderStore
@@ -98,13 +101,33 @@ class OrderTrackingWorker(
     appContext: Context,
     params: WorkerParameters,
 ) : CoroutineWorker(appContext, params) {
+    // WorkManager contract (everysync pattern): return a Result, never throw.
+    // Cancellation rethrows; transient store/network I/O retries with the
+    // repeated task's WorkManager backoff; bad local data or a revoked
+    // notification permission fails this poll — the hourly period polls again.
+    @Suppress("TooGenericExceptionCaught")
     override suspend fun doWork(): Result {
-        AppInit.start(applicationContext)
-        AppInit.awaitReady()
-        val result = OrderTrackingSync.refresh(applicationContext)
-        OrderTrackingSync.notifyChanges(applicationContext, result.changed)
-        // Never re-enqueue from here: the immediate request would chain forever.
-        if (result.orders.none(OrderTrackingUpdates::needsTracking)) OrderTrackingSync.cancel(applicationContext)
-        return Result.success()
+        return try {
+            AppInit.start(applicationContext)
+            AppInit.awaitReady()
+            val result = OrderTrackingSync.refresh(applicationContext)
+            OrderTrackingSync.notifyChanges(applicationContext, result.changed)
+            // Never re-enqueue from here: the immediate request would chain forever.
+            if (result.orders.none(OrderTrackingUpdates::needsTracking)) OrderTrackingSync.cancel(applicationContext)
+            Result.success()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: IOException) {
+            Log.error(TAG, "order tracking poll failed; will retry", e)
+            Result.retry()
+        } catch (e: Exception) {
+            Log.error(TAG, "order tracking poll failed", e)
+            Result.failure()
+        }
+    }
+
+    /** Logging tag for [OrderTrackingWorker]. */
+    companion object {
+        private const val TAG = "OrderTrackingWorker"
     }
 }

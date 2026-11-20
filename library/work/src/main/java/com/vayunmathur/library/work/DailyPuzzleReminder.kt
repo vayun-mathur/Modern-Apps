@@ -18,7 +18,10 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.vayunmathur.library.R
+import com.vayunmathur.library.log.Log
 import com.vayunmathur.library.util.DailyChallengeStore
+import java.io.IOException
+import kotlinx.coroutines.CancellationException
 import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.library.util.ensureNotificationChannel
 import kotlinx.coroutines.flow.Flow
@@ -126,14 +129,33 @@ class DailyPuzzleReminderWorker(
     params: WorkerParameters,
 ) : CoroutineWorker(appContext, params) {
 
+    // WorkManager contract (everysync pattern): return a Result, never throw.
+    // Cancellation rethrows; transient DataStore I/O retries with WorkManager
+    // backoff; anything else fails this run — the daily period nudges tomorrow.
+    @Suppress("TooGenericExceptionCaught")
     override suspend fun doWork(): Result {
-        val keyPrefix = DailyPuzzleReminder.keyPrefixOf(inputData) ?: return Result.success()
-        val store = DailyChallengeStore(applicationContext, keyPrefix)
-        // Games only record the day once every puzzle in it is solved, so "not today" is
-        // exactly "not finished today" — no per-game logic needed here.
-        if (store.lastCompletedDay() == store.todayEpochDay()) return Result.success()
-        notify(DailyPuzzleReminder.notificationIdOf(inputData))
-        return Result.success()
+        return try {
+            val keyPrefix = DailyPuzzleReminder.keyPrefixOf(inputData) ?: return Result.success()
+            val store = DailyChallengeStore(applicationContext, keyPrefix)
+            // Games only record the day once every puzzle in it is solved, so "not today" is
+            // exactly "not finished today" — no per-game logic needed here.
+            if (store.lastCompletedDay() == store.todayEpochDay()) return Result.success()
+            notify(DailyPuzzleReminder.notificationIdOf(inputData))
+            Result.success()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: IOException) {
+            Log.error(TAG, "daily puzzle reminder failed; will retry", e)
+            Result.retry()
+        } catch (e: Exception) {
+            Log.error(TAG, "daily puzzle reminder failed", e)
+            Result.failure()
+        }
+    }
+
+    /** Logging tag for [DailyPuzzleReminderWorker]. */
+    companion object {
+        private const val TAG = "DailyPuzzleReminder"
     }
 
     // Lint cannot follow the guard below: it does not model an early return whose condition

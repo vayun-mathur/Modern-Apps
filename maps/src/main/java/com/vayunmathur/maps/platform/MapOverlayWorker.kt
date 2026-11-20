@@ -21,7 +21,9 @@ import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.library.network.TrustBundle
 import com.vayunmathur.library.util.DataStoreUtils
 import java.io.File
+import java.io.IOException
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CancellationException
 
 /**
  * Checks for and fetches incremental map updates (Phase 2: download + store).
@@ -43,28 +45,44 @@ import java.util.concurrent.TimeUnit
 class MapOverlayWorker(context: Context, params: WorkerParameters) :
     CoroutineWorker(context, params) {
 
+    // WorkManager contract (everysync pattern): return a Result, never throw.
+    // Cancellation rethrows; a thrown transient I/O error takes the same
+    // capped retry as the manifest/download paths below (the requests already
+    // carry exponential backoff, and MAX_RUN_ATTEMPTS bounds the total), and
+    // anything else fails this check — the periodic/manual entry runs again.
+    @Suppress("TooGenericExceptionCaught")
     override suspend fun doWork(): Result {
-        val manifestUrl = inputData.getString(KEY_MANIFEST_URL) ?: MapOverlay.MANIFEST_URL
-        // WorkManager can cold-start the process without MainActivity's TLS
-        // init; without it the pinned manifest fetch below has no trust store.
-        NetworkClient.init(applicationContext, TrustBundle.FIRST_PARTY)
-        val root = applicationContext.getExternalFilesDir(null) ?: return Result.failure()
-        recoverRebaseCrash(root)
-        // No base, no overlay: the startup gate owns the full download.
-        if (!File(root, MapTileCache.BASEMAP_ARCHIVE_FILE).exists()) {
-            Log.status(TAG, "no base archive; skipping overlay check")
-            return Result.success()
+        return try {
+            val manifestUrl = inputData.getString(KEY_MANIFEST_URL) ?: MapOverlay.MANIFEST_URL
+            // WorkManager can cold-start the process without MainActivity's TLS
+            // init; without it the pinned manifest fetch below has no trust store.
+            NetworkClient.init(applicationContext, TrustBundle.FIRST_PARTY)
+            val root = applicationContext.getExternalFilesDir(null) ?: return Result.failure()
+            recoverRebaseCrash(root)
+            // No base, no overlay: the startup gate owns the full download.
+            if (!File(root, MapTileCache.BASEMAP_ARCHIVE_FILE).exists()) {
+                Log.status(TAG, "no base archive; skipping overlay check")
+                return Result.success()
+            }
+            val text = manifestFetcher(manifestUrl) ?: return Result.retry()
+            val manifest = MapOverlay.parse(text)
+            if (manifest == null) {
+                Log.status(TAG, "manifest unparseable or too new; skipping")
+                return Result.success()
+            }
+            val ds = DataStoreUtils.getInstance(applicationContext)
+            ds.setString(KEY_LAST_MANIFEST, text.take(MANIFEST_TEXT_CAP))
+            ds.setLong(KEY_LAST_CHECK, System.currentTimeMillis())
+            applyManifest(root, ds, manifest, text)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: IOException) {
+            Log.error(TAG, "overlay check failed; will retry", e)
+            if (runAttemptCount + 1 >= MAX_RUN_ATTEMPTS) Result.failure() else Result.retry()
+        } catch (e: Exception) {
+            Log.error(TAG, "overlay check failed", e)
+            Result.failure()
         }
-        val text = manifestFetcher(manifestUrl) ?: return Result.retry()
-        val manifest = MapOverlay.parse(text)
-        if (manifest == null) {
-            Log.status(TAG, "manifest unparseable or too new; skipping")
-            return Result.success()
-        }
-        val ds = DataStoreUtils.getInstance(applicationContext)
-        ds.setString(KEY_LAST_MANIFEST, text.take(MANIFEST_TEXT_CAP))
-        ds.setLong(KEY_LAST_CHECK, System.currentTimeMillis())
-        return applyManifest(root, ds, manifest, text)
     }
 
     private suspend fun applyManifest(
