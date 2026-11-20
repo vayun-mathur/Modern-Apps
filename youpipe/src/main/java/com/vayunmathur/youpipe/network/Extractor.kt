@@ -53,8 +53,17 @@ fun StreamInfoItem.toVideoInfo(): VideoInfo? {
 }
 
 fun videoURLtoID(url: String): Long {
-    val encoded = url.toUri().getQueryParameter("v")!!
-    return ByteBuffer.wrap(Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT).decode(encoded)).long
+    // Watch URLs carry the id in `v`; shared URLs often don't (youtu.be/<id>,
+    // /shorts/<id>, /live/<id>, /embed/<id>) — fall back to those forms instead
+    // of crashing on a missing query parameter. A URL with no id anywhere is a
+    // caller bug / malformed input, so fail with a clear exception: every caller
+    // either pre-checks for a watch link or wraps this in runCatching/per-entry
+    // try-catch (see toVideoInfo, importTakeout*History, YouPipeViewModel).
+    url.toUri().getQueryParameter("v")?.takeIf { it.isNotBlank() }?.let { encoded ->
+        return ByteBuffer.wrap(Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT).decode(encoded)).long
+    }
+    parseSharedVideoId(url)?.let { return it }
+    throw IllegalArgumentException("no video id in url: $url")
 }
 
 fun channelURLtoID(url: String): String {
@@ -92,16 +101,18 @@ fun channelIDtoURL(id: String): String {
     }
 }
 
-suspend fun getVideoInfo(videoId: Long): VideoInfo = coroutineScope {
+/** Full [VideoInfo] for one video, or null if it has no upload date (same rule as [toVideoInfo]). */
+suspend fun getVideoInfo(videoId: Long): VideoInfo? = coroutineScope {
     val idString = decodeVideoID(videoId)
     val ex = ServiceList.YouTube.getStreamExtractor("https://www.youtube.com/watch?v=$idString")
     ex.fetchPage()
+    val uploadDate = ex.getUploadDate() ?: return@coroutineScope null
     VideoInfo(
         ex.getName().decodeHtml(),
         videoId,
         ex.getLength(),
         ex.getViewCount(),
-        ex.getUploadDate()!!.instant.toKotlinInstant(),
+        uploadDate.instant.toKotlinInstant(),
         ex.getThumbnails().first().url,
         ex.getUploaderName().decodeHtml()
     )

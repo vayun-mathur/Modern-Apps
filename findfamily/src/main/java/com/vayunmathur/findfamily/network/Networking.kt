@@ -119,10 +119,17 @@ object Networking {
             }
             // Avoid negative IDs: server keys on ULong; generating only positive IDs keeps both
             // sides consistent and makes Base26 encoding stable.
-            if (dataStoreUtils.getLongAwait("userid") == null) {
-                dataStoreUtils.setLong("userid", Random.nextLong(from = 1, until = Long.MAX_VALUE), true)
+            userid = dataStoreUtils.getLongAwait("userid") ?: run {
+                val generated = Random.nextLong(from = 1, until = Long.MAX_VALUE)
+                dataStoreUtils.setLong("userid", generated, true)
+                // Re-read for the onlyIfAbsent race (another writer may have won);
+                // if the fresh write is not visible yet, the generated value is
+                // what was just persisted — never crash on a set-then-get race.
+                // (0L is the not-ready sentinel callers already guard against.)
+                dataStoreUtils.getLongAwait("userid") ?: generated.also {
+                    Log.error(TAG, "userid re-read null after write; using generated id")
+                }
             }
-            userid = dataStoreUtils.getLongAwait("userid")!!
 
             if (repository.getUser(userid) == null) {
                 repository.upsertUser(

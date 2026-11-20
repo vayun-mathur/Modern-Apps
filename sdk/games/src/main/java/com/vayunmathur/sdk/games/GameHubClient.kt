@@ -5,8 +5,11 @@ package com.vayunmathur.sdk.games
 import kotlin.uuid.Uuid
 import android.content.ContentValues
 import android.content.Context
+import com.vayunmathur.library.log.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+
+private const val TAG = "GameHubClient"
 
 /**
  * Client SDK for games to report into the GameHub hub app.
@@ -71,7 +74,9 @@ class GameHubClient(
                 put(GameHubContract.AchievementDefs.TIER, def.tier.name)
                 put(GameHubContract.AchievementDefs.ICON_RES_NAME, def.iconResName)
             }
-            try { resolver.insert(uri, values) } catch (_: Exception) { }
+            try { resolver.insert(uri, values) } catch (e: Exception) {
+                Log.error(TAG, "registerAchievements insert ${def.id} failed", e)
+            }
         }
     }
 
@@ -90,7 +95,9 @@ class GameHubClient(
                 put(GameHubContract.AchievementProgressCols.UNLOCKED_AT, s.unlockedAt)
                 put(GameHubContract.AchievementProgressCols.LAST_UPDATED, now)
             }
-            try { resolver.insert(uri, values) } catch (_: Exception) { }
+            try { resolver.insert(uri, values) } catch (e: Exception) {
+                Log.error(TAG, "syncAchievementProgress insert ${s.achievementId} failed", e)
+            }
         }
     }
 
@@ -147,7 +154,9 @@ class GameHubClient(
                     if (idx >= 0) currentProgress = cursor.getInt(idx)
                 }
             }
-        } catch (_: Exception) { }
+        } catch (e: Exception) {
+            Log.error(TAG, "incrementProgress query $achievementId failed", e)
+        }
         reportProgress(achievementId, currentProgress + delta)
     }
 

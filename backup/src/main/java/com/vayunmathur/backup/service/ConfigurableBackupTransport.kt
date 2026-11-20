@@ -18,6 +18,7 @@ import com.vayunmathur.backup.data.backend.BackupRepository
 import com.vayunmathur.backup.domain.crypto.Crypto
 import com.vayunmathur.backup.platform.crypto.KeyManager
 import com.vayunmathur.backup.data.BackupConfig
+import com.vayunmathur.library.log.Log
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import java.io.File
@@ -275,7 +276,10 @@ class ConfigurableBackupTransport(private val context: Context) : BackupTranspor
         return try {
             val pkg = currentRestorePackage ?: return NO_MORE_DATA
             if (fullRestoreInput == null) {
-                val repo = repoOrNull() ?: return TRANSPORT_ERROR
+                val repo = repoOrNull() ?: run {
+                    Log.status(TAG, "getNextFullRestoreDataChunk: no repo for $pkg")
+                    return TRANSPORT_ERROR
+                }
                 if (!runBlocking { repo.exists(BackupRepository.fullPath(pkg)) }) return NO_MORE_DATA
                 val temp = File.createTempFile("full-restore", ".tmp", context.cacheDir)
                 runBlocking {
@@ -285,8 +289,14 @@ class ConfigurableBackupTransport(private val context: Context) : BackupTranspor
                 fullRestoreInput = FileInputStream(temp)
                 fullRestoreOutput = ParcelFileDescriptor.AutoCloseOutputStream(socket)
             }
-            val input = fullRestoreInput ?: return TRANSPORT_ERROR
-            val out = fullRestoreOutput ?: return TRANSPORT_ERROR
+            val input = fullRestoreInput ?: run {
+                Log.status(TAG, "getNextFullRestoreDataChunk: restore stream not open for $pkg")
+                return TRANSPORT_ERROR
+            }
+            val out = fullRestoreOutput ?: run {
+                Log.status(TAG, "getNextFullRestoreDataChunk: restore socket not open for $pkg")
+                return TRANSPORT_ERROR
+            }
             val buffer = ByteArray(CHUNK)
             val read = input.read(buffer)
             if (read < 0) {
@@ -297,7 +307,8 @@ class ConfigurableBackupTransport(private val context: Context) : BackupTranspor
                 out.flush()
                 read
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.error(TAG, "getNextFullRestoreDataChunk failed for ${currentRestorePackage ?: "?"}", e)
             resetFullRestore()
             TRANSPORT_ERROR
         }
@@ -321,14 +332,18 @@ class ConfigurableBackupTransport(private val context: Context) : BackupTranspor
             val backend = BackendFactory.create(context, settings) ?: return null
             if (!keyManager.hasMasterKey()) return null
             BackupRepository(backend, Crypto(keyManager.getMasterKey()))
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            // Null also means "not configured yet" (no backend / no master key
+            // above); an exception here is a real setup failure worth a trail.
+            Log.error(TAG, "repo unavailable: backend/key setup failed", e)
             null
         }
     }
 
     private inline fun tryOp(block: () -> Int): Int = try {
         block()
-    } catch (_: Exception) {
+    } catch (e: Exception) {
+        Log.error(TAG, "backup transport operation failed", e)
         TRANSPORT_ERROR
     }
 
@@ -366,6 +381,7 @@ class ConfigurableBackupTransport(private val context: Context) : BackupTranspor
 
     /** Transport component name and streaming constants for [ConfigurableBackupTransport]. */
     companion object {
+        private const val TAG = "BackupTransport"
         private const val COMPONENT = "com.vayunmathur.backup/.service.ConfigurableBackupTransportService"
         private const val CHUNK = 32 * 1024
         // A single current backup set; token is stable so restore can find it.

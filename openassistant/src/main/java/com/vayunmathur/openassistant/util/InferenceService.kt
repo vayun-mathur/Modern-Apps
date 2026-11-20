@@ -485,6 +485,7 @@ class InferenceService : Service() {
 
     private suspend fun persistPending(conversationId: Long, pending: PendingToolCall) {
         runCatching { pendingDao?.upsert(store.pendingToEntity(pending, conversationId)) }
+            .onFailure { Log.error("InferenceService", "persistPending failed for ${pending.id}", it) }
     }
 
     /**
@@ -534,6 +535,7 @@ class InferenceService : Service() {
             val pending = loadPendingDomain(cancelId)
             tools.removePending(cancelId)
             runCatching { pendingDao?.deleteById(cancelId) }
+                .onFailure { Log.error("InferenceService", "delete pending $cancelId failed", it) }
             return "[Cancelled \"${pending?.name ?: "tool"}\"]"
         }
         if (confirmId == null) return null
@@ -556,7 +558,7 @@ class InferenceService : Service() {
         }
         runCatching {
             pendingDao?.upsert(store.pendingToEntity(pending.copy(consumed = true), conversationId))
-        }
+        }.onFailure { Log.error("InferenceService", "mark pending ${pending.id} consumed failed", it) }
         store.upsert(
             DbMessage(
                 conversationId = conversationId,

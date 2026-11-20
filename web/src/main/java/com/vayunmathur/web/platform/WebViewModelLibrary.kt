@@ -25,6 +25,7 @@ fun WebViewModel.addBookmark(url: String, title: String, folderId: Long? = null)
     scope.launch {
         val entry = Bookmark(url = url, title = title, folderId = folderId)
         runCatching { repository.bookmarks.upsert(entry) }
+            .onFailure { Log.error(TAG, "addBookmark", it) }
     }
 }
 
@@ -33,7 +34,10 @@ fun WebViewModel.removeBookmark(bookmark: Bookmark) {
 }
 
 fun WebViewModel.createFolder(name: String) {
-    scope.launch { runCatching { repository.bookmarks.upsertFolder(BookmarkFolder(name = name)) } }
+    scope.launch {
+        runCatching { repository.bookmarks.upsertFolder(BookmarkFolder(name = name)) }
+            .onFailure { Log.error(TAG, "createFolder", it) }
+    }
 }
 
 fun WebViewModel.deleteFolder(folder: BookmarkFolder) {
