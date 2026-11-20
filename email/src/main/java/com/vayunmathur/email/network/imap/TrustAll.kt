@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import java.security.SecureRandom
 import java.security.cert.X509Certificate
 import javax.net.ssl.SSLContext
+import javax.net.ssl.SSLParameters
 import javax.net.ssl.SSLSocket
 import javax.net.ssl.SSLSocketFactory
 import javax.net.ssl.TrustManager
@@ -13,10 +14,15 @@ import java.net.Socket
 /**
  * Trust handling for raw IMAP/SMTP sockets.
  *
- * Known hosts (gmail, yahoo, aol, fastmail, outlook) use the system default
- * trust store (strict). Custom hosts use a permissive trust manager that
- * accepts any certificate (mirrors the old Jakarta `ssl.trust=*` behavior
- * for self-hosted servers).
+ * Default (strict) for ALL hosts — known providers and custom hosts alike:
+ * platform trust store plus hostname verification via
+ * [SSLParameters.endpointIdentificationAlgorithm] = "HTTPS".
+ *
+ * The permissive factory is reachable ONLY when the caller passes an
+ * explicit per-account opt-in (`trustAll = true`, sourced from
+ * `EmailAccount.allowInsecureCertificates`). It must never be selected
+ * automatically because a host is unknown/custom. See AGENTS.md:
+ * "network/imap/TrustAll.kt exists for debug only; never widen its use".
  */
 object TrustAll {
 
@@ -41,13 +47,8 @@ object TrustAll {
         "imap.outlook.com",
     )
 
-    // Justified suppression: this trust manager is the documented, opt-in
-    // fallback for self-hosted mail servers with self-signed certificates
-    // (custom hosts only; known providers use the strict system store via
-    // isKnownHost). Its scope has not been widened - see AGENTS.md:
-    // "network/imap/TrustAll.kt exists for debug only; never widen its use"
-    // and the class KDoc above. Removing it would break self-hosted
-    // accounts that have no CA-issued certificate.
+    // Permissive manager retained only for the explicit per-account opt-in
+    // (self-hosted servers with self-signed certs) and debug/tests.
     @SuppressLint("CustomX509TrustManager", "TrustAllX509TrustManager")
     private val TRUST_ALL_MANAGERS: Array<TrustManager> = arrayOf(
         object : X509TrustManager {
@@ -70,7 +71,7 @@ object TrustAll {
     fun permissiveSocketFactory(): SSLSocketFactory = permissiveFactory
     fun systemSocketFactory(): SSLSocketFactory = systemFactory
 
-    /** Known good hosts where we want strict system trust. */
+    /** Informational only — no longer drives trust decisions. */
     fun isKnownHost(host: String): Boolean {
         val h = host.lowercase()
         if (h in EXACT_KNOWN_HOSTS) return true
@@ -78,12 +79,26 @@ object TrustAll {
     }
 
     fun socketFactoryFor(host: String, forceTrustAll: Boolean): SSLSocketFactory {
-        return if (forceTrustAll || !isKnownHost(host)) permissiveFactory else systemFactory
+        // Strict by default for every host; permissive only on explicit opt-in.
+        return if (forceTrustAll) permissiveFactory else systemFactory
+    }
+
+    /** True when [host] would get the strict (system) factory by default. */
+    fun usesStrictFactoryByDefault(host: String): Boolean =
+        socketFactoryFor(host, forceTrustAll = false) === systemFactory
+
+    private fun applyTlsParameters(socket: Socket, host: String, trustAll: Boolean) {
+        if (socket !is SSLSocket || trustAll) return
+        val params: SSLParameters = socket.sslParameters
+        params.endpointIdentificationAlgorithm = "HTTPS"
+        socket.sslParameters = params
     }
 
     fun createSocket(host: String, port: Int, trustAll: Boolean): Socket {
         val factory = socketFactoryFor(host, trustAll)
-        return factory.createSocket(host, port)
+        val socket = factory.createSocket(host, port)
+        applyTlsParameters(socket, host, trustAll)
+        return socket
     }
 
     fun createPlainSocket(host: String, port: Int): Socket = Socket(host, port)
@@ -98,6 +113,7 @@ object TrustAll {
         val factory = socketFactoryFor(host, trustAll)
         val ssl = factory.createSocket(plainSocket, host, port, autoClose) as SSLSocket
         ssl.useClientMode = true
+        applyTlsParameters(ssl, host, trustAll)
         ssl.startHandshake()
         return ssl
     }

@@ -20,13 +20,21 @@ import java.io.OutputStream
  * Raw sockets only — no Jakarta Mail.
  */
 
-data class ServerConfig(val host: String, val port: Int, val useSsl: Boolean) {
+data class ServerConfig(
+    val host: String,
+    val port: Int,
+    val useSsl: Boolean,
+    /** Explicit per-account opt-in to accept any certificate. Default strict. */
+    val trustAllCertificates: Boolean = false,
+) {
     val imapProtocol: String get() = if (useSsl) "imaps" else "imap"
     val smtpProtocol: String get() = if (useSsl) "smtps" else "smtp"
 }
 
-fun EmailAccount.imapServer(): ServerConfig = ServerConfig(imapHost, imapPort, imapUseSsl)
-fun EmailAccount.smtpServer(): ServerConfig = ServerConfig(smtpHost, smtpPort, smtpUseSsl)
+fun EmailAccount.imapServer(): ServerConfig =
+    ServerConfig(imapHost, imapPort, imapUseSsl, allowInsecureCertificates)
+fun EmailAccount.smtpServer(): ServerConfig =
+    ServerConfig(smtpHost, smtpPort, smtpUseSsl, allowInsecureCertificates)
 fun EmailAccount.loginUser(): String = username.ifBlank { email }
 
 suspend fun EmailAccount.resolveAuth(context: Context): EmailManager.AuthType {

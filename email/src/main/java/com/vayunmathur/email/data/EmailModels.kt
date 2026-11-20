@@ -180,6 +180,13 @@ data class EmailAccount(
     /** Plain-text signature appended to outgoing messages from this account. */
     @ColumnInfo(defaultValue = "")
     val signature: String = "",
+    /**
+     * Explicit opt-in to accept any TLS certificate for this account's
+     * IMAP/SMTP hosts (self-hosted servers with self-signed certs).
+     * Default false = platform trust + hostname verification for all hosts.
+     */
+    @ColumnInfo(defaultValue = "0")
+    val allowInsecureCertificates: Boolean = false,
 ) {
     fun getColor(): Long = accountColor(email)
 }

@@ -26,7 +26,7 @@ import com.vayunmathur.email.data.Attachment
         BlockedSender::class,
         DeletedUid::class,
     ],
-    version = 20,
+    version = 21,
     exportSchema = false,
 )
 /** Room database holding email folders, messages, accounts and outbox state. */
@@ -197,6 +197,11 @@ abstract class EmailDatabase : RoomDatabase() {
             it.execSQL("ALTER TABLE EmailMessage ADD COLUMN peekContent TEXT NOT NULL DEFAULT ''")
         }
 
+        /** Per-account TLS opt-in; existing accounts stay strict (0). */
+        private val MIGRATION_20_21 = Migration(20, 21) {
+            it.execSQL("ALTER TABLE EmailAccount ADD COLUMN allowInsecureCertificates INTEGER NOT NULL DEFAULT 0")
+        }
+
         /**
          * Every migration for this database, registered with the Room builder via the
          * [DatabaseMigrations] reflection hook in `openRoomDatabase`. Order is
@@ -219,6 +224,7 @@ abstract class EmailDatabase : RoomDatabase() {
             MIGRATION_17_18,
             MIGRATION_18_19,
             MIGRATION_19_20,
+            MIGRATION_20_21,
         )
 
         fun getInstance(context: Context): EmailDatabase =

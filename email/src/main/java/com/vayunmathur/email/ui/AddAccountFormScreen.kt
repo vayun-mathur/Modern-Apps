@@ -223,6 +223,7 @@ private fun PasswordForm(
     var smtpHost by rememberSaveable { mutableStateOf(preset.smtp?.host ?: "") }
     var smtpPort by rememberSaveable { mutableStateOf((preset.smtp?.port ?: 465).toString()) }
     var smtpUseSsl by rememberSaveable { mutableStateOf(preset.smtp?.useSsl ?: true) }
+    var allowInsecureCerts by rememberSaveable { mutableStateOf(false) }
 
     var working by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -261,6 +262,13 @@ private fun PasswordForm(
             AddAccountSection(host = imapHost, onHostChange = { imapHost = it.trim() }, port = imapPort, onPortChange = { imapPort = it.filter(Char::isDigit) }, useSsl = imapUseSsl, onSslChange = { imapUseSsl = it })
             Text(stringResource(R.string.smtp_outgoing), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
             AddAccountSection(host = smtpHost, onHostChange = { smtpHost = it.trim() }, port = smtpPort, onPortChange = { smtpPort = it.filter(Char::isDigit) }, useSsl = smtpUseSsl, onSslChange = { smtpUseSsl = it })
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { allowInsecureCerts = !allowInsecureCerts }) {
+                Checkbox(checked = allowInsecureCerts, onCheckedChange = { allowInsecureCerts = it })
+                Text(stringResource(R.string.allow_insecure_certificates), style = MaterialTheme.typography.bodyMedium)
+            }
+            if (allowInsecureCerts) {
+                Text(stringResource(R.string.allow_insecure_certificates_summary), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+            }
         }
 
         if (error != null) {
@@ -272,8 +280,8 @@ private fun PasswordForm(
             onClick = {
                 error = null; working = true
                 scope.launch {
-                    val imap = preset.imap ?: ServerConfig(imapHost, imapPort.toIntOrNull() ?: 993, imapUseSsl)
-                    val smtp = preset.smtp ?: ServerConfig(smtpHost, smtpPort.toIntOrNull() ?: 465, smtpUseSsl)
+                    val imap = preset.imap ?: ServerConfig(imapHost, imapPort.toIntOrNull() ?: 993, imapUseSsl, allowInsecureCerts)
+                    val smtp = preset.smtp ?: ServerConfig(smtpHost, smtpPort.toIntOrNull() ?: 465, smtpUseSsl, allowInsecureCerts)
                     val result = testAndPersistAccount(context = context, providerId = preset.id, email = email, username = if (useDifferentUsername) username else "", password = password, imap = imap, smtp = smtp)
                     working = false
                     if (result == null) { AppMessages.show(accountAddedMsg); onAccountAdded() } else error = result

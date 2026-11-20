@@ -110,7 +110,7 @@ object OutlookOAuth {
             }
             .build()
 
-        Log.dev(TAG, "Starting Outlook OAuth -> $url redirect=$redirectUri")
+        Log.dev(TAG, "Starting Outlook OAuth")
         try {
             CustomTabsIntent.Builder().build().apply {
                 intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -143,8 +143,7 @@ object OutlookOAuth {
         val rawStr = redirect.toString()
         Log.dev(
             TAG,
-            "complete redirect=$redirect host=${redirect.host} " +
-                "path=${redirect.path} query=${redirect.query} raw=$rawStr",
+            "complete redirect host=${redirect.host} path=${redirect.path}",
         )
 
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -169,7 +168,7 @@ object OutlookOAuth {
         // old condition only fired when both values were present, so a
         // redirect that simply omitted state bypassed the CSRF check.
         if (session.expectedState == null || returnedState != session.expectedState) {
-            Log.error(TAG, "State mismatch exp=${session.expectedState} got=$returnedState")
+            Log.error(TAG, "State mismatch")
             prefs.edit { clear() }
             return OAuthResult.Failure(
                 "State mismatch — possible CSRF, please retry",
@@ -215,7 +214,7 @@ object OutlookOAuth {
     ): OAuthResult.Failure {
         val err = redirect.getQueryParameter("error") ?: extractQueryParam(rawStr, "error")
         val desc = redirect.getQueryParameter("error_description") ?: extractQueryParam(rawStr, "error_description")
-        Log.error(TAG, "No code, error=$err desc=$desc raw=$rawStr")
+        Log.error(TAG, "No code, error=$err desc=$desc")
         if (err != null) prefs.edit { clear() }
         val reason = err ?: "No authorization code from Microsoft"
         return OAuthResult.Failure(reason, err, desc)
@@ -237,7 +236,7 @@ object OutlookOAuth {
     }
 
     private fun exchangeFailure(result: ExchangeResult): OAuthResult.Failure {
-        Log.error(TAG, "Token exchange failed: ${result.error} desc=${result.errorDescription} raw=${result.rawBody}")
+        Log.error(TAG, "Token exchange failed: ${result.error} desc=${result.errorDescription}")
         val reason = result.error ?: "Token exchange failed"
         return OAuthResult.Failure(reason, result.error, result.errorDescription ?: result.rawBody)
     }
@@ -348,7 +347,7 @@ object OutlookOAuth {
     }
 
     private fun failedExchange(respCode: Int, text: String): ExchangeResult {
-        Log.error(TAG, "token exchange $respCode: $text")
+        Log.error(TAG, "token exchange $respCode")
         var err: String? = null
         var errDesc: String? = null
         try {

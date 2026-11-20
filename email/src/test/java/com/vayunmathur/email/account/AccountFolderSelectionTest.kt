@@ -113,4 +113,28 @@ class AccountFolderSelectionTest {
         assertFalse(TrustAll.isKnownHost("notgmail.com"))
         assertFalse(TrustAll.isKnownHost(""))
     }
+
+    @Test
+    fun `unknown host gets strict factory by default`() {
+        // Regression: custom/unknown hosts must NOT silently get trust-all.
+        assertTrue(TrustAll.usesStrictFactoryByDefault("mail.example.com"))
+        assertTrue(TrustAll.usesStrictFactoryByDefault("custom.selfhosted.local"))
+        assertEquals(
+            TrustAll.systemSocketFactory(),
+            TrustAll.socketFactoryFor("mail.example.com", forceTrustAll = false),
+        )
+    }
+
+    @Test
+    fun `permissive factory only on explicit opt-in`() {
+        assertEquals(
+            TrustAll.permissiveSocketFactory(),
+            TrustAll.socketFactoryFor("mail.example.com", forceTrustAll = true),
+        )
+        assertFalse(EmailAccount(email = "me@example.com").allowInsecureCertificates)
+        val optedIn = EmailAccount(email = "me@example.com", allowInsecureCertificates = true)
+        assertTrue(optedIn.imapServer().trustAllCertificates)
+        assertTrue(optedIn.smtpServer().trustAllCertificates)
+        assertFalse(EmailAccount(email = "me@example.com").imapServer().trustAllCertificates)
+    }
 }

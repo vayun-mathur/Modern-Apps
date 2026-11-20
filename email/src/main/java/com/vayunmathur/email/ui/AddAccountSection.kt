@@ -73,6 +73,7 @@ internal suspend fun testAndPersistAccount(
         authType = "password",
         passwordEncrypted = cipher,
         passwordIv = iv,
+        allowInsecureCertificates = imap.trustAllCertificates || smtp.trustAllCertificates,
     )
     EmailRepository.get(context).insertAccount(account)
     EmailSyncWorker.scheduleHourlyNonInboxSync(context)

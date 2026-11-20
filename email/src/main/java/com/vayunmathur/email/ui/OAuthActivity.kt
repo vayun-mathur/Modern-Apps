@@ -40,7 +40,7 @@ class OAuthActivity : ComponentActivity() {
             finish()
             return
         }
-        Log.dev(TAG, "Redirect raw=$raw host=${raw.host} path=${raw.path} query=${raw.query}")
+        Log.dev(TAG, "Redirect host=${raw.host} path=${raw.path}")
 
         lifecycleScope.launch {
             val result: OutlookOAuth.OAuthResult = try {
@@ -67,7 +67,7 @@ class OAuthActivity : ComponentActivity() {
                         result.errorDescription?.takeIf { it.isNotBlank() }
                     ).distinct()
                     val detailed = parts.joinToString(": ")
-                    Log.error(TAG, "OAuth failure: $detailed raw=$raw")
+                    Log.error(TAG, "OAuth failure: $detailed")
                     // Show callback error (error_description from Azure) not generic check-redirect message
                     detailed to AppMessages.Duration.Indefinite
                 }

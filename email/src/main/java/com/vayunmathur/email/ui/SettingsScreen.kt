@@ -77,6 +77,12 @@ fun SettingsScreen(viewModel: EmailViewModel, onBack: () -> Unit) {
                 ) {
                     Text(stringResource(UiR.string.save))
                 }
+                com.vayunmathur.library.ui.SettingsSwitchRow(
+                    title = stringResource(R.string.allow_insecure_certificates),
+                    supportingText = stringResource(R.string.allow_insecure_certificates_summary),
+                    checked = acc.allowInsecureCertificates,
+                    onCheckedChange = { viewModel.setAllowInsecureCertificates(acc.email, it) },
+                )
             }
             HorizontalDivider()
         }

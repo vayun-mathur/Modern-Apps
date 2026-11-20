@@ -45,7 +45,7 @@ class RawSmtpConnection(
     fun connect() {
         Log.dev(TAG, "Connecting SMTP ${server.host}:${server.port} ssl=${server.useSsl}")
         val s: Socket = if (server.useSsl) {
-            TrustAll.createSocket(server.host, server.port, trustAll || !TrustAll.isKnownHost(server.host))
+            TrustAll.createSocket(server.host, server.port, trustAll)
         } else {
             TrustAll.createPlainSocket(server.host, server.port)
         }
@@ -75,7 +75,7 @@ class RawSmtpConnection(
         checkSmtpPositive(resp, "STARTTLS")
         val plain = socket ?: throw IOException("No socket for STARTTLS")
 
-        val upgraded = TrustAll.upgradeToTls(plain, host, server.port, trustAll || !TrustAll.isKnownHost(server.host))
+        val upgraded = TrustAll.upgradeToTls(plain, host, server.port, trustAll)
         upgraded.soTimeout = TIMEOUT_MS
         sslSocket = upgraded
         socket = upgraded

@@ -20,7 +20,6 @@ import com.vayunmathur.email.R
 import com.vayunmathur.email.network.imap.ImapAuthException
 import com.vayunmathur.email.network.imap.ImapClient
 import com.vayunmathur.email.network.imap.RawImapConnection
-import com.vayunmathur.email.network.imap.TrustAll
 import com.vayunmathur.email.platform.resolveAuth
 import com.vayunmathur.email.platform.imapServer
 import com.vayunmathur.email.platform.loginUser
@@ -119,8 +118,7 @@ class ImapIdleService : Service() {
         val server = account.imapServer()
         val user = account.loginUser()
         val auth = account.resolveAuth(applicationContext)
-        val useTrustAll = !TrustAll.isKnownHost(server.host)
-        val rawConn = RawImapConnection(server, trustAll = useTrustAll)
+        val rawConn = RawImapConnection(server, trustAll = server.trustAllCertificates)
         rawConn.connect()
         var caps = rawConn.capability()
         // Fail closed on STARTTLS failure (see ImapClient.withConnection):

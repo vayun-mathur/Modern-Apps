@@ -6,7 +6,6 @@ import com.vayunmathur.library.log.Log
 import com.vayunmathur.email.platform.EmailManager
 import com.vayunmathur.email.platform.ServerConfig
 import com.vayunmathur.email.ui.composer.InlineAttachment
-import com.vayunmathur.email.network.imap.TrustAll
 import java.io.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -49,8 +48,7 @@ object SmtpClient {
             inReplyTo = inReplyTo,
             references = references,
         )
-        val useTrustAll = !TrustAll.isKnownHost(server.host)
-        val conn = RawSmtpConnection(server, trustAll = useTrustAll)
+        val conn = RawSmtpConnection(server, trustAll = server.trustAllCertificates)
         try {
             openSession(conn, server)
             authenticate(conn, user, auth)

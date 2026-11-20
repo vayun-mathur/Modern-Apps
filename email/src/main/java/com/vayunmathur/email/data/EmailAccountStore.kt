@@ -11,6 +11,8 @@ class EmailAccountStore internal constructor(private val db: EmailDatabase) {
     suspend fun getAccountByEmail(email: String): EmailAccount? = dao.getAccountByEmail(email)
     suspend fun insertAccount(account: EmailAccount) = dao.insertAccount(account)
     suspend fun setSignature(email: String, signature: String) = dao.setSignature(email, signature)
+    suspend fun setAllowInsecureCertificates(email: String, allow: Boolean) =
+        dao.setAllowInsecureCertificates(email, allow)
     suspend fun deleteAccount(account: EmailAccount) = dao.deleteAccount(account)
 
     fun getBlockedSendersFlow(): Flow<List<BlockedSender>> = dao.getBlockedSendersFlow()

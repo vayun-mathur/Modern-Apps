@@ -150,6 +150,12 @@ class EmailViewModel(application: Application) :
         }
     }
 
+    fun setAllowInsecureCertificates(email: String, allow: Boolean) {
+        viewModelScope.launch {
+            accountsDao.setAllowInsecureCertificates(email, allow)
+        }
+    }
+
     fun selectFolder(folderName: String) {
         _selectedFolderName.value = folderName
         _searchQuery.value = ""

@@ -69,7 +69,7 @@ object ImapClient {
         trustAll: Boolean = false,
         block: suspend (RawImapConnection) -> T,
     ): T = withContext(Dispatchers.IO) {
-        val useTrustAll = trustAll || !TrustAll.isKnownHost(server.host)
+        val useTrustAll = trustAll || server.trustAllCertificates
         val conn = RawImapConnection(server, trustAll = useTrustAll)
         try {
             conn.connect()

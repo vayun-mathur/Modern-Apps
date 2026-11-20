@@ -25,6 +25,9 @@ interface EmailAccountDao {
     @Query("UPDATE EmailAccount SET signature = :signature WHERE email = :email")
     suspend fun setSignature(email: String, signature: String)
 
+    @Query("UPDATE EmailAccount SET allowInsecureCertificates = :allow WHERE email = :email")
+    suspend fun setAllowInsecureCertificates(email: String, allow: Boolean)
+
     // ---- Blocked senders ----
 
     @Query("SELECT * FROM BlockedSender ORDER BY address ASC")

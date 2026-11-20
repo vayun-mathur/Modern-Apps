@@ -153,6 +153,8 @@
     <string name="font_size">Font size</string>
     <string name="font_family">Font family</string>
     <string name="clear_formatting">Clear formatting</string>
+    <string name="allow_insecure_certificates">Allow insecure certificates</string>
+    <string name="allow_insecure_certificates_summary">Warning: accepts any certificate for this account\'s mail servers, including invalid or self-signed ones. Anyone on the network could intercept this account\'s mail and password. Only enable for a trusted self-hosted server.</string>
     <string name="email_sync_channel_name">Background email sync</string>
     <string name="email_sync_channel_desc">Keeps an IMAP connection open so new mail arrives instantly.</string>
     <string name="unified_inbox_label">Unified Inbox</string>
