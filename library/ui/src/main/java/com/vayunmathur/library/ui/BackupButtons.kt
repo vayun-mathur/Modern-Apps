@@ -4,6 +4,11 @@ import com.vayunmathur.library.log.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -47,6 +52,12 @@ fun BackupButtons(format: BackupFormat) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
+    // True while an export/import is running on Dispatchers.IO: buttons are
+    // disabled (a second tap cannot re-enter) and a progress indicator shows.
+    // Held as a State object (not a delegated var) so the activity-result
+    // callbacks below read the live value, not a composition-time snapshot.
+    val busyState = remember { mutableStateOf(false) }
+    val busy = busyState.value
     var showPasswordDialog by remember { mutableStateOf<PasswordDialogAction?>(null) }
     var passwordText by remember { mutableStateOf("") }
     var pendingExportUri by remember { mutableStateOf<android.net.Uri?>(null) }
@@ -60,9 +71,10 @@ fun BackupButtons(format: BackupFormat) {
                 pendingExportUri = it
                 passwordText = ""
                 showPasswordDialog = PasswordDialogAction.EXPORT
-            } else {
+            } else if (!busyState.value) {
+                busyState.value = true
                 scope.launch(Dispatchers.IO) {
-                    runExport(context, format, null, it)
+                    try { runExport(context, format, null, it) } finally { busyState.value = false }
                 }
             }
         }
@@ -76,9 +88,10 @@ fun BackupButtons(format: BackupFormat) {
                 pendingImportUri = it
                 passwordText = ""
                 showPasswordDialog = PasswordDialogAction.IMPORT
-            } else {
+            } else if (!busyState.value) {
+                busyState.value = true
                 scope.launch(Dispatchers.IO) {
-                    runImport(context, format, null, it)
+                    try { runImport(context, format, null, it) } finally { busyState.value = false }
                 }
             }
         }
@@ -104,7 +117,10 @@ fun BackupButtons(format: BackupFormat) {
                         val pw = passwordText
                         val action = showPasswordDialog
                         showPasswordDialog = null
+                        if (busyState.value) return@TextButton
+                        busyState.value = true
                         scope.launch(Dispatchers.IO) {
+                            try {
                             when (action) {
                                 PasswordDialogAction.EXPORT -> pendingExportUri?.let { uri ->
                                     runExport(context, format, pw, uri)
@@ -116,9 +132,10 @@ fun BackupButtons(format: BackupFormat) {
                                 }
                                 null -> {}
                             }
+                            } finally { busyState.value = false }
                         }
                     },
-                    enabled = passwordText.isNotEmpty()
+                    enabled = passwordText.isNotEmpty() && !busy
                 ) { Text(stringResource(R.string.ok)) }
             },
             dismissButton = {
@@ -127,11 +144,22 @@ fun BackupButtons(format: BackupFormat) {
         )
     }
 
-    IconButton(onClick = { exportLauncher.launch(format.defaultFileName) }) {
-        IconBackup()
-    }
-    IconButton(onClick = { importLauncher.launch(arrayOf(format.mimeType)) }) {
-        IconRestore()
+    Row {
+        IconButton(
+            onClick = { if (!busy) exportLauncher.launch(format.defaultFileName) },
+            enabled = !busy,
+        ) {
+            IconBackup()
+        }
+        IconButton(
+            onClick = { if (!busy) importLauncher.launch(arrayOf(format.mimeType)) },
+            enabled = !busy,
+        ) {
+            IconRestore()
+        }
+        if (busy) {
+            LoadingIndicator(modifier = Modifier.size(24.dp).align(Alignment.CenterVertically))
+        }
     }
 }
 

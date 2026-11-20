@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.vayunmathur.library.ui.friendlyError
 import com.vayunmathur.library.util.AppMessages
 import com.vayunmathur.uniflix.data.TmdbApi
 import com.vayunmathur.uniflix.domain.MediaItem
@@ -33,7 +34,7 @@ class BrowseViewModel(app: Application) : AndroidViewModel(app) {
                 movies = BrowseUiState(items = api.discoverMovies())
             }.onFailure {
                 movies = movies.copy(loading = false)
-                AppMessages.show("Movies failed to load: ${it.message}")
+                AppMessages.show("Movies failed to load: ${getApplication<Application>().friendlyError(it)}")
             }
         }
     }
@@ -45,7 +46,7 @@ class BrowseViewModel(app: Application) : AndroidViewModel(app) {
                 series = BrowseUiState(items = api.discoverTv())
             }.onFailure {
                 series = series.copy(loading = false)
-                AppMessages.show("Series failed to load: ${it.message}")
+                AppMessages.show("Series failed to load: ${getApplication<Application>().friendlyError(it)}")
             }
         }
     }

@@ -7,6 +7,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.vayunmathur.library.log.Log
+import com.vayunmathur.library.ui.friendlyError
 import com.vayunmathur.library.util.AppMessages
 import com.vayunmathur.uniflix.data.AddonEntity
 import com.vayunmathur.uniflix.data.AddonPrefs
@@ -72,9 +73,8 @@ class AddonsViewModel(app: Application) : AndroidViewModel(app) {
                 )
                 AppMessages.show("Added ${manifest.name}")
             }.onFailure {
-                val message = it.message ?: "Could not add addon"
-                Log.error(TAG, "Add addon failed: $message", it)
-                AppMessages.show(message)
+                Log.error(TAG, "Add addon failed: ${it.message}", it)
+                AppMessages.show(getApplication<Application>().friendlyError(it))
             }
             adding = false
         }
@@ -110,9 +110,8 @@ class AddonsViewModel(app: Application) : AndroidViewModel(app) {
                 )
                 AppMessages.show("Added ${manifest.name}")
             }.onFailure {
-                val message = it.message ?: "Could not add plugin"
-                Log.error(TAG, "Add plugin failed: $message", it)
-                AppMessages.show(message)
+                Log.error(TAG, "Add plugin failed: ${it.message}", it)
+                AppMessages.show(getApplication<Application>().friendlyError(it))
             }
             adding = false
         }
@@ -183,7 +182,7 @@ class AddonsViewModel(app: Application) : AndroidViewModel(app) {
                     )
                 }.onFailure {
                     failures++
-                    repository.setAddonError(row.entity.dbId, it.message ?: "Refresh failed")
+                    repository.setAddonError(row.entity.dbId, getApplication<Application>().friendlyError(it))
                 }
             }
             refreshing = false
@@ -218,7 +217,7 @@ class AddonsViewModel(app: Application) : AndroidViewModel(app) {
                 )
                 AppMessages.show("Refreshed ${manifest.name}")
             }.onFailure {
-                val message = it.message ?: "Refresh failed"
+                val message = getApplication<Application>().friendlyError(it)
                 repository.setAddonError(row.entity.dbId, message)
                 AppMessages.show(message)
             }
@@ -238,9 +237,9 @@ class AddonsViewModel(app: Application) : AndroidViewModel(app) {
                 repository.setAddonError(row.entity.dbId, null)
                 AppMessages.show("${row.entity.name} is reachable")
             }.onFailure {
-                val message = it.message ?: "Addon unreachable"
+                val message = getApplication<Application>().friendlyError(it)
                 repository.setAddonError(row.entity.dbId, message)
-                if (it !is ManifestError) Log.error(TAG, "Test addon failed: $message", it)
+                if (it !is ManifestError) Log.error(TAG, "Test addon failed: ${it.message}", it)
                 AppMessages.show(message)
             }
         }
@@ -262,9 +261,9 @@ class AddonsViewModel(app: Application) : AndroidViewModel(app) {
                 val detail = if (servers.isEmpty()) "no servers listed" else "${servers.size} server(s)"
                 AppMessages.show("${row.entity.name} works ($detail)")
             }.onFailure {
-                val message = it.message ?: "Plugin failed"
+                val message = getApplication<Application>().friendlyError(it)
                 repository.setAddonError(row.entity.dbId, message)
-                Log.error(TAG, "Test plugin failed: $message", it)
+                Log.error(TAG, "Test plugin failed: ${it.message}", it)
                 AppMessages.show(message)
             }
         }

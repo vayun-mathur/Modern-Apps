@@ -9,6 +9,7 @@ import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.vayunmathur.library.biometric.unlockDatabaseWithBiometrics
+import com.vayunmathur.library.ui.friendlyError
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.securemail.data.CachedKey
 import com.vayunmathur.securemail.data.Identities
@@ -269,7 +270,7 @@ class MailViewModel(
                 },
                 onFailure = {
                     Log.status(TAG, "claim failed", it)
-                    state.copy(busy = false, error = it.message ?: "Key generation failed.")
+                    state.copy(busy = false, error = getApplication<Application>().friendlyError(it))
                 },
             )
         }
@@ -289,7 +290,7 @@ class MailViewModel(
                 onSuccess = { state.copy(busy = false, message = "Alias $it created.") },
                 onFailure = {
                     Log.status(TAG, "createAlias failed", it)
-                    state.copy(busy = false, error = it.message ?: "Couldn't create alias.")
+                    state.copy(busy = false, error = getApplication<Application>().friendlyError(it))
                 },
             )
         }
@@ -570,7 +571,7 @@ class MailViewModel(
                 },
                 onFailure = {
                     Log.status(TAG, "send failed", it)
-                    state.copy(busy = false, error = it.message ?: "Send failed.")
+                    state.copy(busy = false, error = getApplication<Application>().friendlyError(it))
                         .also { onDone(false) }
                 },
             )
@@ -666,7 +667,7 @@ class MailViewModel(
 
     fun refresh() {
         viewModelScope.launch {
-            state = state.copy(socketConnected = MailSocket.connected)
+            state = state.copy(socketConnected = MailSocket.connected, error = null)
         }
     }
 

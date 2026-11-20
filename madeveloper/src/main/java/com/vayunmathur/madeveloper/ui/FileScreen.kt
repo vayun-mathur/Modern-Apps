@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.FontFamily
 import com.vayunmathur.library.ui.AppScaffold
+import com.vayunmathur.library.ui.friendlyErrorMessage
 import com.vayunmathur.library.ui.DashboardSection
 import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.ui.ErrorState
@@ -63,7 +64,7 @@ fun FileScreen(repoName: String, path: String, branch: String, viewModel: MaDevV
             error?.let {
                 ErrorState(
                     title = "Could not load this file",
-                    message = it,
+                    message = friendlyErrorMessage(it),
                     retryLabel = "Retry",
                     onRetry = { reloadTick++ },
                 )

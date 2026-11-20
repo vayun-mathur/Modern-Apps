@@ -33,7 +33,9 @@ import com.vayunmathur.library.ui.IconMarkUnread
 import com.vayunmathur.library.ui.IconRestore
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
+import com.vayunmathur.library.ui.ErrorState
 import com.vayunmathur.library.ui.TextButton
+import com.vayunmathur.library.ui.friendlyErrorMessage
 import com.vayunmathur.library.ui.TopAppBar
 import com.vayunmathur.library.ui.rememberMessenger
 import com.vayunmathur.securemail.R
@@ -52,6 +54,7 @@ class FolderActions(
     val onDeleteForever: (List<String>) -> Unit,
     val onEmptyTrash: () -> Unit,
     val onConsumeMessage: () -> Unit,
+    val onRetry: () -> Unit = {},
 )
 
 /**
@@ -111,11 +114,11 @@ fun InboxScreen(
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
             state.error?.let {
-                Text(
-                    it,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                ErrorState(
+                    title = "Something went wrong",
+                    message = friendlyErrorMessage(it),
+                    retryLabel = "Retry",
+                    onRetry = actions.onRetry,
                 )
             }
             if (inTrash && messages.isNotEmpty() && selected.isEmpty()) {

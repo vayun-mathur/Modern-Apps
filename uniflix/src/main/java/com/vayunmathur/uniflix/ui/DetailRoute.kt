@@ -28,5 +28,6 @@ internal fun DetailRoute(backStack: NavBackStack<Route>, route: Route.Detail) {
             backStack.add(Route.Detail(item.mediaType.name.lowercase(), item.tmdbId))
         },
         onOpenAddons = { backStack.add(Route.Addons) },
+        onRetry = { vm.load(type, route.tmdbId) },
     )
 }

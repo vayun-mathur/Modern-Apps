@@ -22,6 +22,7 @@ import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Switch
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
+import com.vayunmathur.library.ui.friendlyErrorMessage
 import com.vayunmathur.uniflix.platform.AddonRow
 
 /** One installed addon: identity, toggles, ordering, health, and actions. */
@@ -63,7 +64,7 @@ fun AddonCard(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         IconWarning()
-                        Text(error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                        Text(friendlyErrorMessage(error), style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
                     }
                 }
             }

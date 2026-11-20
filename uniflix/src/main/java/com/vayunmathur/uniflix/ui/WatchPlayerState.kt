@@ -25,6 +25,7 @@ import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import com.vayunmathur.library.log.Log
+import com.vayunmathur.library.ui.friendlyError
 import com.vayunmathur.library.util.AppMessages
 import com.vayunmathur.uniflix.domain.SubtitleTrack
 import com.vayunmathur.uniflix.domain.VideoSource
@@ -170,8 +171,8 @@ internal fun rememberWatchPlayerState(
 
             override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
                 Log.error(TAG, "Playback error: ${error.message}", error)
-                AppMessages.show("Playback failed: ${error.message}")
-                errorState.value = error.message ?: "Playback failed"
+                AppMessages.show("Playback failed: ${context.friendlyError(error)}")
+                errorState.value = context.friendlyError(error)
             }
 
             override fun onTracksChanged(tracks: Tracks) {

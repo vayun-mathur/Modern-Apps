@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -43,6 +44,8 @@ import com.vayunmathur.library.ui.Spacing
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.library.ui.TextField
+import com.vayunmathur.library.ui.friendlyError
+import com.vayunmathur.library.ui.friendlyErrorMessage
 import com.vayunmathur.madeveloper.domain.DevPresentation
 import com.vayunmathur.madeveloper.domain.FileKind
 import com.vayunmathur.madeveloper.domain.TreeEntry
@@ -66,13 +69,14 @@ fun RepoScreen(
     var filter by remember { mutableStateOf("") }
     var treeError by remember { mutableStateOf<String?>(null) }
     var treeLoading by remember { mutableStateOf(false) }
+    var treeRetry by remember { mutableIntStateOf(0) }
     LaunchedEffect(repoName) { viewModel.loadRepo(repoName) }
-    LaunchedEffect(repoName, browser?.branch, browser?.path) {
+    LaunchedEffect(repoName, browser?.branch, browser?.path, treeRetry) {
         val branch = browser?.branch ?: return@LaunchedEffect
         treeError = null
         treeLoading = true
         entries = runCatching { viewModel.tree(repoName, branch, browser.path) }
-            .getOrElse { treeError = it.message; emptyList() }
+            .getOrElse { treeError = context.friendlyError(it); emptyList() }
         treeLoading = false
     }
     AppScaffold(
@@ -88,7 +92,7 @@ fun RepoScreen(
                 item {
                     ErrorState(
                         title = "Could not load this repository",
-                        message = error,
+                        message = friendlyErrorMessage(error),
                         retryLabel = "Retry",
                         onRetry = { viewModel.loadRepo(repoName) },
                     )
@@ -180,7 +184,12 @@ fun RepoScreen(
                                 },
                             )
                             treeError?.let { error ->
-                                Text(error, color = MaterialTheme.colorScheme.error)
+                                ErrorState(
+                                    title = "Could not load files",
+                                    message = friendlyErrorMessage(error),
+                                    retryLabel = "Retry",
+                                    onRetry = { treeRetry++ },
+                                )
                             }
                         }
                     }

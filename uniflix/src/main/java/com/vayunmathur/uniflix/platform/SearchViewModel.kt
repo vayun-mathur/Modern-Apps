@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.vayunmathur.library.ui.friendlyError
 import com.vayunmathur.library.util.AppMessages
 import com.vayunmathur.uniflix.data.TmdbApi
 import com.vayunmathur.uniflix.domain.MediaItem
@@ -46,7 +47,7 @@ class SearchViewModel(app: Application) : AndroidViewModel(app) {
                 state = state.copy(loading = false, results = api.search(value))
             }.onFailure {
                 state = state.copy(loading = false)
-                AppMessages.show("Search failed: ${it.message}")
+                AppMessages.show("Search failed: ${getApplication<Application>().friendlyError(it)}")
             }
         }
     }

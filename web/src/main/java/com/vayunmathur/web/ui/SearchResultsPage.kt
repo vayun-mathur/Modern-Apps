@@ -26,6 +26,8 @@ import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.DesktopMaxWidthContainer
 import com.vayunmathur.library.ui.EmptyState
+import com.vayunmathur.library.ui.friendlyError
+import com.vayunmathur.library.ui.friendlyErrorMessage
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Tab
@@ -102,7 +104,7 @@ fun SearchResultsPage(
                 loading = false
             }.onFailure { e ->
                 if (requestKind != kind) return@onFailure
-                failure = e.message ?: e.toString()
+                failure = context.friendlyError(e)
                 loading = false
                 messenger.show(searchFailedText)
             }
@@ -207,7 +209,7 @@ private fun SearchErrorState(
         if (message.isNotBlank()) {
             Spacer(Modifier.height(8.dp))
             Text(
-                message,
+                friendlyErrorMessage(message),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 3,

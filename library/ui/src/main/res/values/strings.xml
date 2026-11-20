@@ -339,4 +339,22 @@
     <string name="permission_name_health_connect">Health data</string>
     <!-- Shared library: UI – AppPermissionsGate: purpose for the Health Connect row. Verb phrase -->
     <string name="permission_purpose_health_connect">Read and write health records</string>
+    <!-- Shared library: UI - FriendlyError: no usable connection / IO failure. Full sentence -->
+    <string name="friendly_error_offline">You\'re offline or the connection failed. Check your connection and try again.</string>
+    <!-- Shared library: UI - FriendlyError: request exceeded its deadline. Full sentence -->
+    <string name="friendly_error_timeout">The request timed out. Try again.</string>
+    <!-- Shared library: UI - FriendlyError: HTTP 401/403. Full sentence -->
+    <string name="friendly_error_http_auth">Sign-in is required, or access to this is not allowed.</string>
+    <!-- Shared library: UI - FriendlyError: HTTP 404. Full sentence -->
+    <string name="friendly_error_http_not_found">The requested content was not found.</string>
+    <!-- Shared library: UI - FriendlyError: HTTP 429. Full sentence -->
+    <string name="friendly_error_http_rate_limited">Too many requests. Wait a moment and try again.</string>
+    <!-- Shared library: UI - FriendlyError: HTTP 5xx. Full sentence -->
+    <string name="friendly_error_http_server">The server had a problem. Try again later.</string>
+    <!-- Shared library: UI - FriendlyError: any other HTTP status. %1$d = status code only, never exception text -->
+    <string name="friendly_error_http_code">The request failed (HTTP <xliff:g id="code" example="400">%1$d</xliff:g>).</string>
+    <!-- Shared library: UI - FriendlyError: response could not be parsed/decoded. Full sentence -->
+    <string name="friendly_error_parse">The response could not be read. It may be damaged or in an unexpected format.</string>
+    <!-- Shared library: UI - FriendlyError: fallback for every other failure. Full sentence -->
+    <string name="friendly_error_generic">Something went wrong. Try again.</string>
 </resources>

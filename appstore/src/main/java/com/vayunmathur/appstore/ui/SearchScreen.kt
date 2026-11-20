@@ -28,6 +28,8 @@ import com.vayunmathur.appstore.platform.AppStoreViewModel
 import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.CommonSearchBar
 import com.vayunmathur.library.ui.EmptyState
+import com.vayunmathur.library.ui.ErrorState
+import com.vayunmathur.library.ui.friendlyErrorMessage
 import com.vayunmathur.library.ui.FilterChip
 import com.vayunmathur.library.ui.IconSearch
 import com.vayunmathur.library.ui.LinearProgressIndicator
@@ -86,9 +88,18 @@ fun SearchScreen(
             // Play's half refused (429, issue #797): say so above the results rather than
             // silently showing a list that is missing half its sources.
             val playError = state.playError.takeIf { it.isNotBlank() }
-            if (playError != null) {
+            if (playError != null && state.results.isEmpty()) {
+                ErrorState(
+                    title = stringResource(R.string.search_failed_title),
+                    message = friendlyErrorMessage(playError),
+                    retryLabel = stringResource(com.vayunmathur.library.ui.R.string.retry),
+                    onRetry = { actions.setSearch(state.query) },
+                )
+            } else if (playError != null) {
+                // Partial failure: local results are on screen, so keep the
+                // notice as a banner above them (friendly text, not raw).
                 Text(
-                    playError,
+                    friendlyErrorMessage(playError),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),

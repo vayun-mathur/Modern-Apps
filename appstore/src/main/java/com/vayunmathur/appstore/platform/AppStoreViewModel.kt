@@ -1,5 +1,6 @@
 package com.vayunmathur.appstore.platform
 import com.vayunmathur.appstore.R
+import com.vayunmathur.library.ui.friendlyErrorMessage
 import com.vayunmathur.appstore.data.PackageIndexRow
 import com.vayunmathur.appstore.data.toUnifiedApp
 
@@ -454,7 +455,7 @@ class AppStoreViewModel(
             // fewer results, which looks like the search finding nothing.
             play.authState.collect { state ->
                 playErrorFlow.value = (state as? PlayAuthState.Error)
-                    ?.let { context.getString(R.string.play_unavailable, it.message) }
+                    ?.let { context.getString(R.string.play_unavailable, context.friendlyErrorMessage(it.message)) }
                     .orEmpty()
             }
         }

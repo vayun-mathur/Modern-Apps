@@ -71,6 +71,7 @@ fun Navigation(viewModel: MailViewModel, initialRoute: Route? = null) {
             onDeleteForever = viewModel::deleteForever,
             onEmptyTrash = viewModel::emptyTrash,
             onConsumeMessage = viewModel::dismissMessages,
+            onRetry = viewModel::refresh,
         )
     }
 

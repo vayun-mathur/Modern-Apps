@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.glance.appwidget.updateAll
+import com.vayunmathur.library.ui.friendlyError
 import com.vayunmathur.weather.R
 import com.vayunmathur.weather.data.SavedLocation
 import com.vayunmathur.weather.data.WeatherRepository
@@ -203,11 +204,11 @@ class WeatherViewModel(
                     current + (location.id to (prev?.copy(
                         airQuality = airQuality ?: prev.airQuality,
                         refreshing = false,
-                        error = e.message ?: "Failed to load forecast",
+                        error = getApplication<Application>().friendlyError(e),
                     ) ?: ForecastUiState(
                         airQuality = airQuality,
                         refreshing = false,
-                        error = e.message,
+                        error = getApplication<Application>().friendlyError(e),
                     )))
                 }
             }

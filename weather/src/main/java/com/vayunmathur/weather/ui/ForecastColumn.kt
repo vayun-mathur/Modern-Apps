@@ -13,7 +13,9 @@ import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.LoadingIndicator
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.AppPullToRefreshBox
+import com.vayunmathur.library.ui.ErrorState
 import com.vayunmathur.library.ui.Text
+import com.vayunmathur.library.ui.friendlyErrorMessage
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -83,7 +85,12 @@ internal fun ForecastColumn(
                 Box(modifier = Modifier.fillMaxSize().padding(top = 64.dp), contentAlignment = Alignment.TopCenter) {
                     val error = state.error
                     if (error != null) {
-                        Text(error, color = MaterialTheme.colorScheme.error)
+                        ErrorState(
+                            title = "Could not load forecast",
+                            message = friendlyErrorMessage(error),
+                            retryLabel = "Retry",
+                            onRetry = { actions.refreshAll(force = true) },
+                        )
                     } else {
                         LoadingIndicator()
                     }

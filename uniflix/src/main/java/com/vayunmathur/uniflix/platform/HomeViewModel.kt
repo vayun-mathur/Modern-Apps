@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.vayunmathur.library.ui.friendlyError
 import com.vayunmathur.library.util.AppMessages
 import com.vayunmathur.uniflix.data.TmdbApi
 import com.vayunmathur.uniflix.data.UniflixRepository
@@ -51,7 +52,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
                 )
             }.onFailure {
                 state = state.copy(loading = false)
-                AppMessages.show("Catalog failed to load: ${it.message}")
+                AppMessages.show("Catalog failed to load: ${getApplication<Application>().friendlyError(it)}")
             }
         }
     }

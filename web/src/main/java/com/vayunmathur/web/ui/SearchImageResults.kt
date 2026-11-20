@@ -34,6 +34,8 @@ import com.vayunmathur.library.image.compose.AsyncImage
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.EmptyState
+import com.vayunmathur.library.ui.friendlyError
+import com.vayunmathur.library.ui.friendlyErrorMessage
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.OutlinedButton
 import com.vayunmathur.library.ui.Text
@@ -87,7 +89,7 @@ fun SearchImageResults(
                 imgPage = requestedPage
                 loading = false
             }.onFailure { e ->
-                failure = e.message ?: e.toString()
+                failure = context.friendlyError(e)
                 loading = false
             }
         }
@@ -155,7 +157,7 @@ private fun SearchImageErrorState(
         if (message.isNotBlank()) {
             Spacer(Modifier.height(8.dp))
             Text(
-                message,
+                friendlyErrorMessage(message),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 3,

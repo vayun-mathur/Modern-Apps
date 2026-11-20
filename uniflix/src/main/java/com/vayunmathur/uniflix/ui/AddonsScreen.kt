@@ -12,6 +12,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.vayunmathur.library.ui.friendlyError
 import com.vayunmathur.library.util.AppMessages
 import com.vayunmathur.uniflix.platform.AddonsViewModel
 import com.vayunmathur.uniflix.ui.dialogs.AddAddonDialog
@@ -46,7 +47,7 @@ fun AddonsScreen(onBack: () -> Unit, onOpenDetail: (addonDbId: Long) -> Unit) {
                 }
                 vm.addJsPlugin(source)
             }.onFailure {
-                AppMessages.show(it.message ?: "Could not import plugin")
+                AppMessages.show(context.friendlyError(it))
             }
         }
     }

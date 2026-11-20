@@ -25,6 +25,8 @@ import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.Card
 import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.DesktopMaxWidthContainer
+import com.vayunmathur.library.ui.ErrorState
+import com.vayunmathur.library.ui.friendlyErrorMessage
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.OutlinedButton
 import com.vayunmathur.library.ui.OutlinedTextField
@@ -47,6 +49,7 @@ fun DetailScreen(
     onAddNote: (String, Int) -> Unit,
     onOpenDetail: (MediaItem) -> Unit,
     onOpenAddons: () -> Unit,
+    onRetry: () -> Unit = {},
 ) {
     val detail = state.detail
     AppScaffold(
@@ -59,7 +62,11 @@ fun DetailScreen(
                 return@DesktopMaxWidthContainer
             }
             if (detail == null) {
-                Text("Detail failed to load.", modifier = Modifier.padding(16.dp))
+                ErrorState(
+                    title = "Detail failed to load",
+                    retryLabel = "Retry",
+                    onRetry = onRetry,
+                )
                 return@DesktopMaxWidthContainer
             }
             Column(
@@ -136,7 +143,7 @@ fun DetailScreen(
                     }
                 }
                 state.resolveError?.let { error ->
-                    Text("Resolve failed: $error", style = MaterialTheme.typography.bodySmall)
+                    Text("Resolve failed: ${friendlyErrorMessage(error)}", style = MaterialTheme.typography.bodySmall)
                 }
                 state.source?.let { source ->
                     Text("Resolved: ${source.title}", style = MaterialTheme.typography.bodySmall)

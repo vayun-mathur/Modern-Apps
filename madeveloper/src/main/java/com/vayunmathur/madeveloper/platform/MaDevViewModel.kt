@@ -1,6 +1,7 @@
 package com.vayunmathur.madeveloper.platform
 
 import android.app.Application
+import com.vayunmathur.library.ui.friendlyError
 import android.app.PendingIntent
 import android.os.Build
 import android.content.Intent
@@ -110,7 +111,7 @@ class MaDevViewModel(app: Application) : AndroidViewModel(app) {
                     )
                 }
             } catch (e: java.io.IOException) {
-                state = state.copy(loading = false, error = e.message ?: "Could not reach git.maproj.org")
+                state = state.copy(loading = false, error = getApplication<Application>().friendlyError(e))
             }
         }
     }
@@ -120,7 +121,7 @@ class MaDevViewModel(app: Application) : AndroidViewModel(app) {
         if (state.catalog.isNotEmpty()) return
         viewModelScope.launch {
             try { state = state.copy(catalog = repo.catalog()) }
-            catch (e: java.io.IOException) { state = state.copy(error = e.message ?: "Could not load the catalog") }
+            catch (e: java.io.IOException) { state = state.copy(error = getApplication<Application>().friendlyError(e)) }
         }
     }
 
@@ -136,7 +137,7 @@ class MaDevViewModel(app: Application) : AndroidViewModel(app) {
                     repoError = null,
                 )
             } catch (e: java.io.IOException) {
-                state = state.copy(repoError = e.message ?: "Could not load $name")
+                state = state.copy(repoError = getApplication<Application>().friendlyError(e))
             }
         }
     }
@@ -176,7 +177,7 @@ class MaDevViewModel(app: Application) : AndroidViewModel(app) {
                     },
                 )
             } catch (e: java.io.IOException) {
-                state = state.copy(repoError = e.message ?: "Could not load commits")
+                state = state.copy(repoError = getApplication<Application>().friendlyError(e))
             }
         }
     }
@@ -297,7 +298,7 @@ class MaDevViewModel(app: Application) : AndroidViewModel(app) {
             } catch (e: java.io.IOException) {
                 val current = currentPending(install.pkg) ?: install
                 state = state.copy(pending = state.pending.map { item ->
-                    if (item.pkg == install.pkg) item.copy(phase = InstallPhase.FAILED, error = e.message) else item
+                    if (item.pkg == install.pkg) item.copy(phase = InstallPhase.FAILED, error = getApplication<Application>().friendlyError(e)) else item
                 })
             }
         }
@@ -312,7 +313,7 @@ class MaDevViewModel(app: Application) : AndroidViewModel(app) {
         updatePending(DevProtocol.transition(pending, InstallPhase.INSTALLING, 1f))
         runCatching { commitInstall(pkg, file) }.onFailure {
             state = state.copy(pending = state.pending.map { item ->
-                if (item.pkg == pkg) item.copy(phase = InstallPhase.READY, error = it.message) else item
+                if (item.pkg == pkg) item.copy(phase = InstallPhase.READY, error = getApplication<Application>().friendlyError(it)) else item
             })
         }
     }

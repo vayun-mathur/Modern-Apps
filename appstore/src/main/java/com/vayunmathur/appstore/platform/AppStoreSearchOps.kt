@@ -1,5 +1,6 @@
 package com.vayunmathur.appstore.platform
 import com.vayunmathur.appstore.R
+import com.vayunmathur.library.ui.friendlyErrorMessage
 
 import androidx.lifecycle.viewModelScope
 import com.vayunmathur.appstore.data.AppSource
@@ -47,7 +48,7 @@ internal fun AppStoreViewModel.setSearchImpl(query: String) {
         // on authState after cycling the account once, and the local half stays on screen.
         val remote = if (AppSource.PLAYSTORE in enabled) play.search(query) else emptyList()
         val playError = (play.authState.value as? PlayAuthState.Error)
-            ?.let { context.getString(R.string.play_unavailable, it.message) }
+            ?.let { context.getString(R.string.play_unavailable, context.friendlyErrorMessage(it.message)) }
             .orEmpty()
         searchPlayErrorFlow.value = playError
         searchResultsFlow.value = rank(merge(local, remote, accrescentResults), query)

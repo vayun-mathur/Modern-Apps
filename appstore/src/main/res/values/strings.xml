@@ -71,6 +71,7 @@
     <string name="search_placeholder">Search for an app</string>
     <string name="search_prompt_title">Search every source at once</string>
     <string name="search_prompt_message">Modern Apps and F-Droid answer straight from this phone; Play results follow a moment later.</string>
+    <string name="search_failed_title">Search failed</string>
     <string name="search_no_results_title">No results for \"%1$s\"</string>
     <string name="search_no_results_message">Try a shorter query, or part of the package name.</string>
 

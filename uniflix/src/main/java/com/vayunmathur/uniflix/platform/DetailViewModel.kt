@@ -7,6 +7,8 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.vayunmathur.library.log.Log
+import com.vayunmathur.library.ui.friendlyError
+import com.vayunmathur.library.ui.friendlyErrorMessage
 import com.vayunmathur.library.util.AppMessages
 import com.vayunmathur.uniflix.data.AddonPrefs
 import com.vayunmathur.uniflix.data.AddonStreamProvider
@@ -166,7 +168,7 @@ class DetailViewModel(app: Application) : AndroidViewModel(app) {
             }.onFailure {
                 state = state.copy(loading = false)
                 Log.error(TAG, "Detail failed to load: ${it.message}", it)
-                AppMessages.show("Detail failed to load: ${it.message}")
+                AppMessages.show("Detail failed to load: ${getApplication<Application>().friendlyError(it)}")
             }
         }
     }
@@ -176,7 +178,7 @@ class DetailViewModel(app: Application) : AndroidViewModel(app) {
             runCatching {
                 state = state.copy(selectedSeason = season, episodes = api.seasonEpisodes(tmdbId, season))
             }.onFailure {
-                AppMessages.show("Season failed to load: ${it.message}")
+                AppMessages.show("Season failed to load: ${getApplication<Application>().friendlyError(it)}")
                 Log.error(TAG, "Season failed to load: ${it.message}", it)
             }
         }
@@ -218,9 +220,10 @@ class DetailViewModel(app: Application) : AndroidViewModel(app) {
                     state = state.copy(resolving = false, providerMissing = true)
                 }
                 is ResolutionResult.AllFailed -> {
-                    val message = result.errorsByAddon.values.firstOrNull() ?: "Unknown error"
+                    val rawMessage = result.errorsByAddon.values.firstOrNull() ?: "Unknown error"
+                    val message = getApplication<Application>().friendlyErrorMessage(rawMessage)
                     state = state.copy(resolving = false, resolveError = message)
-                    Log.error(TAG, "Stream failed to resolve: $message")
+                    Log.error(TAG, "Stream failed to resolve: $rawMessage")
                     AppMessages.show("Stream failed to resolve: $message")
                 }
             }

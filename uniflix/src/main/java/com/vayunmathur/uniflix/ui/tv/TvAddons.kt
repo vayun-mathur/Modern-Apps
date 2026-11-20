@@ -30,6 +30,8 @@ import com.vayunmathur.library.tv.TvScreenHeader
 import com.vayunmathur.library.tv.TvTextField
 import com.vayunmathur.library.tv.tvFullWidth
 import com.vayunmathur.library.ui.IconAdd
+import com.vayunmathur.library.ui.friendlyError
+import com.vayunmathur.library.ui.friendlyErrorMessage
 import com.vayunmathur.library.ui.IconRefresh
 import com.vayunmathur.library.ui.IconUpload
 import com.vayunmathur.library.ui.R as UiR
@@ -70,7 +72,7 @@ fun TvAddonsTab(onOpenDetail: (addonDbId: Long) -> Unit) {
                 }
                 vm.addJsPlugin(source)
             }.onFailure {
-                AppMessages.show(it.message ?: "Could not import plugin")
+                AppMessages.show(context.friendlyError(it))
             }
         }
     }
@@ -149,7 +151,7 @@ internal fun TvAddonCard(
             entity.baseUrl.ifBlank { entity.manifestUrl.ifBlank { null } },
             entity.version.ifBlank { null }?.let { "v$it" },
         ).joinToString("  •  ").ifBlank { null },
-        description = entity.lastError,
+        description = entity.lastError?.let { friendlyErrorMessage(it) },
         badges = {
             if (row.isDefault) TvBadge(text = stringResource(R.string.default_addon_short))
             if (!entity.enabled) TvBadge(text = stringResource(R.string.disabled))

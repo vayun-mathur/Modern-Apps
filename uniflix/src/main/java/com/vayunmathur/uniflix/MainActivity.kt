@@ -5,6 +5,7 @@ import com.vayunmathur.library.image.ImageLoader
 import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.library.network.TrustBundle
 import com.vayunmathur.library.ui.MaActivity
+import com.vayunmathur.library.util.OfflineAware
 import com.vayunmathur.library.image.fetchers.HttpImageFetcher
 import com.vayunmathur.uniflix.data.TmdbImageUrl
 
@@ -24,6 +25,8 @@ class MainActivity : MaActivity() {
 
     @Composable
     override fun Content() {
-        Navigation()
+        OfflineAware {
+            Navigation()
+        }
     }
 }
