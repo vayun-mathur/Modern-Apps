@@ -85,7 +85,7 @@ interface LauncherItemDao {
 
 /** Launcher Database: a room database implementation for launcher database. */
 @ColumnTypeConverters(DefaultConverters::class, LauncherConverters::class)
-@Database(entities = [LauncherItemEntity::class], version = 1, exportSchema = false)
+@Database(entities = [LauncherItemEntity::class], version = 1, exportSchema = true)
 abstract class LauncherDatabase : RoomDatabase() {
     abstract fun itemDao(): LauncherItemDao
 

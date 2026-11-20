@@ -84,7 +84,7 @@ interface NoteSyncSnapshotDao {
 }
 
 /** Room database holding notes and their sync snapshots. */
-@Database(entities = [Note::class, SyncSnapshot::class], version = 4, exportSchema = false)
+@Database(entities = [Note::class, SyncSnapshot::class], version = 4, exportSchema = true)
 @ColumnTypeConverters(NoteConverters::class)
 abstract class NoteDatabase : RoomDatabase() {
     abstract fun noteDao(): NoteDao

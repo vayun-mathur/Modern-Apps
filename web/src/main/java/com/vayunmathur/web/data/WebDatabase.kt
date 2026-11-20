@@ -194,7 +194,7 @@ interface ShieldSettingDao {
         ShieldSetting::class,
     ],
     version = 3,
-    exportSchema = false
+    exportSchema = true
 )
 /** Web Database: a room database implementation for web database. */
 abstract class WebDatabase : RoomDatabase() {

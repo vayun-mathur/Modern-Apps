@@ -248,7 +248,7 @@ interface ReviewLogDao {
         Note::class,
     ],
     version = 4,
-    exportSchema = false,
+    exportSchema = true,
 )
 /** Room database holding decks, notes, cards, and review history. */
 abstract class FlashcardsDatabase : RoomDatabase() {

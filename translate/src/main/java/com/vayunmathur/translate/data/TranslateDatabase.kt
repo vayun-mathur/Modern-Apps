@@ -71,7 +71,7 @@ interface TranslationDao {
 }
 
 /** Room database holding saved translations. */
-@Database(entities = [TranslationRecord::class], version = 1, exportSchema = false)
+@Database(entities = [TranslationRecord::class], version = 1, exportSchema = true)
 abstract class TranslateDatabase : RoomDatabase() {
     abstract fun translationDao(): TranslationDao
 }

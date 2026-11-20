@@ -147,7 +147,7 @@ interface UserListDao {
         AddonEntity::class,
     ],
     version = 3,
-    exportSchema = false,
+    exportSchema = true,
 )
 abstract class UniflixDatabase : RoomDatabase() {
     abstract fun watchlistDao(): WatchlistDao

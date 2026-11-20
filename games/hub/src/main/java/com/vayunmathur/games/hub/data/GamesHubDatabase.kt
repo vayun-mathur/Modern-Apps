@@ -35,7 +35,7 @@ const val DB_NAME = "games-hub-db"
         YuuEntity::class
     ],
     version = 3,
-    exportSchema = false
+    exportSchema = true
 )
 /** Games Hub Database: a room database implementation for games hub database. */
 abstract class GamesHubDatabase : RoomDatabase() {

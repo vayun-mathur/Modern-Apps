@@ -31,7 +31,7 @@ import com.vayunmathur.library.util.DatabaseMigrations
         RcsOutboxMessage::class,
     ],
     version = 3,
-    exportSchema = false,
+    exportSchema = true,
 )
 @ColumnTypeConverters(RcsTypeConverters::class)
 abstract class RcsDatabase : RoomDatabase() {

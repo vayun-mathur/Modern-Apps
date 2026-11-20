@@ -22,6 +22,7 @@ val libs = the<org.gradle.accessors.dm.LibrariesForLibs>()
 // every Test task builds + links the host libs of this module and each project
 // dep that registers one. Lazy — assemble/install never build them.
 wireRustHostLibsForUnitTests()
+wireRoomSchemaLocation()
 includeRobolectricClassesInCoverage()
 
 /**

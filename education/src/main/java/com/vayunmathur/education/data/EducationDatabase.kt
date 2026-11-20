@@ -59,7 +59,7 @@ interface DeadlineDao {
 @Database(
     entities = [Learner::class, SkillProgress::class, Deadline::class],
     version = 1,
-    exportSchema = false,
+    exportSchema = true,
 )
 /** Room database holding the learner, skill-progress, and deadline tables. */
 abstract class EducationDatabase : RoomDatabase() {

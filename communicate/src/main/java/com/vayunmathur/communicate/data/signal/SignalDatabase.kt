@@ -43,7 +43,7 @@ import com.vayunmathur.library.util.DatabaseMigrations
         SignalCallLog::class,
     ],
     version = 5,
-    exportSchema = false
+    exportSchema = true
 )
 @ColumnTypeConverters(SignalTypeConverters::class)
 abstract class SignalDatabase : RoomDatabase() {

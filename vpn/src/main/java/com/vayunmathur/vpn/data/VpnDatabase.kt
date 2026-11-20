@@ -135,7 +135,7 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
 }
 
 /** Vpn Database: a room database implementation for vpn database. */
-@Database(entities = [VpnConfigEntity::class, ConnectionLogEntity::class], version = 3, exportSchema = false)
+@Database(entities = [VpnConfigEntity::class, ConnectionLogEntity::class], version = 3, exportSchema = true)
 abstract class VpnDatabase : RoomDatabase() {
     abstract fun vpnConfigDao(): VpnConfigDao
     abstract fun connectionLogDao(): ConnectionLogDao

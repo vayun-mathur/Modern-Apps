@@ -44,7 +44,7 @@ interface VaultPhotoDao {
 }
 
 /** Vault Database: a room database implementation for vault database. */
-@Database(entities = [VaultPhoto::class], version = 1, exportSchema = false)
+@Database(entities = [VaultPhoto::class], version = 1, exportSchema = true)
 abstract class VaultDatabase : RoomDatabase() {
     abstract fun vaultPhotoDao(): VaultPhotoDao
 }

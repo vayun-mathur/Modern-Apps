@@ -49,7 +49,7 @@ interface PlaylistDao {
  * means opening each file with a `MediaMetadataRetriever` and we only want to pay that once.
  */
 @ColumnTypeConverters(DefaultConverters::class)
-@Database(entities = [Music::class, Playlist::class, ManyManyMatching::class], version = 5, exportSchema = false)
+@Database(entities = [Music::class, Playlist::class, ManyManyMatching::class], version = 5, exportSchema = true)
 abstract class MusicDatabase: RoomDatabase() {
     abstract fun musicDao(): MusicDao
     abstract fun playlistDao(): PlaylistDao

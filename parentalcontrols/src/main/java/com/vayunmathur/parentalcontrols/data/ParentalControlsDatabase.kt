@@ -105,7 +105,7 @@ interface BonusGrantDao {
         BonusGrant::class,
     ],
     version = 2,
-    exportSchema = false,
+    exportSchema = true,
 )
 abstract class ParentalControlsDatabase : RoomDatabase() {
     abstract fun appRuleDao(): AppRuleDao

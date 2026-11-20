@@ -94,7 +94,7 @@ interface CustomerDao {
 @Database(
     entities = [RecentSearch::class, BookedTrip::class, FrequentFlyer::class, Customer::class],
     version = 5,
-    exportSchema = false,
+    exportSchema = true,
 )
 /** Travel Database: a room database implementation for travel database. */
 abstract class TravelDatabase : RoomDatabase() {

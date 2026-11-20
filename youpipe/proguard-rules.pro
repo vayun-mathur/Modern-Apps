@@ -16,6 +16,3 @@
 -keep class androidx.media3.exoplayer.source.SingleSampleMediaSource { *; }
 -keep class androidx.media3.exoplayer.source.SingleSampleMediaSource$Factory { *; }
 
-# NewPipe extractor - keep subtitle related classes
--keep class org.schabi.newpipe.extractor.stream.SubtitlesStream { *; }
--keep class org.schabi.newpipe.extractor.MediaFormat { *; }

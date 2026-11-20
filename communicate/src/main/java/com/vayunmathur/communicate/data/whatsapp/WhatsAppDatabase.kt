@@ -52,7 +52,7 @@ import com.vayunmathur.library.util.DatabaseMigrations
         WhatsAppCallLog::class,
     ],
     version = 4,
-    exportSchema = false
+    exportSchema = true
 )
 @ColumnTypeConverters(WhatsAppTypeConverters::class)
 abstract class WhatsAppDatabase : RoomDatabase() {

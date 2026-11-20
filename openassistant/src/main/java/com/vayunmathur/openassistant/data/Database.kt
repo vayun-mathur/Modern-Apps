@@ -166,7 +166,7 @@ interface MemoryDao {
 @Database(
     entities = [Conversation::class, Message::class, Memory::class, PendingToolCallEntity::class, AuditRecord::class],
     version = 5,
-    exportSchema = false,
+    exportSchema = true,
 )
 abstract class AppDatabase: RoomDatabase() {
     abstract fun conversationDao(): ConversationDao

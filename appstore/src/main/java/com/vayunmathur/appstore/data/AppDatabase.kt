@@ -398,7 +398,7 @@ interface CachedAppDao {
         AccrescentTrustEntity::class,
     ],
     version = 9,
-    exportSchema = false
+    exportSchema = true
 )
 /** Room database holding repositories, cached apps and trust records. */
 abstract class AppDatabase : RoomDatabase() {

@@ -15,6 +15,8 @@ plugins {
 
 val libs = the<org.gradle.accessors.dm.LibrariesForLibs>()
 
+wireRoomSchemaLocation()
+
 // Shared with common-conventions-app: version.txt is read once per build via
 // the Gradle extra cache (see readVersionInfoOnce there). No wear module
 // exists yet (settings.gradle.kts has no wear consumers); when one lands,

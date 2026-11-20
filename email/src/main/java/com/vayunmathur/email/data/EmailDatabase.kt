@@ -27,7 +27,7 @@ import com.vayunmathur.email.data.Attachment
         DeletedUid::class,
     ],
     version = 21,
-    exportSchema = false,
+    exportSchema = true,
 )
 /** Room database holding email folders, messages, accounts and outbox state. */
 abstract class EmailDatabase : RoomDatabase() {

@@ -295,7 +295,7 @@ data class ExifResult(
 )
 
 /** Photo Database: a room database implementation for photo database. */
-@Database(entities = [Photo::class, Person::class, PhotoFace::class], version = 20, exportSchema = false)
+@Database(entities = [Photo::class, Person::class, PhotoFace::class], version = 20, exportSchema = true)
 abstract class PhotoDatabase : RoomDatabase() {
     abstract fun photoDao(): PhotoDao
     abstract fun photoScanDao(): PhotoScanDao

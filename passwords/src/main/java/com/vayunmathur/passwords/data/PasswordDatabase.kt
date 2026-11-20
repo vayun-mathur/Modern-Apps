@@ -91,7 +91,7 @@ abstract class PasskeyDao {
 @Database(
     entities = [Password::class, Passkey::class, SyncSnapshot::class],
     version = 5,
-    exportSchema = false,
+    exportSchema = true,
 )
 /** Password Database: a room database implementation for password database. */
 @ColumnTypeConverters(Converters::class)

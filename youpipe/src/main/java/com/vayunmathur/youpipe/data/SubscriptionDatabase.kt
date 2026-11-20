@@ -222,7 +222,7 @@ interface SubscriptionVideoDao {
         PlaylistItem::class,
     ],
     version = 7,
-    exportSchema = false,
+    exportSchema = true,
 )
 /** Subscription Database: a room database implementation for subscription database. */
 abstract class SubscriptionDatabase : RoomDatabase() {

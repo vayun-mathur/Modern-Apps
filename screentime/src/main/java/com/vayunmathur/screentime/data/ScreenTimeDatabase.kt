@@ -64,7 +64,7 @@ interface WindDownDao {
 @Database(
     entities = [AppTimer::class, PausedApps::class, WindDownSchedule::class],
     version = 2,
-    exportSchema = false,
+    exportSchema = true,
 )
 /** Room database holding app timers, paused apps and the wind-down schedule. */
 abstract class ScreenTimeDatabase : RoomDatabase() {

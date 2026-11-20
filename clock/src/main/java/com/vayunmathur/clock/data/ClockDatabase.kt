@@ -105,7 +105,7 @@ interface AlarmDao {
 
 /** Room database holding the clock app's timers and alarms. */
 @ColumnTypeConverters(DefaultConverters::class)
-@Database(entities = [Timer::class, Alarm::class], version = 3, exportSchema = false)
+@Database(entities = [Timer::class, Alarm::class], version = 3, exportSchema = true)
 abstract class ClockDatabase: RoomDatabase() {
     abstract fun timerDao(): TimerDao
     abstract fun alarmDao(): AlarmDao
