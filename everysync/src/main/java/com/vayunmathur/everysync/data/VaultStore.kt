@@ -37,11 +37,13 @@ object VaultStore {
     private const val KEY = "everysync_vaults"
     private val json = Json { ignoreUnknownKeys = true }
 
-    fun getAll(context: Context): List<VaultMeta> {
-        val raw = DataStoreUtils.getInstance(context).getString(KEY)
+    private fun decode(raw: String?): List<VaultMeta> {
         if (raw.isNullOrBlank()) return emptyList()
         return runCatching { json.decodeFromString<List<VaultMeta>>(raw) }.getOrDefault(emptyList())
     }
+
+    fun getAll(context: Context): List<VaultMeta> =
+        decode(DataStoreUtils.getInstance(context).getString(KEY))
 
     fun get(context: Context, vaultId: String): VaultMeta? =
         getAll(context).firstOrNull { it.vaultId == vaultId }
@@ -54,13 +56,17 @@ object VaultStore {
         } else {
             meta
         }
-        val current = getAll(context).filterNot { it.vaultId == safe.vaultId }
-        DataStoreUtils.getInstance(context).setString(KEY, json.encodeToString(current + safe))
+        // Atomic read-modify-write inside one DataStore edit: the old getAll()+setString
+        // raced concurrent upsert/remove callers and silently dropped each other's vault.
+        DataStoreUtils.getInstance(context).updateString(KEY) { raw ->
+            json.encodeToString(decode(raw).filterNot { it.vaultId == safe.vaultId } + safe)
+        }
     }
 
     suspend fun remove(context: Context, vaultId: String) {
-        val current = getAll(context).filterNot { it.vaultId == vaultId }
-        DataStoreUtils.getInstance(context).setString(KEY, json.encodeToString(current))
+        DataStoreUtils.getInstance(context).updateString(KEY) { raw ->
+            json.encodeToString(decode(raw).filterNot { it.vaultId == vaultId })
+        }
     }
 
     suspend fun saveAll(context: Context, vaults: List<VaultMeta>) {

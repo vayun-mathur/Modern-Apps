@@ -99,6 +99,71 @@ class LibraryBackupTest {
         assertEquals(listOf("notes:pw1:db-bytes"), codec.imported)
     }
 
+    @Test fun restoreLeavesNoTempOrBackupFilesBehind() {
+        val extra = File(ctx.cacheDir, "swap-note.txt").apply { writeText("new-body") }
+        val dsDir = File(ctx.filesDir, "datastore").apply { mkdirs() }
+        val dsFile = File(dsDir, "swapstore.preferences_pb").apply { writeBytes(byteArrayOf(4, 5)) }
+        val prefDir = File(ctx.dataDir, "shared_prefs").apply { mkdirs() }
+        val prefFile = File(prefDir, "swapprefs.xml").apply { writeText("<map>new</map>") }
+        val out = ByteArrayOutputStream()
+        BackupHelper.performFullBackup(
+            ctx, emptyList(), listOf("swapstore"), listOf("swapprefs"), listOf(extra), out,
+        )
+        // Live files now hold stale bytes that restore must replace wholesale.
+        extra.writeText("old-body"); dsFile.writeBytes(byteArrayOf(0)); prefFile.writeText("<map>old</map>")
+        BackupHelper.performFullRestore(
+            ctx, emptyList(), listOf("swapstore"), listOf("swapprefs"),
+            mapOf("swap-note.txt" to extra), ByteArrayInputStream(out.toByteArray()),
+        )
+        assertEquals("new-body", extra.readText())
+        assertTrue(byteArrayOf(4, 5).contentEquals(dsFile.readBytes()))
+        assertEquals("<map>new</map>", prefFile.readText())
+        // Atomic rename consumes the sibling temps: nothing torn left behind.
+        listOf(ctx.cacheDir, dsDir, prefDir).forEach { dir ->
+            val junk = dir.listFiles()?.filter {
+                it.name.contains(".tmp-") || it.name.contains(".restore-")
+            }.orEmpty()
+            assertTrue(junk.isEmpty(), "leftover restore temps in $dir: $junk")
+        }
+    }
+
+    @Test fun restoreDoesNotUseOrWipeFixedRestoreTempDir() {
+        // A pre-existing fixed restore_temp dir belongs to no restore in
+        // flight: a unique per-restore dir must leave it completely alone.
+        val fixed = File(ctx.cacheDir, "restore_temp").apply { mkdirs() }
+        val sentinel = File(fixed, "keep.txt").apply { writeText("keep") }
+        val extra = File(ctx.cacheDir, "uniq-note.txt").apply { writeText("uniq-body") }
+        val out = ByteArrayOutputStream()
+        BackupHelper.performFullBackup(ctx, emptyList(), emptyList(), emptyList(), listOf(extra), out)
+        extra.delete()
+        BackupHelper.performFullRestore(
+            ctx, emptyList(), emptyList(), emptyList(),
+            mapOf("uniq-note.txt" to extra), ByteArrayInputStream(out.toByteArray()),
+        )
+        assertEquals("uniq-body", extra.readText())
+        assertEquals("keep", sentinel.readText())
+    }
+
+    @Test fun restoreExtraDirectorySwapsWholeTreeAndDropsStaleFiles() {
+        val dir = File(ctx.cacheDir, "swapdir-src").apply { mkdirs() }
+        File(dir, "fresh.txt").writeText("fresh")
+        val out = ByteArrayOutputStream()
+        BackupHelper.performFullBackup(ctx, emptyList(), emptyList(), emptyList(), listOf(dir), out)
+        val target = File(ctx.cacheDir, "swapdir-target").apply { mkdirs() }
+        File(target, "stale.txt").writeText("stale")
+        File(target, "fresh.txt").writeText("old")
+        BackupHelper.performFullRestore(
+            ctx, emptyList(), emptyList(), emptyList(),
+            mapOf("swapdir-src" to target), ByteArrayInputStream(out.toByteArray()),
+        )
+        assertEquals("fresh", File(target, "fresh.txt").readText())
+        assertFalse(File(target, "stale.txt").exists(), "swap replaces the whole tree")
+        val junk = ctx.cacheDir.listFiles()?.filter {
+            it.name.contains(".restore-") || it.name.contains(".tmp-")
+        }.orEmpty()
+        assertTrue(junk.isEmpty(), "leftover swap dirs: $junk")
+    }
+
     @Test fun backupWithoutCodecSkipsDatabasesButStillZipsExtras() {
         val extra = File(ctx.cacheDir, "only.txt").apply { writeText("x") }
         val out = ByteArrayOutputStream()

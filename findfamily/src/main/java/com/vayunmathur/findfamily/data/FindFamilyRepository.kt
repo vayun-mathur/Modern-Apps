@@ -1,6 +1,7 @@
 package com.vayunmathur.findfamily.data
 
 import android.content.Context
+import androidx.room3.withWriteTransaction
 import com.vayunmathur.library.room.RoomRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -69,11 +70,11 @@ class FindFamilyRepository internal constructor(
      * precise history outlived the removal (until the 7-day sweep) and
      * silently resurrected if the same ID was ever re-added.
      */
-    suspend fun deleteUser(user: User): Int {
+    suspend fun deleteUser(user: User): Int = daoDb.withWriteTransaction {
         val deleted = userDao.delete(user)
         locationValueDao.deleteByUserid(user.id)
         noShowAlertDao.deleteByWatchedUserId(user.id)
-        return deleted
+        deleted
     }
 
     suspend fun updateLocationMeta(
@@ -125,7 +126,7 @@ class FindFamilyRepository internal constructor(
      * `repository.waypointStore.*`.
      */
     internal val waypointStore: WaypointStore
-        get() = WaypointStore(waypointDao, userDao, noShowAlertDao)
+        get() = WaypointStore(waypointDao, userDao, noShowAlertDao, daoDb)
 
     // ------------------------------------------------------------------
     // LocationValue reads / writes
@@ -191,6 +192,7 @@ internal class WaypointStore(
     private val dao: WaypointDao,
     private val userDao: UserDao,
     private val noShowAlertDao: NoShowAlertDao,
+    private val database: FFDatabase,
 ) {
     suspend fun getAll(): List<Waypoint> = dao.getAll()
     suspend fun get(id: Long): Waypoint = dao.get(id)
@@ -202,11 +204,11 @@ internal class WaypointStore(
      * arrivals there. Without this they pointed at a place that no longer
      * exists - toggles silently dead, watches firing for a deleted place.
      */
-    suspend fun delete(waypoint: Waypoint): Int {
+    suspend fun delete(waypoint: Waypoint): Int = database.withWriteTransaction {
         val deleted = dao.delete(waypoint)
         userDao.clearArrivalTogglesForWaypoint(waypoint.id)
         userDao.clearLastWaypointForWaypoint(waypoint.id)
         noShowAlertDao.deleteByWaypointId(waypoint.id)
-        return deleted
+        deleted
     }
 }

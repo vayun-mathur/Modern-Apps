@@ -12,6 +12,7 @@ import com.vayunmathur.launcher.domain.LauncherItemType
 import com.vayunmathur.launcher.domain.PackageKey
 import com.vayunmathur.launcher.domain.ReconcileUseCase
 import com.vayunmathur.launcher.domain.containerRefOf
+import com.vayunmathur.library.log.Log
 import com.vayunmathur.library.util.DatabaseItem
 
 /**
@@ -126,5 +127,17 @@ class LauncherConverters {
     fun fromItemType(value: LauncherItemType): String = value.name
 
     @ColumnTypeConverter
-    fun toItemType(value: String): LauncherItemType = LauncherItemType.valueOf(value)
+    fun toItemType(value: String): LauncherItemType =
+        LauncherItemType.entries.firstOrNull { it.name == value } ?: run {
+            // A newer build may have written a type this build does not know (downgrade /
+            // partial upgrade). Room converters never throw: fall back to APPLICATION, the
+            // safest existing value — the row stays visible and launchable from its stored
+            // package/class instead of crashing every workspace read.
+            Log.status(TAG, "unknown LauncherItemType '$value', defaulting to APPLICATION")
+            LauncherItemType.APPLICATION
+        }
+
+    private companion object {
+        const val TAG = "LauncherConverters"
+    }
 }

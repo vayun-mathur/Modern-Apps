@@ -39,7 +39,11 @@ class SqlCipherDbCodecTest {
     }
 
     @Test
-    fun `import deletes the old database files before the native open`() {
+    fun `failed import leaves the old database files untouched`() {
+        // Temp-verify-swap: the replacement is built beside the live DB and
+        // only swapped in after verification. On this host the native layer
+        // cannot load (and a corrupt input would fail verification on a
+        // device), so the import must fail with the live set intact.
         val dbFile = context.getDatabasePath("import-target-db")
         dbFile.parentFile?.mkdirs()
         dbFile.writeBytes(byteArrayOf(1))
@@ -52,15 +56,57 @@ class SqlCipherDbCodecTest {
             runCatching {
                 SqlCipherDbCodec.importDatabase(context, "import-target-db", "pw", input)
             }
-            // Whatever the native layer then does on this host, the old file
-            // set is gone first: a half-finished import must not leave a WAL
-            // from the previous database behind.
-            kotlin.test.assertFalse(wal.exists())
-            kotlin.test.assertFalse(shm.exists())
-            kotlin.test.assertFalse(journal.exists())
+            kotlin.test.assertTrue(dbFile.exists())
+            kotlin.test.assertTrue(byteArrayOf(1).contentEquals(dbFile.readBytes()))
+            kotlin.test.assertTrue(byteArrayOf(2).contentEquals(wal.readBytes()))
+            kotlin.test.assertTrue(byteArrayOf(3).contentEquals(shm.readBytes()))
+            kotlin.test.assertTrue(byteArrayOf(4).contentEquals(journal.readBytes()))
+            // No temp import file is left behind in the databases directory.
+            val leftovers = dbFile.parentFile?.listFiles()
+                ?.filter { it.name.contains(".import-") || it.name.contains(".bak-") }
+                .orEmpty()
+            kotlin.test.assertTrue(leftovers.isEmpty(), "leftover swap files: $leftovers")
+        } finally {
+            dbFile.delete(); wal.delete(); shm.delete(); journal.delete()
+            input.delete()
+        }
+    }
+
+    @Test
+    fun `corrupt input leaves the live database untouched`() {
+        val dbFile = context.getDatabasePath("corrupt-target-db")
+        dbFile.parentFile?.mkdirs()
+        val liveBytes = ByteArray(64) { 7 }
+        dbFile.writeBytes(liveBytes)
+        val input = File(context.cacheDir, "corrupt-plaintext.db")
+        input.writeBytes(ByteArray(64) { 0x55 }) // not a SQLite file at all
+        try {
+            runCatching {
+                SqlCipherDbCodec.importDatabase(context, "corrupt-target-db", "pw", input)
+            }
+            kotlin.test.assertTrue(dbFile.exists())
+            kotlin.test.assertTrue(liveBytes.contentEquals(dbFile.readBytes()))
         } finally {
             dbFile.delete()
             input.delete()
+        }
+    }
+
+    @Test
+    fun `missing input leaves the live database untouched`() {
+        val dbFile = context.getDatabasePath("missing-input-db")
+        dbFile.parentFile?.mkdirs()
+        dbFile.writeBytes(byteArrayOf(8, 8, 8))
+        val input = File(context.cacheDir, "does-not-exist-plaintext.db")
+        if (input.exists()) input.delete()
+        try {
+            runCatching {
+                SqlCipherDbCodec.importDatabase(context, "missing-input-db", "pw", input)
+            }
+            kotlin.test.assertTrue(dbFile.exists())
+            kotlin.test.assertTrue(byteArrayOf(8, 8, 8).contentEquals(dbFile.readBytes()))
+        } finally {
+            dbFile.delete()
         }
     }
 

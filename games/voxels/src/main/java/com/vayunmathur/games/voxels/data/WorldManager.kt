@@ -51,6 +51,28 @@ data class WorldInfo(
 object WorldManager {
     private val json = Json { ignoreUnknownKeys = true; prettyPrint = true }
 
+    /**
+     * Write [meta] as `world.json` in [dir] via tmp file + rename, so a crash mid-write
+     * never leaves a torn file that [listWorlds] then silently drops. Same shape as
+     * `AndroidFileBlobStore.put` (library/everysync-core): temp in the same directory,
+     * rename, delete+rename fallback where rename cannot replace, temp always cleaned up.
+     * (No `FileFiles.writeBytes` exists in library/ — verified, it does not do this.)
+     */
+    private fun writeWorldMeta(dir: File, meta: WorldMeta) {
+        val target = File(dir, "world.json")
+        dir.mkdirs()
+        val tmp = File.createTempFile("world-", ".tmp", dir)
+        try {
+            tmp.writeText(json.encodeToString(WorldMeta.serializer(), meta))
+            if (!tmp.renameTo(target)) {
+                target.delete()
+                tmp.renameTo(target)
+            }
+        } finally {
+            if (tmp.exists()) tmp.delete()
+        }
+    }
+
     private fun worldsRoot(ctx: Context): File = File(ctx.filesDir, "worlds").apply { mkdirs() }
 
     // All worlds, most-recently-played first.
@@ -86,7 +108,7 @@ object WorldManager {
         val dir = File(root, id).apply { mkdirs() }
         val displayName = name.trim().ifEmpty { "New World" }
         val meta = WorldMeta(name = displayName, seed = seed, created = now, lastPlayed = now, mode = mode)
-        File(dir, "world.json").writeText(json.encodeToString(WorldMeta.serializer(), meta))
+        writeWorldMeta(dir, meta)
         return WorldInfo(id = id, dir = dir.absolutePath, meta = meta)
     }
 
@@ -109,7 +131,7 @@ object WorldManager {
             online = true, worldId = worldId, ownerDeviceId = ownerDeviceId,
             role = VoxelsRoles.OWNER, keyB64 = keyB64,
         )
-        File(dir, "world.json").writeText(json.encodeToString(WorldMeta.serializer(), meta))
+        writeWorldMeta(dir, meta)
         return WorldInfo(id = id, dir = dir.absolutePath, meta = meta)
     }
 
@@ -129,7 +151,7 @@ object WorldManager {
             name = name.trim().ifEmpty { "Shared World" }, seed = seed, created = now, lastPlayed = now,
             online = true, worldId = worldId, ownerDeviceId = ownerDeviceId, role = role, keyB64 = keyB64,
         )
-        File(dir, "world.json").writeText(json.encodeToString(WorldMeta.serializer(), meta))
+        writeWorldMeta(dir, meta)
         return WorldInfo(id = id, dir = dir.absolutePath, meta = meta)
     }
 
@@ -140,7 +162,7 @@ object WorldManager {
         if (!metaFile.exists()) return
         try {
             val meta = json.decodeFromString<WorldMeta>(metaFile.readText())
-            metaFile.writeText(json.encodeToString(WorldMeta.serializer(), meta.copy(lastPlayed = now)))
+            writeWorldMeta(dir, meta.copy(lastPlayed = now))
         } catch (_: Exception) {}
     }
 

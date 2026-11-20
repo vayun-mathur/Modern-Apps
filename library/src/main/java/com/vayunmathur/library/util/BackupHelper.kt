@@ -5,8 +5,10 @@ import com.vayunmathur.library.log.Log
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.File
+import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
+import java.util.UUID
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
@@ -20,13 +22,23 @@ import java.util.zip.ZipOutputStream
  */
 interface DbBackupCodec {
     fun exportDatabase(context: Context, dbName: String, password: String, outputFile: File)
+
+    /**
+     * Imports [inputFile] as the live database [dbName].
+     *
+     * Contract: implementations must build and verify the replacement away
+     * from the live files first, and only swap it in once it is known good —
+     * a corrupt or unreadable [inputFile] must leave the live database
+     * untouched. Callers must close any open handle to the live database
+     * before calling this: the codec does not own Room's cached instances,
+     * and an open handle keeps the pre-swap file alive on Linux.
+     */
     fun importDatabase(context: Context, dbName: String, password: String, inputFile: File)
 }
 
 /** ZIP packing, restore and database file handling shared by the backup formats. */
 object BackupHelper {
     private const val TAG = "BackupHelper"
-    private const val RESTORE_TEMP_NAME = "restore_temp"
     private const val DATASTORE_DEFAULT_NAME = "datastore_default"
 
     fun zipFiles(files: List<File>, baseDir: File, outputStream: OutputStream) {
@@ -69,20 +81,23 @@ object BackupHelper {
         dbCodec: DbBackupCodec? = null,
     ) {
         val tempDir = createTimestampedTempDir(context)
-        val filesToZip = mutableListOf<File>()
+        try {
+            val filesToZip = mutableListOf<File>()
 
-        warnOnMissingCodec(dbConfigs, dbCodec, ::warnBackupSkipped)
-        exportDatabases(context, dbConfigs, dbCodec, tempDir, filesToZip)
-        stageDatastoreFiles(context, datastoreNames, tempDir, filesToZip)
-        stagePrefFiles(context, prefNames, tempDir, filesToZip)
-        stageExtraFiles(extraFiles, tempDir, filesToZip)
+            warnOnMissingCodec(dbConfigs, dbCodec, ::warnBackupSkipped)
+            exportDatabases(context, dbConfigs, dbCodec, tempDir, filesToZip)
+            stageDatastoreFiles(context, datastoreNames, tempDir, filesToZip)
+            stagePrefFiles(context, prefNames, tempDir, filesToZip)
+            stageExtraFiles(extraFiles, tempDir, filesToZip)
 
-        if (filesToZip.isEmpty()) {
-            Log.error(TAG, "performFullBackup: NO FILES TO BACKUP!")
+            if (filesToZip.isEmpty()) {
+                Log.error(TAG, "performFullBackup: NO FILES TO BACKUP!")
+            }
+
+            zipFiles(filesToZip, tempDir, outputStream)
+        } finally {
+            tempDir.deleteRecursively()
         }
-
-        zipFiles(filesToZip, tempDir, outputStream)
-        tempDir.deleteRecursively()
     }
 
     fun performFullRestore(
@@ -94,30 +109,91 @@ object BackupHelper {
         inputStream: InputStream,
         dbCodec: DbBackupCodec? = null,
     ) {
-        val tempDir = createTempDir(context, RESTORE_TEMP_NAME)
-        unzipFiles(inputStream, tempDir)
+        // Unique per restore: a fixed dir would collide between concurrent
+        // restores and could be wiped from under an in-flight one.
+        val tempDir = createUniqueTempDir(context, "restore_temp")
+        try {
+            unzipFiles(inputStream, tempDir)
 
-        warnOnMissingCodec(dbConfigs, dbCodec, ::warnRestoreSkipped)
-        importDatabases(context, dbConfigs, dbCodec, tempDir)
-        restoreDatastoreFiles(context, datastoreNames, tempDir)
-        restorePrefFiles(context, prefNames, tempDir)
-        restoreExtraFiles(extraFilesMapping, tempDir)
-
-        tempDir.deleteRecursively()
+            warnOnMissingCodec(dbConfigs, dbCodec, ::warnRestoreSkipped)
+            importDatabases(context, dbConfigs, dbCodec, tempDir)
+            restoreDatastoreFiles(context, datastoreNames, tempDir)
+            restorePrefFiles(context, prefNames, tempDir)
+            restoreExtraFiles(extraFilesMapping, tempDir)
+        } finally {
+            tempDir.deleteRecursively()
+        }
     }
 
-    private fun createTimestampedTempDir(context: Context): File {
-        val tempDir = File(context.cacheDir, "backup_temp_${System.currentTimeMillis()}")
-        if (tempDir.exists()) tempDir.deleteRecursively()
+    private fun createTimestampedTempDir(context: Context): File =
+        createUniqueTempDir(context, "backup_temp")
+
+    private fun createUniqueTempDir(context: Context, prefix: String): File {
+        val tempDir = File(
+            context.cacheDir,
+            "${prefix}_${System.currentTimeMillis()}_${UUID.randomUUID()}",
+        )
         tempDir.mkdirs()
         return tempDir
     }
 
-    private fun createTempDir(context: Context, name: String): File {
-        val tempDir = File(context.cacheDir, name)
-        if (tempDir.exists()) tempDir.deleteRecursively()
-        tempDir.mkdirs()
-        return tempDir
+    /**
+     * Replaces [target] with [source]'s bytes atomically: copy to a sibling
+     * temp file on the same filesystem, then rename over the target. A kill
+     * mid-copy tears only the temp file; the live file is either fully old
+     * or fully new, never partial.
+     */
+    private fun atomicReplaceFile(source: File, target: File) {
+        val parent = target.parentFile
+            ?: throw IOException("Target has no parent directory: ${target.path}")
+        parent.mkdirs()
+        val tmp = File(parent, "${target.name}.tmp-${UUID.randomUUID()}")
+        try {
+            source.copyTo(tmp, overwrite = true)
+            if (!tmp.renameTo(target)) {
+                throw IOException("Failed to rename ${tmp.path} over ${target.path}")
+            }
+        } finally {
+            if (tmp.exists()) tmp.delete()
+        }
+    }
+
+    /**
+     * Swaps [target] (file or directory) for [source]: stage [source] as a
+     * sibling of [target], rename the old target aside, rename the staged
+     * copy in, then delete the old one. A kill mid-swap leaves either the
+     * old tree or the new tree in place (plus at most a `.restore-bak-*`
+     * sibling the next restore's aside-rename does not collide with,
+     * because the suffix is unique per call).
+     */
+    private fun swapIntoPlace(source: File, target: File) {
+        // Used for both files and directories: a plain rename-over cannot
+        // replace a directory with a file (or vice versa), so extras always
+        // go through the aside-swap, unlike datastore/prefs (always files).
+        val parent = target.parentFile
+            ?: throw IOException("Target has no parent directory: ${target.path}")
+        parent.mkdirs()
+        val staging = File(parent, "${target.name}.restore-tmp-${UUID.randomUUID()}")
+        val aside = File(parent, "${target.name}.restore-bak-${UUID.randomUUID()}")
+        try {
+            if (source.isDirectory) {
+                source.copyRecursively(staging, overwrite = false)
+            } else {
+                source.copyTo(staging, overwrite = false)
+            }
+            val movedAside = target.exists() && target.renameTo(aside)
+            if (target.exists() && !movedAside) {
+                throw IOException("Failed to move ${target.path} aside for restore")
+            }
+            if (!staging.renameTo(target)) {
+                // Put the old tree back before giving up.
+                if (movedAside) aside.renameTo(target)
+                throw IOException("Failed to rename ${staging.path} over ${target.path}")
+            }
+            if (movedAside) aside.deleteRecursively()
+        } finally {
+            if (staging.exists()) staging.deleteRecursively()
+        }
     }
 
     private fun warnOnMissingCodec(
@@ -242,8 +318,7 @@ object BackupHelper {
             val extracted = File(tempDir, "$dsName.preferences_pb")
             if (!extracted.exists()) return@forEach
             val targetFile = datastoreTarget(context, dsName)
-            targetFile.parentFile?.mkdirs()
-            extracted.copyTo(targetFile, true)
+            atomicReplaceFile(extracted, targetFile)
         }
     }
 
@@ -260,8 +335,7 @@ object BackupHelper {
             val extracted = File(tempDir, "$prefName.xml")
             if (!extracted.exists()) return@forEach
             val targetFile = File(context.dataDir, "shared_prefs/$prefName.xml")
-            targetFile.parentFile?.mkdirs()
-            extracted.copyTo(targetFile, true)
+            atomicReplaceFile(extracted, targetFile)
         }
     }
 
@@ -269,13 +343,7 @@ object BackupHelper {
         extraFilesMapping.forEach { (zipName, targetFile) ->
             val extractedFile = File(tempDir, zipName)
             if (!extractedFile.exists()) return@forEach
-            if (targetFile.exists()) targetFile.deleteRecursively()
-            if (extractedFile.isDirectory) {
-                extractedFile.copyRecursively(targetFile, true)
-            } else {
-                targetFile.parentFile?.mkdirs()
-                extractedFile.copyTo(targetFile, true)
-            }
+            swapIntoPlace(extractedFile, targetFile)
         }
     }
 }
