@@ -19,6 +19,19 @@ class FrameworkLocationManager(context: Context) : SensorEventListener {
         private const val LOCATION_MIN_TIME_MS = 1000L
         /** No distance floor: the fix-acceptance policy filters, not the OS. */
         private const val LOCATION_MIN_DISTANCE_M = 0f
+        /**
+         * Relaxed cadence for NETWORK while GPS is live. The acceptance
+         * policy is GPS-first — a network fix only lands when GPS has been
+         * silent for 10 s or is 2× less accurate — so a 1 Hz network stream
+         * is almost pure waste: Wi-Fi/cell scans firing every second for
+         * fixes that get thrown away (the biggest non-navigation location
+         * drain). At 5 s / 10 m the network provider still feeds the
+         * stale-GPS and indoor-accuracy escapes, just without the constant
+         * scanning. When GPS is off entirely, NETWORK keeps the fast
+         * cadence: it is the only fix source the map has.
+         */
+        private const val NETWORK_MIN_TIME_MS = 5000L
+        private const val NETWORK_MIN_DISTANCE_M = 10f
     }
     private val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
     private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
@@ -112,7 +125,8 @@ class FrameworkLocationManager(context: Context) : SensorEventListener {
         }
         registeredLocationListener = locationListener
 
-        if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+        val gpsEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
+        if (gpsEnabled) {
             locationManager.requestLocationUpdates(
                 LocationManager.GPS_PROVIDER,
                 LOCATION_MIN_TIME_MS,
@@ -121,8 +135,25 @@ class FrameworkLocationManager(context: Context) : SensorEventListener {
             )
         }
         if (locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
+            // GPS live: NETWORK is only a fallback (see acceptsFix), so it
+            // runs relaxed. GPS off: NETWORK is the sole source, keep 1 Hz.
+            val minTimeMs = if (gpsEnabled) NETWORK_MIN_TIME_MS else LOCATION_MIN_TIME_MS
+            val minDistanceM = if (gpsEnabled) NETWORK_MIN_DISTANCE_M else LOCATION_MIN_DISTANCE_M
             locationManager.requestLocationUpdates(
                 LocationManager.NETWORK_PROVIDER,
+                minTimeMs,
+                minDistanceM,
+                locationListener,
+            )
+        }
+        // Passive fallback: fixes other apps already paid to compute arrive
+        // here at zero extra radio cost and flow through the same GPS-first
+        // acceptance policy, so a coarse passive fix can still rescue the
+        // puck when GPS goes quiet (indoors, tunnels) between the relaxed
+        // network deliveries.
+        if (locationManager.isProviderEnabled(LocationManager.PASSIVE_PROVIDER)) {
+            locationManager.requestLocationUpdates(
+                LocationManager.PASSIVE_PROVIDER,
                 LOCATION_MIN_TIME_MS,
                 LOCATION_MIN_DISTANCE_M,
                 locationListener,

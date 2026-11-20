@@ -33,6 +33,13 @@ android {
         unitTests.all {
             it.maxHeapSize = "2g"
             it.forkEvery = 1
+            // forkEvery = 1 alone would run those per-class JVMs one at a
+            // time (Gradle's default maxParallelForks = 1). Run several
+            // class-forks concurrently instead, with the same
+            // memory-bounded formula as build-logic's RustNative wiring:
+            // each Robolectric fork costs roughly 1-2 GB, so the cap is
+            // half the processors, clamped to 1..6.
+            it.maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).coerceIn(1, 6)
         }
     }
 

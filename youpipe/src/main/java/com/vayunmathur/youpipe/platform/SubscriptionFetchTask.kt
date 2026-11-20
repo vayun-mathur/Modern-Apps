@@ -6,9 +6,10 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.vayunmathur.library.work.startRepeatedTask
+import androidx.work.ExistingPeriodicWorkPolicy
 import com.vayunmathur.youpipe.data.SubscriptionRepository
 import com.vayunmathur.youpipe.data.SubscriptionVideo
-import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.hours
 import kotlinx.coroutines.CancellationException
 import com.vayunmathur.youpipe.network.getChannelInfo
 import com.vayunmathur.youpipe.network.getChannelVideos
@@ -91,7 +92,20 @@ private suspend fun fetchAndStoreChannelVideos(
 }
 
 fun setupHourlyTask(context: Context) {
-    startRepeatedTask<SubscriptionFetchTask>(context, "subscription_fetch", 15.minutes)
+    // This worker does real sync work — a network fetch per subscribed
+    // channel plus Room writes — so the inherited 15-minute cadence (the
+    // WorkManager periodic floor) meant up to 96 full subscription sweeps
+    // a day. Hourly matches the feed's freshness needs at a quarter of the
+    // wakeups; startRepeatedTask already constrains the work to
+    // NetworkType.CONNECTED. UPDATE (not the KEEP default) so installs
+    // already carrying the 15-minute periodic work migrate to the new
+    // interval instead of keeping the old cadence forever.
+    startRepeatedTask<SubscriptionFetchTask>(
+        context,
+        "subscription_fetch",
+        1.hours,
+        periodicWorkPolicy = ExistingPeriodicWorkPolicy.UPDATE,
+    )
 }
 
 private fun offlineFetchException(channelName: String, cause: java.io.IOException): java.io.IOException {
