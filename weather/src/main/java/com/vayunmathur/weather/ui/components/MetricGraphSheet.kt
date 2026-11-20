@@ -38,6 +38,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.weather.R
 import com.vayunmathur.weather.domain.MetricPoint
@@ -109,6 +111,30 @@ fun MetricGraphSheet(
 
             var selectedIndex by remember(points) { mutableStateOf<Int?>(null) }
 
+            // Screen-reader summary for the canvas below, which otherwise
+            // exposes nothing. Min/max and the time span are the values
+            // already computed for the edge labels; a tapped/dragged point
+            // becomes the "current" value when there is one.
+            val graphDescription = selectedIndex?.let { idx ->
+                stringResource(
+                    R.string.metric_graph_summary_selected,
+                    title,
+                    timeLabel(points.first().epochSec),
+                    timeLabel(points.last().epochSec),
+                    valueLabel(minV),
+                    valueLabel(maxV),
+                    valueLabel(points[idx].value),
+                    timeLabel(points[idx].epochSec),
+                )
+            } ?: stringResource(
+                R.string.metric_graph_summary,
+                title,
+                timeLabel(points.first().epochSec),
+                timeLabel(points.last().epochSec),
+                valueLabel(minV),
+                valueLabel(maxV),
+            )
+
             fun indexAt(x: Float, widthPx: Float): Int {
                 if (widthPx <= 0f) return 0
                 val frac = (x / widthPx).coerceIn(0f, 1f)
@@ -135,7 +161,7 @@ fun MetricGraphSheet(
                     },
             ) {
                 val chartWidth = maxWidth
-                Canvas(modifier = Modifier.fillMaxSize()) {
+                Canvas(modifier = Modifier.fillMaxSize().semantics { contentDescription = graphDescription }) {
                     val n = points.size
                     val w = size.width
                     val h = size.height

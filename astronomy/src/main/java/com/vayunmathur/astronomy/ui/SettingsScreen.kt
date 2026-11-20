@@ -34,6 +34,7 @@ import com.vayunmathur.library.ui.SettingsSwitchRow
 import com.vayunmathur.library.ui.Slider
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.util.NavBackStack
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 
 /**
@@ -48,6 +49,9 @@ fun SettingsScreen(backStack: NavBackStack<Route>, state: SettingsUiState, actio
     val offLabel = stringResource(R.string.off)
     val linesLabel = stringResource(R.string.lines_only)
     val linesArtLabel = stringResource(R.string.lines_art)
+    // Captured for the slider value formatters below, which are plain
+    // lambdas and cannot call stringResource themselves.
+    val context = LocalContext.current
 
     AppScaffold(title = stringResource(R.string.settings), onNavigateBack = { backStack.pop() }) { padding ->
         // Letterboxed on expanded windows so the form keeps a readable measure.
@@ -81,10 +85,20 @@ fun SettingsScreen(backStack: NavBackStack<Route>, state: SettingsUiState, actio
 
             Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(stringResource(R.string.magnitude_limit, state.magLimit.format(1)), style = MaterialTheme.typography.bodyMedium)
-                Slider(value = state.magLimit, onValueChange = { actions.setMagLimit(it) }, valueRange = 1f..7f)
+                Slider(
+                    value = state.magLimit,
+                    onValueChange = { actions.setMagLimit(it) },
+                    valueRange = 1f..7f,
+                    valueFormatter = { context.getString(R.string.magnitude_limit, it.format(1)) },
+                )
 
                 Text(stringResource(R.string.fov, state.fovDeg.toInt()), style = MaterialTheme.typography.bodyMedium)
-                Slider(value = state.fovDeg, onValueChange = { actions.setFov(it) }, valueRange = 10f..120f)
+                Slider(
+                    value = state.fovDeg,
+                    onValueChange = { actions.setFov(it) },
+                    valueRange = 10f..120f,
+                    valueFormatter = { context.getString(R.string.fov, it.toInt()) },
+                )
             }
 
             SettingsDivider()

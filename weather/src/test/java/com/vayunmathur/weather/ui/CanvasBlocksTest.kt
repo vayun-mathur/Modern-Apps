@@ -1,6 +1,8 @@
 package com.vayunmathur.weather.ui
 
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.weather.domain.MetricPoint
 import com.vayunmathur.weather.ui.components.MetricGraphSheet
@@ -40,6 +42,22 @@ class CanvasBlocksTest {
         rule.waitForIdle()
         // Force a real render pass so every Canvas DrawScope lambda runs.
         rule.onRoot().captureToImage()
+    }
+
+    @Test fun graphSheetExposesMinMaxSummary() {
+        rule.setContent {
+            MetricGraphSheet(
+                title = "Temperature",
+                points = (0..10).map { MetricPoint(1767225600L + it * 3600, 10.0 + it % 3) },
+                valueLabel = { "${it.toInt()}°" },
+                timeLabel = { "h$it" },
+                onOpenMap = {},
+                onDismiss = {},
+            )
+        }
+        rule.onNodeWithContentDescription(
+            "Temperature chart, h1767225600 to h1767261600, minimum 10°, maximum 12°",
+        ).assertIsDisplayed()
     }
 
     @Test fun graphSheetDraws() {

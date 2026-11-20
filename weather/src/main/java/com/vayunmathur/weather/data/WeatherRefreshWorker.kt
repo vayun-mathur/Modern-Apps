@@ -3,8 +3,10 @@ package com.vayunmathur.weather.data
 import android.content.Context
 import com.vayunmathur.library.log.Log
 import androidx.glance.appwidget.updateAll
+import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
@@ -57,12 +59,24 @@ class WeatherRefreshWorker(
         private const val WORK_NAME = "WeatherHourlyRefresh"
 
         fun scheduleHourlyRefresh(context: Context) {
+            // The worker only fetches small forecast bundles, so CONNECTED
+            // (metered allowed) matches the other hourly network syncs in
+            // the repo (e.g. email); UNMETERED/battery constraints are
+            // reserved for large downloads (appstore, maps). Without a
+            // network constraint the hourly job woke up and burned a retry
+            // cycle even with no connectivity at all.
+            val constraints = Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .build()
             val request = PeriodicWorkRequestBuilder<WeatherRefreshWorker>(1, TimeUnit.HOURS)
+                .setConstraints(constraints)
                 .build()
 
             WorkManager.getInstance(context).enqueueUniquePeriodicWork(
                 WORK_NAME,
-                ExistingPeriodicWorkPolicy.KEEP,
+                // UPDATE (not KEEP) so installs that already enqueued the
+                // old unconstrained request actually pick up the constraints.
+                ExistingPeriodicWorkPolicy.UPDATE,
                 request
             )
         }

@@ -67,6 +67,8 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -435,6 +437,21 @@ fun LargeFlexibleTopAppBar(
 )
 
 // --- Slider ---
+/**
+ * Material slider with an optional spoken value.
+ *
+ * Without [valueFormatter], TalkBack announces a bare percentage of
+ * [valueRange] (e.g. "50%"), which is meaningless for domain values such as
+ * magnitudes or degrees. When a formatter is supplied it is invoked during
+ * composition and its result becomes the slider's stateDescription, so
+ * TalkBack reads that text (e.g. "Magnitude limit: 5.0") instead, while the
+ * underlying progress-bar range info — and therefore increment/decrement
+ * actions — is left untouched. The formatter is a plain lambda, not a
+ * composable: capture already-resolved strings/values (e.g. via
+ * `LocalContext.current.getString(...)`) rather than calling composable
+ * functions inside it. Only sliders whose value has a domain meaning need
+ * one; plain proportion sliders should keep the default.
+ */
 @Composable
 fun Slider(
     value: Float,
@@ -445,10 +462,19 @@ fun Slider(
     steps: Int = 0,
     onValueChangeFinished: (() -> Unit)? = null,
     colors: SliderColors = SliderDefaults.colors(),
-) = androidx.compose.material3.Slider(
-    value = value, onValueChange = onValueChange, modifier = modifier, enabled = enabled,
-    valueRange = valueRange, steps = steps, onValueChangeFinished = onValueChangeFinished, colors = colors,
-)
+    valueFormatter: ((Float) -> String)? = null,
+) {
+    val stateDescription = valueFormatter?.invoke(value)
+    val sliderModifier = if (stateDescription != null) {
+        modifier.semantics { this.stateDescription = stateDescription }
+    } else {
+        modifier
+    }
+    androidx.compose.material3.Slider(
+        value = value, onValueChange = onValueChange, modifier = sliderModifier, enabled = enabled,
+        valueRange = valueRange, steps = steps, onValueChangeFinished = onValueChangeFinished, colors = colors,
+    )
+}
 
 @Composable
 fun RangeSlider(
@@ -1206,6 +1232,7 @@ fun SwipeToDismissBox(
 )
 
 // --- Slider (SliderState overload) ---
+/** State-based slider; see the value-based [Slider] for [valueFormatter]. */
 @Composable
 fun Slider(
     state: SliderState,
@@ -1213,7 +1240,16 @@ fun Slider(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     colors: SliderColors = SliderDefaults.colors(),
-) = androidx.compose.material3.Slider(state = state, onValueChange = onValueChange, modifier = modifier, enabled = enabled, colors = colors)
+    valueFormatter: ((Float) -> String)? = null,
+) {
+    val stateDescription = valueFormatter?.invoke(state.value)
+    val sliderModifier = if (stateDescription != null) {
+        modifier.semantics { this.stateDescription = stateDescription }
+    } else {
+        modifier
+    }
+    androidx.compose.material3.Slider(state = state, onValueChange = onValueChange, modifier = sliderModifier, enabled = enabled, colors = colors)
+}
 
 // --- Search bar (inputField overload) ---
 @Composable

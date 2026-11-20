@@ -1,7 +1,10 @@
 package com.vayunmathur.library.ui
 
 import androidx.compose.material3.Text
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
@@ -9,6 +12,8 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.requestFocus
+import androidx.compose.ui.unit.dp
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -138,6 +143,48 @@ class EditorToolbarSliceTest {
         }
         rule.onNodeWithContentDescription("Custom").performClick()
         assertEquals(1, clicks)
+    }
+
+    @Test fun formatIconButtonHasAtLeast48dpHitArea() {
+        rule.setContent {
+            FormatIconButton(
+                contentDescription = "Custom",
+                onClick = {},
+                icon = { IconAdd() },
+            )
+        }
+        rule.onNodeWithContentDescription("Custom")
+            .assertWidthIsAtLeast(48.dp)
+            .assertHeightIsAtLeast(48.dp)
+    }
+
+    @Test fun formatIconButtonIsFocusableOnlyWhenRequested() {
+        rule.setContent {
+            FormatIconButton(
+                contentDescription = "Custom",
+                focusable = true,
+                onClick = {},
+                icon = { IconAdd() },
+            )
+        }
+        rule.onNodeWithContentDescription("Custom").requestFocus().assertIsFocused()
+    }
+
+    @Test fun formatIconButtonDefaultsToUnfocusable() {
+        rule.setContent {
+            FormatIconButton(
+                contentDescription = "Custom",
+                onClick = {},
+                icon = { IconAdd() },
+            )
+        }
+        // canFocus=false is the default (IME-preserving) path: the node has
+        // no focus action for keyboard navigation to land on.
+        val focused = runCatching {
+            rule.onNodeWithContentDescription("Custom").requestFocus().assertIsFocused()
+            true
+        }.getOrDefault(false)
+        assertEquals(false, focused)
     }
 
     @Test fun editorBottomBarShowsContent() {

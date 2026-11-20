@@ -162,6 +162,24 @@ class SettingsScreenInteractionsTest {
     }
 
     @Test
+    fun `sliders announce formatted values instead of percentages`() {
+        show(Recorder())
+        val sliders = composeRule.onAllNodes(
+            androidx.compose.ui.test.SemanticsMatcher.keyIsDefined(
+                androidx.compose.ui.semantics.SemanticsProperties.ProgressBarRangeInfo,
+            ),
+        ).fetchSemanticsNodes()
+        assertEquals(2, sliders.size)
+        val descriptions = sliders.map {
+            it.config[androidx.compose.ui.semantics.SemanticsProperties.StateDescription]
+        }
+        assertEquals(
+            listOf(context.getString(R.string.magnitude_limit, "5.0"), context.getString(R.string.fov, 70)),
+            descriptions,
+        )
+    }
+
+    @Test
     fun `settings renders its sections and catalog counts`() {
         show(Recorder())
         composeRule.onNodeWithText(string(R.string.settings)).assertIsDisplayed()

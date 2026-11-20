@@ -110,6 +110,8 @@
     <string name="label_core">Core</string>
     <!-- SleepDetailsPage: Label for Deep sleep stage. Adjective -->
     <string name="label_deep">Deep</string>
+    <!-- SleepStageGraph: screen-reader summary of the stage graph. %1$s/%2$s = start/end time labels, %3$s = Awake duration, %4$s = REM duration, %5$s = Core duration, %6$s = Deep duration -->
+    <string name="sleep_stage_graph_summary">Sleep stage graph, %1$s to %2$s. Awake %3$s, REM %4$s, Core %5$s, Deep %6$s</string>
 
     <!-- BodyPage: Section header for body composition metrics. Noun phrase -->
     <string name="section_body_composition">Body Composition</string>

@@ -2,7 +2,10 @@ package com.vayunmathur.health.ui
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 import com.vayunmathur.health.data.Record
 import com.vayunmathur.health.data.RecordType
 import com.vayunmathur.health.data.SleepData
@@ -64,6 +67,28 @@ class SleepDetailsComponentsTest {
         rule.onNodeWithText("REM").assertIsDisplayed()
         rule.onNodeWithText("Core").assertIsDisplayed()
         rule.onNodeWithText("Deep").assertIsDisplayed()
+    }
+
+    @Test
+    fun `stage graph exposes a spoken summary with stage totals`() {
+        val stages = listOf(
+            SleepStage(0L, 1_800_000L, 1),
+            SleepStage(1_800_000L, 5_400_000L, 2),
+            SleepStage(5_400_000L, 12_600_000L, 3),
+            SleepStage(12_600_000L, 28_800_000L, 4),
+        )
+        rule.setContent { SleepStageGraph(sleepRecord(Json.encodeToString(stages))) }
+        val nodes = rule.onAllNodesWithContentDescription("Sleep stage graph", substring = true)
+            .fetchSemanticsNodes()
+        assertEquals(1, nodes.size)
+        val description = nodes.single().config[
+            androidx.compose.ui.semantics.SemanticsProperties.ContentDescription,
+        ].single()
+        // Totals are the already-computed SleepData durations (30m/90m/240m/120m).
+        assertTrue(description.contains("Awake 30m"), description)
+        assertTrue(description.contains("REM 1h 30m"), description)
+        assertTrue(description.contains("Core 4h 0m"), description)
+        assertTrue(description.contains("Deep 2h 0m"), description)
     }
 
     @Test

@@ -98,19 +98,40 @@ private fun baseIcon(format: EditorFormat): Pair<ImageVector, String> = when (fo
     EditorFormat.LINK -> Icons.Filled.Link to "Link"
 }
 
-/** A toolbar icon button that does not steal focus from the editor field. */
+/**
+ * A toolbar icon button that does not steal focus from the editor field.
+ *
+ * The touch target is Material's minimum interactive size (48dp) rather
+ * than the old 40dp cap; the glyph itself keeps its default size, so
+ * toolbars only gain hittable padding, not larger icons. (Material's own
+ * `minimumInteractiveComponentSize` modifier only expands the semantics
+ * touch target and leaves the layout at IconButton's 40dp, so the size is
+ * set explicitly here to make the whole 48dp hittable and visible to
+ * layout/focus.)
+ *
+ * [focusable] is the keyboard path, and it defaults to `false` on purpose:
+ * `canFocus = false` is load-bearing for the IME. If a tap moved focus to
+ * the button, the editor field would lose focus, the keyboard would
+ * dismiss, and its selection/cursor would stop being the live insertion
+ * point the toggle acts on. Callers in a keyboard-driven context (no soft
+ * IME to preserve, or an editor that re-requests field focus after a
+ * toggle) can opt in with `focusable = true` to make the button reachable
+ * and activatable by Tab/arrow navigation; touch and TalkBack behaviour
+ * are unchanged either way, since both go through the click semantics.
+ */
 @Composable
 fun FormatIconButton(
     icon: ImageVector,
     contentDescription: String,
     active: Boolean = false,
     enabled: Boolean = true,
+    focusable: Boolean = false,
     onClick: () -> Unit,
 ) {
     IconButton(
         onClick = onClick,
         enabled = enabled,
-        modifier = Modifier.focusProperties { canFocus = false }.size(40.dp),
+        modifier = Modifier.focusProperties { canFocus = focusable }.size(48.dp),
     ) {
         Icon(
             icon,
@@ -129,6 +150,7 @@ fun FormatIconButton(
     contentDescription: String,
     active: Boolean = false,
     enabled: Boolean = true,
+    focusable: Boolean = false,
     onClick: () -> Unit,
     icon: @Composable () -> Unit,
 ) {
@@ -138,7 +160,7 @@ fun FormatIconButton(
     IconButton(
         onClick = onClick,
         enabled = enabled,
-        modifier = Modifier.focusProperties { canFocus = false }.size(40.dp)
+        modifier = Modifier.focusProperties { canFocus = focusable }.size(48.dp)
             .semantics { this.contentDescription = description },
     ) {
         androidx.compose.runtime.CompositionLocalProvider(

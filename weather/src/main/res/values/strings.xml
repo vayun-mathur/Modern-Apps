@@ -47,6 +47,10 @@
 
     <!-- Placeholder when not enough data points (<2) to draw graph line -->
     <string name="not_enough_data_to_plot">Not enough data to plot.</string>
+    <!-- MetricGraphSheet: screen-reader summary of the metric chart. %1$s = metric title, %2$s/%3$s = start/end time labels, %4$s = minimum value, %5$s = maximum value -->
+    <string name="metric_graph_summary">%1$s chart, %2$s to %3$s, minimum %4$s, maximum %5$s</string>
+    <!-- MetricGraphSheet: screen-reader summary when a point is selected. %1$s = metric title, %2$s/%3$s = start/end time labels, %4$s = minimum value, %5$s = maximum value, %6$s = selected value, %7$s = selected time label -->
+    <string name="metric_graph_summary_selected">%1$s chart, %2$s to %3$s, minimum %4$s, maximum %5$s, selected %6$s at %7$s</string>
 
     <!-- Map time slider label when layer time is null fallback. Noun -->
 

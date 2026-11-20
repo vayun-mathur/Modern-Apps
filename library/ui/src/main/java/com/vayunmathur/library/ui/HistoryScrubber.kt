@@ -21,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
@@ -128,7 +129,7 @@ fun RowScope.HistoryStepButton(label: String, onClick: () -> Unit) {
         Modifier.weight(1f).heightIn(min = 36.dp),
         contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
     ) {
-        Text(label, fontSize = 12.sp, maxLines = 1)
+        Text(label, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 

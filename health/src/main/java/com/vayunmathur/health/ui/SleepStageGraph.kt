@@ -21,7 +21,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.health.connect.client.records.SleepSessionRecord
 import com.vayunmathur.health.R
@@ -53,6 +56,35 @@ fun SleepStageGraph(record: Record) {
     val remColor = colors.rem
     val coreColor = colors.core
     val deepColor = colors.deep
+
+    // Screen-reader summary for the canvas below, which otherwise exposes
+    // nothing. Durations come from the already-computed SleepData totals;
+    // when those are absent (older records) they are summed from the stages
+    // using the same stage-to-level mapping the graph draws.
+    val context = LocalContext.current
+    val is24Hour = rememberIs24Hour()
+    val startZone = record.startTime.atZone(java.time.ZoneId.systemDefault())
+    val endZone = record.endTime.atZone(java.time.ZoneId.systemDefault())
+    fun stageMillis(predicate: (Int) -> Boolean): Long =
+        stages.filter { predicate(it.stage) }.sumOf { it.endTimeMillis - it.startTimeMillis }
+    val sleepData = record.sleepData
+    val awakeMillis = sleepData?.awakeDurationMillis?.takeIf { it > 0 }
+        ?: stageMillis { it == SleepSessionRecord.STAGE_TYPE_AWAKE || it == SleepSessionRecord.STAGE_TYPE_OUT_OF_BED }
+    val remMillis = sleepData?.remDurationMillis?.takeIf { it > 0 }
+        ?: stageMillis { it == SleepSessionRecord.STAGE_TYPE_REM }
+    val coreMillis = sleepData?.lightDurationMillis?.takeIf { it > 0 }
+        ?: stageMillis { it != SleepSessionRecord.STAGE_TYPE_AWAKE && it != SleepSessionRecord.STAGE_TYPE_OUT_OF_BED && it != SleepSessionRecord.STAGE_TYPE_REM && it != SleepSessionRecord.STAGE_TYPE_DEEP }
+    val deepMillis = sleepData?.deepDurationMillis?.takeIf { it > 0 }
+        ?: stageMillis { it == SleepSessionRecord.STAGE_TYPE_DEEP }
+    val graphDescription = stringResource(
+        R.string.sleep_stage_graph_summary,
+        DateString.hourLabel(startZone.hour, is24Hour),
+        DateString.hourLabel(endZone.hour, is24Hour),
+        hoursMinutesString(context, awakeMillis / 60_000),
+        hoursMinutesString(context, remMillis / 60_000),
+        hoursMinutesString(context, coreMillis / 60_000),
+        hoursMinutesString(context, deepMillis / 60_000),
+    )
 
     Column {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -89,6 +121,7 @@ fun SleepStageGraph(record: Record) {
                     .weight(1f)
                     .height(160.dp)
                     .padding(start = 8.dp)
+                    .semantics { contentDescription = graphDescription }
             ) {
                 val canvasWidth = size.width
                 val canvasHeight = size.height
@@ -139,15 +172,14 @@ fun SleepStageGraph(record: Record) {
         ) {
             val startT = record.startTime.atZone(java.time.ZoneId.systemDefault())
             val endT = record.endTime.atZone(java.time.ZoneId.systemDefault())
-            val is24 = rememberIs24Hour()
 
             Text(
-                DateString.hourLabel(startT.hour, is24),
+                DateString.hourLabel(startT.hour, is24Hour),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.outline
             )
             Text(
-                DateString.hourLabel(endT.hour, is24),
+                DateString.hourLabel(endT.hour, is24Hour),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.outline
             )
