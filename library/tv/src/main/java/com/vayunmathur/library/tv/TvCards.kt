@@ -141,6 +141,7 @@ fun TvBadge(
         style = MaterialTheme.typography.labelMedium,
         color = content,
         maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
         modifier = modifier
             .background(container, MaterialTheme.shapes.extraSmall)
             .padding(horizontal = 8.dp, vertical = 3.dp),

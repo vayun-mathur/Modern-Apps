@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import com.vayunmathur.library.ui.CircularProgressIndicator
+import com.vayunmathur.library.ui.adaptiveGridCells
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.ListItem
@@ -202,7 +203,7 @@ fun GalleryScreen(
                             }
                             // Show search results as a photo grid
                             LazyVerticalGrid(
-                                GridCells.Fixed(3),
+                                adaptiveGridCells(100.dp),
                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                                 verticalArrangement = Arrangement.spacedBy(4.dp),
                                 modifier = Modifier.fillMaxSize().padding(4.dp)

@@ -30,6 +30,7 @@ import androidx.compose.ui.platform.LocalTextToolbar
 import androidx.compose.ui.platform.TextToolbar
 import androidx.compose.ui.platform.TextToolbarStatus
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
@@ -155,6 +156,7 @@ fun OcrTextLayer(
                             text = p.text,
                             style = style,
                             maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                             softWrap = false,
                             modifier = Modifier
                                 .offset { IntOffset(p.origin.x.roundToInt(), p.origin.y.roundToInt()) }

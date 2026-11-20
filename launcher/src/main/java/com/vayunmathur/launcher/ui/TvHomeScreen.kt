@@ -18,8 +18,6 @@ import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.launcher.ui.components.TvReorderHint
 
-// RAW SCAFFOLD EXCEPTION: TV launcher fullscreen grid, no app bar.
-
 /**
  * The TV home screen: clock header, app banner grid, bottom glass row, edit overlays.
  *

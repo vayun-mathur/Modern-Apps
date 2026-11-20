@@ -113,7 +113,7 @@ fun TvChip(
             focusedSelectedContentColor = scheme.inverseOnSurface,
         ),
     ) {
-        Text(label, maxLines = 1)
+        Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -141,7 +141,7 @@ fun TvListRow(
         headlineContent = {
             Text(headline, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
         },
-        overlineContent = overline?.let { { Text(it, maxLines = 1) } },
+        overlineContent = overline?.let { { Text(it, maxLines = 1, overflow = TextOverflow.Ellipsis) } },
         supportingContent = supporting?.let {
             { Text(it, style = MaterialTheme.typography.bodyMedium, maxLines = 3, overflow = TextOverflow.Ellipsis) }
         },

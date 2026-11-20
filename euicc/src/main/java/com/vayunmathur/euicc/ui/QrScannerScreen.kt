@@ -57,7 +57,6 @@ import java.util.concurrent.Executors
  * itself is a raw `Box` rather than a scaffold body — a viewfinder has no heading or
  * footer of its own, and the cancel action overlays it the way the platform LPA does.
  */
-// RAW SCAFFOLD EXCEPTION: full-bleed camera viewfinder; AppScaffold hosts the bar only.
 @Composable
 fun QrScannerScreen(backStack: NavBackStack<Route>, onResult: (String) -> Unit) {
     val context = LocalContext.current

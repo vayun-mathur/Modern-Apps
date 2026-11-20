@@ -315,7 +315,7 @@ private fun InCallRenderer(template: HostTemplate.InCall, modifier: Modifier = M
         verticalArrangement = Arrangement.spacedBy(CAR_GAP, Alignment.CenterVertically),
     ) {
         ArtworkTile(null, Modifier.size(120.dp), CircleShapeLike)
-        template.title?.let { Text(it, style = MaterialTheme.typography.headlineMedium, maxLines = 1) }
+        template.title?.let { Text(it, style = MaterialTheme.typography.headlineMedium, maxLines = 1, overflow = TextOverflow.Ellipsis) }
         for (line in template.texts) Text(line, style = MaterialTheme.typography.bodyLarge)
         if (template.loading) LoadingRow()
         ActionRow(template.actions)
