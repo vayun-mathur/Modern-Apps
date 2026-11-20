@@ -4,11 +4,13 @@ import android.content.Context
 import android.graphics.Bitmap
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -16,10 +18,13 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.IntSize
 import com.vayunmathur.library.image.ImageLoader
 import com.vayunmathur.library.image.ImageRequest
 import com.vayunmathur.library.image.ImageResult
+import com.vayunmathur.library.image.Size
 
 /**
  * Coil-like AsyncImage backed by our ImageLoader (HttpURLConnection + custom caches + SVG + Video).
@@ -27,6 +32,14 @@ import com.vayunmathur.library.image.ImageResult
  * Supported model types (Any?): Uri, String URL, java.io.File, ByteArray, Bitmap, ImageRequest.
  * Mirrors signature used across codebase:
  * `AsyncImage(model, contentDescription, modifier, contentScale, colorFilter, onState)`
+ *
+ * Decode size: a request with no explicit size used to decode at up to
+ * [com.vayunmathur.library.image.decoders.BitmapDecoder.MAX_ORIGINAL_DIMENSION]
+ * px even into a 48.dp thumbnail, because most call sites pass a plain model and
+ * rely on the default. Like Coil, the decode size is now derived from this
+ * composable's layout constraints (see [deriveDecodeSize]); callers that pass an
+ * explicit size — including [Size.Original] when they truly want the full
+ * image — are left untouched.
  */
 @Composable
 fun AsyncImage(
@@ -43,27 +56,53 @@ fun AsyncImage(
     val context = LocalContext.current
     val loader = imageLoader ?: remember(context) { ImageLoader.get(context) }
 
-    val request = rememberImageRequest(model, context)
+    val baseRequest = rememberImageRequest(model, context)
 
-    // Synchronous memory-cache probe. On a hit the bitmap is available before the
-    // first frame, so a scrolled-in item paints immediately instead of showing an
-    // empty box for a frame and re-running its crossfade over an image that was
-    // already in memory.
-    val seeded = rememberSeededBitmap(request, loader)
+    // Fallback decode-size source for the case where the constraints are
+    // unbounded (e.g. an infinite-width scroll row): the size this composable
+    // was actually laid out at, known after the first layout pass.
+    var measuredSize by remember { mutableStateOf(IntSize.Zero) }
 
-    val bitmapState = rememberAsyncBitmap(request, seeded, loader, onState)
+    BoxWithConstraints(
+        modifier = modifier.onSizeChanged { measuredSize = it },
+        contentAlignment = alignment,
+    ) {
+        val derivedSize = deriveDecodeSize(
+            explicitSize = baseRequest?.size,
+            constraintWidth = constraints.maxWidth,
+            constraintHeight = constraints.maxHeight,
+            measuredWidth = measuredSize.width,
+            measuredHeight = measuredSize.height,
+        )
+        val request = remember(baseRequest, derivedSize) {
+            when {
+                baseRequest == null -> null
+                // An explicit size (a real size, or Size.Original from a caller
+                // that truly wants the full image) always wins.
+                baseRequest.size != null -> baseRequest
+                derivedSize != null -> baseRequest.copy(size = derivedSize)
+                else -> baseRequest
+            }
+        }
 
-    val bitmap = bitmapState.value
+        // Synchronous memory-cache probe. On a hit the bitmap is available before the
+        // first frame, so a scrolled-in item paints immediately instead of showing an
+        // empty box for a frame and re-running its crossfade over an image that was
+        // already in memory.
+        val seeded = rememberSeededBitmap(request, loader)
 
-    // Crossfade alpha if requested
-    val shouldCrossfade = request?.crossfade == true
-    val targetAlpha = if (bitmap != null) alpha else 0f
-    val animatedAlpha by animateFloatAsState(
-        targetValue = if (shouldCrossfade) targetAlpha else alpha,
-        label = "asyncImageCrossfade"
-    )
+        val bitmapState = rememberAsyncBitmap(request, seeded, loader, onState)
 
-    Box(modifier = modifier, contentAlignment = alignment) {
+        val bitmap = bitmapState.value
+
+        // Crossfade alpha if requested
+        val shouldCrossfade = request?.crossfade == true
+        val targetAlpha = if (bitmap != null) alpha else 0f
+        val animatedAlpha by animateFloatAsState(
+            targetValue = if (shouldCrossfade) targetAlpha else alpha,
+            label = "asyncImageCrossfade"
+        )
+
         if (bitmap != null) {
             // Use Android-like scaling; honor colorFilter and contentScale
             Image(
@@ -78,6 +117,33 @@ fun AsyncImage(
             )
         }
     }
+}
+
+/**
+ * The decode size for a request, or null to leave the request unsized.
+ *
+ * An [explicitSize] set by the caller (including [Size.Original]) is returned
+ * unchanged. Otherwise the layout constraints win when both dimensions are
+ * bounded ([constraintWidth]/[constraintHeight] are pixels;
+ * [Int.MAX_VALUE] means unbounded), then the measured layout size, then null —
+ * unsized, in which case the decoder still caps the longest edge at its
+ * original-size limit rather than decoding without bound.
+ */
+internal fun deriveDecodeSize(
+    explicitSize: Size?,
+    constraintWidth: Int,
+    constraintHeight: Int,
+    measuredWidth: Int,
+    measuredHeight: Int,
+): Size? {
+    if (explicitSize != null) return explicitSize
+    if (constraintWidth in 1 until Int.MAX_VALUE && constraintHeight in 1 until Int.MAX_VALUE) {
+        return Size(constraintWidth, constraintHeight)
+    }
+    if (measuredWidth > 0 && measuredHeight > 0) {
+        return Size(measuredWidth, measuredHeight)
+    }
+    return null
 }
 
 @Composable
