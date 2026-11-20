@@ -9,7 +9,7 @@ package com.vayunmathur.updater.platform
  */
 internal object UpdaterPreferences {
 
-    /** Whether to download and apply without asking. On by default. */
+    /** Whether to download and apply signed OS updates without asking. Signed OS updates are on by default. */
     const val AUTO_INSTALL = "updater_auto_install"
 
     /** Whether auto-install may use a metered connection. Off by default — an OTA is 1-2 GB. */

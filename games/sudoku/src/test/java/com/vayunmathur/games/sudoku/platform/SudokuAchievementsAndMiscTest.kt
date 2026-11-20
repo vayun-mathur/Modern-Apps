@@ -63,7 +63,7 @@ class SudokuAchievementsAndMiscTest {
     fun backupAgentDeclaresSudokuFiles() {
         val agent = AppBackupAgent()
         assertEquals(listOf("sudoku_stats"), agent.prefNames)
-        assertEquals(listOf("datastore_default"), agent.datastoreNames)
+        assertEquals(listOf("settings", "datastore_default"), agent.datastoreNames)
     }
 
     @Test

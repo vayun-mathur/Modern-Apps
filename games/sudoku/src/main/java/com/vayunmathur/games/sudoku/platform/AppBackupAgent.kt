@@ -6,6 +6,11 @@ import com.vayunmathur.library.util.BaseBackupAgent
 class AppBackupAgent : BaseBackupAgent() {
     override val prefNames: List<String> get() = listOf("sudoku_stats")
 
-    // The shared DataStoreUtils file, holding AchievementsManager unlocks.
-    override val datastoreNames: List<String> get() = listOf("datastore_default")
+    /**
+     * Both files, or a restore silently wipes half the player's history: "settings" holds the
+     * answer-mode and highlight-mistakes settings, while the shared DataStoreUtils file holds
+     * the AchievementsManager unlocks. Omitting "settings" silently reset both settings on
+     * every restore.
+     */
+    override val datastoreNames: List<String> get() = listOf("settings", "datastore_default")
 }

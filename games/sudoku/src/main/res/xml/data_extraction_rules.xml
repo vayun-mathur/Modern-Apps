@@ -2,7 +2,9 @@
 <!--
   Sudoku. Audited state: the "sudoku_stats" SharedPreferences file
   (AppBackupAgent.prefNames) holding per size-and-difficulty played/won counts,
-  win streaks and best times, plus filesDir/datastore_default.preferences_pb,
+  win streaks and best times, plus filesDir/datastore/settings.preferences_pb
+  holding the answer-mode and highlight-mistakes settings, plus
+  filesDir/datastore_default.preferences_pb,
   the shared DataStoreUtils file holding the AchievementsManager unlocks. No
   Room database, no in-progress board (the puzzle lives only in the ViewModel),
   nothing written to external storage - achievements.json is a read-only APK
@@ -12,7 +14,7 @@
   NOT set android:fullBackupOnly, so Android uses key/value backup and the
   <cloud-backup> section below is NOT consulted. Cloud content is exactly
   AppBackupAgent's prefNames = ["sudoku_stats"] plus datastoreNames =
-  ["datastore_default"], which is the same data this file would have sent.
+  ["settings", "datastore_default"], which is the same data this file would have sent.
   <device-transfer> IS governed here, and these rules become the cloud control
   too if the backupAgent is ever removed.
 -->

@@ -90,7 +90,7 @@
     <string name="updates_channel_name">App updates</string>
     <string name="updates_channel_description">Tells you when apps you installed here have a newer version.</string>
     <string name="setting_auto_install_updates_title">Automatically install updates</string>
-    <string name="setting_auto_install_updates_summary">When on, updates install when found. When off, they wait for a tap. Store-installed apps update silently; the rest just notify.</string>
+    <string name="setting_auto_install_updates_summary">Third-party APKs are off by default. When on, updates install when found. When off, they wait for a tap. Store-installed apps update silently; the rest just notify. Applies at the next scheduled check.</string>
     <!-- Sources page, background update-check status card. -->
     <string name="setting_update_check_title">Background update checks</string>
     <string name="setting_update_check_last">Last checked %1$s</string>

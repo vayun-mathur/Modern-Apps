@@ -78,7 +78,7 @@ class AppStoreViewModel(
     internal val installer =
         InstallCoordinator(context, db, play, accrescent, viewModelScope) { ownSigningCertificates }
 
-    /** Off-by-default: the periodic check may also download and install updates unattended. */
+    /** Third-party APKs are off by default: the periodic check may also download and install updates unattended. */
     val autoInstallUpdates: StateFlow<Boolean> = settings.autoInstallUpdates
 
     /** The sources the user has left switched on. See [AppSource.TOGGLEABLE]. */

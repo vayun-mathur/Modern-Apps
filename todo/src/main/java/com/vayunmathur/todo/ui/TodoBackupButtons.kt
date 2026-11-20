@@ -13,6 +13,9 @@ fun TodoBackupButtons() {
     val context = LocalContext.current
     BackupButtons(
         dbConfigs = remember { todoDbConfigs(context) },
+        // TodoSettings lives in the shared datastore_default file; omitting it drops
+        // settings on manual restore.
+        datastoreNames = listOf("datastore_default"),
         dbCodec = SqlCipherDbCodec,
         extraFiles = emptyList(),
     )

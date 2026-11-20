@@ -53,7 +53,7 @@ import java.util.concurrent.TimeUnit
  * it also downloads and installs — as a foreground service — the updates it can apply
  * silently: packages this store is the installer or update owner of, on API 31+. Everything
  * it can't install without a prompt is left to the notification, exactly as before.
- * Auto-install is off by default.
+ * Auto-install of third-party APKs is off by default.
  */
 class UpdateCheckWorker(
     private val context: Context,

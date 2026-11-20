@@ -15,7 +15,7 @@ object AutoInstallPolicy {
 
     /** Inputs to the background auto-install decision: user settings and network state. */
     data class Conditions(
-        /** The user's setting. Default on. */
+        /** The user's setting. Signed OS updates are on by default. */
         val autoInstall: Boolean,
         /** The user's setting. Default off. */
         val meteredAllowed: Boolean,

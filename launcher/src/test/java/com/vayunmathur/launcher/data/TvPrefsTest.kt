@@ -10,7 +10,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 
 /**
- * Tests for [TvPrefs]: row order and quick-settings round-trip through
+ * Tests for [TvPrefs]: row order round-trip through
  * DataStore, starting from [TvSettings] defaults.
  */
 @RunWith(RobolectricTestRunner::class)
@@ -41,12 +41,5 @@ class TvPrefsTest {
         p.saveOrder(listOf("com.example.a"))
         p.saveOrder(listOf("com.example.b", "com.example.c"))
         assertEquals(listOf("com.example.b", "com.example.c"), p.settings.first().appOrder)
-    }
-
-    @Test fun quickRoundTrip() = runTest {
-        val p = prefs()
-        p.saveQuick(listOf("Bluetooth", "SOUND"))
-        // Quick settings are normalised to lowercase.
-        assertEquals(listOf("bluetooth", "sound"), p.settings.first().quickSettings)
     }
 }

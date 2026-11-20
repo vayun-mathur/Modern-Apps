@@ -42,7 +42,7 @@ fun WebContentFiltersScreen(
             SettingsSection {
                 SettingsSwitchRow(
                     title = stringResource(R.string.web_filters_toggle),
-                    supportingText = stringResource(R.string.web_filters_toggle_hint),
+                    supportingText = stringResource(R.string.web_filters_not_yet_enforced),
                     checked = checked,
                     onCheckedChange = onChange,
                 )

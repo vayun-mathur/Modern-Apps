@@ -36,8 +36,9 @@ class SettingsRepository(
 
     /**
      * Whether the periodic update check may also download and install updates on its own,
-     * with no tap. Off by default: this installs apps without the user present, so it is
-     * strictly opt-in. With it off the same updates wait for the user to ask for them.
+     * with no tap. Third-party APKs are off by default: this installs third-party APKs
+     * without the user present, so it is strictly opt-in. With it off the same updates
+     * wait for the user to ask for them.
      * Either way the install itself is silent, so this only decides who starts it. Only
      * ever acts on updates that install silently (see the worker).
      */

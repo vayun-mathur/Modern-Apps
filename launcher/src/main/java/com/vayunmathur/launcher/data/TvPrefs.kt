@@ -11,25 +11,20 @@ import kotlinx.coroutines.flow.map
 data class TvSettings(
     /** Saved top-row packages in order, or null when the row still follows the defaults. */
     val appOrder: List<String>? = null,
-    /** Optional settings shortcuts by the clock (`bluetooth`, `sound`, `picture`). */
-    val quickSettings: List<String> = emptyList(),
 )
 
 private val Context.tvDataStore by preferencesDataStore(name = "tvlauncher_config")
 
 /** DataStore-backed persistence for [TvSettings] (the BackupConfig pattern, not Room). */
 class TvPrefs(private val context: Context) {
+    // A legacy "quick" key in an existing store is ignored: DataStore tolerates
+    // unknown keys, so removing its parsing stays backward-compatible.
     val settings: Flow<TvSettings> = context.tvDataStore.data.map { p ->
         TvSettings(
             appOrder = p[KEY_APPS]
                 ?.split(',')
                 ?.map { it.trim() }
                 ?.filter { it.isNotEmpty() },
-            quickSettings = p[KEY_QUICK]
-                ?.split(',')
-                ?.map { it.trim().lowercase() }
-                ?.filter { it.isNotEmpty() }
-                ?: emptyList(),
         )
     }
 
@@ -38,14 +33,9 @@ class TvPrefs(private val context: Context) {
         context.tvDataStore.edit { it[KEY_APPS] = order.joinToString(",") }
     }
 
-    suspend fun saveQuick(quick: List<String>) {
-        context.tvDataStore.edit { it[KEY_QUICK] = quick.joinToString(",") }
-    }
-
     /** Shared constants and helpers for TvPrefs. */
     companion object {
         private val KEY_APPS = stringPreferencesKey("apps")
-        private val KEY_QUICK = stringPreferencesKey("quick")
     }
 }
 

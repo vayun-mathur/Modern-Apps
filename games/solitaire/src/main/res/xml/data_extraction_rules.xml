@@ -2,7 +2,8 @@
 <!--
   Solitaire. Audited state: the "solitaire_stats" SharedPreferences file
   (SolitaireStatsRepository / AppBackupAgent.prefNames) holding win counts, best
-  times and streaks, plus filesDir/datastore_default.preferences_pb, the shared
+  times and streaks, plus the "solitaire_settings" SharedPreferences file holding
+  the card colour scheme, plus filesDir/datastore_default.preferences_pb, the shared
   DataStoreUtils file holding the AchievementsManager unlocks. No Room database
   and nothing written to external storage; achievements.json is a read-only APK
   asset.
@@ -13,8 +14,8 @@
   SCOPE: solitaire declares android:backupAgent=".platform.AppBackupAgent" and
   does NOT set android:fullBackupOnly, so Android uses key/value backup and the
   <cloud-backup> section below is NOT consulted. Cloud content is exactly
-  AppBackupAgent's prefNames = ["solitaire_stats"] plus datastoreNames =
-  ["datastore_default"], which is the same data this file would have sent.
+  AppBackupAgent's prefNames = ["solitaire_stats", "solitaire_settings"] plus
+  datastoreNames = ["datastore_default"], which is the same data this file would have sent.
   <device-transfer> IS governed here, and these rules become the cloud control
   too if the backupAgent is ever removed.
 -->

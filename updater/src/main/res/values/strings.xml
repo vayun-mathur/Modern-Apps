@@ -14,10 +14,10 @@
     <string name="check_now">Check now</string>
 
     <string name="auto_install">Install updates automatically</string>
-    <string name="auto_install_desc">Download and apply updates in the background, then restart when the device is idle.</string>
+    <string name="auto_install_desc">Signed OS updates are on by default. Download and apply updates in the background, then restart when the device is idle. Applies at the next scheduled check.</string>
 
     <string name="metered_allowed">Use mobile data</string>
-    <string name="metered_allowed_desc">Allow automatic updates over a metered connection. A full update can be over a gigabyte.</string>
+    <string name="metered_allowed_desc">Allow automatic updates over a metered connection. A full update can be over a gigabyte. Applies at the next scheduled check.</string>
 
     <!-- Notification channel: the ongoing progress of a download and installation. -->
     <string name="channel_progress">Installing updates</string>
