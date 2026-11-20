@@ -2,13 +2,18 @@
 <!--
   Chess. Audited state: everything the app persists lives in
   filesDir/datastore_default.preferences_pb (DataStoreUtils) — Learn-mode stars,
-  achievements and game settings. No Room database, no files written to filesDir
+  achievements, game settings, and the Lichess sign-in (username/user id plus the
+  OAuth access token). The token is stored Keystore-sealed (AES-GCM,
+  auth/LichessTokenStore): only ciphertext ever reaches this file, and the
+  non-exportable Keystore key never leaves the device, so a token carried away
+  by backup or device transfer is undecryptable on the destination and simply
+  reads as signed-out there. No Room database, no files written to filesDir
   or external storage; puzzles.dat / learn.json / achievements.json are read-only
   APK assets. Stockfish's NNUE is read straight out of the APK.
 
   So: back everything up. Losing Learn progress on a phone migration is exactly
-  the outcome these rules exist to prevent. Nothing here is large or personal
-  enough to warrant an exclusion, and the platform already drops cacheDir and
+  the outcome these rules exist to prevent. The one secret in the file is
+  sealed ciphertext (see above), and the platform already drops cacheDir and
   code_cache on its own.
 
   SCOPE: chess declares android:backupAgent=".util.AppBackupAgent" and does NOT

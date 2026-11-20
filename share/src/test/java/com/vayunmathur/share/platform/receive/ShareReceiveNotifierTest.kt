@@ -13,9 +13,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -40,15 +40,12 @@ class ShareReceiveNotifierTest {
         override val error = MutableStateFlow<String?>(null)
     }
 
-    /** Polls [cond] in real time: the notifier collects on Dispatchers.Default, so a fixed delay is a bet on CI load, not a wait for the outcome. */
-    private suspend fun awaitShareCondition(cond: () -> Boolean): Boolean {
-        val deadline = System.currentTimeMillis() + 15_000
-        while (System.currentTimeMillis() < deadline) {
-            if (cond()) return true
-            delay(25)
-        }
-        return cond()
-    }
+    // Terminal signals, not polls: `retire` is the notifier's own
+    // callback (fired after the terminal notification posts), and
+    // `onNotificationPosted` is its post seam. Awaiting the channel /
+    // deferred below is resumed by the notifier's work on
+    // Dispatchers.Default; the old helper polled a condition against a
+    // 15s System.currentTimeMillis deadline, betting on CI load.
 
     @Test
     fun `notifier posts request then done and retires`() = runBlocking {
@@ -56,22 +53,35 @@ class ShareReceiveNotifierTest {
         fake.pendingFiles.value = listOf(PendingFile("a.txt", 100, "text/plain"))
         fake.expectedTotalBytes.value = 100
         val incoming = MutableStateFlow<List<IncomingTransfer>>(listOf(fake))
-        val retired = java.util.Collections.synchronizedList(mutableListOf<Long>())
+        val retired = Channel<Long>(Channel.UNLIMITED)
+        val requestPosted = kotlinx.coroutines.CompletableDeferred<Long>()
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-        val notifier = ShareReceiveNotifier(ctx, incoming, retire = { retired += it })
+        val notifier = ShareReceiveNotifier(
+            ctx, incoming,
+            retire = { retired.trySend(it) },
+            onNotificationPosted = { handle ->
+                if (!requestPosted.isCompleted) requestPosted.complete(handle)
+            },
+        )
         try {
             notifier.start(scope)
             fake.state.value = ShareState.AwaitingAccept
+            // Suspend until the request notification has actually posted:
+            // only then is it safe to advance the state, because the
+            // notifier conflates and could otherwise skip the request.
+            assertEquals(12345L, requestPosted.await())
             val nm = ctx.getSystemService<NotificationManager>()!!
             assertTrue(
                 "expected a posted notification",
-                awaitShareCondition { Shadows.shadowOf(nm).allNotifications.isNotEmpty() },
+                Shadows.shadowOf(nm).allNotifications.isNotEmpty(),
             )
             fake.state.value = ShareState.Completed
             fake.receivedFiles.value = listOf(ReceivedFile("a.txt", 100, "text/plain", Uri.parse("content://x/a")))
-            assertTrue(
-                "retire should be called for terminal state, retired=$retired",
-                awaitShareCondition { retired.contains(12345L) },
+            // Retire fires after the Done notification posts, so this
+            // receive is a wait on the terminal state itself.
+            assertEquals(
+                "retire should be called for terminal state",
+                12345L, retired.receive(),
             )
         } finally {
             notifier.stop(); scope.cancel()
@@ -90,13 +100,13 @@ class ShareReceiveNotifierTest {
         val fake = FakeTransfer(777L)
         fake.error.value = "handshake broke"
         val incoming = MutableStateFlow<List<IncomingTransfer>>(listOf(fake))
-        val retired = java.util.Collections.synchronizedList(mutableListOf<Long>())
+        val retired = Channel<Long>(Channel.UNLIMITED)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-        val notifier = ShareReceiveNotifier(ctx, incoming, retire = { retired += it })
+        val notifier = ShareReceiveNotifier(ctx, incoming, retire = { retired.trySend(it) })
         try {
             notifier.start(scope)
             fake.state.value = ShareState.Failed
-            assertTrue(awaitShareCondition { retired.contains(777L) })
+            assertEquals(777L, retired.receive())
         } finally { notifier.stop(); scope.cancel() }
     }
 }

@@ -159,6 +159,9 @@ configure<com.android.build.api.dsl.ApplicationExtension> {
     // `@Config(sdk = ...)`. Per-module `testOptions.unitTests.isReturnDefaultValues`
     // settings are untouched — that flag is never set here (it hides bugs).
     sourceSets.getByName("test").resources.srcDir(File(rootDir, "build-logic/shared-test-resources"))
+    // Shared deterministic test-await helper (see DeterministicAwait.kt):
+    // one Kotlin source dir shared by every module's unit tests, mirroring
+    // the shared-test-resources wiring above. No new Gradle module.
 
     lint {
         checkDependencies = true
@@ -520,4 +523,17 @@ tasks.withType<AbstractArchiveTask>().configureEach {
 // Reproducible builds: log SOURCE_DATE_EPOCH if present for verification
 providers.environmentVariable("SOURCE_DATE_EPOCH").orNull?.let {
     logger.lifecycle("Reproducible build: SOURCE_DATE_EPOCH=$it")
+}
+
+// Shared deterministic test-await helper: AGP's variant API adds the
+// shared Kotlin dir to every variant's unit-test component (the AGP 9
+// replacement for Android/Kotlin source-set wiring).
+extensions.configure<com.android.build.api.variant.ApplicationAndroidComponentsExtension> {
+    onVariants { variant ->
+        variant.hostTests.values.forEach { hostTest ->
+            hostTest.sources.kotlin?.addStaticSourceDirectory(
+                rootDir.resolve("build-logic/shared-test/java").absolutePath,
+            )
+        }
+    }
 }

@@ -49,8 +49,15 @@ class LyftClientsDeepTest {
         LyftTokenStore(context).save(LyftToken(accessToken = "access-tok", refreshToken = "rt", expiresIn = 3600, userId = "42"))
     }
 
-    @BeforeTest fun setUp() { http.install(); runBlocking { LyftTokenStore(context).clear() } }
-    @AfterTest fun tearDown() { http.uninstall(); runBlocking { LyftTokenStore(context).clear() } }
+    @BeforeTest fun setUp() {
+        // Robolectric has no AndroidKeyStore; seal with the fake (contract-identical) sealer.
+        LyftTokenStore.sealerForTest = com.vayunmathur.taxi.data.lyft.FakeTokenSealer()
+        http.install(); runBlocking { LyftTokenStore(context).clear() }
+    }
+    @AfterTest fun tearDown() {
+        http.uninstall(); runBlocking { LyftTokenStore(context).clear() }
+        LyftTokenStore.sealerForTest = null
+    }
 
     private val offersJson = """{"offers":{"purchase_session_id":"ps1","offers_response_id":"or1","offers_list":[
       {"offer_product_id":"lyft","id":"o1","cost_estimate":{"ride_type":"Lyft","currency":"USD","estimated_cost_cents_min":500,"estimated_cost_cents_max":900},

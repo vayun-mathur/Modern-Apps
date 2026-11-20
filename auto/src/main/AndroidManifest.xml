@@ -17,6 +17,17 @@
          use is additionally runtime-checked, so the lint warning is a false positive. -->
     <uses-permission android:name="com.vayunmathur.permission.SENSORS_OPTOUT" />
 
+    <!-- Guard for the exported head-unit startup chain (CarStartupService).
+         signature|privileged: only Modern-Apps-signed callers or a privileged
+         system/head-unit caller (granted via the MAOS priv-app allowlist after
+         it declares this permission) may wake projection/USB bring-up. An
+         ordinary third-party app cannot obtain it. This app declares it too so
+         its own exported-surface funnels hold it explicitly. -->
+    <permission
+        android:name="com.vayunmathur.auto.permissions.START_PROJECTION_CHAIN"
+        android:protectionLevel="signature|privileged" />
+    <uses-permission android:name="com.vayunmathur.auto.permissions.START_PROJECTION_CHAIN" />
+
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -392,11 +403,13 @@
 
         <!-- Head-unit startup chain (BT_START + START_USB_PROJECTION +
              CAR_STARTUP_NOTIFICATION): starts the phone side without the app
-             open. -->
+             open. Exported for the system/head-unit flow, but guarded by the
+             signature|privileged START_PROJECTION_CHAIN permission above so
+             an arbitrary app cannot wake ProjectionService/UsbConnector. -->
         <service
             android:name=".platform.CarStartupService"
             android:exported="true"
-            tools:ignore="ExportedService">
+            android:permission="com.vayunmathur.auto.permissions.START_PROJECTION_CHAIN">
             <intent-filter>
                 <action android:name="com.vayunmathur.auto.BT_START" />
                 <action android:name="com.vayunmathur.auto.START_USB_PROJECTION" />

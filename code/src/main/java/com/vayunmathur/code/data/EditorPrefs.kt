@@ -8,8 +8,13 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.vayunmathur.code.domain.syntax.EditorThemes
+import com.vayunmathur.library.log.Log
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
 import com.vayunmathur.code.domain.UserSnippet
@@ -28,6 +33,23 @@ private val Context.editorDataStore: DataStore<Preferences> by preferencesDataSt
 class EditorPrefs(context: Context) {
 
     private val appContext = context.applicationContext
+
+    /** Fire-and-forget legacy-migration rewrites triggered from the [gitToken] Flow. */
+    private val migrationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    private val defaultSealer by lazy { KeystoreTokenSealer(KEY_ALIAS) }
+
+    private fun activeSealer(): TokenSealer = sealerForTest ?: defaultSealer
+
+    /** Rewrites a legacy plaintext git token sealed, only if it is still the stored value. */
+    private fun queueGitTokenMigration(legacyRaw: String) {
+        migrationScope.launch {
+            val sealed = activeSealer().seal(legacyRaw) ?: return@launch
+            appContext.editorDataStore.edit { prefs ->
+                if (prefs[GIT_TOKEN_KEY] == legacyRaw) prefs[GIT_TOKEN_KEY] = sealed
+            }
+        }
+    }
 
     val folderPath: Flow<String?> = appContext.editorDataStore.data.map { it[FOLDER_PATH_KEY] }
     val softWrap: Flow<Boolean> = appContext.editorDataStore.data.map { it[SOFT_WRAP_KEY] ?: false }
@@ -74,9 +96,24 @@ class EditorPrefs(context: Context) {
     val foldState: Flow<Map<String, List<Int>>> =
         appContext.editorDataStore.data.map { decodeFoldState(it[FOLD_STATE_KEY]) }
 
-    // Git remote credentials + author. DataStore is not encrypted; acceptable for F-Droid/local.
+    // Git remote credentials + author. Only git_token is a secret: it is stored
+    // Keystore-sealed (see KeystoreTokenSealer), so the DataStore file holds
+    // ciphertext and a token carried to another device by device transfer is
+    // undecryptable there (reads as signed-out, never a crash). Legacy plaintext
+    // tokens are used once and rewritten sealed on first read. Username and
+    // author identity are not secrets and stay plain.
     val gitUsername: Flow<String> = appContext.editorDataStore.data.map { it[GIT_USERNAME_KEY] ?: "" }
-    val gitToken: Flow<String> = appContext.editorDataStore.data.map { it[GIT_TOKEN_KEY] ?: "" }
+    val gitToken: Flow<String> = appContext.editorDataStore.data.map { prefs ->
+        val raw = prefs[GIT_TOKEN_KEY] ?: ""
+        when {
+            raw.isEmpty() -> ""
+            activeSealer().isSealed(raw) -> activeSealer().unseal(raw) ?: ""
+            else -> {
+                queueGitTokenMigration(raw)
+                raw
+            }
+        }
+    }
     val gitAuthorName: Flow<String> = appContext.editorDataStore.data.map { it[GIT_AUTHOR_NAME_KEY] ?: "" }
     val gitAuthorEmail: Flow<String> = appContext.editorDataStore.data.map { it[GIT_AUTHOR_EMAIL_KEY] ?: "" }
 
@@ -183,7 +220,17 @@ class EditorPrefs(context: Context) {
     }
 
     suspend fun setGitToken(value: String) {
-        appContext.editorDataStore.edit { it[GIT_TOKEN_KEY] = value }
+        if (value.isEmpty()) {
+            appContext.editorDataStore.edit { it[GIT_TOKEN_KEY] = "" }
+            return
+        }
+        val sealed = activeSealer().seal(value)
+        if (sealed == null) {
+            // Never persist the token in plaintext; a failed seal keeps the previous value.
+            Log.error(TAG, "Sealing failed; git token not persisted")
+            return
+        }
+        appContext.editorDataStore.edit { it[GIT_TOKEN_KEY] = sealed }
     }
 
     suspend fun setGitAuthorName(value: String) {
@@ -196,6 +243,12 @@ class EditorPrefs(context: Context) {
 
     /** Editor preference defaults and DataStore keys. */
     companion object {
+        private const val KEY_ALIAS = "code_git_token_key"
+        private const val TAG = "EditorPrefs"
+
+        /** Test seam: Robolectric has no AndroidKeyStore; tests install a fake sealer here. */
+        internal var sealerForTest: TokenSealer? = null
+
         const val DEFAULT_FONT_SIZE = 14
         const val DEFAULT_TAB_WIDTH = 4
         const val THEME_SYSTEM = "system"

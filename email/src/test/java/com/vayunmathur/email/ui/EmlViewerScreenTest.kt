@@ -11,6 +11,7 @@ import kotlin.test.assertEquals
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import com.vayunmathur.testsupport.awaitSemantics
 import org.robolectric.annotation.Config
 
 /**
@@ -32,7 +33,10 @@ class EmlViewerScreenTest {
         composeRule.setContent {
             EmlViewerScreen(uriString = "content://invalid/nonexistent.eml", onBack = {})
         }
-        composeRule.waitUntil(15_000) {
+        // Terminal semantics wait with the main looper idled on each
+        // check (shared helper): without that pump the IO parse's resume
+        // sat queued past a plain waitUntil under load.
+        composeRule.awaitSemantics("eml error") {
             composeRule.onAllNodesWithText("Couldn't open this .eml file", substring = true)
                 .fetchSemanticsNodes().isNotEmpty()
         }
@@ -45,11 +49,14 @@ class EmlViewerScreenTest {
         composeRule.setContent {
             EmlViewerScreen(uriString = "content://invalid/nonexistent.eml", onBack = {})
         }
-        composeRule.waitUntil(15_000) {
+        composeRule.awaitSemantics("retry button") {
             composeRule.onAllNodesWithText("Retry").fetchSemanticsNodes().isNotEmpty()
         }
         composeRule.onNodeWithText("Retry").performClick()
-        composeRule.waitUntil(15_000) {
+        // Terminal semantics wait with the main looper idled on each
+        // check (shared helper): without that pump the IO parse's resume
+        // sat queued past a plain waitUntil under load.
+        composeRule.awaitSemantics("eml error") {
             composeRule.onAllNodesWithText("Couldn't open this .eml file", substring = true)
                 .fetchSemanticsNodes().isNotEmpty()
         }
@@ -62,7 +69,7 @@ class EmlViewerScreenTest {
         composeRule.setContent {
             EmlViewerScreen(uriString = "content://invalid/nonexistent.eml", onBack = { backs++ })
         }
-        composeRule.waitUntil(15_000) {
+        composeRule.awaitSemantics("retry button") {
             composeRule.onAllNodesWithText("Retry").fetchSemanticsNodes().isNotEmpty()
         }
         // The scaffold back button carries the "Back" content description.

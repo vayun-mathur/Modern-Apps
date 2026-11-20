@@ -20,6 +20,7 @@ import kotlin.test.assertTrue
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import com.vayunmathur.testsupport.awaitSemantics
 import org.robolectric.annotation.Config
 
 /**
@@ -39,25 +40,17 @@ class EmlViewerSuccessTest {
 
 
     /**
-     * Waits for [text] to appear, idling Robolectric's paused main looper so
-     * the IO parse's Main-thread resume can actually land: the compose
-     * rule's waitUntil does not pump that looper, so under load the parse
-     * result sat queued past the wait (see ComposerSendTest).
+     * Waits for [text] as a terminal semantics state: the compose rule
+     * re-checks after every idle and the shared helper idles Robolectric's
+     * paused main looper on each check, so the IO parse's Main-thread
+     * resume can actually land. Replaces a Thread.sleep step loop whose
+     * 15s wall-clock deadline expired before the parse ran under load.
      */
     private fun awaitText(text: String, substring: Boolean = false, unmerged: Boolean = false) {
-        // Step-counted, not wall-clock: Robolectric's substituted clock
-        // can run far ahead of real time while the looper is idled, so a
-        // 15s deadline expired before the IO parse it waits for had run
-        // on a loaded CI box. Each step sleeps real time instead.
-        var step = 0
-        while (step++ < 3_000) {
-            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
-            if (composeRule.onAllNodesWithText(text, substring = substring, useUnmergedTree = unmerged)
-                    .fetchSemanticsNodes().isNotEmpty()
-            ) return
-            Thread.sleep(10)
+        composeRule.awaitSemantics("text: $text") {
+            composeRule.onAllNodesWithText(text, substring = substring, useUnmergedTree = unmerged)
+                .fetchSemanticsNodes().isNotEmpty()
         }
-        throw AssertionError("timed out waiting for text: $text")
     }
 
     private fun writeEml(name: String, content: String): File {

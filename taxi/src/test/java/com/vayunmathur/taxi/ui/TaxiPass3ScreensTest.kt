@@ -81,6 +81,7 @@ class TaxiPass3ScreensTest {
 
     @BeforeTest
     fun setUp() {
+        LyftTokenStore.sealerForTest = com.vayunmathur.taxi.data.lyft.FakeTokenSealer()
         http.install()
         runBlocking {
             LyftTokenStore(context).clear()
@@ -95,6 +96,7 @@ class TaxiPass3ScreensTest {
             LyftTokenStore(context).clear()
             UberSession(context).clear()
         }
+        LyftTokenStore.sealerForTest = null
     }
 
     private fun seedSignedIn() = runBlocking {

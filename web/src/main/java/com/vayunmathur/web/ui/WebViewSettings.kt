@@ -76,8 +76,13 @@ internal fun applyWebViewSettings(webView: WebView, viewModel: WebViewModel) {
     // HTTP cache — user selectable for speed / offline
     settings.cacheMode = viewModel.cacheMode.webSettingsValue
 
-    settings.allowFileAccess = true
-    settings.allowContentAccess = true
+    // No local-file browsing: programmatic loads are http(s)/about:blank-gated
+    // (BrowserUtils.canLoadInWebView) and no web feature loads file:// or
+    // content:// into the page. File-chooser uploads hand content URIs back
+    // via WebChromeClient.onShowFileChooser, which does not need these.
+    // With JS enabled, file/content access would let a page read local files.
+    settings.allowFileAccess = false
+    settings.allowContentAccess = false
 
     // Offscreen pre-raster speeds first paint
     settings.offscreenPreRaster = true
@@ -88,8 +93,12 @@ internal fun applyWebViewSettings(webView: WebView, viewModel: WebViewModel) {
     settings.useWideViewPort = true
     settings.loadWithOverviewMode = true
 
-    // Aggressive shields refuse plaintext subresources outright; otherwise stay permissive
-    // so pages with a few http:// images still render.
+    // Shields owns the mixed-content decision (do not hardcode NEVER_ALLOW
+    // here): httpsOnly is httpsUpgrade && AGGRESSIVE, and the shipped default
+    // preset is AGGRESSIVE_DEFAULTS, so the default resolves to NEVER_ALLOW.
+    // A user who lowers a site/global to the non-aggressive STANDARD preset
+    // (httpsOnly=false) deliberately opts into COMPATIBILITY_MODE so pages
+    // with a few http:// images still render.
     val globalShields = com.vayunmathur.web.domain.EffectiveShields.resolve(viewModel.shields)
     settings.mixedContentMode = if (globalShields.httpsOnly) {
         WebSettings.MIXED_CONTENT_NEVER_ALLOW

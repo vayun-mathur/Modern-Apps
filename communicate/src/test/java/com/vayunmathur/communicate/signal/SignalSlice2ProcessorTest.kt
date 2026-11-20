@@ -18,7 +18,10 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.test.runTest
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -59,36 +62,33 @@ class SignalSlice2ProcessorTest {
 
     private suspend fun emit(e: SignalEvent) {
         events.emit(e)
-        awaitSettled { settled(e) }
+        awaitHandled(e)
     }
 
     /**
-     * Poll until [cond] holds (bounded); mirrors the WhatsApp slice's
-     * processor test. The wait runs on a real-time dispatcher: this class
-     * uses runTest, whose virtual clock burns a delay budget instantly,
-     * while the processor drains on Dispatchers.IO in real time — polling
-     * on the test scheduler lost that race under load.
+     * Waits for the processor's terminal signal: [SignalEventProcessor]
+     * emits each event on `handledEvents` only after it has been
+     * persisted, and this drain is sequential, so when this returns the
+     * database row is settled. Identity (`===`) distinguishes a
+     * redelivery of an equal event from the first delivery. This runs
+     * on Dispatchers.Default because the processor drains on
+     * Dispatchers.IO in real time while this class's `runTest` scheduler
+     * is virtual; suspending on the flow (not a delay loop) is resumed
+     * by the emission itself.
      */
-    private suspend fun awaitSettled(cond: suspend () -> Boolean) {
-        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
-            var waited = 0
-            while (waited < 500 && !cond()) {
-                kotlinx.coroutines.delay(10)
-                waited++
-            }
+    private suspend fun awaitHandled(e: SignalEvent) {
+        withContext(Dispatchers.Default) {
+            processor.handledEvents.first { it === e }
         }
     }
 
-    private suspend fun settled(e: SignalEvent): Boolean = when (e) {
-        is SignalEvent.IncomingMessage -> db.cachedMessageDao().get(e.messageId) != null
-        is SignalEvent.MessageUpdate -> db.cachedMessageDao().get(e.messageId)?.body == e.body
-        is SignalEvent.ConversationUpdate ->
-            db.conversationDao().getConversation(e.conversationId) != null
-        is SignalEvent.HistorySync ->
-            e.conversations.all { c ->
-                db.cachedMessageDao().getForConversation(c.conversationId).size == c.messages.size
-            }
-        else -> true
+    /** Awaits a database terminal state already signalled via [emit]. */
+    private suspend fun awaitSettled(cond: suspend () -> Boolean) {
+        // Kept as a named step for call sites whose event type has no
+        // single settled row (reactions, receipts): the preceding emit
+        // already awaited the handled signal, so this is an assertion
+        // of the settled state, not a wait. It must hold immediately.
+        check(cond()) { "event handled but database state not settled" }
     }
 
     @Test

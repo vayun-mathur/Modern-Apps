@@ -5,7 +5,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 
 /**
@@ -36,6 +38,18 @@ class SignalEventProcessor(private val db: SignalDatabase) {
     private val conversations = db.conversationDao()
     private val callLog = db.callLogDao()
 
+    /**
+     * Terminal signal for tests and diagnostics: each event is emitted
+     * here only after [handle] has finished persisting it, in drain
+     * order. Awaiting this flow is a wait on work done, not a poll of
+     * the database. Replay keeps a late subscriber from missing an
+     * event that landed before it started collecting.
+     */
+    private val _handledEvents = MutableSharedFlow<SignalEvent>(
+        replay = 64, extraBufferCapacity = 64,
+    )
+    val handledEvents: SharedFlow<SignalEvent> = _handledEvents.asSharedFlow()
+
     fun start(events: SharedFlow<SignalEvent>) {
         scope.launch {
             events.collect { event ->
@@ -43,6 +57,8 @@ class SignalEventProcessor(private val db: SignalDatabase) {
                     handle(event)
                 } catch (expected: Throwable) {
                     Log.error(TAG, "failed to process ${event::class.simpleName}", expected)
+                } finally {
+                    _handledEvents.emit(event)
                 }
             }
         }

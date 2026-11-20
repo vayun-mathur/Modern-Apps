@@ -175,14 +175,28 @@ class ClockViewModel(
         }
     }
     
+    /**
+     * Writes stopwatch state on a single-threaded dispatcher, in call
+     * order, from a snapshot taken at call time. Persisting straight on
+     * Dispatchers.IO read the flows inside the coroutine, so a persist
+     * launched by an earlier toggle could execute after a later one and
+     * write its (by then stale) snapshot over the newer state — the
+     * race the stopwatch test's sleeps used to mask.
+     */
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    private val persistDispatcher = Dispatchers.IO.limitedParallelism(1)
+
     private fun persistStopwatchState() {
         val ctx = getApplication<Application>()
         val ds = DataStoreUtils.getInstance(ctx)
-        viewModelScope.launch(Dispatchers.IO) {
-            ds.setBoolean(StopwatchActionReceiver.KEY_STOPWATCH_RUNNING, _stopwatchRunning.value)
-            ds.setLong(StopwatchActionReceiver.KEY_STOPWATCH_TOTAL, _stopwatchTotal.value.inWholeMilliseconds)
-            ds.setLong(StopwatchActionReceiver.KEY_STOPWATCH_START, _stopwatchStart.value.toEpochMilliseconds())
-            val lapsStr = _lapTimes.value.joinToString(",") { it.inWholeMilliseconds.toString() }
+        val running = _stopwatchRunning.value
+        val totalMs = _stopwatchTotal.value.inWholeMilliseconds
+        val startMs = _stopwatchStart.value.toEpochMilliseconds()
+        val lapsStr = _lapTimes.value.joinToString(",") { it.inWholeMilliseconds.toString() }
+        viewModelScope.launch(persistDispatcher) {
+            ds.setBoolean(StopwatchActionReceiver.KEY_STOPWATCH_RUNNING, running)
+            ds.setLong(StopwatchActionReceiver.KEY_STOPWATCH_TOTAL, totalMs)
+            ds.setLong(StopwatchActionReceiver.KEY_STOPWATCH_START, startMs)
             ds.setString(StopwatchActionReceiver.KEY_STOPWATCH_LAPS, lapsStr)
         }
     }

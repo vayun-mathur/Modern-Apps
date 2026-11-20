@@ -1,6 +1,8 @@
 package com.vayunmathur.communicate.data.googlevoice
 
 import android.content.Context
+import com.vayunmathur.communicate.data.KeystoreSecretSealer
+import com.vayunmathur.communicate.data.SecretSealer
 import com.vayunmathur.library.util.DataStoreUtils
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -11,19 +13,43 @@ import kotlinx.coroutines.flow.map
  * the browser's cookies plus the sniffed web `apiKey`; this persists that material
  * (see `voice-documentation.md` "Authentication, Headers, And Request Conventions").
  *
- * Cookies and the API key are sensitive; they live in the app's private,
- * credential-encrypted DataStore file like any other secret in this repo.
+ * The three secrets (cookie, SAPISID, apiKey) are sealed with the
+ * AndroidKeyStore-backed [SecretSealer] (everysync `TokenStore` pattern) at
+ * persist time. Reads unseal sealed values and migrate legacy plaintext values
+ * to sealed form on first read (idempotent; no `Application.onCreate` hook).
+ * An unseal failure yields null (signed-out semantics), never a crash, and the
+ * stored blob is left intact. Non-secret fields (authUser, phone, flags) stay
+ * plaintext.
  */
-class GoogleVoiceSession private constructor(private val store: DataStoreUtils) {
+class GoogleVoiceSession internal constructor(
+    private val store: DataStoreUtils,
+    private val sealer: SecretSealer = KeystoreSecretSealer.shared,
+) {
+
+    /**
+     * Read a secret key: unseal if sealed (failure -> null, blob intact);
+     * if legacy plaintext, return it and rewrite it sealed (migration).
+     */
+    private suspend fun readSecret(key: String): String? {
+        val raw = store.getStringAwait(key) ?: return null
+        if (sealer.isSealed(raw)) return sealer.unseal(raw)
+        sealer.seal(raw)?.let { store.setString(key, it) }
+        return raw
+    }
+
+    /** Persist a secret sealed; on seal failure the value is not written at all (never plaintext). */
+    private suspend fun writeSecret(key: String, value: String) {
+        sealer.seal(value)?.let { store.setString(key, it) }
+    }
 
     /** Raw `Cookie:` header value captured from the signed-in voice.google.com session. */
-    suspend fun cookieHeader(): String? = store.getStringAwait(KEY_COOKIE)
+    suspend fun cookieHeader(): String? = readSecret(KEY_COOKIE)
 
     /** SAPISID cookie value, extracted from [cookieHeader] for SAPISIDHASH auth. */
-    suspend fun sapisid(): String? = store.getStringAwait(KEY_SAPISID)
+    suspend fun sapisid(): String? = readSecret(KEY_SAPISID)
 
     /** Web `key=` API key sniffed from a voiceclient RPC URL. */
-    suspend fun apiKey(): String? = store.getStringAwait(KEY_API_KEY)
+    suspend fun apiKey(): String? = readSecret(KEY_API_KEY)
 
     /** `x-goog-authuser` index (the `/u/<n>/` account slot). Defaults to "0". */
     suspend fun authUser(): String = store.getStringAwait(KEY_AUTHUSER) ?: "0"
@@ -58,18 +84,18 @@ class GoogleVoiceSession private constructor(private val store: DataStoreUtils) 
         authUser: String,
         sapisid: String? = null,
     ) {
-        store.setString(KEY_COOKIE, cookieHeader)
-        store.setString(KEY_API_KEY, apiKey)
+        writeSecret(KEY_COOKIE, cookieHeader)
+        writeSecret(KEY_API_KEY, apiKey)
         store.setString(KEY_AUTHUSER, authUser)
         val resolvedSapisid = sapisid ?: extractSapisid(cookieHeader)
-        if (resolvedSapisid != null) store.setString(KEY_SAPISID, resolvedSapisid)
+        if (resolvedSapisid != null) writeSecret(KEY_SAPISID, resolvedSapisid)
         store.setBoolean(KEY_SIGNED_IN, true)
     }
 
     /** Refresh just the cookie string (e.g. after a WebView revisit), keeping other fields. */
     suspend fun updateCookies(cookieHeader: String) {
-        store.setString(KEY_COOKIE, cookieHeader)
-        extractSapisid(cookieHeader)?.let { store.setString(KEY_SAPISID, it) }
+        writeSecret(KEY_COOKIE, cookieHeader)
+        extractSapisid(cookieHeader)?.let { writeSecret(KEY_SAPISID, it) }
     }
 
     suspend fun setPhoneNumber(number: String) {

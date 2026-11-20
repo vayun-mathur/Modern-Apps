@@ -42,6 +42,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.ui.unit.dp
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import com.vayunmathur.testsupport.awaitSemantics
 import kotlin.test.assertTrue
 
 @RunWith(RobolectricTestRunner::class)
@@ -351,8 +352,10 @@ class NonogramScreensTest {
             // which the real VM's collectors run on) instead of asserting
             // the first frame: under load the first composition lands
             // late and the immediate assert raced it.
-            rule.waitUntil(15_000) {
-                org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+            // Semantics wait on the terminal node (the Settings title),
+            // idling the paused main looper on every check so the real
+            // VM's collectors can land (shared helper, no wall-clock poll).
+            rule.awaitSemantics("settings title") {
                 rule.onAllNodesWithText(str(UiR.string.settings)).fetchSemanticsNodes().isNotEmpty()
             }
             rule.onNodeWithText(str(UiR.string.settings)).assertExists()

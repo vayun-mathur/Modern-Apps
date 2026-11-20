@@ -13,11 +13,15 @@
        No database, no SharedPreferences, no app-private files or caches. Source files are
        edited in place through SAF in storage the app does not own.
 
-     Because that one DataStore file now holds a git token, it must not leave the
+     Because that one DataStore file holds a git token, it must not leave the
      device in cloud backup: cloud backup is denied outright (the file was the
      only thing cloud backup ever carried here, so nothing else is lost).
-     Device transfer still carries it, so settings and sign-in survive a direct
-     device-to-device move; folder access will need re-granting after a restore. -->
+     The git_token value itself is Keystore-sealed (EditorPrefs), so even where
+     the file does travel it holds only ciphertext. Device transfer still
+     carries the file, so settings survive a direct device-to-device move —
+     but the token arrives undecryptable on the new device (the Keystore key
+     never leaves the old one), reads as signed-out, and must be re-entered;
+     folder access will also need re-granting after a restore. -->
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="root" path="." />

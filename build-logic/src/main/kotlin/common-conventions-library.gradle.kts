@@ -30,6 +30,9 @@ configure<com.android.build.api.dsl.LibraryExtension> {
         unitTests.isIncludeAndroidResources = true
     }
     sourceSets.getByName("test").resources.srcDir(File(rootDir, "build-logic/shared-test-resources"))
+    // Shared deterministic test-await helper (see DeterministicAwait.kt):
+    // one Kotlin source dir shared by every module's unit tests, mirroring
+    // the shared-test-resources wiring above. No new Gradle module.
 
     buildFeatures {
         compose = true
@@ -211,4 +214,16 @@ tasks.withType<AbstractArchiveTask>().configureEach {
 // Reproducible builds: log SOURCE_DATE_EPOCH if present for verification
 providers.environmentVariable("SOURCE_DATE_EPOCH").orNull?.let {
     logger.lifecycle("Reproducible build: SOURCE_DATE_EPOCH=$it")
+}
+
+// Shared deterministic test-await helper: same variant-API wiring as
+// common-conventions-app (unit-test component of every variant).
+extensions.configure<com.android.build.api.variant.LibraryAndroidComponentsExtension> {
+    onVariants { variant ->
+        variant.hostTests.values.forEach { hostTest ->
+            hostTest.sources.kotlin?.addStaticSourceDirectory(
+                rootDir.resolve("build-logic/shared-test/java").absolutePath,
+            )
+        }
+    }
 }

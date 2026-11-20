@@ -20,7 +20,11 @@ import com.vayunmathur.code.platform.setGitUsername
 @RunWith(RobolectricTestRunner::class)
 class EditorPrefsTest {
 
-    private fun prefs() = EditorPrefs(ApplicationProvider.getApplicationContext())
+    private fun prefs(): EditorPrefs {
+        // Robolectric has no AndroidKeyStore; seal with the fake (contract-identical) sealer.
+        EditorPrefs.sealerForTest = com.vayunmathur.code.data.FakeTokenSealer()
+        return EditorPrefs(ApplicationProvider.getApplicationContext())
+    }
 
     @Test
     fun defaults() = runTest {

@@ -112,6 +112,14 @@ class ShareReceiveNotifier(
     context: Context,
     private val incoming: Flow<List<IncomingTransfer>>,
     private val retire: (Long) -> Unit,
+    /**
+     * Called with the session handle after a notification for it has
+     * been posted (request, progress, done or failed). A terminal-state
+     * signal for observers — notably tests — that need to know a post
+     * landed instead of polling the notification shade. Default no-op
+     * keeps production wiring unchanged.
+     */
+    private val onNotificationPosted: (Long) -> Unit = {},
 ) {
     private val appContext = context.applicationContext
     private var job: Job? = null
@@ -241,12 +249,14 @@ class ShareReceiveNotifier(
         if (kind == Kind.Done || kind == Kind.Failed) {
             synchronized(idLock) { terminalPosted += handle }
             notify(id, notification)
+            onNotificationPosted(handle)
             // The user has been told the outcome, so the session has no remaining reader.
             // Nothing else disconnects an incoming session.
             retire(handle)
             return
         }
         notify(id, notification)
+        onNotificationPosted(handle)
     }
 
     private fun notify(id: Int, notification: android.app.Notification) {

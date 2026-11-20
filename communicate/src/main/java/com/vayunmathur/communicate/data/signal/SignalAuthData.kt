@@ -2,6 +2,8 @@ package com.vayunmathur.communicate.data.signal
 
 import android.content.Context
 import androidx.core.content.edit
+import com.vayunmathur.communicate.data.KeystoreSecretSealer
+import com.vayunmathur.communicate.data.SecretSealer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json as KotlinJson
@@ -86,20 +88,44 @@ data class SignalAuthData(
         private const val PREFS_NAME = "communicate_signal_auth"
         private const val KEY_AUTH_DATA = "auth_data"
 
-        fun load(context: Context): SignalAuthData? {
+        /**
+         * Load the sealed (or legacy plaintext) auth JSON. This store holds
+         * identity-key material, so failure handling is conservative:
+         *
+         * Sealed: unseal then parse; unseal/parse failure returns null
+         * (behaves as 'not registered') and the stored blob is left intact
+         * for retry on the next launch — never overwritten or deleted.
+         * Legacy plaintext: parse first and rewrite sealed ONLY after a
+         * successful parse (verify-before-overwrite). Idempotent.
+         */
+        fun load(context: Context, sealer: SecretSealer = KeystoreSecretSealer.shared): SignalAuthData? {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            val json = prefs.getString(KEY_AUTH_DATA, null) ?: return null
-            return try {
-                KotlinJson.decodeFromString<SignalAuthData>(json)
-            } catch (_: Exception) {
-                null
+            val raw = prefs.getString(KEY_AUTH_DATA, null) ?: return null
+            if (sealer.isSealed(raw)) {
+                val json = sealer.unseal(raw) ?: return null
+                return try {
+                    KotlinJson.decodeFromString<SignalAuthData>(json)
+                } catch (_: Exception) {
+                    null
+                }
             }
+            val parsed = try {
+                KotlinJson.decodeFromString<SignalAuthData>(raw)
+            } catch (_: Exception) {
+                return null
+            }
+            sealer.seal(raw)?.let { sealed ->
+                prefs.edit { putString(KEY_AUTH_DATA, sealed) }
+            }
+            return parsed
         }
 
-        fun save(context: Context, authData: SignalAuthData) {
+        /** Save the whole auth JSON sealed; on seal failure nothing is written (never plaintext). */
+        fun save(context: Context, authData: SignalAuthData, sealer: SecretSealer = KeystoreSecretSealer.shared) {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             val json = KotlinJson.encodeToString(authData)
-            prefs.edit { putString(KEY_AUTH_DATA, json) }
+            val sealed = sealer.seal(json) ?: return
+            prefs.edit { putString(KEY_AUTH_DATA, sealed) }
         }
 
         fun clear(context: Context) {

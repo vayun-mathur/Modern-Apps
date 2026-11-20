@@ -10,6 +10,7 @@ import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.webkit.WebViewCompat
@@ -34,6 +35,25 @@ import kotlinx.coroutines.withTimeoutOrNull
 object GoogleVoiceWebSender {
 
     private const val TAG = "GVAUTO"
+    private const val VOICE_HOST = "voice.google.com"
+
+    /**
+     * Origin lock for the mint WebView: only `https://voice.google.com`
+     * (plus the inert `about:blank`) may navigate in-WebView. The
+     * `AndroidGV` bridge is visible to every origin this WebView loads and
+     * persists across navigations, so any other main-frame navigation must
+     * be blocked rather than allowed to run script against the bridge.
+     * Sign-in lives in `GoogleVoiceSignInScreen`; this offscreen sender
+     * assumes a live session, so an `accounts.google.com` bounce could
+     * never complete the composer automation here anyway.
+     */
+    internal fun isAllowedMintNavigation(url: String?): Boolean {
+        if (url.isNullOrBlank()) return false
+        if (url.equals("about:blank", ignoreCase = true)) return true
+        val uri = runCatching { Uri.parse(url) }.getOrNull() ?: return false
+        return uri.scheme.equals("https", ignoreCase = true) &&
+            uri.host.equals(VOICE_HOST, ignoreCase = true)
+    }
     /** Token-mint timeout with no media to upload first. */
     private const val MINT_TIMEOUT_MS = 60_000L
     /** Token-mint timeout when attachments must upload before the send can be built. */
@@ -126,10 +146,38 @@ object GoogleVoiceWebSender {
         }
         wv.webViewClient = object : WebViewClient() {
             private var injected = false
+
+            override fun shouldOverrideUrlLoading(
+                view: WebView?,
+                request: WebResourceRequest?,
+            ): Boolean {
+                val url = request?.url?.toString()
+                // Sub-frame loads are not navigations of the mint page; the
+                // lock below governs the main frame that can reach AndroidGV.
+                if (request?.isForMainFrame == false) return false
+                if (isAllowedMintNavigation(url)) return false
+                // This WebView is offscreen: there is no user to hand an
+                // external link to, so block rather than hand off.
+                Log.dev(TAG, "blocked non-GV navigation")
+                return true
+            }
+
+            @Deprecated("Deprecated in Java")
+            override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
+                if (isAllowedMintNavigation(url)) return false
+                Log.dev(TAG, "blocked non-GV navigation")
+                return true
+            }
+
             override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
                 super.onPageStarted(view, url, favicon)
                 // Fallback hook injection for devices without DOCUMENT_START_SCRIPT.
-                view?.evaluateJavascript(hookScript(), null)
+                // Gated on the same origin lock: a navigation that slips
+                // past shouldOverride (e.g. a server redirect) must not get
+                // the hook, and its scripts must not reach AndroidGV via it.
+                if (isAllowedMintNavigation(url)) {
+                    view?.evaluateJavascript(hookScript(), null)
+                }
             }
             override fun onRenderProcessGone(
                 view: WebView?,

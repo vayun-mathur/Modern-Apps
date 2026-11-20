@@ -5,11 +5,12 @@ import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.games.nonogram.data.GameMode
 import com.vayunmathur.games.nonogram.data.MarkMode
 import com.vayunmathur.games.nonogram.data.STARTING_HEARTS
-import java.util.concurrent.locks.LockSupport
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import com.vayunmathur.testsupport.awaitValueBlocking
+import com.vayunmathur.testsupport.idleMainLooper
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
@@ -70,8 +71,9 @@ class NonogramViewModelTest {
         runCatching { blocking { store.setMarkMode(store.markMode.first()) } }
         vmStore.clear()
         repeat(2) {
+            // Each barrier edit is a blocking DataStore round-trip that
+            // returns only once applied, so no sleep is needed between them.
             runCatching { blocking { store.setMarkMode(store.markMode.first()) } }
-            Thread.sleep(50)
         }
         retrying { Dispatchers.resetMain() }
     }
@@ -79,59 +81,38 @@ class NonogramViewModelTest {
     /** set/resetMain throw if a background coroutine happens to be using Main at that instant. */
     private fun retrying(action: () -> Unit) {
         var attempts = 0
-        while (attempts++ < RETRIES && runCatching(action).isFailure) Thread.sleep(10)
+        // No sleep: idling the paused main looper is what lets a background
+        // Main coroutine finish and release the dispatcher this retries on.
+        while (attempts++ < RETRIES && runCatching(action).isFailure) idleMainLooper()
         if (attempts > RETRIES) action()
     }
 
     private companion object {
         const val RETRIES = 20
-        const val AWAIT_STEPS = 2000
-        const val AWAIT_STEP_NANOS = 25_000_000L
     }
 
     /**
-     * Polls [cond] for up to [AWAIT_STEPS] steps.
-     *
-     * Counted in steps rather than against System.currentTimeMillis(): Robolectric substitutes its
-     * own clock for test code, which can run far ahead of real time, so a clock-based deadline could
-     * give up within milliseconds while a background write was still landing.
+     * Waits for a terminal [NonogramUiState]: suspends on the StateFlow
+     * itself until an emission matches, instead of polling `uiState.value`
+     * with sleeps or a burned-CPU step loop. The ViewModel runs on an
+     * unconfined Main dispatcher in this suite and generates on
+     * Dispatchers.Default, so the emission resumes this wait directly.
      */
-    @Volatile
-    private var burnSink: Long = 0
-
-    private fun stepSleep() {
-        // Robolectric virtualises every clock, park, sleep, wait and
-        // scheduled delay reachable from this suite (they all return in
-        // ~0.2ms, advancing the substituted clock), so an await step
-        // cannot literally wait: step budgets burned out in ~0.16s of
-        // real time, before slow-but-healthy IO writes landed on a
-        // loaded box — hence the rotating "timed out" failures. The
-        // only real time available is CPU work, so a step burns a
-        // fixed dependent-arithmetic loop (~10ms on a fast core; a
-        // slower CI core just makes each step longer, which is the
-        // safe direction). The volatile sink keeps the JIT honest.
-        var x = burnSink + 0x9E3779B97F4A7C15uL.toLong()
-        for (i in 0 until 20_000_000) {
-            x = x * 31 + i
+    private fun awaitState(desc: String, vm: NonogramViewModel, cond: (NonogramUiState) -> Boolean) {
+        try {
+            awaitValueBlocking(vm.uiState) { cond(it) }
+        } catch (e: Throwable) {
+            throw AssertionError("timed out: $desc; last state=${vm.uiState.value}", e)
         }
-        burnSink = x
     }
 
-
-
-    private fun await(desc: String, maxSteps: Int = AWAIT_STEPS, cond: () -> Boolean) {
-        // Assert on the observed value, not a fresh re-read: the old
-        // shape evaluated cond() once to leave the loop and again in
-        // assertTrue, and a store value that flipped between those two
-        // reads (or a transiently failing second read) failed a wait
-        // that had actually succeeded — "timed out after 1 steps".
-        var steps = 0
-        var ok = cond()
-        while (!ok && steps++ < maxSteps) {
-            stepSleep()
-            ok = cond()
+    /** Waits for a terminal DataStore state on the store's own flow. */
+    private fun awaitStore(desc: String, cond: suspend () -> Unit) {
+        try {
+            blocking { cond() }
+        } catch (e: Throwable) {
+            throw AssertionError("timed out: $desc", e)
         }
-        assertTrue(ok, "timed out: $desc after $steps steps")
     }
 
     /**
@@ -139,11 +120,9 @@ class NonogramViewModelTest {
      * under Robolectric the timeout's delay runs on the substituted
      * clock and fires effectively instantly, so any read that needs an
      * async DataStore round-trip loses the race and the poll conditions
-     * in [await] could never observe a landed write (the "undo
-     * persisted" flake: every poll timed out before the emission
-     * arrived). The store's write actor is kept alive by initializing
-     * WorkManager in setUp, so reads complete; [await]'s step budget
-     * bounds the total wait instead.
+     * in the flow-first waits could never observe a landed write. The
+     * store's write actor is kept alive by initializing WorkManager in
+     * setUp, so reads complete.
      */
     private fun <T> blocking(block: suspend () -> T): T = runBlocking { block() }
 
@@ -161,7 +140,7 @@ class NonogramViewModelTest {
         // for the next collector. These three edits are tiny; let them land.
         runBlocking { store.saveLevel(level); store.setGameMode(GameMode.CASUAL); store.setMarkMode(MarkMode.FILL) }
         val vm = track(NonogramViewModel(app))
-        await("game loads") { vm.uiState.value.game != null && !vm.uiState.value.generating }
+        awaitState("game loads", vm) { it.game != null && !it.generating }
         return vm
     }
 
@@ -181,23 +160,23 @@ class NonogramViewModelTest {
         val correct = g.puzzle.solution.indices.first { g.puzzle.solution[it] }
         val wrong = g.puzzle.solution.indices.first { !g.puzzle.solution[it] }
         vm.tapCell(correct)
-        await("fill lands") { vm.uiState.value.game?.filled?.contains(correct) == true }
+        awaitState("fill lands", vm) { it.game?.filled?.contains(correct) == true }
         vm.tapCell(correct) // locked: no-op
         vm.tapCell(wrong)
-        await("heart spent") { vm.uiState.value.game?.hearts == STARTING_HEARTS - 1 }
+        awaitState("heart spent", vm) { it.game?.hearts == STARTING_HEARTS - 1 }
         assertTrue(vm.uiState.value.game!!.revealedBlanks.contains(wrong))
         // Cross mode: tap only notes, even on a picture cell, never costs.
         vm.setMarkMode(MarkMode.CROSS)
-        await("cross mode") { vm.uiState.value.markMode == MarkMode.CROSS }
+        awaitState("cross mode", vm) { it.markMode == MarkMode.CROSS }
         val noteCell = vm.uiState.value.game!!.puzzle.solution.indices.first { vm.uiState.value.game!!.puzzle.solution[it] && it !in vm.uiState.value.game!!.filled }
         vm.tapCell(noteCell)
-        await("note placed") { vm.uiState.value.game?.crossed?.contains(noteCell) == true }
+        awaitState("note placed", vm) { it.game?.crossed?.contains(noteCell) == true }
         assertEquals(STARTING_HEARTS - 1, vm.uiState.value.game!!.hearts)
         vm.tapCell(noteCell)
-        await("note removed") { vm.uiState.value.game?.crossed?.contains(noteCell) == false }
+        awaitState("note removed", vm) { it.game?.crossed?.contains(noteCell) == false }
         // Long-press in cross mode performs the fill action.
         vm.crossCell(noteCell)
-        await("long press fills") { vm.uiState.value.game?.filled?.contains(noteCell) == true }
+        awaitState("long press fills", vm) { it.game?.filled?.contains(noteCell) == true }
     }
 
     @Test fun movesUpdateTheBoardBeforeAnyWriteLands() {
@@ -215,9 +194,9 @@ class NonogramViewModelTest {
         vm.tapCell(note)
         assertFalse(note in vm.uiState.value.game!!.crossed, "second quick tap must clear the X, not add it again")
         // And the store catches up to what is on screen.
-        await("persisted") {
-            blocking { vm.dataStore.filledCells.first() } == setOf(correct) &&
-                blocking { vm.dataStore.crossedCells.first() }.isEmpty()
+        awaitStore("persisted") {
+            combine(vm.dataStore.filledCells, vm.dataStore.crossedCells) { f, c -> f to c }
+                .first { (f, c) -> f == setOf(correct) && c.isEmpty() }
         }
         assertTrue(correct in vm.uiState.value.game!!.filled)
         assertFalse(note in vm.uiState.value.game!!.crossed)
@@ -230,10 +209,10 @@ class NonogramViewModelTest {
         val target = picture.take(picture.size - 1)
         for (i in target) vm.tapCell(i)
         assertEquals(target.toSet(), vm.uiState.value.game!!.filled)
-        await("last snapshot wins") { blocking { vm.dataStore.filledCells.first() } == target.toSet() }
+        awaitStore("last snapshot wins") { vm.dataStore.filledCells.first { it == target.toSet() } }
         // A fresh ViewModel (a relaunch) loads exactly what was played.
         val again = track(NonogramViewModel(app))
-        await("reload") { again.uiState.value.game?.filled == target.toSet() }
+        awaitState("reload", again) { it.game?.filled == target.toSet() }
     }
 
     @Test fun dragStrokeFillsALineAndChargesOneHeartForAMistake() {
@@ -286,16 +265,9 @@ class NonogramViewModelTest {
         assertFalse(vm.uiState.value.canUndo)
         vm.undo() // empty: no-op
         assertEquals(s, vm.uiState.value.game)
-        // Undo is persisted like any move. A transient failure of the
-        // read itself (the Robolectric environment occasionally
-        // interrupts the polling runBlocking) must not abort the wait:
-        // it just means "not landed yet". The final condition still
-        // requires the store to actually read empty.
-        await("undo persisted") {
-            runCatching { blocking { vm.dataStore.filledCells.first() } }
-                .getOrDefault(setOf(-1))
-                .isEmpty()
-        }
+        // Undo is persisted like any move: suspend on the store flow
+        // until the empty board is the emitted terminal state.
+awaitStore("undo persisted") { vm.dataStore.filledCells.first { it.isEmpty() } }
         // Restart wipes the history.
         vm.crossCell(correct)
         assertTrue(vm.uiState.value.canUndo)
@@ -308,22 +280,24 @@ class NonogramViewModelTest {
         val g = vm.uiState.value.game!!
         val cell = g.puzzle.solution.indices.first { !g.puzzle.solution[it] }
         vm.crossCell(cell)
-        await("long-press note") { vm.uiState.value.game?.crossed?.contains(cell) == true }
+        awaitState("long-press note", vm) { it.game?.crossed?.contains(cell) == true }
         assertEquals(STARTING_HEARTS, vm.uiState.value.game!!.hearts)
         vm.restartLevel()
-        await("restart clears") { vm.uiState.value.game?.crossed?.isEmpty() == true }
+        awaitState("restart clears", vm) { it.game?.crossed?.isEmpty() == true }
     }
 
     private fun winBoard(vm: NonogramViewModel) {
         val g = vm.uiState.value.game!!
         for (i in g.puzzle.solution.indices.filter { g.puzzle.solution[it] }) vm.tapCell(i)
-        await("won") { vm.uiState.value.game?.isWon == true }
+        awaitState("won", vm) { it.game?.isWon == true }
     }
 
     @Test fun nextLevelIgnoresAnUnsolvedBoard() {
         val vm = loadedVm()
         vm.nextLevel()
-        Thread.sleep(200)
+        // No wait: nextLevel on an unsolved board returns synchronously
+        // without launching any write (the isWon guard), so the level is
+        // already settled on the next line.
         assertEquals(1, vm.uiState.value.level, "Next only exists on a solved board")
         assertEquals(1, blocking { vm.dataStore.currentLevel.first() })
     }
@@ -338,12 +312,13 @@ class NonogramViewModelTest {
         // complete before this thread's next line runs, which made that assert a coin flip.
         // The refusal is what the level assertions below prove.)
         vm.nextLevel()
-        await("level 2 loaded") {
-            vm.uiState.value.game?.level == 2 && !vm.uiState.value.generating
+        awaitState("level 2 loaded", vm) {
+            it.game?.level == 2 && !it.generating
         }
         // A late tap that lands on the fresh, unsolved board is ignored too.
         vm.nextLevel()
-        Thread.sleep(200)
+        // As above, the late tap is a synchronous no-op on the unsolved
+        // board, so the stored level is already terminal.
         assertEquals(2, blocking { vm.dataStore.currentLevel.first() })
         assertEquals(2, vm.uiState.value.level)
     }
@@ -352,14 +327,14 @@ class NonogramViewModelTest {
         val vm = loadedVm()
         winBoard(vm)
         vm.nextLevel()
-        await("level 2") { vm.uiState.value.level == 2 && vm.uiState.value.game != null && !vm.uiState.value.generating }
+        awaitState("level 2", vm) { it.level == 2 && it.game != null && !it.generating }
         vm.setGameMode(GameMode.DAILY)
-        await("daily loads") { vm.uiState.value.mode == GameMode.DAILY && vm.uiState.value.game?.size == 10 }
+        awaitState("daily loads", vm) { it.mode == GameMode.DAILY && it.game?.size == 10 }
         // nextLevel is a no-op in daily mode.
         vm.nextLevel()
         assertEquals(GameMode.DAILY, vm.uiState.value.mode)
         vm.setGameMode(GameMode.CASUAL)
-        await("back to casual") { vm.uiState.value.mode == GameMode.CASUAL && vm.uiState.value.game != null }
+        awaitState("back to casual", vm) { it.mode == GameMode.CASUAL && it.game != null }
     }
 
     @Test fun winningBoardRecordsCompletionOnce() {
@@ -369,8 +344,8 @@ class NonogramViewModelTest {
         val before = blocking { vm.dataStore.puzzlesCompleted.first() }
         val g = vm.uiState.value.game!!
         for (i in g.puzzle.solution.indices.filter { g.puzzle.solution[it] }) vm.tapCell(i)
-        await("won") { vm.uiState.value.game?.isWon == true }
-        await("completion recorded") { blocking { vm.dataStore.puzzlesCompleted.first() } == before + 1 }
+        awaitState("won", vm) { it.game?.isWon == true }
+        awaitStore("completion recorded") { vm.dataStore.puzzlesCompleted.first { it == before + 1 } }
         // Taps after game over are ignored.
         val hearts = vm.uiState.value.game!!.hearts
         vm.tapCell(g.puzzle.solution.indices.first { !g.puzzle.solution[it] })
@@ -380,17 +355,17 @@ class NonogramViewModelTest {
     @Test fun winningDailyRecordsDailyWin() {
         val vm = loadedVm()
         vm.setGameMode(GameMode.DAILY)
-        await("daily ready") { vm.uiState.value.mode == GameMode.DAILY && vm.uiState.value.game != null && !vm.uiState.value.generating }
+        awaitState("daily ready", vm) { it.mode == GameMode.DAILY && it.game != null && !it.generating }
         val before = blocking { vm.dataStore.puzzlesCompleted.first() }
         val g = vm.uiState.value.game!!
         for (i in g.puzzle.solution.indices.filter { g.puzzle.solution[it] }) vm.tapCell(i)
-        await("daily won") { vm.uiState.value.game?.isWon == true }
-        await("daily completion recorded") { blocking { vm.dataStore.puzzlesCompleted.first() } > before }
+        awaitState("daily won", vm) { it.game?.isWon == true }
+        awaitStore("daily completion recorded") { vm.dataStore.puzzlesCompleted.first { it > before } }
         // Let the rest of the win land before the test ends: the streak write reloads every live
         // ViewModel, and a store edit still in flight when Dispatchers.Main is reset would wait on
         // the paused Robolectric main looper and wedge the store for the following tests.
-        await("daily streak recorded") {
-            vm.uiState.value.dailyDone && vm.uiState.value.dailyStreak >= 1 && !vm.uiState.value.generating
+        awaitState("daily streak recorded", vm) {
+            it.dailyDone && it.dailyStreak >= 1 && !it.generating
         }
     }
 
@@ -398,25 +373,22 @@ class NonogramViewModelTest {
         val vm = loadedVm()
         val before = vm.uiState.value.game!!
         vm.retryGeneration()
-        await("reload after retry") { !vm.uiState.value.generating && vm.uiState.value.game != null }
+        awaitState("reload after retry", vm) { !it.generating && it.game != null }
         assertFalse(vm.uiState.value.generationFailed)
         assertEquals(before.puzzle, vm.uiState.value.game!!.puzzle)
     }
 
     @Test fun reminderActionsUpdateState() {
         val vm = loadedVm()
-        val enabledSeen = java.util.Collections.synchronizedList(mutableListOf<Boolean>())
-        val minutesSeen = java.util.Collections.synchronizedList(mutableListOf<Long>())
-        val scope = kotlinx.coroutines.CoroutineScope(Dispatchers.Unconfined)
-        val j1 = scope.launch { vm.reminderEnabled.collect { enabledSeen += it } }
-        val j2 = scope.launch { vm.reminderMinutesOfDay.collect { minutesSeen += it } }
+        // Wait on the reminder StateFlows themselves: each first{} below
+        // subscribes (starting the WhileSubscribed upstream) and is resumed
+        // by the terminal emission, with no collector lists to poll.
         vm.setReminderEnabled(true)
-        await("reminder on") { enabledSeen.contains(true) }
+        awaitValueBlocking(vm.reminderEnabled) { it }
         vm.setReminderTime(7, 30)
-        await("reminder time") { minutesSeen.contains(450L) }
+        awaitValueBlocking(vm.reminderMinutesOfDay) { it == 450L }
         vm.setReminderEnabled(false)
-        await("reminder off") { enabledSeen.lastOrNull() == false }
-        j1.cancel(); j2.cancel()
+        awaitValueBlocking(vm.reminderEnabled) { !it }
     }
 
     @Test fun contractDefaultsAndNoop() {
@@ -434,11 +406,14 @@ class NonogramViewModelTest {
     @Test fun achievementsManagerBackfillDoesNotCrash() {
         val vm = loadedVm()
         vm.achievementsManager.checkExistingAchievements()
-        // checkExistingAchievements launches on Dispatchers.IO; asserting
-        // its unlocks synchronously raced that work and lost under load.
-        await("backfill unlocks land") {
-            vm.achievementsManager.achievements.any { it.id == "first_puzzle" } &&
-                vm.achievementsManager.achievements.any { it.id == "daily_streak_30" }
+        // checkExistingAchievements launches on Dispatchers.IO; wait for
+        // its terminal effect on the statuses flow (first_puzzle unlocked
+        // from the stored completion count) instead of asserting — or
+        // polling — the static achievement catalogue.
+        awaitStore("backfill unlocks land") {
+            vm.achievementsManager.getAchievementStatuses().first { statuses ->
+                statuses.any { it.achievement.id == "first_puzzle" && it.isUnlocked }
+            }
         }
         assertTrue(vm.achievementsManager.achievements.any { it.id == "first_puzzle" })
         assertTrue(vm.achievementsManager.achievements.any { it.id == "daily_streak_30" })

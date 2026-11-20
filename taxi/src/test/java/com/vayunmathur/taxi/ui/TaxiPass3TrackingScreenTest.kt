@@ -41,6 +41,7 @@ class TaxiPass3TrackingScreenTest {
 
     @BeforeTest
     fun setUp() {
+        LyftTokenStore.sealerForTest = com.vayunmathur.taxi.data.lyft.FakeTokenSealer()
         http.install()
         runBlocking {
             LyftTokenStore(context).save(
@@ -53,6 +54,7 @@ class TaxiPass3TrackingScreenTest {
     fun tearDown() {
         http.uninstall()
         runBlocking { LyftTokenStore(context).clear() }
+        LyftTokenStore.sealerForTest = null
     }
 
     private fun waitForText(text: String, timeoutMs: Long = 20_000) {

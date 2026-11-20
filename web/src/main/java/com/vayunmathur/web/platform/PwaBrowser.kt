@@ -321,8 +321,12 @@ private fun applyPwaWebSettings(webView: WebView, ctx: Context) {
     settings.domStorageEnabled = true
     settings.databaseEnabled = true
     settings.cacheMode = WebSettings.LOAD_DEFAULT
-    settings.allowFileAccess = true
-    settings.allowContentAccess = true
+    // Installed sites are https web apps (see WebViewSettings): no feature
+    // loads file:// or content:// into the page, and file-chooser uploads
+    // return content URIs via onShowFileChooser without these. With JS on,
+    // file/content access would let a compromised PWA origin read local files.
+    settings.allowFileAccess = false
+    settings.allowContentAccess = false
     settings.offscreenPreRaster = true
     settings.setSupportZoom(true)
     settings.builtInZoomControls = true

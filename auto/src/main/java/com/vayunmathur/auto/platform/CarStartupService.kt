@@ -19,6 +19,13 @@ import com.vayunmathur.auto.service.ProjectionService
  * through [UsbConnector]. `CAR_STARTUP_NOTIFICATION` (HU startup announced)
  * starts the projection listener like boot does. Manual/boot start stays
  * the fallback when no chain action arrives.
+ *
+ * Exported for the system/head-unit flow, but the manifest guards it with
+ * the `signature|privileged` `START_PROJECTION_CHAIN` permission: an
+ * arbitrary app can no longer wake [ProjectionService]/[UsbConnector] by
+ * sending these actions. In-repo callers (WirelessStartup*,
+ * DeepLinkResolverActivity) are same-app explicit intents and are
+ * unaffected; an external head-unit caller must hold the permission.
  */
 class CarStartupService : Service() {
 

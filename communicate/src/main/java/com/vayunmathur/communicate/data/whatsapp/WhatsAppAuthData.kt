@@ -2,6 +2,8 @@ package com.vayunmathur.communicate.data.whatsapp
 
 import android.content.Context
 import androidx.core.content.edit
+import com.vayunmathur.communicate.data.KeystoreSecretSealer
+import com.vayunmathur.communicate.data.SecretSealer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json as KotlinJson
@@ -67,20 +69,43 @@ data class WhatsAppAuthData(
         private const val PREFS_NAME = "communicate_whatsapp_auth"
         private const val KEY_AUTH_DATA = "auth_data"
 
-        fun load(context: Context): WhatsAppAuthData? {
+        /**
+         * Load the sealed (or legacy plaintext) auth JSON.
+         *
+         * Sealed: unseal then parse; unseal/parse failure returns null
+         * (signed-out) and leaves the blob intact. Legacy plaintext: parse
+         * first and rewrite sealed ONLY after a successful parse
+         * (verify-before-overwrite — a botched rewrite would force
+         * re-registration). Idempotent: the second load sees sealed form.
+         */
+        fun load(context: Context, sealer: SecretSealer = KeystoreSecretSealer.shared): WhatsAppAuthData? {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            val json = prefs.getString(KEY_AUTH_DATA, null) ?: return null
-            return try {
-                KotlinJson.decodeFromString<WhatsAppAuthData>(json)
-            } catch (ignored: Exception) {
-                null
+            val raw = prefs.getString(KEY_AUTH_DATA, null) ?: return null
+            if (sealer.isSealed(raw)) {
+                val json = sealer.unseal(raw) ?: return null
+                return try {
+                    KotlinJson.decodeFromString<WhatsAppAuthData>(json)
+                } catch (ignored: Exception) {
+                    null
+                }
             }
+            val parsed = try {
+                KotlinJson.decodeFromString<WhatsAppAuthData>(raw)
+            } catch (ignored: Exception) {
+                return null
+            }
+            sealer.seal(raw)?.let { sealed ->
+                prefs.edit { putString(KEY_AUTH_DATA, sealed) }
+            }
+            return parsed
         }
 
-        fun save(context: Context, authData: WhatsAppAuthData) {
+        /** Save the whole auth JSON sealed; on seal failure nothing is written (never plaintext). */
+        fun save(context: Context, authData: WhatsAppAuthData, sealer: SecretSealer = KeystoreSecretSealer.shared) {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             val json = KotlinJson.encodeToString(authData)
-            prefs.edit { putString(KEY_AUTH_DATA, json) }
+            val sealed = sealer.seal(json) ?: return
+            prefs.edit { putString(KEY_AUTH_DATA, sealed) }
         }
 
         fun clear(context: Context) {
