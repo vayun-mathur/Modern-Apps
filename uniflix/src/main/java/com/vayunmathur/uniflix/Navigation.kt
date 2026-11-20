@@ -16,7 +16,6 @@ import com.vayunmathur.uniflix.ui.SearchRoute
 import com.vayunmathur.uniflix.ui.WatchRoute
 import com.vayunmathur.uniflix.ui.ContinueWatchingScreen
 import com.vayunmathur.uniflix.ui.ListsScreen
-import com.vayunmathur.uniflix.ui.PlayerSettingsScreen
 
 @Composable
 fun Navigation() {
@@ -45,9 +44,6 @@ fun Navigation() {
                     backStack.add(Route.Watch(entry.mediaType, entry.tmdbId, entry.season, entry.episode))
                 },
             )
-        }
-        entry<Route.PlayerSettings> {
-            PlayerSettingsScreen(onBack = { backStack.pop() })
         }
         entry<Route.Addons> {
             val vm: AddonsViewModel = viewModel()

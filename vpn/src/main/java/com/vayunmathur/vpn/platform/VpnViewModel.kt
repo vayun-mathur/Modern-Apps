@@ -193,13 +193,22 @@ class VpnViewModel(
     fun importFromUri(context: Context, uri: Uri) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
+                // Only the schemes the import contract can legitimately deliver:
+                // SAF/OpenDocument and ACTION_VIEW both hand over content://,
+                // and file:// from a file manager (see the manifest VIEW filter,
+                // which declares content/file only). Anything else is rejected
+                // before a stream is opened.
+                if (uri.scheme != "content" && uri.scheme != "file") {
+                    _status.value = "Import failed: unsupported scheme ${uri.scheme}"
+                    return@launch
+                }
                 try {
                     val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
                     context.contentResolver.takePersistableUriPermission(uri, flags)
                 } catch (expected: SecurityException) {
                     Log.status("VpnVM", "persist permission denied for $uri", expected)
                 }
-                val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: run {
+                val bytes = context.contentResolver.openInputStream(uri)?.use { readBounded(it) } ?: run {
                     _status.value = "Failed to read file"
                     return@launch
                 }
@@ -315,7 +324,29 @@ class VpnViewModel(
     companion object {
         private const val STOP_TIMEOUT_MS = 5_000L
         private const val POLL_RUNNING_MS = 500L
+
+        /** WireGuard configs and .mavpn bundles are small; anything larger is not one. */
+        private const val MAX_IMPORT_BYTES = 1_048_576
         private val ZIP_MAGIC = byteArrayOf('P'.code.toByte(), 'K'.code.toByte(), 3, 4)
+
+        /**
+         * Reads at most [MAX_IMPORT_BYTES] from [input]; one byte over throws
+         * [IOException], which the caller reports through its existing
+         * import-failed path, instead of buffering an unbounded stream.
+         */
+        private fun readBounded(input: java.io.InputStream): ByteArray {
+            val out = java.io.ByteArrayOutputStream()
+            val buffer = ByteArray(8192)
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                if (out.size() + read > MAX_IMPORT_BYTES) {
+                    throw IOException("File too large (over $MAX_IMPORT_BYTES bytes)")
+                }
+                out.write(buffer, 0, read)
+            }
+            return out.toByteArray()
+        }
     }
 }
 

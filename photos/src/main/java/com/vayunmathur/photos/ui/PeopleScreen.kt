@@ -105,7 +105,7 @@ fun PeopleScreen(
                             faceThumbnail = faceThumbnail,
                             onNameClick = onNameClick,
                         ) { person ->
-                            backStack.pushPhoto(Route.PhotoPage(person.coverPhoto.id, person.photos))
+                            backStack.pushPhoto(Route.PhotoPage(person.coverPhoto.id, com.vayunmathur.photos.PhotoSource.Person(person.id)))
                         }
                     } else {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

@@ -53,7 +53,7 @@ class AddonStreamProviderOfflineTest {
         // Singleton routes are distinct destinations.
         val routes: List<Route> = listOf(
             Route.Home, Route.Movies, Route.Series, Route.Search,
-            Route.Lists, Route.ContinueWatching, Route.PlayerSettings, Route.Addons)
+            Route.Lists, Route.ContinueWatching, Route.Addons)
         assertEquals(routes.size, routes.distinct().size)
     }
 }

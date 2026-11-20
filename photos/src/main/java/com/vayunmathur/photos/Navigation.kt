@@ -91,7 +91,7 @@ fun Navigation(
         }
 
         entry<Route.PhotoPage>(metadata = ListDetailPage() + MorphPage()) {
-            PhotoPage(galleryViewModel, photoMapViewModel, it.id, it.overridePhotosList, it.pendingUri, backStack)
+            PhotoPage(galleryViewModel, photoMapViewModel, it.id, it.sourceKey, it.pendingUri, backStack)
         }
 
         entry<Route.Wallpaper>(metadata = ListDetailPage()) {

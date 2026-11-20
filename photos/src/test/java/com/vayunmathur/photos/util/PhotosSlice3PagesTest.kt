@@ -253,7 +253,7 @@ class PhotosSlice3PagesTest {
         assertTrue(measured != IntSize.Zero || measured == IntSize.Zero)
     }
 
-    // ---- PhotoPage with an override list (no DB rows needed) ----
+    // ---- PhotoPage re-deriving its list from the view-model by sourceKey ----
 
     @Test
     fun photoPagePagerOpensOnOverridePhoto() {
@@ -265,18 +265,20 @@ class PhotosSlice3PagesTest {
         try {
             val a = photo("pg-a", 100L)
             val b = photo("pg-b", 200L)
+            kotlinx.coroutines.runBlocking { db.photoDao().upsertAll(listOf(b, a)) }
             composeRule.setContent {
                 PhotoPage(
                     galleryViewModel = gallery,
                     photoMapViewModel = map,
                     id = b.id,
-                    overridePhotosList = listOf(b, a),
+                    sourceKey = com.vayunmathur.photos.PhotoSource.Gallery,
                     backStack = NavBackStack(arrayOf(Route.Gallery)),
                 )
             }
             // The pager opens on the requested photo: its metadata card
             // shows the name. (The neighbour page stays composed but
             // off-screen, so only the current one is displayed.)
+            composeRule.waitUntilExactlyOneExists(hasText("pg-b"), 5_000)
             composeRule.onNodeWithText("pg-b").assertIsDisplayed()
         } finally {
             ocrLayoutOverride = null

@@ -20,10 +20,18 @@ import com.vayunmathur.library.ui.isCompactHeight
 import com.vayunmathur.library.ui.isExpandedWidth
 import com.vayunmathur.library.util.BottomBarItem
 import com.vayunmathur.library.util.BottomNavBar
+import com.vayunmathur.library.util.EntryProviderScope
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.SiblingPage
 import com.vayunmathur.library.util.rememberNavBackStack
 import androidx.compose.ui.Modifier
+
+/** The three tab destinations, registered once and shared by both layout branches below. */
+private fun EntryProviderScope<Route>.calculatorEntries(viewModel: CalculatorViewModel) {
+    entry<Route.Calculator>(metadata = SiblingPage()) { CalculatorPage(viewModel) }
+    entry<Route.Graph>(metadata = SiblingPage()) { GraphPage(viewModel) }
+    entry<Route.Units>(metadata = SiblingPage()) { UnitConverterPage(viewModel) }
+}
 
 @Composable
 fun Navigation(viewModel: CalculatorViewModel, unitsRequest: Int = 0) {
@@ -55,21 +63,13 @@ fun Navigation(viewModel: CalculatorViewModel, unitsRequest: Int = 0) {
                 }
             }
             Box(Modifier.weight(1f).fillMaxHeight()) {
-                MainNavigation(backStack) {
-    entry<Route.Calculator>(metadata = SiblingPage()) { CalculatorPage(viewModel) }
-    entry<Route.Graph>(metadata = SiblingPage()) { GraphPage(viewModel) }
-    entry<Route.Units>(metadata = SiblingPage()) { UnitConverterPage(viewModel) }
-            }
+                MainNavigation(backStack) { calculatorEntries(viewModel) }
             }
         }
     } else {
         MainNavigation(
             backStack,
             bottomBar = { BottomNavBar(backStack, tabs, current) },
-        ) {
-    entry<Route.Calculator>(metadata = SiblingPage()) { CalculatorPage(viewModel) }
-    entry<Route.Graph>(metadata = SiblingPage()) { GraphPage(viewModel) }
-    entry<Route.Units>(metadata = SiblingPage()) { UnitConverterPage(viewModel) }
-        }
+        ) { calculatorEntries(viewModel) }
     }
 }

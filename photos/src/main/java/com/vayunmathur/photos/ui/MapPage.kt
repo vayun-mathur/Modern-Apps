@@ -41,6 +41,7 @@ import com.vayunmathur.photos.data.Photo
 import com.vayunmathur.photos.platform.GalleryViewModel
 import com.vayunmathur.photos.platform.ImageLoader
 import com.vayunmathur.photos.platform.PhotoMapViewModel
+import com.vayunmathur.photos.platform.pushPhoto
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.conflate
@@ -184,7 +185,7 @@ fun MapPage(
                         }
                         items(selectedCluster.allPhotos, key = { it.id }, contentType = { "photo_thumbnail" }) {
                             ImageLoader.PhotoItem(it, Modifier.fillMaxHeight().aspectRatio(1f)) {
-                                backStack.add(Route.PhotoPage(it.id, selectedCluster.allPhotos))
+                                backStack.pushPhoto(Route.PhotoPage(it.id, com.vayunmathur.photos.PhotoSource.MapCluster(selectedCluster.coverPhoto.id)))
                             }
                         }
                         item {

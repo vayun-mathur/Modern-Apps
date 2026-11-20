@@ -34,31 +34,50 @@ import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.ZoomState
 import com.vayunmathur.library.ui.isExpandedWidth
 import com.vayunmathur.library.util.NavBackStack
+import com.vayunmathur.photos.PhotoSource
 import com.vayunmathur.photos.Route
 import com.vayunmathur.photos.data.Photo
+import com.vayunmathur.photos.platform.pushPhoto
 import com.vayunmathur.photos.platform.GalleryViewModel
 import com.vayunmathur.photos.platform.LiveWallpaperLauncher
 import com.vayunmathur.photos.platform.PhotoMapViewModel
 import kotlinx.coroutines.launch
 
 @Composable
-fun PhotoPage(galleryViewModel: GalleryViewModel, photoMapViewModel: PhotoMapViewModel, id: Long, overridePhotosList: List<Photo>?, pendingUri: String? = null, backStack: NavBackStack<Route>? = null) {
+fun PhotoPage(galleryViewModel: GalleryViewModel, photoMapViewModel: PhotoMapViewModel, id: Long, sourceKey: PhotoSource?, pendingUri: String? = null, backStack: NavBackStack<Route>? = null) {
     val photosAll by galleryViewModel.photos.collectAsState()
+    val searchResults by galleryViewModel.searchResults.collectAsState()
+    val favorites by galleryViewModel.favorites.collectAsState()
+    val albums by galleryViewModel.albums.collectAsState()
+    val people by galleryViewModel.people.collectAsState()
+    val mapClusters by photoMapViewModel.generatedClusters.collectAsState()
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     // Photos deleted from within this viewer, hidden immediately so the pager
     // advances to the next photo without waiting for the MediaStore resync.
     val locallyDeleted = remember { mutableStateListOf<Long>() }
-    // One remembered pass instead of an unmemoized filter plus a sort plus two
-    // index scans in the composable body. The sort is gone: the DAO returns rows
-    // newest-first (ORDER BY date DESC) and every list handed in via
-    // overridePhotosList is already date-descending.
-    val photosSorted = remember(photosAll, overridePhotosList, locallyDeleted.toList()) {
-        val source = overridePhotosList ?: photosAll.filter { !it.isTrashed }
+    // Re-derive the paging list from the view-model by [sourceKey] instead of
+    // carrying a serialized copy in the route. Each origin flow is already in
+    // the order its grid showed (DAO/search/people/albums are date-descending;
+    // map clusters are sorted date-descending when generated), so swiping
+    // order is preserved. If the origin has evaporated (e.g. after process
+    // death the ephemeral search/map state is gone) or no longer contains
+    // [id], fall back to the full gallery list so the opened photo still
+    // shows instead of blanking the viewer.
+    val photosSorted = remember(photosAll, searchResults, favorites, albums, people, mapClusters, sourceKey, id, locallyDeleted.toList()) {
+        val derived = when (sourceKey) {
+            null, PhotoSource.Gallery -> photosAll.filter { !it.isTrashed }
+            PhotoSource.Search -> searchResults
+            PhotoSource.Favorites -> favorites
+            is PhotoSource.Album -> albums.firstOrNull { it.name == sourceKey.albumName }?.photos.orEmpty()
+            is PhotoSource.Person -> people.firstOrNull { it.id == sourceKey.clusterId }?.photos.orEmpty()
+            is PhotoSource.MapCluster -> mapClusters.firstOrNull { it.coverPhoto.id == sourceKey.coverPhotoId }?.allPhotos.orEmpty()
+        }
+        val source = if (derived.any { it.id == id }) derived else photosAll.filter { !it.isTrashed }
         source.filter { it.id !in locallyDeleted }
     }
-    // Favorite state from the live rows: overridePhotosList (an album, person or
-    // search snapshot) does not see a heart tapped after it was taken.
+    // Favorite state from the live rows: a re-derived list (an album, person or
+    // search result) does not see a heart tapped after it was taken.
     val favoriteIds = remember(photosAll) { photosAll.filter { it.isFavorite }.mapTo(HashSet()) { it.id } }
     val toggleFavorite = rememberFavoriteToggle(galleryViewModel.favoriteToggler)
     val matchedCounts by galleryViewModel.faceCountByPhoto.collectAsState()
@@ -191,7 +210,7 @@ fun PhotoPage(galleryViewModel: GalleryViewModel, photoMapViewModel: PhotoMapVie
                             coroutineScope.launch {
                                 val clusterPhotos = galleryViewModel.photosForCluster(clusterId)
                                 clusterPhotos.firstOrNull()?.let { first ->
-                                    backStack?.add(Route.PhotoPage(first.id, clusterPhotos))
+                                    backStack?.pushPhoto(Route.PhotoPage(first.id, PhotoSource.Person(clusterId)))
                                 }
                             }
                         },

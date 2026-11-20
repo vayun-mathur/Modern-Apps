@@ -33,7 +33,7 @@ internal fun viewerRouteFor(viewUri: Uri?): Route.PhotoPage? {
     viewUri ?: return null
     return Route.PhotoPage(
         runCatching { ContentUris.parseId(viewUri) }.getOrNull() ?: -1L,
-        null,
+        com.vayunmathur.photos.PhotoSource.Gallery,
         viewUri.toString(),
     )
 }

@@ -38,10 +38,6 @@ sealed interface Route : NavKey {
     @Serializable
     data object ContinueWatching : Route
 
-    /** Singleton holding player settings state and operations. */
-    @Serializable
-    data object PlayerSettings : Route
-
     /** Singleton holding addons state and operations. */
     @Serializable
     data object Addons : Route

@@ -18,7 +18,7 @@ import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 
-/** Stateless Home / Search / Detail / PlayerSettings screens under Robolectric. */
+/** Stateless Home / Search / Detail screens under Robolectric. */
 @RunWith(RobolectricTestRunner::class)
 class DetailHomeSearchComposeTest {
 
@@ -113,14 +113,4 @@ class DetailHomeSearchComposeTest {
         composeRule.onNodeWithText("Detail failed to load.").assertIsDisplayed()
     }
 
-    @Test fun playerSettingsShowsPlaybackInfo() {
-        composeRule.setContent {
-            DynamicTheme { PlayerSettingsScreen(onBack = {}) }
-        }
-        composeRule.onNodeWithText("Player").assertIsDisplayed()
-        composeRule.onNodeWithText("Playback").assertIsDisplayed()
-        composeRule.onNodeWithText(
-            "Streams play through the configured provider. Subtitle tracks come with the resolved source.")
-            .assertIsDisplayed()
-    }
 }
