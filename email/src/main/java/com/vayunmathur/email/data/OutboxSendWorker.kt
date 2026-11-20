@@ -13,6 +13,7 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.vayunmathur.email.data.OutboxEntry
 import com.vayunmathur.email.platform.EmailManager
+import com.vayunmathur.email.platform.SendRequest
 import com.vayunmathur.email.platform.imapServer
 import com.vayunmathur.email.platform.loginUser
 import com.vayunmathur.email.platform.resolveAuth
@@ -133,17 +134,19 @@ class OutboxSendWorker(
             server = account.smtpServer(),
             user = account.loginUser(),
             auth = account.resolveAuth(applicationContext),
-            to = entry.to,
-            subject = entry.subject,
-            body = entry.body,
-            cc = entry.cc,
-            bcc = entry.bcc,
-            attachments = uris,
-            inlineImages = inline,
-            inReplyTo = entry.inReplyTo,
-            references = entry.references,
-            asHtml = entry.isHtml,
-            from = account.email,
+            request = SendRequest(
+                to = entry.to,
+                subject = entry.subject,
+                body = entry.body,
+                cc = entry.cc,
+                bcc = entry.bcc,
+                attachments = uris,
+                inlineImages = inline,
+                inReplyTo = entry.inReplyTo,
+                references = entry.references,
+                asHtml = entry.isHtml,
+                from = account.email,
+            ),
         )
     }.fold(
         onSuccess = { SendResult.Success },

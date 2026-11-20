@@ -5,6 +5,8 @@ import androidx.compose.runtime.Composable
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vayunmathur.email.data.DateMillisBackfill
+import com.vayunmathur.email.data.DraftEntry
+import com.vayunmathur.email.data.EmailRepository
 import com.vayunmathur.email.data.PeekContentBackfill
 import com.vayunmathur.email.data.EmailSyncWorker
 import com.vayunmathur.email.data.ImapIdleService
@@ -145,10 +147,37 @@ class MainActivity : MaActivity() {
         } else {
             ""
         }
-        IntentState.navigationRoute = Route.Composer(
-            to = to,
-            subject = intent.getStringExtra(Intent.EXTRA_SUBJECT) ?: "",
-            body = intent.getStringExtra(Intent.EXTRA_TEXT) ?: "",
-        )
+        val subject = intent.getStringExtra(Intent.EXTRA_SUBJECT) ?: ""
+        val body = intent.getStringExtra(Intent.EXTRA_TEXT) ?: ""
+        if (to.isBlank() && subject.isBlank() && body.isBlank()) {
+            IntentState.navigationRoute = Route.Composer()
+            return
+        }
+        // Persist the shared text as a draft first, so the nav route carries
+        // only its id: large EXTRA_TEXT is no longer retained in the back
+        // stack (and lost/stale on process death), and the composer resumes
+        // it through the same draft machinery as a normal compose (whose
+        // autosave creates/updates this same row). The account's signature
+        // is appended here, as the composer would for a fresh compose,
+        // because a draft-resume does not append it again.
+        lifecycleScope.launch(Dispatchers.IO) {
+            val repository = EmailRepository.get(this@MainActivity)
+            val account = repository.getAccounts().firstOrNull()
+            if (account == null) {
+                // No account to own a draft yet: keep the pre-existing flow
+                // (the add-account gate runs first, then this route is read).
+                IntentState.navigationRoute = Route.Composer(to = to, subject = subject, body = body)
+                return@launch
+            }
+            val draftId = repository.outboxDao().insertDraft(
+                DraftEntry(
+                    accountEmail = account.email,
+                    to = to,
+                    subject = subject,
+                    body = body + com.vayunmathur.email.ui.signatureBlockHtml(account),
+                ),
+            )
+            IntentState.navigationRoute = Route.Composer(draftId = draftId)
+        }
     }
 }

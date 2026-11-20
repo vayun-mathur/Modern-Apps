@@ -117,11 +117,10 @@ class AccountFolderSelectionTest {
     @Test
     fun `unknown host gets strict factory by default`() {
         // Regression: custom/unknown hosts must NOT silently get trust-all.
-        assertTrue(TrustAll.usesStrictFactoryByDefault("mail.example.com"))
-        assertTrue(TrustAll.usesStrictFactoryByDefault("custom.selfhosted.local"))
+        assertTrue(TrustAll.usesStrictFactoryByDefault())
         assertEquals(
             TrustAll.systemSocketFactory(),
-            TrustAll.socketFactoryFor("mail.example.com", forceTrustAll = false),
+            TrustAll.socketFactoryFor(forceTrustAll = false),
         )
     }
 
@@ -129,7 +128,7 @@ class AccountFolderSelectionTest {
     fun `permissive factory only on explicit opt-in`() {
         assertEquals(
             TrustAll.permissiveSocketFactory(),
-            TrustAll.socketFactoryFor("mail.example.com", forceTrustAll = true),
+            TrustAll.socketFactoryFor(forceTrustAll = true),
         )
         assertFalse(EmailAccount(email = "me@example.com").allowInsecureCertificates)
         val optedIn = EmailAccount(email = "me@example.com", allowInsecureCertificates = true)

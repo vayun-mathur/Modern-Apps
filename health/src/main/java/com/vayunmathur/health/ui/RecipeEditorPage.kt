@@ -18,6 +18,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import com.vayunmathur.health.data.Ingredient
 import com.vayunmathur.health.data.ServingUnit
@@ -47,7 +48,8 @@ import com.vayunmathur.library.ui.R as UiR
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RecipeEditorPage(backStack: NavBackStack<Route>, viewModel: HealthViewModel, recipeId: String? = null) {
-    var recipeName by remember { mutableStateOf("") }
+    // Saveable so process death restores an in-progress name instead of losing the draft.
+    var recipeName by rememberSaveable(recipeId) { mutableStateOf("") }
     var recipeIngredients by remember { mutableStateOf(listOf<RecipeIngredientData>()) }
     var showSearch by remember { mutableStateOf(false) }
     var editingIngredientData by remember { mutableStateOf<RecipeIngredientData?>(null) }
@@ -61,7 +63,8 @@ fun RecipeEditorPage(backStack: NavBackStack<Route>, viewModel: HealthViewModel,
         if (recipeId != null) {
             val loaded = viewModel.loadRecipeForEdit(recipeId)
             if (loaded != null) {
-                recipeName = loaded.name
+                // Don't clobber a name restored by rememberSaveable after process death.
+                if (recipeName.isBlank()) recipeName = loaded.name
                 recipeIngredients = loaded.ingredients.map { RecipeIngredientData(it.ingredient, it.unit, it.quantity) }
             }
         }

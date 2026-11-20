@@ -3,6 +3,7 @@ package com.vayunmathur.email.imap
 import android.app.Application
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.email.platform.EmailManager
+import com.vayunmathur.email.platform.SendRequest
 import com.vayunmathur.email.platform.ServerConfig
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -73,10 +74,12 @@ class EmailManagerFakeServerTest {
             server = smtpConfig(),
             user = "me@x.com",
             auth = auth,
-            to = "you@y.com",
-            subject = "Manager mail",
-            body = "sent by manager",
-            from = "me@x.com",
+            request = SendRequest(
+                to = "you@y.com",
+                subject = "Manager mail",
+                body = "sent by manager",
+                from = "me@x.com",
+            ),
         )
         assertTrue(smtp.dataBodies.single().contains("Manager mail"))
     }

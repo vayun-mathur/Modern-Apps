@@ -1,11 +1,10 @@
 package com.vayunmathur.email.network.smtp
 
 import android.content.Context
-import android.net.Uri
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.email.platform.EmailManager
+import com.vayunmathur.email.platform.SendRequest
 import com.vayunmathur.email.platform.ServerConfig
-import com.vayunmathur.email.ui.composer.InlineAttachment
 import java.io.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -22,37 +21,27 @@ object SmtpClient {
         server: ServerConfig,
         user: String,
         auth: EmailManager.AuthType,
-        to: String,
-        subject: String,
-        body: String,
-        cc: String? = null,
-        bcc: String? = null,
-        attachments: List<Uri> = emptyList(),
-        inlineImages: List<InlineAttachment> = emptyList(),
-        inReplyTo: String? = null,
-        references: String? = null,
-        from: String? = null,
-        asHtml: Boolean = false,
+        request: SendRequest,
     ) = withContext(Dispatchers.IO) {
-        val fromAddress = from ?: user
+        val fromAddress = request.from ?: user
         val mimeString = MimeBuilder.buildMessage(
             context = context,
             from = fromAddress,
-            to = to,
-            subject = subject,
-            body = body,
-            asHtml = asHtml,
-            cc = cc,
-            attachments = attachments,
-            inlineImages = inlineImages,
-            inReplyTo = inReplyTo,
-            references = references,
+            to = request.to,
+            subject = request.subject,
+            body = request.body,
+            asHtml = request.asHtml,
+            cc = request.cc,
+            attachments = request.attachments,
+            inlineImages = request.inlineImages,
+            inReplyTo = request.inReplyTo,
+            references = request.references,
         )
         val conn = RawSmtpConnection(server, trustAll = server.trustAllCertificates)
         try {
             openSession(conn, server)
             authenticate(conn, user, auth)
-            submitMessage(conn, fromAddress, to, cc, bcc, mimeString)
+            submitMessage(conn, fromAddress, request.to, request.cc, request.bcc, mimeString)
             conn.quit()
         } finally {
             try { conn.close() } catch (_: Exception) {}

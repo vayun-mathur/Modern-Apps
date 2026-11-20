@@ -57,6 +57,21 @@ suspend fun EmailAccount.resolveAuth(context: Context): EmailManager.AuthType {
     return EmailManager.AuthType.Password(CredentialCrypto.decrypt(cipher, iv))
 }
 
+/** Everything needed to compose and send one outgoing message. */
+data class SendRequest(
+    val to: String,
+    val subject: String,
+    val body: String,
+    val cc: String? = null,
+    val bcc: String? = null,
+    val attachments: List<Uri> = emptyList(),
+    val inlineImages: List<InlineAttachment> = emptyList(),
+    val inReplyTo: String? = null,
+    val references: String? = null,
+    val from: String? = null,
+    val asHtml: Boolean = false,
+)
+
 /** Coordinates mail operations across IMAP and SMTP for configured accounts. */
 class EmailManager {
 
@@ -183,32 +198,6 @@ class EmailManager {
         server: ServerConfig,
         user: String,
         auth: AuthType,
-        to: String,
-        subject: String,
-        body: String,
-        cc: String? = null,
-        bcc: String? = null,
-        attachments: List<Uri> = emptyList(),
-        inlineImages: List<InlineAttachment> = emptyList(),
-        inReplyTo: String? = null,
-        references: String? = null,
-        from: String? = null,
-        asHtml: Boolean = false,
-    ) = SmtpClient.sendMessage(
-        context,
-        server,
-        user,
-        auth,
-        to,
-        subject,
-        body,
-        cc,
-        bcc,
-        attachments,
-        inlineImages,
-        inReplyTo,
-        references,
-        from,
-        asHtml,
-    )
+        request: SendRequest,
+    ) = SmtpClient.sendMessage(context, server, user, auth, request)
 }

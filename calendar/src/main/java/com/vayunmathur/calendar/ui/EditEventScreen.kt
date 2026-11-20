@@ -26,6 +26,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -86,13 +87,15 @@ fun EditEventScreen(viewModel: CalendarViewModel, editRoute: Route.EditEvent, ba
     val today = znow.date
     val now = znow.time
 
-    var title by remember(event?.id) { mutableStateOf(event?.title ?: editRoute.title ?: "") }
-    var descriptionText by remember(event?.id) { mutableStateOf(event?.description ?: editRoute.description ?: "") }
+    // Text fields are saveable so process death restores in-progress edits; the key
+    // still resets the draft when a different event (async) loads.
+    var title by rememberSaveable(event?.id) { mutableStateOf(event?.title ?: editRoute.title ?: "") }
+    var descriptionText by rememberSaveable(event?.id) { mutableStateOf(event?.description ?: editRoute.description ?: "") }
     // Keyed like the state above so an async-loaded event replaces the blank controller.
     val descriptionController = key(event?.id) {
         com.vayunmathur.library.ui.rememberOdfMarkdownEditorController(initialMarkdown = descriptionText) { descriptionText = it }
     }
-    var location by remember(event?.id) { mutableStateOf(event?.location ?: editRoute.location ?: "") }
+    var location by rememberSaveable(event?.id) { mutableStateOf(event?.location ?: editRoute.location ?: "") }
     // default to the event's calendar if editing; otherwise the last calendar the user picked, then first editable
     var selectedCalendar by remember(event?.id) {
         mutableLongStateOf(

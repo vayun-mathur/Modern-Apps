@@ -78,16 +78,16 @@ object TrustAll {
         return KNOWN_SUFFIXES.any { h.endsWith(it) }
     }
 
-    fun socketFactoryFor(host: String, forceTrustAll: Boolean): SSLSocketFactory {
+    fun socketFactoryFor(forceTrustAll: Boolean): SSLSocketFactory {
         // Strict by default for every host; permissive only on explicit opt-in.
         return if (forceTrustAll) permissiveFactory else systemFactory
     }
 
-    /** True when [host] would get the strict (system) factory by default. */
-    fun usesStrictFactoryByDefault(host: String): Boolean =
-        socketFactoryFor(host, forceTrustAll = false) === systemFactory
+    /** True when the default (no opt-in) factory choice is the strict system one. */
+    fun usesStrictFactoryByDefault(): Boolean =
+        socketFactoryFor(forceTrustAll = false) === systemFactory
 
-    private fun applyTlsParameters(socket: Socket, host: String, trustAll: Boolean) {
+    private fun applyTlsParameters(socket: Socket, trustAll: Boolean) {
         if (socket !is SSLSocket || trustAll) return
         val params: SSLParameters = socket.sslParameters
         params.endpointIdentificationAlgorithm = "HTTPS"
@@ -95,9 +95,9 @@ object TrustAll {
     }
 
     fun createSocket(host: String, port: Int, trustAll: Boolean): Socket {
-        val factory = socketFactoryFor(host, trustAll)
+        val factory = socketFactoryFor(trustAll)
         val socket = factory.createSocket(host, port)
-        applyTlsParameters(socket, host, trustAll)
+        applyTlsParameters(socket, trustAll)
         return socket
     }
 
@@ -110,10 +110,10 @@ object TrustAll {
         trustAll: Boolean,
         autoClose: Boolean = true,
     ): SSLSocket {
-        val factory = socketFactoryFor(host, trustAll)
+        val factory = socketFactoryFor(trustAll)
         val ssl = factory.createSocket(plainSocket, host, port, autoClose) as SSLSocket
         ssl.useClientMode = true
-        applyTlsParameters(ssl, host, trustAll)
+        applyTlsParameters(ssl, trustAll)
         ssl.startHandshake()
         return ssl
     }

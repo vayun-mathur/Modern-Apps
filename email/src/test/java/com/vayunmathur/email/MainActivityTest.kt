@@ -21,6 +21,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.test.assertNull
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
@@ -89,10 +90,27 @@ class MainActivityTest {
         }
         val controller = Robolectric.buildActivity(MainActivity::class.java, intent)
         controller.create()
-        assertEquals(
-            Route.Composer(to = "you@y.com", subject = "Hello", body = "Body text"),
-            IntentState.navigationRoute,
-        )
+        // The share text is persisted as a draft first; the route carries
+        // only its id, so poll for the async insert to land.
+        var route: Route? = null
+        runBlocking {
+            withTimeoutOrNull(5_000) {
+                while (IntentState.navigationRoute == null) kotlinx.coroutines.delay(20)
+                IntentState.navigationRoute
+            }
+            route = IntentState.navigationRoute
+        }
+        val composer = route as? Route.Composer
+        kotlin.test.assertNotNull(composer, "expected a composer route, got $route")
+        kotlin.test.assertNotNull(composer.draftId, "share route must carry a draft id")
+        assertEquals("", composer.to)
+        assertEquals("", composer.subject)
+        assertEquals("", composer.body)
+        val draft = runBlocking { db.outboxDao().getDraft(composer.draftId!!) }
+        kotlin.test.assertNotNull(draft)
+        assertEquals("you@y.com", draft.to)
+        assertEquals("Hello", draft.subject)
+        assertEquals("Body text", draft.body)
         controller.destroy()
     }
 

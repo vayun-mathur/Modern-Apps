@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.test.core.app.ApplicationProvider
 import android.net.Uri
 import com.vayunmathur.email.platform.EmailManager
+import com.vayunmathur.email.platform.SendRequest
 import com.vayunmathur.email.platform.ServerConfig
 import com.vayunmathur.email.network.smtp.RawSmtpConnection
 import com.vayunmathur.email.network.smtp.SmtpClient
@@ -193,11 +194,13 @@ class FakeSmtpServerTest {
             server = config(),
             user = "me@x.com",
             auth = EmailManager.AuthType.Password("secret"),
-            to = "you@y.com, Other <other@y.com>",
-            subject = "Greetings",
-            body = "Hello there",
-            cc = "cc@y.com",
-            from = "me@x.com",
+            request = SendRequest(
+                to = "you@y.com, Other <other@y.com>",
+                subject = "Greetings",
+                body = "Hello there",
+                cc = "cc@y.com",
+                from = "me@x.com",
+            ),
         )
         val rcpts = server.received.filter { it.startsWith("RCPT TO") }
         assertEquals(3, rcpts.size)
@@ -215,20 +218,22 @@ class FakeSmtpServerTest {
             server = config(),
             user = "me@x.com",
             auth = EmailManager.AuthType.Password("secret"),
-            to = "you@y.com",
-            subject = "With files",
-            body = "<p>see files</p>",
-            attachments = listOf(Uri.fromFile(attachment)),
-            inlineImages = listOf(
-                InlineAttachment(
-                    cid = "logo@inline",
-                    uri = Uri.fromFile(inline),
-                    mimeType = "image/jpeg",
-                    fileName = "logo.jpg",
-                )
+            request = SendRequest(
+                to = "you@y.com",
+                subject = "With files",
+                body = "<p>see files</p>",
+                attachments = listOf(Uri.fromFile(attachment)),
+                inlineImages = listOf(
+                    InlineAttachment(
+                        cid = "logo@inline",
+                        uri = Uri.fromFile(inline),
+                        mimeType = "image/jpeg",
+                        fileName = "logo.jpg",
+                    )
+                ),
+                from = "me@x.com",
+                asHtml = true,
             ),
-            from = "me@x.com",
-            asHtml = true,
         )
         val wire = server.dataBodies.single()
         assertTrue(wire.contains("multipart/mixed"), wire.take(600))
@@ -249,9 +254,11 @@ class FakeSmtpServerTest {
             server = config(),
             user = "me@x.com",
             auth = EmailManager.AuthType.OAuth("token"),
-            to = "you@y.com",
-            subject = "OAuth mail",
-            body = "via oauth",
+            request = SendRequest(
+                to = "you@y.com",
+                subject = "OAuth mail",
+                body = "via oauth",
+            ),
         )
         assertTrue(server.received.any { it.startsWith("AUTH XOAUTH2") })
         assertTrue(server.dataBodies.single().contains("OAuth mail"))
