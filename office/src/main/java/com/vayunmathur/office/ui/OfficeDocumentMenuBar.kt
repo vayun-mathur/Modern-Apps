@@ -203,7 +203,9 @@ private fun ShareFileItem(
             onClick = {
                 s.fileMenu = false
                 val send = Intent(Intent.ACTION_SEND).apply {
-                    type = "*/*"
+                    // The provider's real type for this document; */* only when
+                    // the provider declines to name one.
+                    type = context.contentResolver.getType(uri) ?: "*/*"
                     putExtra(Intent.EXTRA_STREAM, uri)
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }

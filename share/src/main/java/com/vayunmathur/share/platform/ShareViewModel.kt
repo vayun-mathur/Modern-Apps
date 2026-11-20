@@ -363,6 +363,9 @@ internal fun resolveDisplayName(context: Context, uri: Uri): String? {
     }
 }
 
+/** Largest shared file [uriToTempFile] will stage (100 MB). */
+internal const val MAX_SHARED_FILE_BYTES = 100L * 1024 * 1024
+
 @Suppress("TooGenericExceptionCaught")
 internal fun uriToTempFile(context: Context, uri: Uri): File? {
     return try {
@@ -375,16 +378,61 @@ internal fun uriToTempFile(context: Context, uri: Uri): File? {
             if (src.exists() && src.isFile) {
                 // Copying a file onto itself truncates it, and shared text is staged here.
                 if (src.canonicalPath == dest.canonicalPath) return src
+                if (src.length() > MAX_SHARED_FILE_BYTES) {
+                    Log.status(TAG, "uriToTempFile skipped oversized file (> $MAX_SHARED_FILE_BYTES bytes): $uri")
+                    return null
+                }
                 src.copyTo(dest, overwrite = true)
                 return dest
             }
         }
+        // Size pre-check, enforced again while streaming below because a
+        // provider may omit or understate its declared size.
+        declaredSharedSize(context, uri)?.let { size ->
+            if (size > MAX_SHARED_FILE_BYTES) {
+                Log.status(TAG, "uriToTempFile skipped oversized file ($size bytes): $uri")
+                return null
+            }
+        }
+        var oversized = false
         context.contentResolver.openInputStream(uri)?.use { input ->
-            dest.outputStream().use { out -> input.copyTo(out) }
+            dest.outputStream().use { out ->
+                val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                var copied = 0L
+                while (true) {
+                    val read = input.read(buffer)
+                    if (read < 0) break
+                    copied += read
+                    if (copied > MAX_SHARED_FILE_BYTES) {
+                        oversized = true
+                        break
+                    }
+                    out.write(buffer, 0, read)
+                }
+            }
+        }
+        if (oversized) {
+            // Never leave a truncated or oversized staging copy behind.
+            dest.delete()
+            Log.status(TAG, "uriToTempFile skipped oversized file (> $MAX_SHARED_FILE_BYTES bytes): $uri")
+            return null
         }
         if (dest.exists() && dest.length() > 0) dest else null
     } catch (e: Exception) {
         Log.status(TAG, "uriToTempFile failed for $uri", e)
+        null
+    }
+}
+
+/** Declared size of a shared [Uri] from its provider, or null when unknown. */
+private fun declaredSharedSize(context: Context, uri: Uri): Long? {
+    if (uri.scheme != "content") return null
+    return try {
+        context.contentResolver.query(uri, arrayOf(OpenableColumns.SIZE), null, null, null)?.use { c ->
+            val index = c.getColumnIndex(OpenableColumns.SIZE)
+            if (index != -1 && c.moveToFirst()) c.getLong(index).takeIf { it >= 0 } else null
+        }
+    } catch (_: Exception) {
         null
     }
 }

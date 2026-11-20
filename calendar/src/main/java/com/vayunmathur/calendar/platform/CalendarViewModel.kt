@@ -11,7 +11,7 @@ import androidx.lifecycle.viewModelScope
 import com.vayunmathur.calendar.R
 import com.vayunmathur.calendar.widget.CalendarGlanceWidget
 import com.vayunmathur.calendar.widget.CalendarMonthGlanceWidget
-import com.vayunmathur.calendar.ui.parseICSFile
+import com.vayunmathur.calendar.ui.readSharedIcsEvents
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -188,9 +188,7 @@ class CalendarViewModel(application: Application) :
             val allEvents = mutableListOf<Event>()
             uris.forEach { uri ->
                 try {
-                    app.contentResolver.openInputStream(uri)?.use { iS ->
-                        allEvents.addAll(parseICSFile(iS))
-                    }
+                    allEvents.addAll(readSharedIcsEvents(app.contentResolver, uri))
                 } catch (expected: Exception) {
                     Log.error("CalendarViewModel", "Error parsing ICS file: $uri", expected)
                 }

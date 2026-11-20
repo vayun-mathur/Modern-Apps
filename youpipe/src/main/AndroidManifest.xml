@@ -47,7 +47,10 @@
             android:supportsPictureInPicture="true"
             android:configChanges="mcc|mnc|colorMode|density|fontScale|fontWeightAdjustment|keyboard|keyboardHidden|layoutDirection|navigation|orientation|screenLayout|screenSize|smallestScreenSize|touchscreen|uiMode"
             android:theme="@style/Theme.General">
-            <intent-filter android:autoVerify="true">
+            <!-- No autoVerify: youtube.com/youtu.be are Google's domains and
+                 can never publish assetlinks for this app, so verification
+                 would always fail. Plain BROWSABLE handling still applies. -->
+            <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
 
                 <category android:name="android.intent.category.DEFAULT" />

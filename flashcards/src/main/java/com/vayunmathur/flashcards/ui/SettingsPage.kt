@@ -79,7 +79,9 @@ fun SettingsPage(backStack: NavBackStack<Route>, viewModel: FlashcardsViewModel)
     LaunchedEffect(viewModel) {
         viewModel.shareRequests.collect { uri ->
             val intent = Intent(Intent.ACTION_SEND).apply {
-                type = "application/octet-stream"
+                // Real Anki package type (the exported file is a .apkg), so
+                // receivers such as AnkiDroid route it instead of generic handlers.
+                type = "application/vnd.anki"
                 putExtra(Intent.EXTRA_STREAM, uri)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }

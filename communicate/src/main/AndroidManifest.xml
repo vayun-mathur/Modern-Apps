@@ -88,8 +88,10 @@
             android:supportsPictureInPicture="true"
             android:theme="@style/Theme.General">
             <!-- WhatsApp and Signal contact links, so "message this number" from a browser or another app
-                 lands here. autoVerify claims them as App Links where the host allows it. -->
-            <intent-filter android:autoVerify="true">
+                 lands here. No autoVerify: wa.me/signal.me (and the other hosts below) are WhatsApp/Signal
+                 domains that can never publish assetlinks for this app, so verification would always
+                 fail. Plain BROWSABLE handling still applies. -->
+            <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />

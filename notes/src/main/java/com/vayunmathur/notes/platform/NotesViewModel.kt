@@ -331,8 +331,11 @@ class NotesViewModel(
         val ctx = getApplication<Application>()
         try {
             val uri = uriString.toUri()
-            val content = ctx.contentResolver.openInputStream(uri)
-                ?.bufferedReader()?.use { it.readText() } ?: return@withContext null
+            // Bounded like imports: an arbitrary shared file must not OOM the
+            // editor via readText(). Oversized reads return null, which the
+            // caller surfaces as the existing "couldn't open file" message.
+            val content = readBoundedText(ctx, uri, MAX_IMPORT_BYTES)
+                ?: return@withContext null
             val name = IntentHelper.getFileName(ctx, uri) ?: "Untitled"
             ExternalNoteContent(name.removeSuffix(".markdown").removeSuffix(".md"), content)
         } catch (e: Exception) {

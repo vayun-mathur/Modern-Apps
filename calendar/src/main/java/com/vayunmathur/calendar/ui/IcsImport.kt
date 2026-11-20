@@ -17,6 +17,11 @@ import androidx.compose.ui.unit.dp
 import com.vayunmathur.calendar.R
 import com.vayunmathur.calendar.platform.describe
 import com.vayunmathur.calendar.data.Event
+import com.vayunmathur.library.log.Log
+import android.content.ContentResolver
+import android.net.Uri
+import android.provider.OpenableColumns
+import java.io.ByteArrayInputStream
 import java.io.InputStream
 
 @Composable
@@ -59,3 +64,54 @@ fun EventCard(event: Event) {
 
 // Thin UI-package entry point; implementation lives in IcsParser.kt.
 fun parseICSFile(iS: InputStream): List<Event> = parseICSFileImpl(iS)
+
+/** Largest shared ICS file the import path will read (10 MB). */
+const val MAX_ICS_BYTES = 10L * 1024 * 1024
+
+/**
+ * Reads and parses the shared ICS file at [uri], bounded by [MAX_ICS_BYTES].
+ *
+ * The parser loads every line into memory, so an arbitrary shared file must
+ * not be streamed into it unchecked. Oversized files yield an empty list,
+ * which callers already surface as "no events to import". The declared size
+ * is checked first; the read itself enforces the same cap because a provider
+ * may omit or understate it.
+ */
+fun readSharedIcsEvents(resolver: ContentResolver, uri: Uri): List<Event> {
+    declaredIcsSize(resolver, uri)?.let { size ->
+        if (size > MAX_ICS_BYTES) {
+            Log.status("IcsImport", "Skipping oversized ICS file ($size bytes): $uri")
+            return emptyList()
+        }
+    }
+    val bytes = resolver.openInputStream(uri)?.use { stream ->
+        val out = java.io.ByteArrayOutputStream()
+        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        var total = 0L
+        while (true) {
+            val read = stream.read(buffer)
+            if (read < 0) break
+            total += read
+            if (total > MAX_ICS_BYTES) {
+                Log.status("IcsImport", "Skipping oversized ICS file (> $MAX_ICS_BYTES bytes): $uri")
+                return emptyList()
+            }
+            out.write(buffer, 0, read)
+        }
+        out.toByteArray()
+    } ?: return emptyList()
+    return parseICSFile(ByteArrayInputStream(bytes))
+}
+
+/** Declared size of a shared ICS [Uri] from its provider, or null when unknown. */
+private fun declaredIcsSize(resolver: ContentResolver, uri: Uri): Long? {
+    if (uri.scheme != "content") return null
+    return try {
+        resolver.query(uri, arrayOf(OpenableColumns.SIZE), null, null, null)?.use { cursor ->
+            val index = cursor.getColumnIndex(OpenableColumns.SIZE)
+            if (index != -1 && cursor.moveToFirst()) cursor.getLong(index).takeIf { it >= 0 } else null
+        }
+    } catch (_: Exception) {
+        null
+    }
+}

@@ -304,6 +304,9 @@ abstract class FilesShareModel(application: Application) :
     }
 }
 
+/** Largest shared file [saveUriToPath] will copy in (100 MB). */
+internal const val MAX_INCOMING_FILE_BYTES = 100L * 1024 * 1024
+
 /** Copies a shared content [Uri] into [targetDir] under its display name. */
 internal fun saveUriToPath(context: Context, uri: Uri, targetDir: File) {
     // The display name is supplied by the sending app's provider, so it must
@@ -311,11 +314,50 @@ internal fun saveUriToPath(context: Context, uri: Uri, targetDir: File) {
     // truncated: sanitize to a plain name and pick a fresh destination.
     val name = sanitizedFileName(getSharedFileName(context, uri))
         ?: "shared_file_${System.currentTimeMillis()}"
+    // Size pre-check: a provider that declares its size lets us refuse an
+    // oversized share before writing anything. Providers may lie or omit
+    // the size, so the copy below enforces the same cap while streaming.
+    declaredSharedSize(context, uri)?.let { size ->
+        if (size > MAX_INCOMING_FILE_BYTES) {
+            throw IOException("Shared file is too large (over 100 MB): $name")
+        }
+    }
     val targetFile = uniqueDestination(targetDir, name)
     val input = context.contentResolver.openInputStream(uri)
         ?: throw IOException("Could not open shared file: $uri")
-    input.use {
-        targetFile.outputStream().use { out -> input.copyTo(out) }
+    try {
+        input.use {
+            targetFile.outputStream().use { out ->
+                val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                var copied = 0L
+                while (true) {
+                    val read = input.read(buffer)
+                    if (read < 0) break
+                    copied += read
+                    if (copied > MAX_INCOMING_FILE_BYTES) {
+                        throw IOException("Shared file is too large (over 100 MB): $name")
+                    }
+                    out.write(buffer, 0, read)
+                }
+            }
+        }
+    } catch (e: IOException) {
+        // Never leave a truncated or oversized partial copy behind.
+        targetFile.delete()
+        throw e
+    }
+}
+
+/** Declared size of a shared [Uri] from its provider, or null when unknown. */
+private fun declaredSharedSize(context: Context, uri: Uri): Long? {
+    if (uri.scheme != "content") return null
+    return try {
+        context.contentResolver.query(uri, arrayOf(OpenableColumns.SIZE), null, null, null)?.use { cursor ->
+            val index = cursor.getColumnIndex(OpenableColumns.SIZE)
+            if (index != -1 && cursor.moveToFirst()) cursor.getLong(index).takeIf { it >= 0 } else null
+        }
+    } catch (_: Exception) {
+        null
     }
 }
 

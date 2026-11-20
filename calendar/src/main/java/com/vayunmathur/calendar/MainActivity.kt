@@ -14,7 +14,7 @@ import com.vayunmathur.calendar.platform.ReminderScheduler
 import com.vayunmathur.calendar.platform.editEventFromIntent
 import com.vayunmathur.calendar.platform.isTimeEpochIntent
 import com.vayunmathur.calendar.ui.CalendarAppContent
-import com.vayunmathur.calendar.ui.parseICSFile
+import com.vayunmathur.calendar.ui.readSharedIcsEvents
 import com.vayunmathur.calendar.widget.CalendarGlanceWidgetReceiver
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.library.ui.DynamicTheme
@@ -193,9 +193,7 @@ class MainActivity : MaActivity() {
         lifecycleScope.launch(Dispatchers.IO) {
             val withEvents = uris.filter { uri ->
                 try {
-                    contentResolver.openInputStream(uri)?.use { iS ->
-                        parseICSFile(iS).isNotEmpty()
-                    } == true
+                    readSharedIcsEvents(contentResolver, uri).isNotEmpty()
                 } catch (expected: Exception) {
                     Log.error("MainActivity", "Error reading ICS file: $uri", expected)
                     false
