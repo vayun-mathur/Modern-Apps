@@ -176,6 +176,30 @@ private fun orientationString(rotationDegrees: Int, mirrored: Boolean): String {
 }
 
 /**
+ * EXIF orientation for a still whose pixels are still in sensor orientation (the raw
+ * JPEG from an in-memory capture), where [mirrored] means the saved image must be
+ * flipped horizontally *after* being rotated upright, to match the front-camera
+ * preview. Unlike [orientationString] — whose pixels were already mirrored as a
+ * bitmap, leaving only ROTATE(−θ) to tag — nothing has flipped these pixels yet, so
+ * the tag itself must carry the flip: rotate-then-flip is one of the four combined
+ * EXIF orientations. Tagging a pure inverted rotation instead (the old behaviour)
+ * displays portrait selfies (θ=90/270) upside down, while landscape (θ=0/180) still
+ * reads the right way up (issue #932).
+ */
+internal fun rawStillOrientationString(rotationDegrees: Int, mirrored: Boolean): String {
+    if (!mirrored) return orientationString(rotationDegrees, mirrored = false)
+    val normalized =
+        ((rotationDegrees % EXIF_FULL_CIRCLE_DEGREES) + EXIF_FULL_CIRCLE_DEGREES) %
+            EXIF_FULL_CIRCLE_DEGREES
+    return when (normalized) {
+        EXIF_DEGREES_90 -> ExifInterface.ORIENTATION_TRANSPOSE
+        EXIF_DEGREES_180 -> ExifInterface.ORIENTATION_FLIP_VERTICAL
+        EXIF_DEGREES_270 -> ExifInterface.ORIENTATION_TRANSVERSE
+        else -> ExifInterface.ORIENTATION_FLIP_HORIZONTAL
+    }.toString()
+}
+
+/**
  * Stamps orientation + GPS into an in-memory still's JPEG [jpeg] and returns the updated
  * bytes. In-memory captures carry no ImageCapture.Metadata, so unlike the OutputFileOptions
  * path (see prepareStillSave) nothing stamps location for them — that is why plain PHOTO
@@ -196,16 +220,15 @@ internal fun CameraViewModel.stampStillBytes(
     val loc = if (locationEnabledMutable.value) lastLocation else null
     // In-memory captures carry no ImageCapture.Metadata, so orientation must ALWAYS be
     // stamped — not just when GPS is on — or motion shots save sideways with location off.
-    // Mirrored front shots need the inverted rotation (FLIP∘ROTATE(θ)∘FLIP = ROTATE(−θ)),
-    // matching writeCaptureExif().
-    val effectiveDegrees =
-        if (mirrored) (EXIF_FULL_CIRCLE_DEGREES - rotationDegrees) % EXIF_FULL_CIRCLE_DEGREES
-        else rotationDegrees
+    // These pixels are the raw sensor JPEG (never mirrored as a bitmap), so a mirrored
+    // front shot needs a flip-carrying orientation, NOT the inverted rotation that
+    // writeCaptureExif() uses for already-mirrored pixels (see rawStillOrientationString).
+    val orientation = rawStillOrientationString(rotationDegrees, mirrored)
     var tmp: java.io.File? = null
     return try {
         tmp = java.io.File.createTempFile("stamp_", ".jpg", app.cacheDir)
         tmp.writeBytes(jpeg)
-        stampTempFile(tmp, effectiveDegrees, loc)
+        stampTempFile(tmp, orientation, loc)
         tmp.readBytes()
     } catch (e: java.io.IOException) {
         Log.status("CameraViewModel", "Failed to stamp EXIF on still bytes", e)
@@ -218,21 +241,10 @@ internal fun CameraViewModel.stampStillBytes(
     }
 }
 
-/** Stamps orientation (+GPS when [loc] is non-null) into the temp JPEG file. */
-private fun stampTempFile(tmp: java.io.File, effectiveDegrees: Int, loc: android.location.Location?) {
+/** Stamps [orientation] (+GPS when [loc] is non-null) into the temp JPEG file. */
+private fun stampTempFile(tmp: java.io.File, orientation: String, loc: android.location.Location?) {
     val exif = ExifInterface(tmp.absolutePath)
-    exif.setAttribute(
-        ExifInterface.TAG_ORIENTATION,
-        when (
-            (effectiveDegrees % EXIF_FULL_CIRCLE_DEGREES + EXIF_FULL_CIRCLE_DEGREES) %
-                EXIF_FULL_CIRCLE_DEGREES
-        ) {
-            EXIF_DEGREES_90 -> ExifInterface.ORIENTATION_ROTATE_90
-            EXIF_DEGREES_180 -> ExifInterface.ORIENTATION_ROTATE_180
-            EXIF_DEGREES_270 -> ExifInterface.ORIENTATION_ROTATE_270
-            else -> ExifInterface.ORIENTATION_NORMAL
-        }.toString()
-    )
+    exif.setAttribute(ExifInterface.TAG_ORIENTATION, orientation)
     // GPS only when the user opted in; orientation is always stamped above. Skipping
     // setGpsInfo with no location keeps the bytes bit-for-bit (Ultra HDR gain map intact).
     if (loc != null) exif.setGpsInfo(loc)

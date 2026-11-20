@@ -92,4 +92,35 @@ class CaptureProcessingMathTest {
         assertEquals(androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_180.toString(), o(180, true))
         assertNotNull(o(45, false)) // non-right-angle falls back to a defined orientation
     }
+
+    @Test fun rawStillOrientationMapping() {
+        // Raw sensor pixels, no mirror: plain rotations (unchanged behaviour).
+        assertEquals("1", rawStillOrientationString(0, false))
+        assertEquals("6", rawStillOrientationString(90, false))
+        assertEquals("3", rawStillOrientationString(180, false))
+        assertEquals("8", rawStillOrientationString(270, false))
+        // Mirrored front shot: the tag must carry rotate-then-flip, not ROTATE(-θ) —
+        // the pure inverted rotation displayed portrait selfies upside down (#932).
+        assertEquals("2", rawStillOrientationString(0, true)) // FLIP_HORIZONTAL
+        assertEquals("5", rawStillOrientationString(90, true)) // TRANSPOSE
+        assertEquals("4", rawStillOrientationString(180, true)) // FLIP_VERTICAL
+        assertEquals("7", rawStillOrientationString(270, true)) // TRANSVERSE
+    }
+
+    @Test fun stampStillBytesWritesRawOrientation() {
+        val viewModel = vm()
+        val src = bitmap(20, 10, Color.rgb(200, 30, 30))
+        val baos = java.io.ByteArrayOutputStream()
+        src.compress(Bitmap.CompressFormat.JPEG, 90, baos)
+        fun stampedOrientation(deg: Int, mirrored: Boolean): String? {
+            val stamped = with(viewModel) { stampStillBytes(baos.toByteArray(), deg, mirrored) }
+            return androidx.exifinterface.media.ExifInterface(java.io.ByteArrayInputStream(stamped))
+                .getAttribute(androidx.exifinterface.media.ExifInterface.TAG_ORIENTATION)
+        }
+        // Mirrored portrait selfies must not come out upside down (#932).
+        assertEquals("5", stampedOrientation(90, true))
+        assertEquals("7", stampedOrientation(270, true))
+        assertEquals("2", stampedOrientation(0, true))
+        assertEquals("6", stampedOrientation(90, false))
+    }
 }
