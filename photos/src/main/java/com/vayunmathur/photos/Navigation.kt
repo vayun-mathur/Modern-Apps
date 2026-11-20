@@ -86,7 +86,7 @@ fun Navigation(
             AlbumsPage(backStack, galleryViewModel, secureFolderViewModel)
         }
 
-        entry<Route.AlbumDetail> {
+        entry<Route.AlbumDetail>(metadata = ListDetailPage()) {
             AlbumDetailPage(backStack, galleryViewModel, it.albumName)
         }
 

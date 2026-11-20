@@ -104,9 +104,52 @@ class PhotosFavoritesDataTest {
     }
 
     @Test
-    fun migrationListEndsAtVersion20() {
+    fun migrationListEndsAtVersion21() {
         val last = PhotoDatabase.migrations.last()
-        assertEquals(19 to 20, last.startVersion to last.endVersion)
+        assertEquals(20 to 21, last.startVersion to last.endVersion)
+    }
+
+    @Test
+    fun migration20To21CreatesFtsIndexOverExistingRows() = runBlocking<Unit> {
+        val connection = androidx.sqlite.driver.bundled.BundledSQLiteDriver().open(":memory:")
+        try {
+            connection.execSQL(
+                "CREATE TABLE IF NOT EXISTS `Photo` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "`name` TEXT NOT NULL, `ocrText` TEXT)",
+            )
+            connection.execSQL(
+                "INSERT INTO Photo (id, name, ocrText) VALUES " +
+                    "(1, 'beach sunset', 'hello world'), (2, 'mountain', NULL)",
+            )
+            MIGRATION_20_21.migrate(connection)
+            val tables = connection.prepare(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='PhotoFts'",
+            ).use { statement ->
+                val out = mutableListOf<String>()
+                while (statement.step()) out += statement.getText(0)
+                out
+            }
+            assertEquals(listOf("PhotoFts"), tables)
+            // The rebuild indexed OCR text and names that predated the migration.
+            val hits = connection.prepare(
+                "SELECT docid FROM PhotoFts WHERE PhotoFts MATCH '\"hello*\"'",
+            ).use { statement ->
+                val out = mutableListOf<Long>()
+                while (statement.step()) out += statement.getLong(0)
+                out
+            }
+            assertEquals(listOf(1L), hits)
+            val nameHits = connection.prepare(
+                "SELECT docid FROM PhotoFts WHERE PhotoFts MATCH '\"mount*\"'",
+            ).use { statement ->
+                val out = mutableListOf<Long>()
+                while (statement.step()) out += statement.getLong(0)
+                out
+            }
+            assertEquals(listOf(2L), nameHits)
+        } finally {
+            connection.close()
+        }
     }
 
     private fun photo(name: String, date: Long, trashed: Boolean = false) = Photo(

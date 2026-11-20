@@ -23,6 +23,7 @@ import com.vayunmathur.photos.data.MIGRATION_16_17
 import com.vayunmathur.photos.data.MIGRATION_17_18
 import com.vayunmathur.photos.data.MIGRATION_18_19
 import com.vayunmathur.photos.data.MIGRATION_19_20
+import com.vayunmathur.photos.data.MIGRATION_20_21
 import com.vayunmathur.photos.data.MIGRATION_1_2
 import com.vayunmathur.photos.data.MIGRATION_2_3
 import com.vayunmathur.photos.data.MIGRATION_3_4
@@ -75,7 +76,7 @@ class PhotosSlice1WorkersTest {
         throw AssertionError("no work enqueued under $name")
     }
 
-    // ---- Migration chain v1 -> v20 ----
+    // ---- Migration chain v1 -> v21 ----
 
     @Test
     fun fullMigrationChainUpgradesV1Schema() = runBlocking<Unit> {
@@ -85,17 +86,17 @@ class PhotosSlice1WorkersTest {
             // Minimal v1 Photo table: the columns the early migrations index
             // or update, before any ALTER ran.
             connection.execSQL(
-                "CREATE TABLE Photo (id INTEGER PRIMARY KEY NOT NULL, date INTEGER NOT NULL, " +
-                    "exifSet INTEGER NOT NULL DEFAULT 0, duration INTEGER)",
+                "CREATE TABLE Photo (id INTEGER PRIMARY KEY NOT NULL, name TEXT NOT NULL DEFAULT '', " +
+                    "date INTEGER NOT NULL, exifSet INTEGER NOT NULL DEFAULT 0, duration INTEGER)",
             )
             connection.execSQL("INSERT INTO Photo (id, date) VALUES (1, 1000), (2, 2000)")
             val migrations = listOf(
                 MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6,
                 MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11,
                 MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16,
-                MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20,
+                MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21,
             )
-            assertEquals(19, PhotoDatabase.migrations.size)
+            assertEquals(20, PhotoDatabase.migrations.size)
             for (migration in migrations) migration.migrate(connection)
 
             fun queryStrings(sql: String): List<String> = connection.prepare(sql).use { statement ->
@@ -112,6 +113,7 @@ class PhotosSlice1WorkersTest {
             val tables = queryStrings("SELECT name FROM sqlite_master WHERE type='table'").toSet()
             assertTrue("Person" in tables, tables.toString())
             assertTrue("PhotoFace" in tables, tables.toString())
+            assertTrue("PhotoFts" in tables, tables.toString())
             val photoColumns = queryStrings("PRAGMA table_info(Photo)").toSet()
             // PRAGMA table_info returns cid first; column name is index 1 - requery by name.
             val columnNames = connection.prepare("PRAGMA table_info(Photo)").use { statement ->
@@ -137,9 +139,9 @@ class PhotosSlice1WorkersTest {
     }
 
     @Test
-    fun migrationListIsContiguousFrom1To20() {
+    fun migrationListIsContiguousFrom1To21() {
         val versions = PhotoDatabase.migrations.map { it.startVersion to it.endVersion }
-        assertEquals((1..19).map { it to it + 1 }, versions)
+        assertEquals((1..20).map { it to it + 1 }, versions)
     }
 
     // ---- Worker scheduling ----

@@ -37,8 +37,8 @@ import com.vayunmathur.library.ui.OutlinedTextField
 import com.vayunmathur.library.ui.RadioButton
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.rememberMessenger
+import com.vayunmathur.library.ui.DesktopMaxWidthContainer
 import com.vayunmathur.library.ui.isCompactHeight
-import com.vayunmathur.library.ui.isExpandedWidth
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -174,23 +174,17 @@ fun ImportVcfScreen(
                 )
             }
             else -> {
-                // Expanded windows centre the content at a readable measure via
-                // adaptive gutters; short (landscape) windows tighten the gaps.
-                androidx.compose.foundation.layout.BoxWithConstraints(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
+                // Expanded windows centre the content at a readable measure
+                // (560.dp, as before); short (landscape) windows tighten the gaps.
+                DesktopMaxWidthContainer(
+                    modifier = Modifier.padding(paddingValues),
+                    maxWidth = 560.dp,
                 ) {
-                    val gutter = if (isExpandedWidth()) {
-                        ((maxWidth - 560.dp) / 2).coerceAtLeast(16.dp)
-                    } else {
-                        16.dp
-                    }
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(
-                            start = gutter,
-                            end = gutter,
+                            start = 16.dp,
+                            end = 16.dp,
                             top = 16.dp,
                             bottom = 16.dp,
                         ),

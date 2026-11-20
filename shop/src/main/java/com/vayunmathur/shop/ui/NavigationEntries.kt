@@ -4,6 +4,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.res.stringResource
 import com.vayunmathur.library.util.EntryProviderScope
+import com.vayunmathur.library.util.ListDetailPage
+import com.vayunmathur.library.util.ListPage
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.SiblingPage
 import com.vayunmathur.shop.R
@@ -61,7 +63,7 @@ internal fun EntryProviderScope<Route>.shopEntries(
         // then the same required profile form as before.
         if (viewModel.profileLoaded) ProfileScreen(viewModel, required = true)
     }
-    entry<Route.Search>(metadata = SiblingPage()) {
+    entry<Route.Search>(metadata = ListPage() + SiblingPage()) {
         SearchScreen(
             viewModel = viewModel,
             onProductClick = { variantId, platformId, shopDomain ->
@@ -79,7 +81,7 @@ internal fun EntryProviderScope<Route>.shopEntries(
     entry<Route.Profile>(metadata = SiblingPage()) {
         ProfileScreen(viewModel, required = false)
     }
-    entry<Route.ProductDetail> { route ->
+    entry<Route.ProductDetail>(metadata = ListDetailPage()) { route ->
         ProductScreen(
             viewModel = viewModel,
             variantId = route.variantId,

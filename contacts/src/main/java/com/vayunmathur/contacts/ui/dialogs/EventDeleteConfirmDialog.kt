@@ -3,9 +3,12 @@ import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.library.ui.AlertDialog
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import com.vayunmathur.contacts.platform.ContactViewModel
 import com.vayunmathur.contacts.R
 import kotlinx.coroutines.Dispatchers
@@ -23,6 +26,7 @@ fun EventDeleteConfirmDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        modifier = Modifier.widthIn(max = 560.dp),
         title = { Text(text = stringResource(R.string.delete_contact_title)) },
         text = {
             Text(

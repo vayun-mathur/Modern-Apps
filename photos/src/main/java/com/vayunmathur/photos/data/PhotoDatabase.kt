@@ -72,19 +72,34 @@ interface PhotoDao {
     suspend fun setFavorite(ids: List<Long>, value: Boolean)
 
     @Query(
+        "SELECT Photo.* FROM Photo JOIN PhotoFts ON PhotoFts.rowid = Photo.id " +
+            "WHERE Photo.isTrashed = 0 AND PhotoFts MATCH :match ORDER BY Photo.date DESC"
+    )
+    suspend fun searchPhotosFts(match: String): List<Photo>
+
+    @Query(
         "SELECT * FROM Photo WHERE isTrashed = 0 AND " +
             "(ocrText LIKE :pattern ESCAPE '\\' OR name LIKE :pattern ESCAPE '\\') ORDER BY date DESC"
     )
     suspend fun searchPhotosByPattern(pattern: String): List<Photo>
 
     /**
-     * Plain substring search over OCR text and file name. The user-typed
-     * [query] is wildcard-escaped first (`%`, `_`, `\` match literally, via
-     * `ESCAPE '\'`), so typing `%` finds only names/text containing a percent
-     * sign instead of matching the whole library.
+     * Full-text search over OCR text and file name, newest first. The
+     * user-typed [query] is sanitised into a safe FTS `MATCH` expression
+     * first (see [photoFtsMatchQuery]), so typing `%` or other FTS/LIKE
+     * metacharacters can neither explode the expression nor match the
+     * whole library. Only a query with no usable FTS token (blank or
+     * punctuation-only) falls back to the wildcard-escaped literal `LIKE`
+     * search, preserving literal-`%`/`_` lookups for those inputs.
      */
-    suspend fun searchPhotos(query: String): List<Photo> =
-        searchPhotosByPattern(photoSearchPattern(query))
+    suspend fun searchPhotos(query: String): List<Photo> {
+        val match = photoFtsMatchQuery(query)
+        return if (match.isNotEmpty()) {
+            searchPhotosFts(match)
+        } else {
+            searchPhotosByPattern(photoSearchPattern(query))
+        }
+    }
 
     /** Photos already scanned by OCR (numerator of the search-index progress bar). */
     @Query("SELECT count(*) FROM Photo WHERE ocrScanned = 1 AND isTrashed = 0 AND duration IS NULL")
@@ -262,6 +277,23 @@ interface PhotoScanDao {
 internal fun photoSearchPattern(query: String): String =
     "%" + query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
 
+/** Characters the unicode61 tokenizer treats as part of a token. */
+private val PHOTO_FTS_TOKEN = Regex("[\\p{L}\\p{N}_]+")
+
+/**
+ * Builds a safe FTS4 `MATCH` expression from raw user [query]: reduced to
+ * unicode61 token characters, each kept token (must contain a letter or
+ * digit) emitted as a quoted prefix term (`"token*"`), combined with the
+ * implicit FTS `AND`. FTS operators and `LIKE` wildcards in the input are
+ * separators, never syntax. Returns `""` for blank/punctuation-only input.
+ */
+internal fun photoFtsMatchQuery(query: String): String =
+    PHOTO_FTS_TOKEN.findAll(query)
+        .map { it.value }
+        .filter { token -> token.any { it.isLetterOrDigit() } }
+        .take(16)
+        .joinToString(" ") { "\"$it*\"" }
+
 /** Lightweight projection of a photo's CLIP embedding for in-memory search. */
 data class PhotoEmbedding(
     val id: Long,
@@ -308,7 +340,7 @@ data class ExifResult(
 )
 
 /** Photo Database: a room database implementation for photo database. */
-@Database(entities = [Photo::class, Person::class, PhotoFace::class], version = 20, exportSchema = true)
+@Database(entities = [Photo::class, Person::class, PhotoFace::class, PhotoFts::class], version = 21, exportSchema = true)
 abstract class PhotoDatabase : RoomDatabase() {
     abstract fun photoDao(): PhotoDao
     abstract fun photoScanDao(): PhotoScanDao
@@ -320,9 +352,24 @@ abstract class PhotoDatabase : RoomDatabase() {
             MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6,
             MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11,
             MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16,
-            MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20,
+            MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21,
         )
     }
+}
+
+val MIGRATION_20_21 = Migration(20, 21) {
+    // Restore full-text search (dropped by MIGRATION_8_9 for plain LIKE):
+    // an FTS4 virtual table over OCR text and file name, backed by Photo
+    // as its content table (unicode61, diacritics removed). Room generates
+    // and maintains the room_fts_content_sync_* triggers itself, so this
+    // migration only creates the index and rebuilds it from existing rows.
+    // SQL mirrors Room's generated schema exactly so validation passes.
+    it.execSQL(
+        "CREATE VIRTUAL TABLE IF NOT EXISTS `PhotoFts` USING FTS4(" +
+            "`ocrText` TEXT, `name` TEXT NOT NULL, " +
+            "tokenize=unicode61 `remove_diacritics=1`, content=`Photo`)"
+    )
+    it.execSQL("INSERT INTO `PhotoFts`(`PhotoFts`) VALUES('rebuild')")
 }
 
 val MIGRATION_1_2 = Migration(1, 2) {

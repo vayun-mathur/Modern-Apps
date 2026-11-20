@@ -11,6 +11,8 @@ import com.vayunmathur.library.util.AppMessages
 import com.vayunmathur.library.util.EntryProviderScope
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.NavBackStack
+import com.vayunmathur.library.util.ListDetailPage
+import com.vayunmathur.library.util.ListPage
 import com.vayunmathur.library.util.SiblingPage
 import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.securemail.data.MailFolder
@@ -60,7 +62,7 @@ internal fun EntryProviderScope<Route>.mainEntries(
             onDismissMessages = viewModel::dismissMessages,
         )
     }
-    entry<Route.Inbox>(metadata = SiblingPage()) { route ->
+    entry<Route.Inbox>(metadata = ListPage() + SiblingPage()) { route ->
         val folderFlow = remember(route.folder) { viewModel.folderMessages(route.folder) }
         val folderMessages by folderFlow.collectAsState(emptyList())
         InboxScreen(
@@ -93,7 +95,7 @@ internal fun EntryProviderScope<Route>.readerEntry(
     state: MailUiState,
     allMessages: List<StoredMessage>,
 ) {
-entry<Route.Reader> { route ->
+entry<Route.Reader>(metadata = ListDetailPage()) { route ->
     val context = LocalContext.current
     val msg = remember(route.messageId, allMessages) {
         allMessages.firstOrNull { it.id == route.messageId }

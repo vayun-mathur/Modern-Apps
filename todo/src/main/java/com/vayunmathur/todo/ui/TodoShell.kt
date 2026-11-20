@@ -1,6 +1,5 @@
 package com.vayunmathur.todo.ui
 
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.width
@@ -18,6 +17,7 @@ import com.vayunmathur.library.ui.ConfirmDialog
 import com.vayunmathur.library.ui.ModalDrawerSheet
 import com.vayunmathur.library.ui.ModalNavigationDrawer
 import com.vayunmathur.library.ui.Surface
+import com.vayunmathur.library.ui.isExpandedWidth
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.todo.R
 import com.vayunmathur.todo.Route
@@ -64,21 +64,19 @@ fun TodoShell(
         }
     }
 
-    BoxWithConstraints {
-        val wide = maxWidth >= WIDE
-        SideEffect { shell.permanent = wide }
-        if (wide) {
-            Row {
-                Surface(Modifier.width(PANEL).fillMaxHeight()) { ViewDrawerContent(state, actions) }
-                content()
-            }
-        } else {
-            ModalNavigationDrawer(
-                drawerState = shell.drawer,
-                drawerContent = { ModalDrawerSheet { ViewDrawerContent(state, actions) } },
-                content = content,
-            )
+    val wide = isExpandedWidth()
+    SideEffect { shell.permanent = wide }
+    if (wide) {
+        Row {
+            Surface(Modifier.width(PANEL).fillMaxHeight()) { ViewDrawerContent(state, actions) }
+            content()
         }
+    } else {
+        ModalNavigationDrawer(
+            drawerState = shell.drawer,
+            drawerContent = { ModalDrawerSheet { ViewDrawerContent(state, actions) } },
+            content = content,
+        )
     }
 
     if (creating || editing != null) {
@@ -120,5 +118,4 @@ fun TodoShell(
     }
 }
 
-private val WIDE = 840.dp
 private val PANEL = 280.dp

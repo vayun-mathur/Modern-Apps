@@ -117,7 +117,9 @@ class PhotosSlice1DbTest {
             ),
         )
         assertEquals(listOf("100% crop"), photoDao.searchPhotos("%").map { it.name })
-        assertEquals(listOf("100% crop"), photoDao.searchPhotos("100%").map { it.name })
+        // "100%" sanitises to the FTS prefix term "100*", so it also finds
+        // "1000 crop" by prefix, but never explodes to the whole library.
+        assertEquals(setOf("100% crop", "1000 crop"), photoDao.searchPhotos("100%").map { it.name }.toSet())
         assertEquals(listOf("my_file"), photoDao.searchPhotos("_").map { it.name })
         assertEquals(listOf("my_file"), photoDao.searchPhotos("my_file").map { it.name })
     }
@@ -128,6 +130,44 @@ class PhotosSlice1DbTest {
         val id = photoDao.getAll().single().id
         scanDao.setOcrResult(id, "hello world", null)
         assertEquals(listOf("sign"), photoDao.searchPhotos("hello").map { it.name })
+    }
+
+    @Test
+    fun ftsMatchQuery_sanitisesOperatorsAndWildcards() {
+        assertEquals("\"beach*\"", photoFtsMatchQuery("beach"))
+        assertEquals("\"hello*\" \"wor*\"", photoFtsMatchQuery("hello wor"))
+        assertEquals("\"100*\"", photoFtsMatchQuery("100%"))
+        assertEquals("", photoFtsMatchQuery("%"))
+        assertEquals("", photoFtsMatchQuery("\"*():^"))
+    }
+
+    @Test
+    fun searchFts_prefixDiacriticsOrderAndSync() = runTest {
+        photoDao.upsertAll(
+            listOf(
+                photo("beach sunset", date = 3L),
+                photo("beach house", date = 9L),
+                photo("café terrace", date = 5L),
+            ),
+        )
+        // Prefix per token, display order stays date DESC.
+        assertEquals(listOf("beach house", "beach sunset"), photoDao.searchPhotos("bea").map { it.name })
+        assertEquals(listOf("beach sunset"), photoDao.searchPhotos("sun").map { it.name })
+        // unicode61 remove_diacritics=1.
+        assertEquals(listOf("café terrace"), photoDao.searchPhotos("cafe").map { it.name })
+        // Hostile FTS syntax is sanitised, never executed.
+        assertEquals(listOf("beach house", "beach sunset"), photoDao.searchPhotos("\"beach\"").map { it.name })
+        assertTrue(photoDao.searchPhotos("*").isEmpty())
+        // OCR writes (column-targeted UPDATE) keep the index in sync.
+        val id = photoDao.getAll().single { it.name == "beach house" }.id
+        scanDao.setOcrResult(id, "receipt total", null)
+        assertEquals(listOf("beach house"), photoDao.searchPhotos("receipt").map { it.name })
+        scanDao.setOcrResult(id, "invoice paid", null)
+        assertTrue(photoDao.searchPhotos("receipt").isEmpty())
+        assertEquals(listOf("beach house"), photoDao.searchPhotos("invoice").map { it.name })
+        // Deletes leave the index too.
+        photoDao.deleteByIds(listOf(id))
+        assertTrue(photoDao.searchPhotos("invoice").isEmpty())
     }
 
     @Test

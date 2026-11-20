@@ -1,6 +1,7 @@
 package com.vayunmathur.contacts.ui.dialogs
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.widthIn
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.library.ui.AlertDialog
 import com.vayunmathur.library.ui.Text
@@ -13,6 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import com.vayunmathur.contacts.platform.ContactViewModel
 import com.vayunmathur.contacts.platform.createAccount
 import com.vayunmathur.contacts.R
@@ -26,6 +28,7 @@ fun AddAccountDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        modifier = Modifier.widthIn(max = 560.dp),
         title = { Text(stringResource(R.string.add_contacts_account)) },
         text = {
             Column {
