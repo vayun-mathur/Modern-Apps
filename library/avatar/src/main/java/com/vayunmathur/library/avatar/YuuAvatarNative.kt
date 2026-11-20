@@ -1,6 +1,7 @@
 package com.vayunmathur.library.avatar
 
 import com.vayunmathur.library.log.Log
+import com.vayunmathur.library.log.NativeLoader
 
 /**
  * The 3D avatar engine bridge, shaped like kart's `KartNative` and
@@ -17,17 +18,26 @@ import com.vayunmathur.library.log.Log
  */
 internal object YuuAvatarNative {
     /** False until `libyuu_avatar` ships. Checked once per surface, like kart. */
-    val isAvailable: Boolean = try {
-        System.loadLibrary("yuu_avatar")
+    val isAvailable: Boolean = NativeLoader.load("yuu_avatar", "YuuAvatarNative") && initEngine()
+
+    /**
+     * Load + init are one guarded unit: [NativeLoader.load] only loads, and
+     * `nativeInit` can fail with any `Throwable` (`UnsatisfiedLinkError` if a
+     * symbol is missing, `NoClassDefFoundError`/`LinkageError` from the JNI
+     * registration, ...), not just the two errors the hand-rolled guard used
+     * to catch. Any failure leaves [isAvailable] false so hero surfaces use
+     * the placeholder instead of poisoning this class's initializer. The
+     * `nativeInit` return value stays ignored, as before. Logging is
+     * `runCatching`-guarded for the same host-JVM reason as in [NativeLoader]:
+     * `Log` can throw on a plain JVM, and that must not escape class init.
+     */
+    private fun initEngine(): Boolean = try {
         nativeInit()
-        Log.status("YuuAvatarNative", "libyuu_avatar loaded")
         true
-    } catch (e: UnsatisfiedLinkError) {
-        // Library absent on this device: surfaces use the placeholder.
-        Log.status("YuuAvatarNative", "libyuu_avatar absent - using placeholder (${e.message})")
-        false
-    } catch (e: SecurityException) {
-        Log.status("YuuAvatarNative", "libyuu_avatar load denied - using placeholder (${e.message})")
+    } catch (failure: Throwable) {
+        runCatching {
+            Log.error("YuuAvatarNative", "libyuu_avatar init failed - using placeholder", failure)
+        }
         false
     }
 

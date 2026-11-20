@@ -2,6 +2,7 @@ package com.vayunmathur.library.room
 
 import android.content.Context
 import com.vayunmathur.library.log.Log
+import com.vayunmathur.library.log.NativeLoader
 import androidx.room3.Room
 import androidx.room3.RoomDatabase
 import androidx.room3.migration.Migration
@@ -15,12 +16,13 @@ import java.io.FileInputStream
 private var sqlCipherLoaded = false
 fun loadSqlCipher() {
     if (sqlCipherLoaded) return
-    try {
-        System.loadLibrary("sqlcipher")
-        sqlCipherLoaded = true
-    } catch (expected: UnsatisfiedLinkError) {
-        Log.error(TAG, "Failed to load sqlcipher native library", expected)
-    }
+    // Delegates to the shared guard (catches every Throwable, keeps its own
+    // logging host-JVM-safe, treats an already-loaded report as success).
+    // Depending on :library:log cannot cycle: that module has no dependencies
+    // at all, and common-conventions-library already puts it on this module's
+    // classpath, so no build-file change is needed. On failure the flag stays
+    // false, so the next call retries — same contract as the hand-rolled try.
+    if (NativeLoader.load("sqlcipher", TAG)) sqlCipherLoaded = true
 }
 
 private const val TAG = "SqlCipher"

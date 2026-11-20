@@ -4,6 +4,7 @@
 package com.vayunmathur.games.kart.util
 
 import com.vayunmathur.library.log.Log
+import com.vayunmathur.library.log.NativeLoader
 
 /**
  * The engine bridge, shaped like `VoxelsNative.onMoveInput`.
@@ -22,21 +23,30 @@ import com.vayunmathur.library.log.Log
 @Suppress("TooManyFunctions")
 object KartNative {
     /** False until `libkart_engine` ships. The game checks this once per surface, like voxels. */
-    var isAvailable: Boolean = try {
-        System.loadLibrary("kart_engine")
-        nativeInit()
-        Log.status("KartNative", "libkart_engine loaded")
-        true
-    } catch (e: UnsatisfiedLinkError) {
-        // Library not packaged in this build: fall back to the placeholder race.
-        Log.status("KartNative", "libkart_engine absent - running the placeholder race", e)
-        false
-    } catch (e: SecurityException) {
-        Log.status("KartNative", "libkart_engine load denied - running the placeholder race", e)
-        false
-    }
+    var isAvailable: Boolean = NativeLoader.load("kart_engine", "KartNative") && initEngine()
         // Internal so host tests can force the placeholder race on machines with the engine.
         internal set
+
+    /**
+     * Load + init are one guarded unit: [NativeLoader.load] only loads, and
+     * `nativeInit` can fail with any `Throwable` (`UnsatisfiedLinkError` if a
+     * symbol is missing, `NoClassDefFoundError`/`LinkageError` from the JNI
+     * registration, ...), not just the two errors the hand-rolled guard used
+     * to catch. Any failure leaves [isAvailable] false so the game runs the
+     * placeholder race instead of poisoning this class's initializer. The
+     * `nativeInit` return value stays ignored, as before. Logging is
+     * `runCatching`-guarded for the same host-JVM reason as in [NativeLoader]:
+     * `Log` can throw on a plain JVM, and that must not escape class init.
+     */
+    private fun initEngine(): Boolean = try {
+        nativeInit()
+        true
+    } catch (failure: Throwable) {
+        runCatching {
+            Log.error("KartNative", "libkart_engine init failed - running the placeholder race", failure)
+        }
+        false
+    }
 
     /**
      * Start (or restart) the native race. `playerIds` is the grid in seat order;
