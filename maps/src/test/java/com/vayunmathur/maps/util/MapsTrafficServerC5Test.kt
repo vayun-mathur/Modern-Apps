@@ -32,7 +32,7 @@ class MapsTrafficServerC5Test {
     @BeforeTest
     fun startServer() {
         if (port() == 0) {
-            OfflineRouterTraffic.startLocalTileServer()
+            OfflineRouterTraffic.ensureTileServerStarted()
             // The listener binds on its own thread.
             repeat(100) {
                 if (port() != 0) return

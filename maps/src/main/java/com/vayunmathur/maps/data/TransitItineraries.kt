@@ -28,7 +28,7 @@ internal object TransitItineraries {
                 clock.prevWeekday, clock.prevDate,
                 overlay.coords, overlay.routes, overlay.times
             )
-        } catch (_: Exception) {
+        } catch (_: Throwable) {
             null
         }
     }

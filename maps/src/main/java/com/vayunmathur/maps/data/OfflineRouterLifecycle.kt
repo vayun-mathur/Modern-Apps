@@ -28,12 +28,20 @@ internal object OfflineRouterLifecycle {
     @Synchronized
     fun initialize(context: Context) {
         if (isInitialized) return
+        if (!com.vayunmathur.maps.platform.OfflineRouterNative.available) {
+            isInitialized = false
+            return
+        }
         val path = context.getExternalFilesDir(null)?.absolutePath ?: return
         OfflineRouter.basePath = path
         Log.debug("OfflineRouter", "Initializing with path: $path")
 
         isInitialized = OfflineRouter.initGraph(path)
         Log.debug("OfflineRouter", "Initialization result: $isInitialized")
+        if (isInitialized) {
+            // Explicit, lazy tile-server start: only once the graph is usable.
+            OfflineRouterTraffic.ensureTileServerStarted()
+        }
     }
 
     /**

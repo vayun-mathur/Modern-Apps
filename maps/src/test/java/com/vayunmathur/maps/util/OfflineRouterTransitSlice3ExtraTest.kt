@@ -30,12 +30,9 @@ class OfflineRouterTransitSlice3ExtraTest {
 
     private val ctx: Context get() = ApplicationProvider.getApplicationContext()
 
-    private fun nativeAvailable(): Boolean = try {
-        // Loading the object runs its System.loadLibrary init.
-        @Suppress("UNUSED_EXPRESSION")
-        OfflineRouter.basePath
-        true
-    } catch (_: Throwable) { false }
+    private fun nativeAvailable(): Boolean =
+        // Touching OfflineRouter no longer loads anything; availability is the guarded wrapper's answer.
+        com.vayunmathur.maps.platform.OfflineRouterNative.available
 
     @Test fun gtfsRouteTypeModes() {
         // Pure mapping, independent of the native pack

@@ -128,11 +128,15 @@ internal object OfflineRouterTraffic {
 
     /**
      * Loopback-only tile server for `/traffic/{z}/{x}/{y}`, extracted from
-     * [OfflineRouter] to keep that file under the length limit. Started once
-     * from [OfflineRouter]'s init; the tile bytes still come from
-     * [OfflineRouter.getTrafficTileNative].
+     * [OfflineRouter] to keep that file under the length limit. Started lazily
+     * and explicitly via [ensureTileServerStarted] once the graph is up — never
+     * from class init — so a missing native library or a bind failure degrades
+     * to "no traffic tiles" instead of poisoning routing. Tile bytes still come
+     * from [OfflineRouter.getTrafficTileNative].
      */
     private var serverPort = 0
+
+    @Volatile private var tileServerStarted = false
 
     /** Socket read timeout (ms) so a half-open client cannot hold a worker forever. */
     private const val CLIENT_SO_TIMEOUT_MS = 5_000
@@ -150,7 +154,19 @@ internal object OfflineRouterTraffic {
             "Access-Control-Allow-Origin: *\r\n\r\n"
     private const val NO_CONTENT = "HTTP/1.1 204 No Content\r\n\r\n"
 
-    internal fun startLocalTileServer() {
+    /**
+     * Start the loopback tile server once, if the native router is usable.
+     * Idempotent and failure-tolerant: any failure leaves [tileServerStarted]
+     * false and is only logged, so traffic tiles degrade to empty responses
+     * rather than crashing routing.
+     */
+    internal fun ensureTileServerStarted() {
+        if (tileServerStarted) return
+        if (!com.vayunmathur.maps.platform.OfflineRouterNative.available) return
+        synchronized(this) {
+            if (tileServerStarted) return
+            tileServerStarted = true
+        }
         Thread {
             try {
                 // Bind to loopback ONLY. The previous `ServerSocket(0)` defaulted
@@ -168,8 +184,9 @@ internal object OfflineRouterTraffic {
                     runCatching { client.soTimeout = CLIENT_SO_TIMEOUT_MS }
                     pool.execute { handleClient(client) }
                 }
-            } catch (e: java.io.IOException) {
-                Log.error("OFFLINE_ROUTER", "Tile server error", e)
+            } catch (e: Throwable) {
+                tileServerStarted = false
+                runCatching { Log.error("OFFLINE_ROUTER", "Tile server error", e) }
             }
         }.start()
     }
@@ -197,7 +214,15 @@ internal object OfflineRouterTraffic {
         val x = pathParts[1].toIntOrNull() ?: 0
         val y = pathParts[2].substringBefore("?").toIntOrNull() ?: 0
 
-        val bytes = OfflineRouter.getTrafficTileNative(z, x, y)
+        val bytes = if (com.vayunmathur.maps.platform.OfflineRouterNative.available) {
+            try {
+                OfflineRouter.getTrafficTileNative(z, x, y)
+            } catch (_: Throwable) {
+                null
+            }
+        } else {
+            null
+        }
         val output = client.getOutputStream()
         if (bytes != null) {
             output.write(OK_HEADERS.replace("{len}", bytes.size.toString()).toByteArray())

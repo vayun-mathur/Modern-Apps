@@ -90,8 +90,8 @@ fun SearchSheet(
                 title = stringResource(R.string.no_results_found),
                 modifier = Modifier.height(StatusBlockHeight),
             )
-            SearchPhase.Results -> ResultsList(state.results, actions, state.nearLat, state.nearLon)
-            SearchPhase.Recents -> RecentsList(state.recents, actions)
+            SearchPhase.Results -> ResultsList(state.results, actions, state.nearLat, state.nearLon, Modifier.weight(1f))
+            SearchPhase.Recents -> RecentsList(state.recents, actions, Modifier.weight(1f))
             SearchPhase.Idle -> Box(
                 Modifier.fillMaxWidth().height(StatusBlockHeight),
                 Alignment.Center,
@@ -157,8 +157,9 @@ private fun ResultsList(
     actions: SearchActions,
     nearLat: Double = 0.0,
     nearLon: Double = 0.0,
+    modifier: Modifier = Modifier,
 ) {
-    LazyColumn(Modifier.fillMaxWidth()) {
+    LazyColumn(modifier.fillMaxWidth()) {
         items(results, key = { it.id }) { result ->
             val distanceText = if (nearLat != 0.0 || nearLon != 0.0) {
                 com.vayunmathur.maps.platform.formatDistance(
@@ -213,8 +214,8 @@ private fun ResultsList(
 }
 
 @Composable
-private fun RecentsList(recents: List<String>, actions: SearchActions) {
-    LazyColumn(Modifier.fillMaxWidth()) {
+private fun RecentsList(recents: List<String>, actions: SearchActions, modifier: Modifier = Modifier) {
+    LazyColumn(modifier.fillMaxWidth()) {
         item {
             Row(
                 modifier = Modifier

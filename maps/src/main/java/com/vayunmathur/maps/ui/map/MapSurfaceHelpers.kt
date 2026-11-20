@@ -78,6 +78,7 @@ internal const val TRAFFIC_MAX_SQUARES = 16L
  * enumerated.
  */
 internal fun prefetchTrafficSquares(bounds: GeoBounds) {
+    if (!com.vayunmathur.maps.platform.OfflineRouterNative.available) return
     val lonMin = floor(bounds.west).toInt()
     val lonMax = floor(bounds.east).toInt()
     val latMin = floor(bounds.south).toInt()
@@ -86,7 +87,12 @@ internal fun prefetchTrafficSquares(bounds: GeoBounds) {
     if (cells < 1L || cells > TRAFFIC_MAX_SQUARES) return
     for (lat in latMin..latMax) {
         for (lon in lonMin..lonMax) {
-            OfflineRouter.ensureTrafficLoadedNative(lat + 0.5, lon + 0.5, true)
+            try {
+                OfflineRouter.ensureTrafficLoadedNative(lat + 0.5, lon + 0.5, true)
+            } catch (_: Throwable) {
+                // Native unavailable: traffic prefetch degrades to no-op.
+                return
+            }
         }
     }
 }

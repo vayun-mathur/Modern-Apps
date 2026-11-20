@@ -4,8 +4,8 @@ import com.vayunmathur.maps.data.string
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -60,21 +60,29 @@ fun SavedPlacesPage(backStack: NavBackStack<Route>, viewModel: SavedPlacesViewMo
         title = stringResource(R.string.saved_places_title),
         backStack = backStack,
     ) { padding ->
-        Column(
+        // One bounded LazyColumn for the whole page: section headers and the
+        // "new list" row are single items, the flat saved places and every
+        // named list's members are lazy items with stable keys, so a long
+        // library scrolls without composing every row. fillMaxSize keeps the
+        // height bounded (required for lazy measurement, incl. in tests).
+        LazyColumn(
             Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState()),
+                .padding(padding),
         ) {
             // --- Flat saved list ---
-            SettingsSection(title = stringResource(UiR.string.saved)) {
-                if (saved.isEmpty()) {
+            item(key = "saved-header") {
+                SettingsSection(title = stringResource(UiR.string.saved)) {}
+            }
+            if (saved.isEmpty()) {
+                item(key = "saved-empty") {
                     SettingsRow(
                         title = stringResource(R.string.saved_list_empty),
                         enabled = false,
                     )
                 }
-                saved.forEach { place ->
+            } else {
+                items(saved, key = { place -> "saved/${place.name}/${place.lat}/${place.lon}" }) { place ->
                     SavedPlaceRow(
                         place = place,
                         onRename = { renameTarget = place },
@@ -85,13 +93,18 @@ fun SavedPlacesPage(backStack: NavBackStack<Route>, viewModel: SavedPlacesViewMo
             }
 
             // --- Named lists ---
-            SettingsSection(title = stringResource(R.string.saved_lists_header)) {
+            item(key = "lists-header") {
+                SettingsSection(title = stringResource(R.string.saved_lists_header)) {}
+            }
+            item(key = "lists-new") {
                 SettingsRow(
                     title = stringResource(R.string.saved_lists_new),
                     leadingContent = { IconAdd() },
                     onClick = { showCreateList = true },
                 )
-                lists.forEach { (name, places) ->
+            }
+            lists.forEach { (name, places) ->
+                item(key = "list/$name") {
                     SettingsRow(
                         title = name,
                         supportingText = androidx.compose.ui.res.pluralStringResource(
@@ -102,16 +115,16 @@ fun SavedPlacesPage(backStack: NavBackStack<Route>, viewModel: SavedPlacesViewMo
                             IconButton(onClick = { viewModel.deleteList(name) }) { IconDelete() }
                         },
                     )
-                    places.forEach { place ->
-                        SettingsRow(
-                            title = place.name,
-                            modifier = Modifier.padding(start = 16.dp),
-                            leadingContent = { IconStar() },
-                            trailingContent = {
-                                IconButton(onClick = { viewModel.removeFromList(name, place) }) { IconClose() }
-                            },
-                        )
-                    }
+                }
+                items(places, key = { place -> "member/$name/${place.name}/${place.lat}/${place.lon}" }) { place ->
+                    SettingsRow(
+                        title = place.name,
+                        modifier = Modifier.padding(start = 16.dp),
+                        leadingContent = { IconStar() },
+                        trailingContent = {
+                            IconButton(onClick = { viewModel.removeFromList(name, place) }) { IconClose() }
+                        },
+                    )
                 }
             }
         }

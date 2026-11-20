@@ -149,6 +149,7 @@ internal object OfflineRouterTransit {
             end: GeoPoint,
             departureOffsetSecs: Int,
     ): RouteService.Route? = withContext(Dispatchers.Default) {
+        if (!com.vayunmathur.maps.platform.OfflineRouterNative.available) return@withContext null
         val base = OfflineRouterLifecycle.transitBase(context) ?: return@withContext null
         val feeds = transitFeeds(base)
         if (feeds.isEmpty()) return@withContext null
@@ -204,7 +205,7 @@ internal object OfflineRouterTransit {
                 clock.prevWeekday, clock.prevDate,
                 overlay.coords, overlay.routes, overlay.times
             )
-        } catch (_: Exception) {
+        } catch (_: Throwable) {
             null
         }
     }
@@ -266,6 +267,7 @@ internal object OfflineRouterTransit {
             lat: Double,
             lon: Double,
     ): TransitStop? = withContext(Dispatchers.Default) {
+        if (!com.vayunmathur.maps.platform.OfflineRouterNative.available) return@withContext null
         val base = OfflineRouterLifecycle.transitBase(context) ?: return@withContext null
         val feeds = transitFeeds(base)
         for (feed in feeds) {
@@ -297,6 +299,7 @@ internal object OfflineRouterTransit {
             maxLat: Double,
             maxLon: Double,
     ): List<OfflineRouter.Vehicle> = withContext(Dispatchers.Default) {
+        if (!com.vayunmathur.maps.platform.OfflineRouterNative.available) return@withContext emptyList()
         val base = OfflineRouterLifecycle.transitBase(context) ?: return@withContext emptyList()
         val feeds = transitFeeds(base)
         if (feeds.isEmpty()) return@withContext emptyList()
@@ -334,7 +337,7 @@ internal object OfflineRouterTransit {
                 overlay.coords, overlay.routes, overlay.times,
                 minLat, minLon, maxLat, maxLon
             )
-        } catch (_: Exception) {
+        } catch (_: Throwable) {
             null
         } ?: return emptyList()
         // TEMP-DIAG-A (light-rail icon): histogram the raw GTFS
@@ -393,7 +396,7 @@ internal object OfflineRouterTransit {
             OfflineRouter.getRailLinesNative(
                 base, feed, minLat, minLon, maxLat, maxLon
             )
-        } catch (_: Exception) {
+        } catch (_: Throwable) {
             null
         } ?: return emptyList()
         return rawLinesToRailLines(raw)
@@ -425,7 +428,7 @@ internal object OfflineRouterTransit {
     private fun stopLinesForFeed(base: String, feed: String, lat: Double, lon: Double): List<RailLine> {
         val raw = try {
             OfflineRouter.getStopLinesNative(base, feed, lat, lon)
-        } catch (_: Exception) {
+        } catch (_: Throwable) {
             null
         } ?: return emptyList()
         return rawLinesToRailLines(raw)
@@ -682,7 +685,7 @@ internal object OfflineRouterTransit {
                 clock.prevWeekday, clock.prevDate,
                 overlay.coords, overlay.routes, overlay.times, max
             )
-        } catch (_: Exception) {
+        } catch (_: Throwable) {
             null
         }
     }

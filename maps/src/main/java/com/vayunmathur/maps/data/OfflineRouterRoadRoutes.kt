@@ -74,7 +74,8 @@ internal object OfflineRouterRoadRoutes {
         for (i in 0 until positions.size - 1) {
             val leg = try {
                 OfflineRouter.getRoute(context, positions[i], positions[i + 1], type)
-            } catch (_: Exception) {
+            } catch (_: Throwable) {
+                // Includes LinkageError if the native lib vanished: no routing, no crash.
                 return null
             }
             legs.add(leg)

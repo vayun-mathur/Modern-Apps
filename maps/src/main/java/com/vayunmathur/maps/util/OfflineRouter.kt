@@ -29,10 +29,10 @@ import com.vayunmathur.library.map.GeoPoint
  * [OfflineRouterRouteBuilder] (native steps → [RouteService.Route]).
  */
 object OfflineRouter {
-    init {
-        System.loadLibrary("offlinerouter")
-        OfflineRouterTraffic.startLocalTileServer()
-    }
+    // No init-time load: the library is loaded once, guarded, by
+    // OfflineRouterNative (platform/). Touching this object must never throw
+    // ExceptionInInitializerError — callers check OfflineRouterNative.available
+    // and degrade to no-routing when the .so is missing.
 
     /** At least an origin and a destination for a multi-waypoint route. */
     private const val MIN_ROUTE_POSITIONS = 2
@@ -40,7 +40,14 @@ object OfflineRouter {
     private external fun init(basePath: String): Boolean
 
     /** Invoker so [OfflineRouterLifecycle] can init without touching JNI visibility. */
-    internal fun initGraph(basePath: String): Boolean = init(basePath)
+    internal fun initGraph(basePath: String): Boolean {
+        if (!com.vayunmathur.maps.platform.OfflineRouterNative.available) return false
+        return try {
+            init(basePath)
+        } catch (_: Throwable) {
+            false
+        }
+    }
     private external fun findRouteNative(
             sLat: Double,
             sLon: Double,
@@ -281,11 +288,21 @@ object OfflineRouter {
     }
 
     internal fun updateTraffic(edgeIds: LongArray, speeds: ByteArray, packedSquare: Int) {
-        updateTrafficNative(edgeIds, speeds, packedSquare)
+        if (!com.vayunmathur.maps.platform.OfflineRouterNative.available) return
+        try {
+            updateTrafficNative(edgeIds, speeds, packedSquare)
+        } catch (_: Throwable) {
+            // Native unavailable mid-session: drop the update, never crash.
+        }
     }
 
     internal fun finishTrafficFetch(packedSquare: Int) {
-        notifyTrafficFetchFinishedNative(packedSquare)
+        if (!com.vayunmathur.maps.platform.OfflineRouterNative.available) return
+        try {
+            notifyTrafficFetchFinishedNative(packedSquare)
+        } catch (_: Throwable) {
+            // See updateTraffic.
+        }
     }
 
     /** Type representing raw step. */
@@ -472,6 +489,9 @@ object OfflineRouter {
         mode: RouteService.TravelMode,
     ): RouteService.Route =
         withContext(Dispatchers.Default) {
+            if (!com.vayunmathur.maps.platform.OfflineRouterNative.available) {
+                throw IllegalStateException("Offline router unavailable")
+            }
             Log.dev("OfflineRouter", "getRoute: mode=$mode, start=$start, end=$end")
             if (!OfflineRouterLifecycle.isInitialized) {
                 OfflineRouterLifecycle.initialize(context)
@@ -479,14 +499,17 @@ object OfflineRouter {
             Log.debug("OfflineRouter", "isInitialized=${OfflineRouterLifecycle.isInitialized}")
 
             val rawSteps =
-                findRouteNative(
-                    start.latitude,
-                    start.longitude,
-                    end.latitude,
-                    end.longitude,
-                    mode.ordinal
-                )
-                    ?: throw IllegalStateException("No route found")
+                try {
+                    findRouteNative(
+                        start.latitude,
+                        start.longitude,
+                        end.latitude,
+                        end.longitude,
+                        mode.ordinal
+                    )
+                } catch (_: Throwable) {
+                    null
+                } ?: throw IllegalStateException("No route found")
 
             buildRoute(context, rawSteps, mode)
         }
