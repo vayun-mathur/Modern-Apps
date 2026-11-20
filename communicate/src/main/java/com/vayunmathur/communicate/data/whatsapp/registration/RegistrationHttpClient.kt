@@ -110,8 +110,7 @@ class RegistrationHttpClient(
         val j = parse(body)
         Log.error(
             TAG,
-            "W2 code raw=${body.take(LOG_BODY_SNIPPET)} " +
-                "reason=${j.optStringOrNull("reason")} param=${j.optStringOrNull("param")}")
+            "W2 code reason=${j.optStringOrNull("reason")} param=${j.optStringOrNull("param")}")
         return CodeResult(
             status = j.optString("status", "error"),
             method = j.optStringOrNull("method"),
@@ -158,13 +157,6 @@ class RegistrationHttpClient(
 
     /** POST `/v2/exist` — probe whether the number is already registered on this key material. */
     suspend fun checkExist(cc: String, number: String): ExistResult {
-        // DEBUG: log token variants so we can compare to the offline reference (no SMS sent).
-        runCatching {
-            Log.status(TAG, "debug token national=$number -> ${RegistrationAttestation.computeToken(context, number)}")
-            Log.status(
-                TAG,
-                "debug token full=$cc$number -> ${RegistrationAttestation.computeToken(context, "$cc$number")}")
-        }
         val auth = WhatsAppAuthData.load(context)
         val p = RegParams()
         p.a01("cc", cc)
@@ -179,8 +171,7 @@ class RegistrationHttpClient(
         val j = parse(body)
         Log.error(
             TAG,
-            "W2 exist raw=${body.take(LOG_BODY_SNIPPET)} " +
-                "reason=${j.optStringOrNull("reason")} param=${j.optStringOrNull("param")}")
+            "W2 exist reason=${j.optStringOrNull("reason")} param=${j.optStringOrNull("param")}")
         return ExistResult(
             j.optString("status", "error"),
             j.optStringOrNull("reason"),
@@ -387,7 +378,7 @@ class RegistrationHttpClient(
         }
         val reason = j.optStringOrNull("reason")
         val param = j.optStringOrNull("param")
-        if (status != "ok") Log.error(TAG, "W2 register raw=${body.take(LOG_BODY_SNIPPET)} reason=$reason param=$param")
+        if (status != "ok") Log.error(TAG, "W2 register reason=$reason param=$param")
         return RegisterResult(
             status = status,
             newJid = newJid ?: login?.let { "$it@s.whatsapp.net" },
@@ -543,7 +534,7 @@ class RegistrationHttpClient(
                 body = body,
                 useSystemTrust = true,
             )
-            Log.status(TAG, "/v2/$path -> ${resp.status}: ${resp.body.take(LOG_RESP_SNIPPET)}")
+            Log.status(TAG, "/v2/$path -> ${resp.status}")
             resp.body
         } catch (expected: Throwable) {
             Log.error(TAG, "/v2/$path request failed", expected)
@@ -597,8 +588,6 @@ class RegistrationHttpClient(
          */
         private const val SEND_INTEGRITY_SIGNALS = false
         private const val MS_PER_SECOND = 1000L
-        private const val LOG_BODY_SNIPPET = 2000
-        private const val LOG_RESP_SNIPPET = 400
         private const val MCC_LENGTH = 3
     }
 

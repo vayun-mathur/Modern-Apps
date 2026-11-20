@@ -415,8 +415,7 @@ class RegistrationHttpClient(private val context: Context) {
                 resp.body)
         }
         if (!resp.isSuccess) {
-            // Log the full server body so a 422/400 names the rejected field in logcat on the next retest.
-            Log.error(TAG, "submitRegistration HTTP ${resp.status}: ${resp.body.take(LOG_BODY_MAX_CHARS)}")
+            Log.error(TAG, "submitRegistration HTTP ${resp.status}")
             return RegisterResult("error", null, null, "HTTP ${resp.status}", null, resp.body)
         }
         return finalizeRegister(resp.body, auth)
@@ -583,8 +582,6 @@ class RegistrationHttpClient(private val context: Context) {
         private const val HTTP_RATE_LIMITED = 429
         /** How much of an error response body is quoted in an exception message. */
         private const val ERROR_BODY_MAX_CHARS = 500
-        /** How much of an error response body is written to the log for diagnosis. */
-        private const val LOG_BODY_MAX_CHARS = 1000
         private const val UUID_SIZE = 16
         private const val VERIFICATION_SESSION_PATH = "/v1/verification/session"
         private const val VERIFICATION_CODE_PATH = "/v1/verification/session/%s/code"

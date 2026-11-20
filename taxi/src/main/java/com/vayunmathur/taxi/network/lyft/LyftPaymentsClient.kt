@@ -66,9 +66,7 @@ internal class LyftPaymentsClient(private val session: LyftApiSession) {
         )
         Log.debug(TAG, "PUT /charge-accounts-multi-provider -> ${resp.status}")
         if (!resp.isSuccess) {
-            // 422s here are opaque without the server's reason — log the full exchange so the
-            // exact validation error (field name / compliance / challenge) is visible.
-            Log.status(TAG, "set-default failed ${resp.status}: req=$body resp=${resp.text}")
+            Log.status(TAG, "set-default failed ${resp.status}")
             return PaymentActionResult.Failed(session.httpError(resp))
         }
         // The response is a ChargeAccountsResponse; return the refreshed list when it parses.
@@ -152,7 +150,7 @@ internal class LyftPaymentsClient(private val session: LyftApiSession) {
         }.getOrElse { return AddCardResult.Failed("Create card request failed: ${it.message}") }
         Log.debug(TAG, "POST /charge-accounts-multi-provider (create) -> ${resp.status}")
         if (!resp.isSuccess) {
-            Log.status(TAG, "add-card failed ${resp.status}: req=$body resp=${resp.text}")
+            Log.status(TAG, "add-card failed ${resp.status}")
             return AddCardResult.Failed(session.httpError(resp))
         }
         // Response is a ChargeAccountsResponse; return the refreshed list when it parses.

@@ -13,6 +13,10 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
+    <permission
+        android:name="com.vayunmathur.weather.permissions.ACCESS_WEATHER"
+        android:protectionLevel="signature" />
+
     <queries>
         <package android:name="com.vayunmathur.clock" />
         <package android:name="com.vayunmathur.calendar" />
@@ -51,12 +55,14 @@
         <activity
             android:name=".intents.GetWeatherIntent"
             android:exported="true"
-            android:theme="@android:style/Theme.NoDisplay" />
+            android:theme="@android:style/Theme.NoDisplay"
+            android:permission="com.vayunmathur.weather.permissions.ACCESS_WEATHER" />
 
         <activity
             android:name=".intents.GetWeatherByNameIntent"
             android:exported="true"
-            android:theme="@android:style/Theme.NoDisplay" />
+            android:theme="@android:style/Theme.NoDisplay"
+            android:permission="com.vayunmathur.weather.permissions.ACCESS_WEATHER" />
 
         <!-- Car hosts (Android Auto / MA Auto) bind to this service by its
              CarAppService intent-filter; the host is validated in code via

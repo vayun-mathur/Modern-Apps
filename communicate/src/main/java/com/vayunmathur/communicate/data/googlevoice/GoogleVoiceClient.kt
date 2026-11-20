@@ -116,11 +116,8 @@ class GoogleVoiceClient(private val session: GoogleVoiceSession) {
             body = jsonBody,
         )
         checkVoiceResponse(path, response)
-        // TEMP diagnostic logging of raw protojson so the positional parser can be pinned to the
-        // real wire shapes. Chunked because logcat truncates long lines.
         val body = response.body
         Log.dev(TAG, "$path <= ${body.length} bytes")
-        body.chunked(LOG_CHUNK).forEachIndexed { i, chunk -> Log.dev(TAG, "$path[$i] $chunk") }
         return body
     }
 
@@ -130,7 +127,7 @@ class GoogleVoiceClient(private val session: GoogleVoiceSession) {
             throw GoogleVoiceAuthException("Google Voice auth rejected (${response.status})")
         }
         if (!response.isSuccess) {
-            Log.error(TAG, "$path failed HTTP ${response.status}: ${response.body.take(LOG_SNIPPET)}")
+            Log.error(TAG, "$path failed HTTP ${response.status}")
             throw IOException("Google Voice ${path} failed: HTTP ${response.status}")
         }
     }
@@ -140,8 +137,6 @@ class GoogleVoiceClient(private val session: GoogleVoiceSession) {
         private const val TAG = "GoogleVoiceRaw"
         private const val HTTP_UNAUTHORIZED = 401
         private const val HTTP_FORBIDDEN = 403
-        private const val LOG_CHUNK = 3500
-        private const val LOG_SNIPPET = 500
         private const val TOKEN_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
         private const val BASE = "https://clients6.google.com/voice/v1/voiceclient/"
 

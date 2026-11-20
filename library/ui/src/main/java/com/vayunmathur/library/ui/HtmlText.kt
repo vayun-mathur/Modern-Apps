@@ -45,8 +45,9 @@ import java.io.File
  *   readable 1:1 scale, and drops any viewport tag the sender embedded. See
  *   [HtmlTextDocument.FIT_TO_WIDTH_CSS].
  */
-// javaScriptEnabled is an explicit caller opt-in (default documented as unsafe
-// for untrusted mail, which passes false); WebView JS is never enabled silently.
+// javaScriptEnabled defaults to false: scripts are an explicit caller opt-in,
+// so untrusted content (mail, imported files) never runs a sender's script
+// unless a caller deliberately passes true for trusted local content.
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun HtmlText(
@@ -56,7 +57,7 @@ fun HtmlText(
     hideQuotes: Boolean = false,
     cidMap: Map<String, File> = emptyMap(),
     openLinksExternally: Boolean = true,
-    javaScriptEnabled: Boolean = true,
+    javaScriptEnabled: Boolean = false,
     blockRemoteContent: Boolean = false,
     scrollInternally: Boolean = false,
     fitContentToWidth: Boolean = false,

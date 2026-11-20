@@ -1,17 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Deny-all. Overrides the permissive include-everything default in the shared
+     :library module. Secure mail holds an encrypted mail vault, account
+     credentials and keystore-wrapped key material; none of it is safe to copy
+     off the device, and keystore-bound state would not be restorable on a new
+     device in any case. Mirrors the deny-all peer pattern (e.g. passwords/,
+     communicate/). -->
 <data-extraction-rules>
     <cloud-backup>
-        <include domain="root" path="." />
-        <include domain="file" path="." />
-        <include domain="database" path="." />
-        <include domain="sharedpref" path="." />
-        <include domain="external" path="." />
+        <exclude domain="root" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="external" path="." />
     </cloud-backup>
     <device-transfer>
-        <include domain="root" path="." />
-        <include domain="file" path="." />
-        <include domain="database" path="." />
-        <include domain="sharedpref" path="." />
-        <include domain="external" path="." />
+        <exclude domain="root" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="external" path="." />
     </device-transfer>
 </data-extraction-rules>

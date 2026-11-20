@@ -192,10 +192,10 @@ class MainActivity : MaActivity() {
         val data = intent.dataString ?: return
         val link = MapLinkParser.parse(data)
         if (link == null) {
-            Log.status(TAG, "ACTION_VIEW ignored (unparseable): $data")
+            Log.status(TAG, "ACTION_VIEW ignored (unparseable)")
             return
         }
-        Log.status(TAG, "ACTION_VIEW routed data=$data -> $link")
+        Log.status(TAG, "ACTION_VIEW routed -> $link")
         if (link.navigate) navigateTo(link) else openPlace(link)
     }
 

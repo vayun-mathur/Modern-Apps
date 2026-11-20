@@ -2,17 +2,29 @@
 <!-- Code editor. Overrides the permissive default in the shared :library module.
 
      Storage audit:
-       file  datastore/code_editor.preferences_pb   Two keys: soft_wrap and folder_uri, the
-                                                    SAF tree URI of the last opened project
-                                                    folder.
+       file  datastore/code_editor.preferences_pb   The app's only persisted state
+                                                    (EditorPrefs): editor settings
+                                                    (soft_wrap, font size, tab width,
+                                                    theme, smart-input toggles), session
+                                                    and recent-file paths, snippets, fold
+                                                    state, the last opened folder, and git
+                                                    credentials — git_username, git_token,
+                                                    git author name/email.
        No database, no SharedPreferences, no app-private files or caches. Source files are
        edited in place through SAF in storage the app does not own.
 
-     Both keys are settings, so the DataStore is allowlisted for cloud backup. folder_uri will
-     need re-granting after a restore but is harmless to carry. -->
+     Because that one DataStore file now holds a git token, it must not leave the
+     device in cloud backup: cloud backup is denied outright (the file was the
+     only thing cloud backup ever carried here, so nothing else is lost).
+     Device transfer still carries it, so settings and sign-in survive a direct
+     device-to-device move; folder access will need re-granting after a restore. -->
 <data-extraction-rules>
     <cloud-backup>
-        <include domain="file" path="datastore/code_editor.preferences_pb" />
+        <exclude domain="root" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="external" path="." />
     </cloud-backup>
     <device-transfer>
         <include domain="file" path="datastore/code_editor.preferences_pb" />
