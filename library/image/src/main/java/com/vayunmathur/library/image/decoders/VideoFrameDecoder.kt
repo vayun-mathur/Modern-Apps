@@ -6,6 +6,7 @@ import android.media.MediaMetadataRetriever
 import android.net.Uri
 import androidx.core.net.toUri
 import com.vayunmathur.library.image.ImageRequest
+import com.vayunmathur.library.image.Size
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -27,7 +28,7 @@ object VideoFrameDecoder {
             val retriever = MediaMetadataRetriever()
             try {
                 bindDataSource(retriever, data, ctx) ?: return@runCatching null
-                extractFrame(retriever, millis)
+                extractFrame(retriever, millis, request.size)
             } finally {
                 runCatching { retriever.release() }
             }
@@ -87,8 +88,25 @@ object VideoFrameDecoder {
         return Unit
     }
 
-    private fun extractFrame(retriever: MediaMetadataRetriever, millis: Long): Bitmap? {
+    private fun extractFrame(
+        retriever: MediaMetadataRetriever,
+        millis: Long,
+        size: Size?,
+    ): Bitmap? {
         val timeUs = millis * MICROSECONDS_PER_MILLISECOND
+        if (size != null && size.width > 0 && size.height > 0) {
+            // Scaled decode at the requested size; a thumbnail request must
+            // not materialise a full-res (e.g. 4K) frame. Fall back to the
+            // full frame below if the scaled call returns null.
+            val scaled = retriever.getScaledFrameAtTime(
+                timeUs, MediaMetadataRetriever.OPTION_CLOSEST, size.width, size.height,
+            ) ?: retriever.getScaledFrameAtTime(
+                timeUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC, size.width, size.height,
+            ) ?: retriever.getScaledFrameAtTime(
+                0, MediaMetadataRetriever.OPTION_CLOSEST, size.width, size.height,
+            )
+            if (scaled != null) return scaled
+        }
         return retriever.getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST)
             ?: retriever.getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
             ?: retriever.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST)

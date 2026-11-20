@@ -40,6 +40,30 @@ interface PhotoDao {
     @Query("SELECT * FROM Photo")
     suspend fun getAll(): List<Photo>
 
+    /**
+     * Favourites for the Favourites album, newest first. Same light projection
+     * as [getAllFlow] (no clipEmbedding/ocrText/ocrBoxes), filtered in SQL
+     * instead of loading the whole library and filtering in memory.
+     */
+    @Query(
+        "SELECT id, name, uri, date, width, height, dateModified, exifSet, lat, `long`, duration, " +
+            "fullWidth, fullHeight, croppedWidth, croppedHeight, croppedLeft, croppedTop, projectionType, " +
+            "isTrashed, faceScanned, ocrScanned, clipScanned, mimeType, album, isFavorite FROM Photo " +
+            "WHERE isFavorite = 1 AND isTrashed = 0 ORDER BY date DESC"
+    )
+    fun getFavoritesFlow(): Flow<List<Photo>>
+
+    /**
+     * Sync-only projection: every column [syncPhotos] diffs or preserves, without
+     * the heavy clipEmbedding/ocrText/ocrBoxes blobs `SELECT *` would load.
+     */
+    @Query(
+        "SELECT id, name, uri, date, width, height, dateModified, exifSet, lat, `long`, duration, " +
+            "fullWidth, fullHeight, croppedWidth, croppedHeight, croppedLeft, croppedTop, projectionType, " +
+            "isTrashed, faceScanned, ocrScanned, clipScanned, mimeType, album, isFavorite FROM Photo"
+    )
+    suspend fun getAllForSync(): List<Photo>
+
     @Query("SELECT * FROM Photo WHERE uri = :uri")
     suspend fun getByUri(uri: String): List<Photo>
 
@@ -340,7 +364,7 @@ data class ExifResult(
 )
 
 /** Photo Database: a room database implementation for photo database. */
-@Database(entities = [Photo::class, Person::class, PhotoFace::class, PhotoFts::class], version = 21, exportSchema = true)
+@Database(entities = [Photo::class, Person::class, PhotoFace::class, PhotoFts::class], version = 22, exportSchema = true)
 abstract class PhotoDatabase : RoomDatabase() {
     abstract fun photoDao(): PhotoDao
     abstract fun photoScanDao(): PhotoScanDao
@@ -353,8 +377,19 @@ abstract class PhotoDatabase : RoomDatabase() {
             MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11,
             MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16,
             MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21,
+            MIGRATION_21_22,
         )
     }
+}
+
+val MIGRATION_21_22 = Migration(21, 22) {
+    // Index uri (sync/MediaStore lookups by content URI) and the favourites
+    // predicate (isFavorite + isTrashed, date-ordered for the album).
+    it.execSQL("CREATE INDEX IF NOT EXISTS `index_Photo_uri` ON `Photo` (`uri`)")
+    it.execSQL(
+        "CREATE INDEX IF NOT EXISTS `index_Photo_isFavorite_isTrashed_date` " +
+            "ON `Photo` (`isFavorite`, `isTrashed`, `date`)",
+    )
 }
 
 val MIGRATION_20_21 = Migration(20, 21) {

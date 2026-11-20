@@ -258,8 +258,7 @@ class GalleryViewModel(
      * (getAllFlow is ORDER BY date DESC). Trashed items are left out, like every
      * other album; MediaStore keeps their flag, so a restored favourite returns.
      */
-    val favorites: StateFlow<List<Photo>> = repository.getAllFlow()
-        .map { all -> all.filter { it.isFavorite && !it.isTrashed } }
+    val favorites: StateFlow<List<Photo>> = repository.getFavoritesFlow()
         .distinctUntilChanged()
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -568,6 +567,9 @@ fun GalleryViewModelFactory(
  */
 interface PhotoStore {
     fun getAllFlow(): Flow<List<Photo>>
+    /** DAO-filtered favourites; default keeps test fakes source-compatible. */
+    fun getFavoritesFlow(): Flow<List<Photo>> =
+        getAllFlow().map { all -> all.filter { it.isFavorite && !it.isTrashed } }
     fun getOCRCountFlow(): Flow<Int>
     fun getIndexTargetCountFlow(): Flow<Int>
     fun getClipCountFlow(): Flow<Int>
@@ -600,6 +602,7 @@ private class PhotoStoreRepository(
 ) : PhotoStore {
     private val repository = delegate
     override fun getAllFlow(): Flow<List<Photo>> = repository.getAllFlow()
+    override fun getFavoritesFlow(): Flow<List<Photo>> = repository.getFavoritesFlow()
     override fun getOCRCountFlow(): Flow<Int> = repository.getOCRCountFlow()
     override fun getIndexTargetCountFlow(): Flow<Int> = repository.getIndexTargetCountFlow()
     override fun getClipCountFlow(): Flow<Int> = repository.getClipCountFlow()

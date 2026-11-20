@@ -26,6 +26,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
@@ -56,12 +58,22 @@ fun VideoPlayer(
     var videoAspectRatio by remember { mutableFloatStateOf(16f / 9f) }
 
     val exoPlayer = remember(uri) {
-        ExoPlayer.Builder(context).build().apply {
-            setMediaItem(MediaItem.fromUri(uri))
-            prepare()
-            playWhenReady = isSettledPage
-            repeatMode = Player.REPEAT_MODE_ONE
-        }
+        // Mirror music PlaybackService: request audio focus (second arg true)
+        // so other apps duck/pause, and pause on audio-becoming-noisy
+        // (headphones unplugged) instead of blasting through the speaker.
+        val audioAttributes = AudioAttributes.Builder()
+            .setUsage(C.USAGE_MEDIA)
+            .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
+            .build()
+        ExoPlayer.Builder(context)
+            .setAudioAttributes(audioAttributes, true)
+            .setHandleAudioBecomingNoisy(true)
+            .build().apply {
+                setMediaItem(MediaItem.fromUri(uri))
+                prepare()
+                playWhenReady = isSettledPage
+                repeatMode = Player.REPEAT_MODE_ONE
+            }
     }
 
     var isPlaying by remember { mutableStateOf(isSettledPage) }

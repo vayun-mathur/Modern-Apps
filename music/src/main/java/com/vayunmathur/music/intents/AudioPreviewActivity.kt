@@ -28,6 +28,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
@@ -67,11 +69,21 @@ class AudioPreviewActivity : ComponentActivity() {
             return
         }
 
-        val exo = ExoPlayer.Builder(this).build().apply {
-            setMediaItem(MediaItem.fromUri(uri))
-            prepare()
-            playWhenReady = true
-        }
+        // Mirror PlaybackService: request audio focus (second arg true) so
+        // other apps duck/pause, and pause on audio-becoming-noisy
+        // (headphones unplugged) instead of blasting through the speaker.
+        val audioAttributes = AudioAttributes.Builder()
+            .setUsage(C.USAGE_MEDIA)
+            .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+            .build()
+        val exo = ExoPlayer.Builder(this)
+            .setAudioAttributes(audioAttributes, true)
+            .setHandleAudioBecomingNoisy(true)
+            .build().apply {
+                setMediaItem(MediaItem.fromUri(uri))
+                prepare()
+                playWhenReady = true
+            }
         player = exo
 
         val title = resolveTitle(uri)

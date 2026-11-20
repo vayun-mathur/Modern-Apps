@@ -4,7 +4,10 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ImageDecoder
+import android.graphics.Matrix
+import androidx.exifinterface.media.ExifInterface
 import com.vayunmathur.library.image.ImageRequest
+import java.io.ByteArrayInputStream
 import java.nio.ByteBuffer
 
 /** Decodes encoded image bytes into sampled bitmaps. */
@@ -149,6 +152,78 @@ object BitmapDecoder {
         isPositiveSize(srcW, srcH) &&
             (srcW > MAX_ORIGINAL_DIMENSION || srcH > MAX_ORIGINAL_DIMENSION)
 
+    /**
+     * Correction for one EXIF orientation value, as pure data so it is
+     * unit-testable without Android bitmaps: rotate [rotationDegrees]
+     * clockwise, then mirror horizontally if [mirrorHorizontal]. Every
+     * orientation 1-8 is a rotation plus that optional mirror (a vertical
+     * flip is 180 + mirror; transpose/transverse are 90/270 + mirror).
+     */
+    internal data class ExifTransform(
+        val rotationDegrees: Float,
+        val mirrorHorizontal: Boolean,
+    ) {
+        /** True when the corrected bitmap swaps width and height. */
+        val swapsDimensions: Boolean get() = rotationDegrees == 90f || rotationDegrees == 270f
+    }
+
+    // EXIF orientation values (ExifInterface.ORIENTATION_*), kept as ints so
+    // the pure mapping below loads no Android/Exif classes on the JVM.
+    private const val EXIF_FLIP_HORIZONTAL = 2
+    private const val EXIF_ROTATE_180 = 3
+    private const val EXIF_FLIP_VERTICAL = 4
+    private const val EXIF_TRANSPOSE = 5
+    private const val EXIF_ROTATE_90 = 6
+    private const val EXIF_TRANSVERSE = 7
+    private const val EXIF_ROTATE_270 = 8
+
+    private const val NO_ROTATION_DEGREES = 0f
+    private const val ROTATE_90_DEGREES = 90f
+    private const val ROTATE_180_DEGREES = 180f
+    private const val ROTATE_270_DEGREES = 270f
+    private const val MIRROR_SCALE = -1f
+    private const val NO_MIRROR_SCALE = 1f
+
+    /** Pure EXIF-orientation -> correction mapping; unknown/normal is identity. */
+    internal fun exifTransformFor(orientation: Int): ExifTransform = when (orientation) {
+        EXIF_FLIP_HORIZONTAL -> ExifTransform(NO_ROTATION_DEGREES, mirrorHorizontal = true)
+        EXIF_ROTATE_180 -> ExifTransform(ROTATE_180_DEGREES, mirrorHorizontal = false)
+        EXIF_FLIP_VERTICAL -> ExifTransform(ROTATE_180_DEGREES, mirrorHorizontal = true)
+        EXIF_TRANSPOSE -> ExifTransform(ROTATE_90_DEGREES, mirrorHorizontal = true)
+        EXIF_ROTATE_90 -> ExifTransform(ROTATE_90_DEGREES, mirrorHorizontal = false)
+        EXIF_TRANSVERSE -> ExifTransform(ROTATE_270_DEGREES, mirrorHorizontal = true)
+        EXIF_ROTATE_270 -> ExifTransform(ROTATE_270_DEGREES, mirrorHorizontal = false)
+        else -> ExifTransform(NO_ROTATION_DEGREES, mirrorHorizontal = false)
+    }
+
+    private fun readExifOrientation(bytes: ByteArray): Int = try {
+        ExifInterface(ByteArrayInputStream(bytes))
+            .getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
+    } catch (_: Exception) {
+        ExifInterface.ORIENTATION_NORMAL
+    }
+
+    /** Applies [readExifOrientation]'s correction to a sampled decode. */
+    private fun applyExifOrientation(bitmap: Bitmap, orientation: Int): Bitmap {
+        val transform = exifTransformFor(orientation)
+        if (transform.rotationDegrees == NO_ROTATION_DEGREES && !transform.mirrorHorizontal) {
+            return bitmap
+        }
+        val matrix = Matrix().apply {
+            postRotate(transform.rotationDegrees)
+            if (transform.mirrorHorizontal) postScale(MIRROR_SCALE, NO_MIRROR_SCALE)
+        }
+        return try {
+            val rotated = Bitmap.createBitmap(
+                bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true,
+            )
+            if (rotated !== bitmap) bitmap.recycle()
+            rotated
+        } catch (_: Exception) {
+            bitmap
+        }
+    }
+
     private fun decodeWithBitmapFactory(
         bytes: ByteArray,
         reqW: Int,
@@ -169,12 +244,16 @@ object BitmapDecoder {
         }
         val bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)
             ?: throw IllegalArgumentException("BitmapFactory failed")
+        // BitmapFactory ignores EXIF orientation, so non-camera paths
+        // (file/content/bytes) showed rotated JPEGs sideways. Apply the
+        // correction to the already-sampled bitmap (sampling is unchanged).
+        val oriented = applyExifOrientation(bmp, readExifOrientation(bytes))
         // If hardware requested, convert roughly by copying with HARDWARE.
         if (allowHardware) {
             return try {
-                bmp.copy(Bitmap.Config.HARDWARE, false) ?: bmp
-            } catch (_: Exception) { bmp }
+                oriented.copy(Bitmap.Config.HARDWARE, false) ?: oriented
+            } catch (_: Exception) { oriented }
         }
-        return bmp
+        return oriented
     }
 }

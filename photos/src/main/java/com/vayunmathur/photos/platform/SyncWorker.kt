@@ -231,7 +231,7 @@ suspend fun syncPhotos(
     lastGeneration: Long = 0L,
 ) {
     // Single read of the local DB reused for both deletion detection and update diffing.
-    val existing = repository.getAll()
+    val existing = repository.getAllForSync()
     // 1. Get all IDs currently in MediaStore to detect deletions
     val allMediaStoreIds = collectMediaStoreIds(context)
 

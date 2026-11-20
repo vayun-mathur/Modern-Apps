@@ -49,7 +49,7 @@ interface PlaylistDao {
  * means opening each file with a `MediaMetadataRetriever` and we only want to pay that once.
  */
 @ColumnTypeConverters(DefaultConverters::class)
-@Database(entities = [Music::class, Playlist::class, ManyManyMatching::class], version = 5, exportSchema = true)
+@Database(entities = [Music::class, Playlist::class, ManyManyMatching::class], version = 6, exportSchema = true)
 abstract class MusicDatabase: RoomDatabase() {
     abstract fun musicDao(): MusicDao
     abstract fun playlistDao(): PlaylistDao
@@ -58,7 +58,7 @@ abstract class MusicDatabase: RoomDatabase() {
     /** Shared constants and helpers for MusicDatabase. */
     companion object : com.vayunmathur.library.util.DatabaseMigrations {
         override val migrations: List<Migration> =
-            listOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+            listOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
     }
 }
 
@@ -104,3 +104,16 @@ val MIGRATION_4_5 = Migration(4, 5) {
     it.execSQL("DROP TABLE IF EXISTS Artist")
     it.execSQL("DELETE FROM ManyManyMatching WHERE type = $TYPE_ALBUM_ARTIST")
 }
+
+/** v5 → v6: directional indices for ManyManyMatching lookups by (left,type)/(right,type). */
+val MIGRATION_5_6 = Migration(5, 6) {
+    it.execSQL(
+        "CREATE INDEX IF NOT EXISTS `index_ManyManyMatching_leftID_type` " +
+            "ON `ManyManyMatching` (`leftID`, `type`)",
+    )
+    it.execSQL(
+        "CREATE INDEX IF NOT EXISTS `index_ManyManyMatching_rightID_type` " +
+            "ON `ManyManyMatching` (`rightID`, `type`)",
+    )
+}
+

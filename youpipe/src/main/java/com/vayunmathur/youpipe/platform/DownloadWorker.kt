@@ -26,6 +26,7 @@ import java.nio.channels.Channels
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.time.Clock
 import kotlin.time.Instant
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
@@ -86,16 +87,28 @@ class DownloadWorker(context: Context, params: WorkerParameters) :
         coroutineScope {
             val videoFile = File(dir, "${input.videoID}.mp4")
             val audioFile = if (input.audioUrl != null) File(dir, "${input.videoID}.m4a") else null
+            // Download into `.part` files (mirroring InitialDownloader in
+            // library/downloadservice) and rename to the final names only on
+            // success: a failed/killed transfer must never leave a file at
+            // the final path that looks like a complete download.
+            val videoPart = File(dir, "${input.videoID}.mp4.part")
+            val audioPart = if (input.audioUrl != null) File(dir, "${input.videoID}.m4a.part") else null
 
-            val createdFiles = mutableListOf<File>()
-            createdFiles.add(videoFile)
-            audioFile?.let { createdFiles.add(it) }
+            // Both the `.part` files and the final paths: any failure after
+            // a rename must not orphan a (possibly preallocated) final file.
+            val createdFiles = mutableListOf<File>(videoPart, videoFile)
+            if (audioPart != null && audioFile != null) {
+                createdFiles.add(audioPart)
+                createdFiles.add(audioFile)
+            }
 
             try {
-                downloadProgressiveTracks(input, videoFile, audioFile)
+                downloadProgressiveTracks(input, videoPart, audioPart)
                 // A stop that landed mid-transfer leaves a partial file behind: the
                 // finally below deletes it, so don't record a DB row for it.
                 if (isStopped) return@coroutineScope Result.failure()
+                renamePartToFinal(videoPart, videoFile)
+                if (audioPart != null && audioFile != null) renamePartToFinal(audioPart, audioFile)
                 val download = DownloadedVideo(
                     id = input.videoID,
                     videoItem = input.videoInfo,
@@ -105,8 +118,15 @@ class DownloadWorker(context: Context, params: WorkerParameters) :
                 )
                 input.repository.historyStore.upsertDownloadedVideo(download)
                 Result.success()
-            } catch (e: java.io.IOException) {
-                // Cleanup on error or cancellation
+            } catch (e: CancellationException) {
+                // Cooperative cancellation: clean up, then rethrow as
+                // InitialDownloader's download loop does — never swallow it
+                // into a Result.failure().
+                createdFiles.forEach { if (it.exists()) it.delete() }
+                throw e
+            } catch (e: Throwable) {
+                // Not just IOException: a RuntimeException (extractor /
+                // network / DB) used to orphan the preallocated final file.
                 Log.error("DownloadWorker", "Progressive download failed for ${input.videoID}", e)
                 createdFiles.forEach { if (it.exists()) it.delete() }
                 Result.failure()
@@ -117,6 +137,16 @@ class DownloadWorker(context: Context, params: WorkerParameters) :
                 DownloadManager.finishDownload(input.videoID)
             }
         }
+
+    /** Atomically promotes a completed `.part` file to its final name. */
+    private fun renamePartToFinal(partFile: File, finalFile: File) {
+        if (finalFile.exists()) finalFile.delete()
+        if (!partFile.renameTo(finalFile)) {
+            // Rename can fail across some filesystems; fall back to a copy.
+            partFile.copyTo(finalFile, overwrite = true)
+            partFile.delete()
+        }
+    }
 
     private suspend fun downloadProgressiveTracks(
         input: DownloadInput,

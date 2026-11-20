@@ -107,13 +107,13 @@ class MusicMigrationsTest {
     }
 
     @Test
-    fun theRegisteredMigrationChainRuns1To5WithoutGaps() {
+    fun theRegisteredMigrationChainRuns1To6WithoutGaps() {
         assertEquals(
-            listOf(1 to 2, 2 to 3, 3 to 4, 4 to 5),
+            listOf(1 to 2, 2 to 3, 3 to 4, 4 to 5, 5 to 6),
             MusicDatabase.migrations.map { it.startVersion to it.endVersion },
         )
         val recording = RecordingDb()
         runBlocking { MusicDatabase.migrations.forEach { it.migrate(recording.connection) } }
-        assertEquals(1 + 3 + 1 + 3, recording.sql.size)
+        assertEquals(1 + 3 + 1 + 3 + 2, recording.sql.size)
     }
 }

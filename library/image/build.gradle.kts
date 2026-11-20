@@ -16,4 +16,8 @@ dependencies {
 
     // Foundation needed for Image composable in AsyncImage
     implementation(libs.androidx.compose.foundation)
+
+    // EXIF orientation for the BitmapFactory fallback (already in the
+    // version catalog, used by photos/camera; no new third-party dep).
+    implementation(libs.androidx.exifinterface)
 }
