@@ -60,9 +60,9 @@ class ScreenTimeGlanceWidget : MaWidget<Unit>() {
     override fun Content(data: Unit) {
         val context = LocalContext.current
         val prefs = currentState<Preferences>()
-        val total = prefs[TotalMinutesKey] ?: 0L
+        val total = prefs[TotalMinutesKey]
         val topLabel = prefs[TopLabelKey]
-        val topMinutes = prefs[TopMinutesKey] ?: 0L
+        val topMinutes = prefs[TopMinutesKey]
         ScreenTimeWidgetContent(
             context = context,
             total = total,
@@ -85,9 +85,9 @@ class ScreenTimeGlanceWidget : MaWidget<Unit>() {
 @Composable
 private fun ScreenTimeWidgetContent(
     context: Context,
-    total: Long,
+    total: Long?,
     topLabel: String?,
-    topMinutes: Long,
+    topMinutes: Long?,
 ) {
     Box(
         modifier = GlanceModifier
@@ -117,7 +117,7 @@ private fun ScreenTimeWidgetContent(
                 ),
             )
             Text(
-                text = formatWidgetMinutes(total),
+                text = total?.let { formatWidgetMinutes(it) } ?: "—",
                 style = TextStyle(
                     color = GlanceTheme.colors.onSurface,
                     fontSize = 28.sp,
@@ -126,7 +126,16 @@ private fun ScreenTimeWidgetContent(
             )
             if (topLabel != null) {
                 Text(
-                    text = "$topLabel · ${formatWidgetMinutes(topMinutes)}",
+                    text = "$topLabel · ${topMinutes?.let { formatWidgetMinutes(it) } ?: "—"}",
+                    style = TextStyle(
+                        color = GlanceTheme.colors.onSurfaceVariant,
+                        fontSize = 12.sp,
+                        textAlign = TextAlign.Center,
+                    ),
+                )
+            } else {
+                Text(
+                    text = "—",
                     style = TextStyle(
                         color = GlanceTheme.colors.onSurfaceVariant,
                         fontSize = 12.sp,
@@ -186,6 +195,11 @@ object WidgetRefresh {
                             if (topLabel != null) {
                                 this[TopLabelKey] = topLabel
                                 this[TopMinutesKey] = topMinutes
+                            } else {
+                                // No top app: clear the stale label/minutes so
+                                // a previous app does not survive this refresh.
+                                remove(TopLabelKey)
+                                remove(TopMinutesKey)
                             }
                         }
                     }

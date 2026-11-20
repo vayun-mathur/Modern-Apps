@@ -229,5 +229,6 @@ class EmailWidget : MaWidget<List<EmailPreview>>() {
 class EmailWidgetReceiver : MaWidgetReceiver<EmailWidget>(
     widgetClass = EmailWidget::class,
     receiverClass = EmailWidgetReceiver::class,
+    requiresNetwork = false,
     widgetFactory = ::EmailWidget,
 )

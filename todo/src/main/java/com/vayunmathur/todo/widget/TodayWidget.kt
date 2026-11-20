@@ -16,6 +16,7 @@ import androidx.glance.action.ActionParameters
 import androidx.glance.action.actionParametersOf
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.CheckBox
+import androidx.glance.appwidget.updateAll
 import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.action.actionStartActivity
@@ -44,6 +45,8 @@ import com.vayunmathur.todo.domain.TodoView
 import com.vayunmathur.todo.notifications.ReminderNotifications
 import com.vayunmathur.todo.platform.IntentRouter
 import kotlinx.datetime.TimeZone
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /** Open tasks due today or overdue, as the Today view shows them. */
 data class TodayWidgetData(val rows: List<TodayWidgetRow>)
@@ -53,7 +56,8 @@ data class TodayWidgetRow(val syncId: String, val title: String, val overdue: Bo
 
 /** Home-screen widget listing open tasks due today or overdue, with in-widget completion. */
 class TodayWidget : MaWidget<TodayWidgetData>() {
-    override suspend fun loadData(context: Context, id: GlanceId): TodayWidgetData {
+    override suspend fun loadData(context: Context, id: GlanceId): TodayWidgetData =
+        withContext(Dispatchers.IO) {
         val repo = TodoRepository.get(context)
         val now = System.currentTimeMillis()
         val zone = TimeZone.currentSystemDefault()
@@ -62,8 +66,8 @@ class TodayWidget : MaWidget<TodayWidgetData>() {
         val rows = model.groups.flatMap { it.rows }.map { row ->
             TodayWidgetRow(row.todo.syncId, row.todo.title, DueBuckets.isOverdue(row.todo, now, zone))
         }
-        return TodayWidgetData(rows)
-    }
+        TodayWidgetData(rows)
+        }
 
     override fun previewData(context: Context) = TodayWidgetData(
         listOf(
@@ -158,7 +162,12 @@ class CompleteTaskAction : ActionCallback {
         val syncId = parameters[SYNC_ID] ?: return
         val repo = TodoRepository.get(context)
         val todo: Todo = repo.getBySyncId(syncId) ?: return
-        if (!todo.done) repo.setDone(todo, true)
+        if (!todo.done) {
+            repo.setDone(todo, true)
+            // Refresh directly: TodoBackground may not be alive in this
+            // (widget-host) process, so don't rely on its data-change flow.
+            TodayWidget().updateAll(context)
+        }
     }
 
     /** Action parameter key carrying the sync id of the task to complete from the widget. */
@@ -172,5 +181,6 @@ class TodayWidgetReceiver : MaWidgetReceiver<TodayWidget>(
     widgetClass = TodayWidget::class,
     receiverClass = TodayWidgetReceiver::class,
     dateTriggers = true,
+    requiresNetwork = false,
     widgetFactory = ::TodayWidget,
 )

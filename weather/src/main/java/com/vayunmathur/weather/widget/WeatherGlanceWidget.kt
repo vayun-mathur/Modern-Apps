@@ -240,6 +240,10 @@ private fun WeatherBlock(weather: WidgetWeather?) {
 class WeatherGlanceWidgetReceiver : MaWidgetReceiver<WeatherGlanceWidget>(
     widgetClass = WeatherGlanceWidget::class,
     receiverClass = WeatherGlanceWidgetReceiver::class,
+    // No generic hourly schedule: WeatherRefreshWorker (below/extra) is the single
+    // hourly refresher - it fetches fresh forecasts, then updateAll()s BOTH weather
+    // widgets. The generic library worker would only re-render the stale cache.
+    hourly = false,
     widgetFactory = ::WeatherGlanceWidget,
 ) {
     override fun onEnabledExtra(context: Context) {

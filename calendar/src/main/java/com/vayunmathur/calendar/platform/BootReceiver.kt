@@ -70,8 +70,8 @@ class BootReceiver : BroadcastReceiver() {
             Log.error(TAG, "$action: could not reschedule reminders from the calendar provider", expected)
         }
         try {
-            context.scheduleHourlyUpdate(CalendarGlanceWidget::class)
-            context.scheduleHourlyUpdate(CalendarMonthGlanceWidget::class)
+            context.scheduleHourlyUpdate(CalendarGlanceWidget::class, requiresNetwork = false)
+            context.scheduleHourlyUpdate(CalendarMonthGlanceWidget::class, requiresNetwork = false)
             CalendarGlanceWidget().updateAll(context)
             CalendarMonthGlanceWidget().updateAll(context)
         } catch (expected: Exception) {

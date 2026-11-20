@@ -217,30 +217,65 @@ class PackageStructureDetector : Detector(), SourceCodeScanner {
 
         /**
          * One widget, one file: every file directly in the `widget` root must
-         * declare a widget class (a `MaWidget` / `GlanceAppWidget` subclass,
-         * not merely its receiver) at top level. Helper-only files in
-         * `widget` are violations; widget helpers nest inside the widget
-         * class or its file, and non-Glance app helpers belong to their
-         * own canonical root. See docs/package-structure.md §3.2.
+         * declare exactly one widget class (a `MaWidget` / `GlanceAppWidget`
+         * subclass, not merely its receiver) at top level, together with that
+         * widget's receiver (`MaWidgetReceiver` / `GlanceAppWidgetReceiver`
+         * for the same widget) in the same file. Zero or multiple widget
+         * classes, and a widget without its receiver alongside it, are
+         * violations. Helper-only files in `widget` are violations; widget
+         * helpers nest inside the widget class or its file, and non-Glance
+         * app helpers belong to their own canonical root.
+         * See docs/package-structure.md §3.2.
          */
         private fun validateWidgetFile(node: UFile, packageName: String): String? {
             val ktFile = node.sourcePsi as? KtFile ?: return null
-            val hasWidgetClass = ktFile.declarations
-                .filterIsInstance<KtClass>()
-                .any { clazz ->
-                    clazz.superTypeListEntries.any { entry ->
-                        val text = entry.text
-                        text.contains(Regex("""\bMaWidget\s*[<(]""")) ||
-                            text.contains(Regex("""\bGlanceAppWidget\s*\("""))
-                    }
+            val topLevelClasses = ktFile.declarations.filterIsInstance<KtClass>()
+            fun KtClass.isWidgetClass(): Boolean = superTypeListEntries.any { entry ->
+                val text = entry.text
+                text.contains(Regex("""\bMaWidget\s*[<(]""")) ||
+                    text.contains(Regex("""\bGlanceAppWidget\s*\("""))
+            }
+            fun KtClass.isReceiverClass(): Boolean = superTypeListEntries.any { entry ->
+                val text = entry.text
+                text.contains(Regex("""\bMaWidgetReceiver\s*[<(]""")) ||
+                    text.contains(Regex("""\bGlanceAppWidgetReceiver\s*\("""))
+            }
+            val widgetClasses = topLevelClasses.filter { it.isWidgetClass() }
+            if (widgetClasses.size != 1) {
+                val found = if (widgetClasses.isEmpty()) {
+                    "no widget class"
+                } else {
+                    "${widgetClasses.size} widget classes " +
+                        "[${widgetClasses.mapNotNull { it.name }.joinToString(", ")}]"
                 }
-            if (hasWidgetClass) return null
-            return "File in widget package `$packageName` declares no widget class at " +
-                "top level. One widget, one file: every file in `widget` must declare " +
-                "its `MaWidget` subclass (with its receiver) at top level; helper-only " +
-                "files are forbidden — nest helpers inside the widget or move " +
-                "non-Glance app helpers to their canonical root. " +
-                "See docs/package-structure.md §3.2."
+                return "File in widget package `$packageName` declares $found at " +
+                    "top level. One widget, one file: every file in `widget` must declare " +
+                    "exactly one `MaWidget` subclass (with its receiver) at top level; " +
+                    "helper-only files are forbidden — nest helpers inside the widget or move " +
+                    "non-Glance app helpers to their canonical root. " +
+                    "See docs/package-structure.md §3.2."
+            }
+            val widgetName = widgetClasses.single().name
+            val receiverClasses = topLevelClasses.filter { it.isReceiverClass() }
+            // Its receiver: a receiver whose supertype names this widget
+            // (e.g. `MaWidgetReceiver<PhotoGlanceWidget>(...)`, whose entry
+            // text also carries `widgetClass = PhotoGlanceWidget::class`).
+            // A bare `GlanceAppWidgetReceiver` subclass also counts.
+            val hasOwnReceiver = receiverClasses.any { clazz ->
+                clazz.superTypeListEntries.any { entry ->
+                    val text = entry.text
+                    (widgetName != null && text.contains(widgetName)) ||
+                        text.contains(Regex("""\bGlanceAppWidgetReceiver\s*\("""))
+                }
+            }
+            if (!hasOwnReceiver) {
+                return "File in widget package `$packageName` declares widget " +
+                    "`$widgetName` but not its receiver in the same file. One widget, " +
+                    "one file: every file in `widget` must declare exactly one " +
+                    "`MaWidget` subclass together with its `MaWidgetReceiver` for " +
+                    "that widget at top level. See docs/package-structure.md §3.2."
+            }
+            return null
         }
 
         private fun validateSubpackages(packageName: String, segments: List<String>): String? {

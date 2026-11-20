@@ -47,8 +47,23 @@ class PhotoGlanceWidget : MaWidget<List<String>>() {
                 uri?.let { getResizedBitmap(context, it, 600) }
             }
         }
-        bitmap?.let {
-            Content(it) { uri = uris.randomOrNull() }
+        val loaded = bitmap
+        if (loaded != null) {
+            Content(loaded) { uri = uris.randomOrNull() }
+        } else {
+            // Empty library or undecodable photo: show the placeholder
+            // drawable instead of a blank widget (mirrors PreviewContent).
+            Box(
+                modifier = GlanceModifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    provider = ImageProvider(R.drawable.widget_preview_photo),
+                    contentDescription = null,
+                    modifier = GlanceModifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            }
         }
     }
 
@@ -132,5 +147,6 @@ private fun calculateInSampleSize(options: BitmapFactory.Options, reqWidth: Int,
 class PhotoGlanceWidgetReceiver : MaWidgetReceiver<PhotoGlanceWidget>(
     widgetClass = PhotoGlanceWidget::class,
     receiverClass = PhotoGlanceWidgetReceiver::class,
+    requiresNetwork = false,
     widgetFactory = ::PhotoGlanceWidget,
 )

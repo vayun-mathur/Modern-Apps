@@ -60,6 +60,28 @@ object EmailNotifications {
         }
     }
 
+    /**
+     * Cancel the notifications for [messages] (one per message, posted under
+     * [notificationId]). Called when their thread is opened: the tapped
+     * notification auto-cancels itself, but the rest of the thread's stay in
+     * the shade until they are cancelled here.
+     */
+    fun cancelForMessages(context: Context, messages: List<EmailMessage>) {
+        if (messages.isEmpty()) return
+        val nm = NotificationManagerCompat.from(context)
+        for (msg in messages) {
+            try {
+                nm.cancel(notificationId(msg))
+            } catch (_: SecurityException) {
+                // Notifications revoked — nothing to cancel.
+            }
+        }
+    }
+
+    /** Cancel the notification for a single message (see [cancelForMessages]). */
+    fun cancelForMessage(context: Context, msg: EmailMessage) =
+        cancelForMessages(context, listOf(msg))
+
     private fun postOne(
         nm: NotificationManagerCompat,
         context: Context,

@@ -25,7 +25,8 @@ import kotlin.reflect.KClass
  * A receiver keeps one line per widget:
  * `class FooReceiver : MaWidgetReceiver<FooWidget>(FooWidget::class,
  * FooReceiver::class)`, plus `dateTriggers = true` for date-driven widgets,
- * `hourly = false` for push-updated widgets, `previews = false` when the
+ * `hourly = false` for push-updated widgets, `requiresNetwork = false` for
+ * hourly widgets whose data is purely on-device, `previews = false` when the
  * picker preview comes from `previewLayout` XML, and [onEnabledExtra] for
  * extras like weather's refresh-worker scheduling.
  */
@@ -33,6 +34,7 @@ abstract class MaWidgetReceiver<W : GlanceAppWidget>(
     private val widgetClass: KClass<W>,
     private val receiverClass: KClass<out GlanceAppWidgetReceiver>,
     private val hourly: Boolean = true,
+    private val requiresNetwork: Boolean = true,
     private val dateTriggers: Boolean = false,
     private val previews: Boolean = true,
     private val widgetFactory: () -> W,
@@ -82,6 +84,6 @@ abstract class MaWidgetReceiver<W : GlanceAppWidget>(
     }
 
     private fun ensureScheduled(context: Context) {
-        if (hourly) context.scheduleHourlyUpdate(widgetClass)
+        if (hourly) context.scheduleHourlyUpdate(widgetClass, requiresNetwork)
     }
 }

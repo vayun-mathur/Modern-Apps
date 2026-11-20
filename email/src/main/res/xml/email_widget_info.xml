@@ -4,5 +4,6 @@
     android:minWidth="200dp"
     android:minHeight="150dp"
     android:description="@string/email_widget_description"
+    android:updatePeriodMillis="0"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen" />

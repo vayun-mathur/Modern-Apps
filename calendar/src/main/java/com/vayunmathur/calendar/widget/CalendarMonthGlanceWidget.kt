@@ -58,6 +58,8 @@ import kotlinx.datetime.plus
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /** Month-grid data for the month widget, real or sample. */
 data class MonthWidgetData(
@@ -77,7 +79,8 @@ class CalendarMonthGlanceWidget : MaWidget<MonthWidgetData>() {
      */
     override val sizeMode: SizeMode = SizeMode.Exact
 
-    override suspend fun loadData(context: Context, id: GlanceId): MonthWidgetData {
+    override suspend fun loadData(context: Context, id: GlanceId): MonthWidgetData =
+        withContext(Dispatchers.IO) {
         val zone = TimeZone.currentSystemDefault()
         val today = Clock.System.now().toLocalDateTime(zone).date
 
@@ -101,8 +104,8 @@ class CalendarMonthGlanceWidget : MaWidget<MonthWidgetData>() {
         val dayNames = localizedDayOfWeekNames(DateNameStyle.SHORT, locale)
         val weekdayNames = weeks.first().map { day -> dayNames[day.dayOfWeek.isoDayNumber - 1] }
 
-        return MonthWidgetData(monthLabel, weeks, eventsByDay, today, today.month, weekdayNames)
-    }
+        MonthWidgetData(monthLabel, weeks, eventsByDay, today, today.month, weekdayNames)
+        }
 
     override fun previewData(context: Context): MonthWidgetData {
         val zone = TimeZone.currentSystemDefault()
@@ -412,5 +415,6 @@ class CalendarMonthGlanceWidgetReceiver : MaWidgetReceiver<CalendarMonthGlanceWi
     widgetClass = CalendarMonthGlanceWidget::class,
     receiverClass = CalendarMonthGlanceWidgetReceiver::class,
     dateTriggers = true,
+    requiresNetwork = false,
     widgetFactory = ::CalendarMonthGlanceWidget,
 )

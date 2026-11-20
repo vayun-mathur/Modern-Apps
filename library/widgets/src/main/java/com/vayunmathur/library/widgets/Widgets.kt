@@ -63,19 +63,25 @@ class GenericWidgetWorker(
     }
 }
 
-fun <T : GlanceAppWidget> Context.scheduleHourlyUpdate(widgetClass: KClass<T>) {
+fun <T : GlanceAppWidget> Context.scheduleHourlyUpdate(
+    widgetClass: KClass<T>,
+    requiresNetwork: Boolean = true,
+) {
     val className = widgetClass.qualifiedName ?: return
 
     val inputData = workDataOf(GenericWidgetWorker.ARG_WIDGET_CLASS to className)
 
     // Hourly refresh is WorkManager periodic work (not Glance's
-    // updatePeriodMillis): require CONNECTED so the hourly wake-up is
-    // deferred/coalesced until the device is online instead of firing
-    // on every offline hour.
+    // updatePeriodMillis). Widgets whose data needs the network require
+    // CONNECTED so the hourly wake-up is deferred/coalesced until the
+    // device is online instead of firing on every offline hour. Offline-data
+    // widgets (calendar/today/email/photos read only on-device stores) pass
+    // requiresNetwork = false so they still refresh hourly while offline.
+    val constraints = Constraints.Builder().apply {
+        if (requiresNetwork) setRequiredNetworkType(NetworkType.CONNECTED)
+    }.build()
     val request = PeriodicWorkRequestBuilder<GenericWidgetWorker>(1, TimeUnit.HOURS)
-        .setConstraints(
-            Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
-        )
+        .setConstraints(constraints)
         .setInputData(inputData)
         .build()
 

@@ -504,9 +504,19 @@ internal fun Context.syncForegroundInfo(
     manager.createNotificationChannel(
         NotificationChannel(channelId, channelName, NotificationManager.IMPORTANCE_LOW)
     )
+    // Tap opens the app: the ongoing foreground notification was a dead tap before.
+    val contentIntent = android.app.PendingIntent.getActivity(
+        this,
+        notificationId,
+        android.content.Intent(this, com.vayunmathur.photos.MainActivity::class.java).apply {
+            flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
+        },
+        android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE,
+    )
     val notification = NotificationCompat.Builder(this, channelId)
         .setContentTitle(title)
         .setContentText(text)
+        .setContentIntent(contentIntent)
         .setSmallIcon(android.R.drawable.stat_notify_sync)
         .setOngoing(true)
         .build()

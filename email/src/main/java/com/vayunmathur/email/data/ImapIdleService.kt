@@ -420,10 +420,20 @@ class ImapIdleService : Service() {
 
     private fun buildOngoingNotification(): Notification {
         ensureChannel(applicationContext)
+        // Tap opens the app: the ongoing foreground notification was a dead tap before.
+        val contentIntent = android.app.PendingIntent.getActivity(
+            applicationContext,
+            NOTIFICATION_ID,
+            Intent(applicationContext, com.vayunmathur.email.MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            },
+            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE,
+        )
         return androidx.core.app.NotificationCompat.Builder(applicationContext, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification_mail)
             .setContentTitle(getString(R.string.app_name))
             .setContentText(getString(R.string.listening_for_new_mail))
+            .setContentIntent(contentIntent)
             .setPriority(androidx.core.app.NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
             .setShowWhen(false)

@@ -50,6 +50,8 @@ import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.json.Json
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.glance.LocalContext
 import kotlin.time.Clock
 
@@ -60,7 +62,8 @@ data class CalendarWidgetData(
 
 /** Agenda Glance widget showing the next month of visible events grouped by day. */
 class CalendarGlanceWidget : MaWidget<CalendarWidgetData>() {
-    override suspend fun loadData(context: Context, id: GlanceId): CalendarWidgetData {
+    override suspend fun loadData(context: Context, id: GlanceId): CalendarWidgetData =
+        withContext(Dispatchers.IO) {
         val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
         val today = now.date
 
@@ -82,8 +85,8 @@ class CalendarGlanceWidget : MaWidget<CalendarWidgetData>() {
             (notAllDay.filter { day in it.spanDays }.sortedBy { it.startDateTime }
                 + allDay.filter { day in it.spanDays })
         }
-        return CalendarWidgetData(positionedEvents)
-    }
+        CalendarWidgetData(positionedEvents)
+        }
 
     override fun previewData(context: Context): CalendarWidgetData = CalendarWidgetData(emptyMap())
 
@@ -250,5 +253,6 @@ class CalendarGlanceWidgetReceiver : MaWidgetReceiver<CalendarGlanceWidget>(
     widgetClass = CalendarGlanceWidget::class,
     receiverClass = CalendarGlanceWidgetReceiver::class,
     dateTriggers = true,
+    requiresNetwork = false,
     widgetFactory = ::CalendarGlanceWidget,
 )
