@@ -13,8 +13,10 @@ import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.state.updateAppWidgetState
 import androidx.glance.appwidget.updateAll
 import androidx.glance.state.GlanceStateDefinition
+import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.NetworkType
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
@@ -66,7 +68,14 @@ fun <T : GlanceAppWidget> Context.scheduleHourlyUpdate(widgetClass: KClass<T>) {
 
     val inputData = workDataOf(GenericWidgetWorker.ARG_WIDGET_CLASS to className)
 
+    // Hourly refresh is WorkManager periodic work (not Glance's
+    // updatePeriodMillis): require CONNECTED so the hourly wake-up is
+    // deferred/coalesced until the device is online instead of firing
+    // on every offline hour.
     val request = PeriodicWorkRequestBuilder<GenericWidgetWorker>(1, TimeUnit.HOURS)
+        .setConstraints(
+            Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
+        )
         .setInputData(inputData)
         .build()
 

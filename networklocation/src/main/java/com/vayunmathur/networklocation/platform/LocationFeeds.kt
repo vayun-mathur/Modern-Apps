@@ -20,6 +20,11 @@ import kotlinx.coroutines.withContext
 import java.util.Locale
 import kotlin.coroutines.resume
 
+// 1s is deliberate and scoped to the foreground: the sole caller is the
+// visible LiveLocationSection live check, which compares GPS vs network
+// fixes and re-renders fix ages every second. There is no background
+// caller of this flow, so the >=5s background floor (LocationReportingTask)
+// does not apply here; do not reuse this flow for background polling.
 private const val UPDATE_INTERVAL_MS = 1_000L
 
 fun hasFineLocation(context: Context): Boolean =

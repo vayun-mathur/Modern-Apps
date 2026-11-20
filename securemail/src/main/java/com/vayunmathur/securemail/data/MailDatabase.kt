@@ -204,7 +204,7 @@ interface IdentityDao {
 @Database(
     entities = [StoredMessage::class, CachedKey::class, OutboxMessage::class, MailIdentity::class],
     version = 5,
-    exportSchema = false,
+    exportSchema = true,
 )
 /** Mail Database: a room database implementation for mail database. */
 abstract class MailDatabase : RoomDatabase() {

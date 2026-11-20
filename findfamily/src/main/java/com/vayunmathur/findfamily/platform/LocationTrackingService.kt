@@ -761,6 +761,12 @@ class ServiceRestartWorker(
 }
 
 fun ensureSync(context: Context) {
+    // 15 minutes is justified here: ServiceRestartWorker is only a
+    // lightweight reconcile (permission + tracking flag -> start/stop the
+    // tracking service via syncServiceState) — it does no location sync,
+    // upload, or scan itself, and startRepeatedTask already constrains it
+    // to CONNECTED. The cadence bounds how long a killed tracking service
+    // can stay down while sharing, so it is kept rather than relaxed to 1h.
     startRepeatedTask<ServiceRestartWorker>(
         context, "Location Sync", 15.minutes,
         ExistingWorkPolicy.REPLACE, ExistingPeriodicWorkPolicy.REPLACE

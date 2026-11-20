@@ -16,6 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.AlertDialog
 import com.vayunmathur.library.ui.AppScaffold
@@ -35,6 +36,7 @@ import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.library.ui.TopAppBar
 import com.vayunmathur.library.ui.rememberMessenger
+import com.vayunmathur.securemail.R
 import com.vayunmathur.securemail.data.MailFolder
 import com.vayunmathur.securemail.data.StoredMessage
 import com.vayunmathur.securemail.platform.MailUiState
@@ -67,6 +69,7 @@ fun InboxScreen(
     messages: List<StoredMessage> = emptyList(),
 ) {
     val messenger = rememberMessenger()
+    val context = LocalContext.current
     ConsumeMessage(state.message, messenger, actions.onConsumeMessage)
     var selected by remember(folder) { mutableStateOf(emptySet<String>()) }
     var confirmDelete by remember { mutableStateOf<List<String>?>(null) }
@@ -82,7 +85,7 @@ fun InboxScreen(
         } else {
             actions.onTrash(ids)
             messenger.show(
-                if (ids.size == 1) "Moved to Trash" else "${ids.size} moved to Trash",
+                context.resources.getQuantityString(R.plurals.moved_to_trash, ids.size, ids.size),
                 actionLabel = "Undo",
             ) { actions.onMoveTo(ids, folder) }
         }

@@ -22,6 +22,8 @@ import kotlin.time.Duration.Companion.minutes
  * the loop is process-wide and service-owned; stopping it here would kill a
  * live service session mid-claim (this exact race showed "offline" right
  * after registering). No-ops without an identity or when already connected.
+ * It does not restart MailSocketService: the service owns the live socket,
+ * this worker only drains backlog through the shared loop when it is down.
  */
 class MailSyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 

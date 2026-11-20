@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.AppScaffold
@@ -28,6 +29,7 @@ import com.vayunmathur.library.ui.SwipeActionsBox
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.library.ui.rememberMessenger
+import com.vayunmathur.securemail.R
 import com.vayunmathur.securemail.data.OutboxMessage
 import com.vayunmathur.securemail.data.StoredMessage
 import com.vayunmathur.securemail.platform.Draft
@@ -206,7 +208,7 @@ private fun OutboxRow(entry: OutboxMessage) {
         },
         trailingContent = {
             Text(
-                "${entry.attemptCount} ${if (entry.attemptCount == 1) "try" else "tries"}",
+                pluralStringResource(R.plurals.outbox_tries, entry.attemptCount, entry.attemptCount),
                 style = MaterialTheme.typography.labelSmall,
             )
         },

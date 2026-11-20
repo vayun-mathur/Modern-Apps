@@ -6,7 +6,6 @@ import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.library.network.TrustBundle
 import com.vayunmathur.library.ui.MaActivity
 import com.vayunmathur.madeveloper.platform.MaDevViewModel
-import com.vayunmathur.madeveloper.platform.ReconnectWorker
 
 /** Entry activity for Developer. */
 class MainActivity : MaActivity() {
@@ -14,7 +13,6 @@ class MainActivity : MaActivity() {
 
     override fun onCreateBeforeContent() {
         NetworkClient.init(this, TrustBundle.FIRST_PARTY)
-        ReconnectWorker.schedule(this)
     }
 
     @Composable

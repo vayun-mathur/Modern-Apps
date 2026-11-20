@@ -219,7 +219,7 @@ interface TemporaryLinkDao {
 @Database(
     entities = [User::class, Waypoint::class, LocationValue::class, TemporaryLink::class, NoShowAlert::class],
     version = 14,
-    exportSchema = false
+    exportSchema = true
 )
 @ColumnTypeConverters(DefaultConverters::class)
 /** Room database holding users, waypoints, location reports, share links, and no-show alerts. */

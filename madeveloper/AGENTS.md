@@ -42,7 +42,6 @@ _Install: ./install madeveloper (dev by default)._
 - com/vayunmathur/madeveloper/platform/PairingStore.kt
 - com/vayunmathur/madeveloper/platform/InstallNotifications.kt
 - com/vayunmathur/madeveloper/platform/InstallStatusReceiver.kt
-- com/vayunmathur/madeveloper/platform/ReconnectWorker.kt
 ### ui/ — screens
 - com/vayunmathur/madeveloper/ui/HomeScreen.kt
 - com/vayunmathur/madeveloper/ui/RepoScreen.kt

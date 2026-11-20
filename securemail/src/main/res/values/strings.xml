@@ -1,4 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">SecureMail</string>
+    <!-- Outbox row: send attempt count. %1$d = number of attempts -->
+    <plurals name="outbox_tries">
+        <item quantity="one">%1$d try</item>
+        <item quantity="other">%1$d tries</item>
+    </plurals>
+    <!-- Inbox: snackbar shown after moving messages to Trash. %1$d = number moved -->
+    <plurals name="moved_to_trash">
+        <item quantity="one">Moved to Trash</item>
+        <item quantity="other">%1$d moved to Trash</item>
+    </plurals>
 </resources>

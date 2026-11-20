@@ -127,7 +127,14 @@ class LocationReportingTask(
 
     private companion object {
         const val TAG = "NetworkLocationFix"
-        const val MIN_INTERVAL_MS = 1_000L
+
+        // Background floor: the only caller (LocationProviderImpl, serving
+        // framework clients via onSetRequest) is a background system path,
+        // so a sub-5s cadence would scan Wi-Fi/cell every second for a
+        // coarse network fix. No foreground/live caller requests this task
+        // faster; the foreground live check in ui/LiveLocationSection uses
+        // LocationFeeds.locationUpdates instead (see there for its 1s case).
+        const val MIN_INTERVAL_MS = 5_000L
 
         /** Coordinates per fix in the interleaved native array (lat, lon, accuracy). */
         const val COORDS_PER_FIX = 3

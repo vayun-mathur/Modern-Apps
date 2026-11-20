@@ -3,6 +3,7 @@ package com.vayunmathur.securemail.service
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.IBinder
 import com.vayunmathur.library.util.ensureNotificationChannel
 import com.vayunmathur.securemail.data.Identities
@@ -18,6 +19,12 @@ import kotlinx.coroutines.cancel
  * twin of FindFamily's LocationTrackingService socket ownership. Started after
  * unlock (or boot, when an identity exists); the socket self-heals with
  * 1s→30s backoff and drains backlog on every (re)SUB.
+ *
+ * Ownership split with MailSyncWorker: this service owns the live socket
+ * while it is running. The 15-minute worker is only a background backstop —
+ * when no service/socket is connected it nudges the shared socket loop awake
+ * briefly to drain backlog, and it never stops the loop (see its header).
+ * The two do different jobs, so both are kept.
  */
 class MailSocketService : Service() {
 
@@ -32,7 +39,14 @@ class MailSocketService : Service() {
             "SecureMail relay",
             android.app.NotificationManager.IMPORTANCE_LOW,
         )
-        startForeground(NOTIFICATION_ID, buildNotification())
+        // Typed overload (required on API 34+): the manifest declares
+        // foregroundServiceType="dataSync" for this service, so pass the
+        // matching DATA_SYNC type instead of the untyped call.
+        startForeground(
+            NOTIFICATION_ID,
+            buildNotification(),
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
+        )
         val ctx = this
         // The socket runs even before an address is claimed: onboarding claims
         // over it, and every (re)connect SUBs all active identities.
