@@ -3,6 +3,7 @@ package com.vayunmathur.files.ui
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -60,6 +61,137 @@ fun DirectoryScreen(
     // (new/paste/move/rename/archive) that target "here" don't apply.
     val canModifyHere = !isReadOnly && !isCategory
 
+    DirectoryScreenCore(
+        selectedPaths = state.selectedPaths,
+        isSearchActive = state.isSearchActive,
+        actions = actions,
+        snackbarHostState = snackbarHostState,
+        onOpenDrawer = onOpenDrawer,
+        title = {
+            DirectoryTitle(
+                state = state,
+                actions = actions,
+                isCategory = isCategory,
+                isReadOnly = isReadOnly,
+            )
+        },
+        topActions = { onRename, onShowProperties, onArchive, onShowNewFolder, onShowNewFile ->
+            DirectoryTopActions(
+                state = state,
+                actions = actions,
+                canModifyHere = canModifyHere,
+                isReadOnly = isReadOnly,
+                onRename = onRename,
+                onShowProperties = onShowProperties,
+                onArchive = onArchive,
+                onPickUnzipDestination = onPickUnzipDestination,
+                onShowNewFolder = onShowNewFolder,
+                onShowNewFile = onShowNewFile,
+            )
+        },
+        body = { padding, onClearRenameTarget ->
+            DirectoryBody(
+                state = state,
+                actions = actions,
+                canModifyHere = canModifyHere,
+                isReadOnly = isReadOnly,
+                isCategory = isCategory,
+                padding = padding,
+                onClearRenameTarget = onClearRenameTarget,
+            )
+        },
+    )
+}
+
+/** Expanded-width parent pane beside the listing, or the listing alone. Shared by both bodies. */
+@Composable
+internal fun DirectoryBody(
+    state: FilesUiState,
+    actions: FilesActions,
+    canModifyHere: Boolean,
+    isReadOnly: Boolean,
+    isCategory: Boolean,
+    padding: PaddingValues,
+    onClearRenameTarget: () -> Unit,
+) {
+    // Expanded windows (desktop, large tablets) list the parent folder beside the current
+    // one. This stays inside the same destination on purpose: files deliberately has no
+    // list/detail metadata, so one back-stack entry per folder level is what keeps Back
+    // walking up exactly one folder with a predictive-back preview of where it lands. A
+    // second destination would split that walk. Categories and zip contents have no parent
+    // folder, the root has nothing above it, and compact widths keep the push behavior -
+    // all of those stay single-pane exactly as before.
+    DirectoryBody(
+        currentDirectory = state.currentDirectory,
+        rootDirectory = state.rootDirectory,
+        isCategory = isCategory,
+        isReadOnly = isReadOnly,
+        padding = padding,
+        parentPane = { modifier ->
+            DirectoryParentPane(state = state, actions = actions, modifier = modifier)
+        },
+        listing = { modifier ->
+            DirectoryListing(
+                state = state,
+                actions = actions,
+                canModifyHere = canModifyHere,
+                isReadOnly = isReadOnly,
+                modifier = modifier,
+                onClearRenameTarget = onClearRenameTarget,
+            )
+        },
+    )
+}
+
+@Composable
+internal fun DirectoryBody(
+    currentDirectory: java.io.File,
+    rootDirectory: java.io.File,
+    isCategory: Boolean,
+    isReadOnly: Boolean,
+    padding: PaddingValues,
+    parentPane: @Composable (Modifier) -> Unit,
+    listing: @Composable (Modifier) -> Unit,
+) {
+    val atRoot = currentDirectory.absolutePath == rootDirectory.absolutePath
+    if (isExpandedWidth() && !isCategory && !isReadOnly && !atRoot) {
+        Row(Modifier.fillMaxSize().padding(padding)) {
+            parentPane(Modifier.weight(0.35f).fillMaxHeight())
+            VerticalDivider(modifier = Modifier.fillMaxHeight())
+            listing(Modifier.weight(0.65f).fillMaxHeight())
+        }
+    } else {
+        listing(Modifier.fillMaxSize().padding(padding))
+    }
+}
+
+/**
+ * Scaffold, dialogs and Back handling for the directory browser.
+ *
+ * Only [selectedPaths] and [isSearchActive] are read here: they are the lowest common
+ * consumer for those flows (Back, the nav icon, clearing the rename target and the
+ * archive name all need them alongside the sections). Every other flow is collected
+ * by the section composable that consumes it — see the live binders in `DirectoryPage`.
+ * The stateless [DirectoryScreen] above supplies the same slots from a [FilesUiState].
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun DirectoryScreenCore(
+    selectedPaths: Set<FileBrowserItem>,
+    isSearchActive: Boolean,
+    actions: FilesActions,
+    snackbarHostState: SnackbarHostState,
+    onOpenDrawer: () -> Unit,
+    title: @Composable () -> Unit,
+    topActions: @Composable (
+        onRename: (FileBrowserItem) -> Unit,
+        onShowProperties: (FileBrowserItem) -> Unit,
+        onArchive: () -> Unit,
+        onShowNewFolder: () -> Unit,
+        onShowNewFile: () -> Unit,
+    ) -> Unit,
+    body: @Composable (padding: PaddingValues, onClearRenameTarget: () -> Unit) -> Unit,
+) {
     var itemBeingRenamed by remember { mutableStateOf<FileBrowserItem?>(null) }
     var itemForProperties by remember { mutableStateOf<FileBrowserItem?>(null) }
     var showArchiveDialog by remember { mutableStateOf(false) }
@@ -67,8 +199,8 @@ fun DirectoryScreen(
     var showNewFolderDialog by remember { mutableStateOf(false) }
     var showNewFileDialog by remember { mutableStateOf(false) }
 
-    LaunchedEffect(state.selectedPaths) {
-        if (state.selectedPaths.isEmpty()) itemBeingRenamed = null
+    LaunchedEffect(selectedPaths) {
+        if (selectedPaths.isEmpty()) itemBeingRenamed = null
     }
 
     if (showArchiveDialog) {
@@ -157,9 +289,9 @@ fun DirectoryScreen(
     // Only the parts of Back that are not navigation. Folder, archive and category depth are back
     // stack entries now, so everything else has to fall through to the navigation host - swallowing
     // it here would also swallow the predictive-back gesture and its preview.
-    BackHandler(state.isSearchActive || state.selectedPaths.isNotEmpty()) {
+    BackHandler(isSearchActive || selectedPaths.isNotEmpty()) {
         itemBeingRenamed = null
-        if (state.isSearchActive) actions.setSearchActive(false) else actions.handleBack()
+        if (isSearchActive) actions.setSearchActive(false) else actions.handleBack()
     }
 
     AppScaffold(
@@ -173,72 +305,26 @@ fun DirectoryScreen(
             },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         navigationIcon = {
-                if (!state.isSearchActive && state.selectedPaths.isEmpty()) {
+                if (!isSearchActive && selectedPaths.isEmpty()) {
                     IconButton(onClick = onOpenDrawer) { IconMenu() }
                 }
             },
-        title = {
-            DirectoryTitle(
-                state = state,
-                actions = actions,
-                isCategory = isCategory,
-                isReadOnly = isReadOnly,
-            )
-        },
+        title = title,
         actions = {
-            DirectoryTopActions(
-                state = state,
-                actions = actions,
-                canModifyHere = canModifyHere,
-                isReadOnly = isReadOnly,
-                onRename = { itemBeingRenamed = it },
-                onShowProperties = { itemForProperties = it },
-                onArchive = {
+            topActions(
+                { itemBeingRenamed = it },
+                { itemForProperties = it },
+                {
                     archiveName =
-                        if (state.selectedPaths.size == 1) "${state.selectedPaths.first().name}.zip"
+                        if (selectedPaths.size == 1) "${selectedPaths.first().name}.zip"
                         else "archive.zip"
                     showArchiveDialog = true
                 },
-                onPickUnzipDestination = onPickUnzipDestination,
-                onShowNewFolder = { showNewFolderDialog = true },
-                onShowNewFile = { showNewFileDialog = true },
+                { showNewFolderDialog = true },
+                { showNewFileDialog = true },
             )
         },
     ) { padding ->
-        // Expanded windows (desktop, large tablets) list the parent folder beside the current
-        // one. This stays inside the same destination on purpose: files deliberately has no
-        // list/detail metadata, so one back-stack entry per folder level is what keeps Back
-        // walking up exactly one folder with a predictive-back preview of where it lands. A
-        // second destination would split that walk. Categories and zip contents have no parent
-        // folder, the root has nothing above it, and compact widths keep the push behavior -
-        // all of those stay single-pane exactly as before.
-        val atRoot = state.currentDirectory.absolutePath == state.rootDirectory.absolutePath
-        if (isExpandedWidth() && !isCategory && !isReadOnly && !atRoot) {
-            Row(Modifier.fillMaxSize().padding(padding)) {
-                DirectoryParentPane(
-                    state = state,
-                    actions = actions,
-                    modifier = Modifier.weight(0.35f).fillMaxHeight(),
-                )
-                VerticalDivider(modifier = Modifier.fillMaxHeight())
-                DirectoryListing(
-                    state = state,
-                    actions = actions,
-                    canModifyHere = canModifyHere,
-                    isReadOnly = isReadOnly,
-                    modifier = Modifier.weight(0.65f).fillMaxHeight(),
-                    onClearRenameTarget = { itemBeingRenamed = null },
-                )
-            }
-        } else {
-            DirectoryListing(
-                state = state,
-                actions = actions,
-                canModifyHere = canModifyHere,
-                isReadOnly = isReadOnly,
-                modifier = Modifier.fillMaxSize().padding(padding),
-                onClearRenameTarget = { itemBeingRenamed = null },
-            )
-        }
+        body(padding) { itemBeingRenamed = null }
     }
 }

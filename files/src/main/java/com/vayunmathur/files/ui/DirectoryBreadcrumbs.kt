@@ -31,6 +31,7 @@ import com.vayunmathur.library.ui.IconChevronRight
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextField
+import java.io.File
 
 /** Title slot for [DirectoryScreen]: search field, category title, or breadcrumb trail. */
 @Composable
@@ -40,24 +41,53 @@ internal fun DirectoryTitle(
     isCategory: Boolean,
     isReadOnly: Boolean,
 ) {
-    val root = state.rootDirectory
+    DirectoryTitle(
+        rootDirectory = state.rootDirectory,
+        rootDisplayName = state.rootDisplayName,
+        currentDirectory = state.currentDirectory,
+        zipPath = state.zipPath,
+        zipInternalPath = state.zipInternalPath,
+        isSearchActive = state.isSearchActive,
+        searchQuery = state.searchQuery,
+        categoryTitle = state.categoryTitle,
+        actions = actions,
+        isCategory = isCategory,
+        isReadOnly = isReadOnly,
+    )
+}
+
+@Composable
+internal fun DirectoryTitle(
+    rootDirectory: File,
+    rootDisplayName: String,
+    currentDirectory: File,
+    zipPath: File?,
+    zipInternalPath: String,
+    isSearchActive: Boolean,
+    searchQuery: String,
+    categoryTitle: String?,
+    actions: FilesActions,
+    isCategory: Boolean,
+    isReadOnly: Boolean,
+) {
+    val root = rootDirectory
     val breadcrumbs = remember(
-        state.currentDirectory, state.zipPath, state.zipInternalPath, state.rootDisplayName
+        currentDirectory, zipPath, zipInternalPath, rootDisplayName
     ) {
         val crumbs = mutableListOf<Crumb>()
-        val zp = state.zipPath
+        val zp = zipPath
         if (zp == null) {
-            fileAncestors(state.currentDirectory, root).forEach { f ->
-                crumbs.add(Crumb(displayName = if (f.absolutePath == root.absolutePath) state.rootDisplayName else f.name, realFile = f, zipInternalPath = null))
+            fileAncestors(currentDirectory, root).forEach { f ->
+                crumbs.add(Crumb(displayName = if (f.absolutePath == root.absolutePath) rootDisplayName else f.name, realFile = f, zipInternalPath = null))
             }
         } else {
             val parent = zp.parentFile ?: root
             fileAncestors(parent, root).forEach { f ->
-                crumbs.add(Crumb(displayName = if (f.absolutePath == root.absolutePath) state.rootDisplayName else f.name, realFile = f, zipInternalPath = null))
+                crumbs.add(Crumb(displayName = if (f.absolutePath == root.absolutePath) rootDisplayName else f.name, realFile = f, zipInternalPath = null))
             }
             crumbs.add(Crumb(displayName = zp.name, realFile = null, zipInternalPath = ""))
             var accum = ""
-            for (seg in state.zipInternalPath.split("/").filter { it.isNotEmpty() }) {
+            for (seg in zipInternalPath.split("/").filter { it.isNotEmpty() }) {
                 accum = if (accum.isEmpty()) seg else "$accum/$seg"
                 crumbs.add(Crumb(displayName = seg, realFile = null, zipInternalPath = accum))
             }
@@ -65,10 +95,10 @@ internal fun DirectoryTitle(
         crumbs
     }
 
-    if (state.isSearchActive) {
+    if (isSearchActive) {
         val searchFocus = remember { FocusRequester() }
         TextField(
-            value = state.searchQuery,
+            value = searchQuery,
             onValueChange = { actions.setSearchQuery(it) },
             placeholder = { Text(stringResource(R.string.search_files)) },
             singleLine = true,
@@ -78,7 +108,7 @@ internal fun DirectoryTitle(
         )
         LaunchedEffect(Unit) { searchFocus.requestFocus() }
     } else if (isCategory) {
-        Text(state.categoryTitle.orEmpty(), style = MaterialTheme.typography.titleLarge)
+        Text(categoryTitle.orEmpty(), style = MaterialTheme.typography.titleLarge)
     } else {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -118,7 +148,7 @@ internal fun DirectoryTitle(
                         .clickable {
                             val rf = crumb.realFile
                             if (rf != null) {
-                                if (state.zipPath != null) actions.navigateToZipParentRealFolder(rf)
+                                if (zipPath != null) actions.navigateToZipParentRealFolder(rf)
                                 else actions.navigateTo(rf)
                             } else {
                                 actions.navigateToZipInternalPath(crumb.zipInternalPath ?: "")

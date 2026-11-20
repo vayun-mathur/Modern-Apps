@@ -52,8 +52,35 @@ fun DirectoryParentPane(
     actions: FilesActions,
     modifier: Modifier = Modifier,
 ) {
-    val current = state.currentDirectory
-    val root = state.rootDirectory
+    DirectoryParentPane(
+        currentDirectory = state.currentDirectory,
+        rootDirectory = state.rootDirectory,
+        rootDisplayName = state.rootDisplayName,
+        showHidden = state.showHidden,
+        sortBy = state.sortBy,
+        sortAscending = state.sortAscending,
+        viewMode = state.viewMode,
+        selectedPaths = state.selectedPaths,
+        actions = actions,
+        modifier = modifier,
+    )
+}
+
+@Composable
+fun DirectoryParentPane(
+    currentDirectory: File,
+    rootDirectory: File,
+    rootDisplayName: String,
+    showHidden: Boolean,
+    sortBy: SortBy,
+    sortAscending: Boolean,
+    viewMode: ViewMode,
+    selectedPaths: Set<FileBrowserItem>,
+    actions: FilesActions,
+    modifier: Modifier = Modifier,
+) {
+    val current = currentDirectory
+    val root = rootDirectory
     val parent = remember(current) { current.parentFile }
     if (parent == null || current.absolutePath == root.absolutePath) {
         Box(modifier.fillMaxSize()) {}
@@ -61,17 +88,17 @@ fun DirectoryParentPane(
     }
 
     val siblings = remember(
-        parent.absolutePath, state.showHidden, state.sortBy, state.sortAscending
+        parent.absolutePath, showHidden, sortBy, sortAscending
     ) {
         val all = parent.listFiles()?.toList().orEmpty()
-        val visible = if (state.showHidden) all else all.filterNot { it.name.startsWith(".") }
+        val visible = if (showHidden) all else all.filterNot { it.name.startsWith(".") }
         val (dirs, files) = visible.map { it.toSiblingItem() }.partition { it.isDirectory }
-        sortSiblings(dirs, state.sortBy, state.sortAscending) +
-            sortSiblings(files, state.sortBy, state.sortAscending)
+        sortSiblings(dirs, sortBy, sortAscending) +
+            sortSiblings(files, sortBy, sortAscending)
     }
 
     val onSiblingClick: (FileBrowserItem) -> Unit = { child ->
-        if (state.selectedPaths.isNotEmpty()) actions.clearSelection()
+        if (selectedPaths.isNotEmpty()) actions.clearSelection()
         val target = child.realFile
         if (child.isDirectory) {
             if (target != null) actions.navigateTo(target)
@@ -84,7 +111,7 @@ fun DirectoryParentPane(
         }
     }
 
-    val header = if (parent.absolutePath == root.absolutePath) state.rootDisplayName else parent.name
+    val header = if (parent.absolutePath == root.absolutePath) rootDisplayName else parent.name
     Column(modifier) {
         Box(
             Modifier
@@ -100,7 +127,7 @@ fun DirectoryParentPane(
                     color = MaterialTheme.colorScheme.outline,
                 )
             }
-        } else if (state.viewMode == ViewMode.GRID) {
+        } else if (viewMode == ViewMode.GRID) {
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(minSize = 104.dp),
                 modifier = Modifier.weight(1f).fillMaxWidth(),

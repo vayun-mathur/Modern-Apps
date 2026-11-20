@@ -36,6 +36,8 @@ rustNativeLib("photos_fx", "photos")
 
 dependencies {
     implementation(libs.androidx.compose.foundation)
+    // collectAsStateWithLifecycle in Navigation (as in :auto).
+    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.fragment.ktx)
     implementation(project(":library:map"))
     implementation(project(":library:image"))

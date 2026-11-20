@@ -48,14 +48,46 @@ internal fun DirectoryListing(
     /** Clears the rename dialog target; owned by [DirectoryScreen]. */
     onClearRenameTarget: () -> Unit = {},
 ) {
-    val query = state.searchQuery.trim()
+    DirectoryListing(
+        directories = state.directories,
+        files = state.files,
+        searchQuery = state.searchQuery,
+        clipboardCount = state.clipboardCount,
+        selectedPaths = state.selectedPaths,
+        isSearchActive = state.isSearchActive,
+        viewMode = state.viewMode,
+        actions = actions,
+        canModifyHere = canModifyHere,
+        isReadOnly = isReadOnly,
+        modifier = modifier,
+        onClearRenameTarget = onClearRenameTarget,
+    )
+}
+
+@Composable
+internal fun DirectoryListing(
+    directories: List<FileBrowserItem>,
+    files: List<FileBrowserItem>,
+    searchQuery: String,
+    clipboardCount: Int,
+    selectedPaths: Set<FileBrowserItem>,
+    isSearchActive: Boolean,
+    viewMode: ViewMode,
+    actions: FilesActions,
+    canModifyHere: Boolean,
+    isReadOnly: Boolean,
+    modifier: Modifier = Modifier,
+    /** Clears the rename dialog target; owned by [DirectoryScreen]. */
+    onClearRenameTarget: () -> Unit = {},
+) {
+    val query = searchQuery.trim()
     fun matches(item: FileBrowserItem) =
         query.isEmpty() || item.name.contains(query, ignoreCase = true)
-    val allItems = (state.directories + state.files).filter(::matches)
+    val allItems = (directories + files).filter(::matches)
 
     Column(modifier) {
             // Paste bar: shown when the clipboard has files and we can write here.
-            if (state.clipboardCount > 0 && canModifyHere && state.selectedPaths.isEmpty() && !state.isSearchActive) {
+            if (clipboardCount > 0 && canModifyHere && selectedPaths.isEmpty() && !isSearchActive) {
                 Surface(color = MaterialTheme.colorScheme.secondaryContainer) {
                     Row(
                         modifier = Modifier
@@ -64,7 +96,7 @@ internal fun DirectoryListing(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            pluralStringResource(R.plurals.ready_to_paste, state.clipboardCount, state.clipboardCount),
+                            pluralStringResource(R.plurals.ready_to_paste, clipboardCount, clipboardCount),
                             modifier = Modifier.weight(1f),
                         )
                         TextButton(onClick = { actions.pasteHere() }) { Text(stringResource(R.string.paste)) }
@@ -74,7 +106,7 @@ internal fun DirectoryListing(
             }
 
             val onItemClick: (FileBrowserItem) -> Unit = { child ->
-                if (state.selectedPaths.isNotEmpty()) {
+                if (selectedPaths.isNotEmpty()) {
                     actions.toggleSelection(child)
                 } else if (child.isDirectory) {
                     if (child.realFile != null) actions.navigateTo(child.realFile)
@@ -104,7 +136,7 @@ internal fun DirectoryListing(
                         color = MaterialTheme.colorScheme.outline,
                     )
                 }
-            } else if (state.viewMode == ViewMode.GRID) {
+            } else if (viewMode == ViewMode.GRID) {
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(minSize = 104.dp),
                     modifier = Modifier.weight(1f).fillMaxWidth(),
@@ -112,7 +144,7 @@ internal fun DirectoryListing(
                     gridItems(allItems, key = { it.key }) { child ->
                         GridItem(
                             file = child,
-                            isSelected = state.selectedPaths.any { it.key == child.key },
+                            isSelected = selectedPaths.any { it.key == child.key },
                             onClick = { onItemClick(child) },
                             onLongClick = { onItemLongClick(child) },
                         )
@@ -121,7 +153,7 @@ internal fun DirectoryListing(
             } else {
                 LazyColumn(Modifier.weight(1f)) {
                     items(allItems, key = { it.key }) { child ->
-                        val isSelected = state.selectedPaths.any { it.key == child.key }
+                        val isSelected = selectedPaths.any { it.key == child.key }
                         DirectoryItem(
                             file = child,
                             isSelected = isSelected,
@@ -135,7 +167,7 @@ internal fun DirectoryListing(
                             },
                             onStartDrag = {
                                 if (isReadOnly) emptyList()
-                                else if (state.selectedPaths.any { it.key == child.key }) state.selectedPaths.mapNotNull { it.realFile }.toList()
+                                else if (selectedPaths.any { it.key == child.key }) selectedPaths.mapNotNull { it.realFile }.toList()
                                 else listOfNotNull(child.realFile)
                             })
                         HorizontalDivider(

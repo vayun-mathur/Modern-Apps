@@ -52,18 +52,57 @@ internal fun DirectoryTopActions(
     onShowNewFolder: () -> Unit,
     onShowNewFile: () -> Unit,
 ) {
+    DirectoryTopActions(
+        selectedPaths = state.selectedPaths,
+        isSearchActive = state.isSearchActive,
+        hasIncomingUris = state.hasIncomingUris,
+        sortBy = state.sortBy,
+        sortAscending = state.sortAscending,
+        viewMode = state.viewMode,
+        showHidden = state.showHidden,
+        actions = actions,
+        canModifyHere = canModifyHere,
+        isReadOnly = isReadOnly,
+        onRename = onRename,
+        onShowProperties = onShowProperties,
+        onArchive = onArchive,
+        onPickUnzipDestination = onPickUnzipDestination,
+        onShowNewFolder = onShowNewFolder,
+        onShowNewFile = onShowNewFile,
+    )
+}
+
+@Composable
+internal fun DirectoryTopActions(
+    selectedPaths: Set<FileBrowserItem>,
+    isSearchActive: Boolean,
+    hasIncomingUris: Boolean,
+    sortBy: SortBy,
+    sortAscending: Boolean,
+    viewMode: ViewMode,
+    showHidden: Boolean,
+    actions: FilesActions,
+    canModifyHere: Boolean,
+    isReadOnly: Boolean,
+    onRename: (FileBrowserItem) -> Unit,
+    onShowProperties: (FileBrowserItem) -> Unit,
+    onArchive: () -> Unit,
+    onPickUnzipDestination: () -> Unit,
+    onShowNewFolder: () -> Unit,
+    onShowNewFile: () -> Unit,
+) {
     var showOverflow by remember { mutableStateOf(false) }
     var showSelectionOverflow by remember { mutableStateOf(false) }
 
-    val zipToUnzip = remember(state.selectedPaths) {
-        state.selectedPaths.singleOrNull()?.takeIf {
+    val zipToUnzip = remember(selectedPaths) {
+        selectedPaths.singleOrNull()?.takeIf {
             !it.isDirectory && it.realFile != null && it.name.endsWith(".zip", ignoreCase = true)
         }
     }
 
-    if (state.isSearchActive) {
+    if (isSearchActive) {
         IconButton(onClick = { actions.setSearchActive(false) }) { IconClose() }
-    } else if (state.selectedPaths.isNotEmpty()) {
+    } else if (selectedPaths.isNotEmpty()) {
         IconButton(onClick = { actions.clearSelection() }) { IconClose() }
         IconButton(onClick = { actions.deleteSelection() }) { IconDelete() }
         IconButton(onClick = { showSelectionOverflow = true }) { IconMoreVert() }
@@ -86,7 +125,7 @@ internal fun DirectoryTopActions(
                 leadingIcon = { IconShare() },
                 onClick = { showSelectionOverflow = false; actions.shareSelection() },
             )
-            val single = state.selectedPaths.singleOrNull()
+            val single = selectedPaths.singleOrNull()
             if (single != null && !single.isDirectory) {
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.open_with)) },
@@ -133,7 +172,7 @@ internal fun DirectoryTopActions(
                     onClick = { showSelectionOverflow = false; onPickUnzipDestination() },
                 )
             }
-            if (state.hasIncomingUris) {
+            if (hasIncomingUris) {
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.files_saved)) },
                     leadingIcon = { IconSave() },
@@ -142,7 +181,7 @@ internal fun DirectoryTopActions(
             }
         }
     } else {
-        if (state.hasIncomingUris && !isReadOnly) {
+        if (hasIncomingUris && !isReadOnly) {
             IconButton(onClick = { actions.saveIncomingUris() }) { IconSave() }
         }
         IconButton(onClick = { actions.setSearchActive(true) }) { IconSearch() }
@@ -154,32 +193,32 @@ internal fun DirectoryTopActions(
             SortBy.entries.forEach { option ->
                 DropdownMenuItem(
                     text = { Text(sortLabel(option)) },
-                    leadingIcon = { if (state.sortBy == option) IconCheck() },
+                    leadingIcon = { if (sortBy == option) IconCheck() },
                     onClick = { showOverflow = false; actions.setSortBy(option) },
                 )
             }
             HorizontalDivider()
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.sort_ascending)) },
-                leadingIcon = { if (state.sortAscending) IconCheck() },
+                leadingIcon = { if (sortAscending) IconCheck() },
                 onClick = { showOverflow = false; actions.setSortAscending(true) },
             )
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.sort_descending)) },
-                leadingIcon = { if (!state.sortAscending) IconCheck() },
+                leadingIcon = { if (!sortAscending) IconCheck() },
                 onClick = { showOverflow = false; actions.setSortAscending(false) },
             )
             DropdownMenuItem(
                 text = {
                     Text(
                         stringResource(
-                            if (state.viewMode == ViewMode.LIST) R.string.grid_view
+                            if (viewMode == ViewMode.LIST) R.string.grid_view
                             else R.string.list_view
                         )
                     )
                 },
                 leadingIcon = {
-                    if (state.viewMode == ViewMode.LIST) IconGrid() else IconList()
+                    if (viewMode == ViewMode.LIST) IconGrid() else IconList()
                 },
                 onClick = { showOverflow = false; actions.toggleViewMode() },
             )
@@ -187,11 +226,11 @@ internal fun DirectoryTopActions(
                 text = {
                     Text(
                         stringResource(
-                            if (state.showHidden) R.string.hide_hidden else R.string.show_hidden
+                            if (showHidden) R.string.hide_hidden else R.string.show_hidden
                         )
                     )
                 },
-                leadingIcon = { if (state.showHidden) IconVisibilityOff() else IconVisible() },
+                leadingIcon = { if (showHidden) IconVisibilityOff() else IconVisible() },
                 onClick = { showOverflow = false; actions.toggleHidden() },
             )
             if (!isReadOnly) {

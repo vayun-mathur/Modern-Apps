@@ -7,9 +7,9 @@ import android.net.Uri
 import androidx.activity.compose.LocalActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vayunmathur.library.util.ListDetailPage
 import com.vayunmathur.library.util.ListPage
 import com.vayunmathur.library.util.MainNavigation
@@ -51,9 +51,9 @@ fun Navigation(
     val viewerRoute = remember(viewUri) { viewerRouteFor(viewUri) }
 
     val backStack = rememberNavBackStack<Route>(viewerRoute ?: Route.Gallery)
-    val vaultPhotoDao by secureFolderViewModel.vaultPhotoDao.collectAsState()
-    val vaultPassword by secureFolderViewModel.vaultPassword.collectAsState()
-    val relockOnExit by secureFolderViewModel.relockOnExit.collectAsState()
+    val vaultPhotoDao by secureFolderViewModel.vaultPhotoDao.collectAsStateWithLifecycle()
+    val vaultPassword by secureFolderViewModel.vaultPassword.collectAsStateWithLifecycle()
+    val relockOnExit by secureFolderViewModel.relockOnExit.collectAsStateWithLifecycle()
 
     RelockEffect(backStack, relockOnExit, vaultPhotoDao, secureFolderViewModel)
     IndexViewUriEffect(viewUri, galleryViewModel)

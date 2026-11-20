@@ -20,5 +20,7 @@ dependencies {
     implementation(libs.androidx.work.runtime.ktx)
     // Image thumbnails for image files in the browser (AsyncImage).
     implementation(project(":library:image"))
+    // collectAsStateWithLifecycle in the directory binders (as in :auto).
+    implementation(libs.androidx.lifecycle.runtime.compose)
     testImplementation("androidx.work:work-testing:${libs.versions.workRuntimeKtx.get()}")
 }
