@@ -15,7 +15,7 @@ class EmailMigrationsW5Test {
 
     private fun openV4(): SQLiteConnection {
         val conn = AndroidSQLiteDriver().open(":memory:")
-        conn.execSQL("CREATE TABLE EmailMessage (accountEmail TEXT NOT NULL, folderName TEXT NOT NULL, id INTEGER NOT NULL)")
+        conn.execSQL("CREATE TABLE EmailMessage (accountEmail TEXT NOT NULL, folderName TEXT NOT NULL, id INTEGER NOT NULL, subject TEXT, `from` TEXT, body TEXT)")
         conn.execSQL("CREATE TABLE EmailAccount (email TEXT NOT NULL PRIMARY KEY)")
         conn.execSQL("CREATE TABLE EmailFolder (accountEmail TEXT NOT NULL, fullName TEXT NOT NULL, parentFullName TEXT)")
         conn.execSQL("CREATE TABLE Attachment (accountEmail TEXT NOT NULL, folderName TEXT NOT NULL, messageId INTEGER NOT NULL)")
@@ -54,19 +54,46 @@ class EmailMigrationsW5Test {
     @Test
     fun migrationChainIsCompleteAndOrdered() {
         assertEquals(
-            (4..20).map { it to it + 1 },
+            (4..21).map { it to it + 1 },
             EmailDatabase.migrations.map { it.startVersion to it.endVersion }.sortedBy { it.first },
         )
     }
 
     @Test
-    fun v4DatabaseUpgradesToV21Shape() {
+    fun migration21To22CreatesFtsIndexOverExistingMessages() {
+        val conn = openV4()
+        migrate(conn, 4, until = 21)
+        conn.execSQL(
+            "INSERT INTO EmailMessage (accountEmail, folderName, id, subject, `from`, body) " +
+                "VALUES ('me@x.com', 'INBOX', 1, 'Quarterly report', 'boss@work.com', 'numbers inside')",
+        )
+        conn.execSQL(
+            "INSERT INTO EmailMessage (accountEmail, folderName, id, subject, `from`, body) " +
+                "VALUES ('me@x.com', 'INBOX', 2, 'Hello', 'friend@x.com', 'dinner plans')",
+        )
+        migrate(conn, 21)
+        assertTrue(tableExists(conn, "EmailMessageFts"))
+        // The rebuild indexed rows that existed before the migration.
+        assertEquals(
+            listOf("1"),
+            strings(conn, "SELECT docid FROM EmailMessageFts WHERE EmailMessageFts MATCH '\"quarter*\"'"),
+        )
+        assertEquals(
+            listOf("2"),
+            strings(conn, "SELECT docid FROM EmailMessageFts WHERE EmailMessageFts MATCH '\"dinner*\"'"),
+        )
+        conn.close()
+    }
+
+    @Test
+    fun v4DatabaseUpgradesToV22Shape() {
         val conn = openV4()
         migrate(conn, 4)
         assertTrue(tableExists(conn, "OutboxEntry"))
         assertTrue(tableExists(conn, "DraftEntry"))
         assertTrue(tableExists(conn, "BlockedSender"))
         assertTrue(tableExists(conn, "DeletedUid"))
+        assertTrue(tableExists(conn, "EmailMessageFts"))
         assertTrue(columns(conn, "EmailMessage").containsAll(setOf("dateMillis", "snoozedUntil", "listUnsubscribe", "listUnsubscribePost", "peekContent")), columns(conn, "EmailMessage").toString())
         assertTrue(columns(conn, "EmailAccount").containsAll(setOf("provider", "imapHost", "smtpHost", "authType", "username", "signature", "allowInsecureCertificates")), columns(conn, "EmailAccount").toString())
         assertTrue(columns(conn, "OutboxEntry").containsAll(setOf("scheduledAt", "isHtml", "bcc", "inlineImageJson")), columns(conn, "OutboxEntry").toString())

@@ -25,8 +25,9 @@ import com.vayunmathur.email.data.Attachment
         DraftEntry::class,
         BlockedSender::class,
         DeletedUid::class,
+        EmailMessageFts::class,
     ],
-    version = 21,
+    version = 22,
     exportSchema = true,
 )
 /** Room database holding email folders, messages, accounts and outbox state. */
@@ -203,6 +204,25 @@ abstract class EmailDatabase : RoomDatabase() {
         }
 
         /**
+         * Restores full-text search: an FTS4 virtual table over subject,
+         * sender and body, backed by [EmailMessage] as its content table
+         * (unicode61, diacritics removed). Room generates and maintains the
+         * `room_fts_content_sync_*` triggers itself (fresh installs get them
+         * from the generated open delegate; migrated installs get them from
+         * its post-migrate step), so this migration only creates the index
+         * and rebuilds it from the messages already on disk. The SQL mirrors
+         * the generated schema exactly so post-migration validation passes.
+         */
+        private val MIGRATION_21_22 = Migration(21, 22) {
+            it.execSQL(
+                "CREATE VIRTUAL TABLE IF NOT EXISTS `EmailMessageFts` USING FTS4(" +
+                    "`subject` TEXT NOT NULL, `from` TEXT NOT NULL, `body` TEXT, " +
+                    "tokenize=unicode61 `remove_diacritics=1`, content=`EmailMessage`)",
+            )
+            it.execSQL("INSERT INTO `EmailMessageFts`(`EmailMessageFts`) VALUES('rebuild')")
+        }
+
+        /**
          * Every migration for this database, registered with the Room builder via the
          * [DatabaseMigrations] reflection hook in `openRoomDatabase`. Order is
          * irrelevant to Room; kept numeric here for readability.
@@ -225,6 +245,7 @@ abstract class EmailDatabase : RoomDatabase() {
             MIGRATION_18_19,
             MIGRATION_19_20,
             MIGRATION_20_21,
+            MIGRATION_21_22,
         )
 
         fun getInstance(context: Context): EmailDatabase =

@@ -9,6 +9,9 @@ internal const val MAX_EMAIL_SEARCH_TOKENS = 8
 
 private val EMAIL_SEARCH_WHITESPACE = Regex("\\s+")
 
+/** Characters the unicode61 tokenizer treats as part of a token. */
+private val EMAIL_FTS_TOKEN = Regex("[\\p{L}\\p{N}_]+")
+
 /**
  * Escapes SQLite `LIKE` wildcards in one user-typed [token] so `%`, `_` and
  * the escape character itself match literally (queries use `ESCAPE '\'`).
@@ -22,6 +25,9 @@ internal fun escapeEmailLikeToken(token: String): String =
  * unused slots are `""`, which the SQL treats as "no constraint". Tokens
  * beyond the cap are folded, space-joined, into the last slot so no typed
  * word is silently dropped. A blank query yields all-empty patterns.
+ *
+ * Retained only as the fallback for queries with no usable FTS token
+ * (blank or punctuation-only); normal search runs over the FTS index.
  */
 internal fun emailSearchPatterns(query: String): List<String> {
     val raw = query.trim().split(EMAIL_SEARCH_WHITESPACE).filter { it.isNotEmpty() }
@@ -34,9 +40,109 @@ internal fun emailSearchPatterns(query: String): List<String> {
     return patterns + List(MAX_EMAIL_SEARCH_TOKENS - patterns.size) { "" }
 }
 
+/**
+ * Builds a safe FTS4 `MATCH` expression from raw user [query].
+ *
+ * The query is reduced to unicode61 token characters (letters, digits and
+ * `_`); every other character — including the FTS operators `"`, `*`, `(`,
+ * `)`, `:`, `^`, `-` and the `LIKE` wildcards `%`/`_` when they appear on
+ * their own — is a separator and can never change the meaning of the
+ * expression or make SQLite reject it. Each remaining token is emitted as a
+ * quoted prefix term (`"token*"`), tokens combine with the implicit FTS
+ * `AND`, and a token is kept only when it contains a letter or digit.
+ *
+ * Returns `""` when the query has no usable token (blank or
+ * punctuation-only); callers then use the literal `LIKE` fallback, which
+ * preserves the old literal-`%`/`_` search behaviour for those inputs.
+ */
+internal fun emailFtsMatchQuery(query: String): String {
+    val tokens = EMAIL_FTS_TOKEN.findAll(query)
+        .map { it.value }
+        .filter { token -> token.any { it.isLetterOrDigit() } }
+        .take(MAX_EMAIL_SEARCH_TOKENS * 2)
+        .toList()
+    return tokens.joinToString(" ") { "\"$it*\"" }
+}
+
 /** Full-text search, unified-inbox and preview projections, plus one-time backfills. */
 @Dao
 interface EmailQueryDao {
+    // ---- FTS search (primary path) ----
+    // FTS4 (unlike FTS5) has no built-in `rank` column, so relevance is
+    // computed as LENGTH(OFFSETS(...)): one offsets quadruple per matched
+    // term occurrence, so a longer offsets string means more hits. It is
+    // aliased `rank` and ordered descending, newest first on ties.
+
+    @Query(
+        "SELECT EmailMessage.*, LENGTH(OFFSETS(EmailMessageFts)) AS `rank` FROM EmailMessage " +
+            "JOIN EmailMessageFts ON EmailMessageFts.rowid = EmailMessage.rowid " +
+            "WHERE EmailMessage.accountEmail = :accountEmail AND EmailMessage.folderName = :folderName " +
+            "AND EmailMessage.snoozedUntil <= :now AND EmailMessageFts MATCH :match " +
+            "ORDER BY rank DESC, EmailMessage.dateMillis DESC, EmailMessage.id DESC",
+    )
+    fun searchMessagesFlowFts(
+        accountEmail: String,
+        folderName: String,
+        match: String,
+        now: Long,
+    ): Flow<List<EmailMessage>>
+
+    @Query(
+        "SELECT EmailMessage.*, LENGTH(OFFSETS(EmailMessageFts)) AS `rank` FROM EmailMessage " +
+            "JOIN EmailMessageFts ON EmailMessageFts.rowid = EmailMessage.rowid " +
+            "WHERE EmailMessage.folderName = :folderName " +
+            "AND EmailMessage.snoozedUntil <= :now AND EmailMessageFts MATCH :match " +
+            "ORDER BY rank DESC, EmailMessage.dateMillis DESC, EmailMessage.id DESC",
+    )
+    fun searchUnifiedMessagesFlowFts(
+        folderName: String,
+        match: String,
+        now: Long,
+    ): Flow<List<EmailMessage>>
+
+    @Query(
+        "SELECT EmailMessage.*, LENGTH(OFFSETS(EmailMessageFts)) AS `rank` FROM EmailMessage " +
+            "JOIN EmailMessageFts ON EmailMessageFts.rowid = EmailMessage.rowid " +
+            "WHERE EmailMessageFts MATCH :match " +
+            "ORDER BY rank DESC, EmailMessage.dateMillis DESC, EmailMessage.id DESC LIMIT 30",
+    )
+    suspend fun searchMessagesFts(match: String): List<EmailMessage>
+
+    @Query(
+        "SELECT EmailMessage.accountEmail, EmailMessage.folderName, EmailMessage.id, EmailMessage.threadId, " +
+            "EmailMessage.subject, EmailMessage.`from`, EmailMessage.date, EmailMessage.dateMillis, " +
+            "EmailMessage.isRead, EmailMessage.hasAttachments, EmailMessage.snoozedUntil, EmailMessage.peekContent, " +
+            "LENGTH(OFFSETS(EmailMessageFts)) AS `rank` FROM EmailMessage " +
+            "JOIN EmailMessageFts ON EmailMessageFts.rowid = EmailMessage.rowid " +
+            "WHERE EmailMessage.accountEmail = :accountEmail AND EmailMessage.folderName = :folderName " +
+            "AND EmailMessage.snoozedUntil <= :now AND EmailMessageFts MATCH :match " +
+            "ORDER BY rank DESC, EmailMessage.dateMillis DESC, EmailMessage.id DESC",
+    )
+    fun searchMessagesPreviewFlowFts(
+        accountEmail: String,
+        folderName: String,
+        match: String,
+        now: Long,
+    ): Flow<List<EmailPreview>>
+
+    @Query(
+        "SELECT EmailMessage.accountEmail, EmailMessage.folderName, EmailMessage.id, EmailMessage.threadId, " +
+            "EmailMessage.subject, EmailMessage.`from`, EmailMessage.date, EmailMessage.dateMillis, " +
+            "EmailMessage.isRead, EmailMessage.hasAttachments, EmailMessage.snoozedUntil, EmailMessage.peekContent, " +
+            "LENGTH(OFFSETS(EmailMessageFts)) AS `rank` FROM EmailMessage " +
+            "JOIN EmailMessageFts ON EmailMessageFts.rowid = EmailMessage.rowid " +
+            "WHERE EmailMessage.folderName = :folderName " +
+            "AND EmailMessage.snoozedUntil <= :now AND EmailMessageFts MATCH :match " +
+            "ORDER BY rank DESC, EmailMessage.dateMillis DESC, EmailMessage.id DESC",
+    )
+    fun searchUnifiedMessagesPreviewFlowFts(
+        folderName: String,
+        match: String,
+        now: Long,
+    ): Flow<List<EmailPreview>>
+
+    // ---- Tokenised LIKE search (fallback for no-token queries) ----
+
     @Query(
         "SELECT * FROM EmailMessage WHERE accountEmail = :accountEmail AND folderName = :folderName " +
             "AND snoozedUntil <= :now " +
@@ -64,13 +170,15 @@ interface EmailQueryDao {
         now: Long,
     ): Flow<List<EmailMessage>>
 
-    /** Tokenised search: every word in [query] must match subject, sender or body. */
+    /** Full-text search: every token in [query] must match subject, sender or body (prefix per token). */
     fun searchMessagesFlow(
         accountEmail: String,
         folderName: String,
         query: String,
         now: Long,
     ): Flow<List<EmailMessage>> {
+        val match = emailFtsMatchQuery(query)
+        if (match.isNotEmpty()) return searchMessagesFlowFts(accountEmail, folderName, match, now)
         val p = emailSearchPatterns(query)
         return searchMessagesFlowByTokens(accountEmail, folderName, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], now)
     }
@@ -107,12 +215,14 @@ interface EmailQueryDao {
         now: Long,
     ): Flow<List<EmailMessage>>
 
-    /** Tokenised unified search; see [searchMessagesFlow]. */
+    /** Full-text unified search; see [searchMessagesFlow]. */
     fun searchUnifiedMessagesFlow(
         folderName: String,
         query: String,
         now: Long,
     ): Flow<List<EmailMessage>> {
+        val match = emailFtsMatchQuery(query)
+        if (match.isNotEmpty()) return searchUnifiedMessagesFlowFts(folderName, match, now)
         val p = emailSearchPatterns(query)
         return searchUnifiedMessagesFlowByTokens(folderName, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], now)
     }
@@ -146,8 +256,10 @@ interface EmailQueryDao {
         p8: String,
     ): List<EmailMessage>
 
-    /** Tokenised one-shot search; see [searchMessagesFlow]. */
+    /** Full-text one-shot search; see [searchMessagesFlow]. */
     suspend fun searchMessages(query: String): List<EmailMessage> {
+        val match = emailFtsMatchQuery(query)
+        if (match.isNotEmpty()) return searchMessagesFts(match)
         val p = emailSearchPatterns(query)
         return searchMessagesByTokens(p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7])
     }
@@ -199,13 +311,15 @@ interface EmailQueryDao {
         now: Long,
     ): Flow<List<EmailPreview>>
 
-    /** Tokenised preview search; see [searchMessagesFlow]. */
+    /** Full-text preview search; see [searchMessagesFlow]. */
     fun searchMessagesPreviewFlow(
         accountEmail: String,
         folderName: String,
         query: String,
         now: Long,
     ): Flow<List<EmailPreview>> {
+        val match = emailFtsMatchQuery(query)
+        if (match.isNotEmpty()) return searchMessagesPreviewFlowFts(accountEmail, folderName, match, now)
         val p = emailSearchPatterns(query)
         return searchMessagesPreviewFlowByTokens(accountEmail, folderName, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], now)
     }
@@ -244,12 +358,14 @@ interface EmailQueryDao {
         now: Long,
     ): Flow<List<EmailPreview>>
 
-    /** Tokenised unified preview search; see [searchMessagesFlow]. */
+    /** Full-text unified preview search; see [searchMessagesFlow]. */
     fun searchUnifiedMessagesPreviewFlow(
         folderName: String,
         query: String,
         now: Long,
     ): Flow<List<EmailPreview>> {
+        val match = emailFtsMatchQuery(query)
+        if (match.isNotEmpty()) return searchUnifiedMessagesPreviewFlowFts(folderName, match, now)
         val p = emailSearchPatterns(query)
         return searchUnifiedMessagesPreviewFlowByTokens(folderName, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], now)
     }

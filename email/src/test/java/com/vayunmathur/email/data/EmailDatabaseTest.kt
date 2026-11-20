@@ -360,14 +360,82 @@ class EmailDatabaseTest {
                 message(5L, subject = "back\\slash", from = "a@b.com", body = "plain"),
             )
         )
-        // '%' must not act as a wildcard: only the literal-percent row matches.
-        assertEquals(listOf(1L), dao.searchMessages("100%").map { it.id })
+        // '%' must not act as a wildcard or explode the MATCH expression.
+        // "100%" is sanitised to the FTS prefix term "100*", so it finds the
+        // literal-percent row (and, by prefix, "1000"); it must not return
+        // the unrelated rows. A bare "%" has no FTS token and falls back to
+        // the literal LIKE search, finding only the literal-percent row.
+        assertEquals(setOf(1L, 2L), dao.searchMessages("100%").map { it.id }.toSet())
+        assertTrue(dao.searchMessages("100%").any { it.id == 1L })
         assertEquals(listOf(1L), dao.searchMessages("%").map { it.id })
         // '_' must not match any single character.
         assertEquals(listOf(3L), dao.searchMessages("file_name").map { it.id })
         assertEquals(listOf(3L), dao.searchMessages("_").map { it.id })
         // Backslash is literal too.
         assertEquals(listOf(5L), dao.searchMessages("back\\slash").map { it.id })
+    }
+
+    @Test
+    fun ftsMatchQuery_sanitisesOperatorsAndWildcards() {
+        assertEquals("\"quarterly*\"", emailFtsMatchQuery("quarterly"))
+        assertEquals("\"quarterly*\" \"numbers*\"", emailFtsMatchQuery("quarterly numbers"))
+        assertEquals("\"100*\"", emailFtsMatchQuery("100%"))
+        assertEquals("\"file_name*\"", emailFtsMatchQuery("file_name"))
+        assertEquals("\"back*\" \"slash*\"", emailFtsMatchQuery("back\\slash"))
+        // No usable token: punctuation / FTS syntax alone yields no MATCH.
+        assertEquals("", emailFtsMatchQuery("%"))
+        assertEquals("", emailFtsMatchQuery("_"))
+        assertEquals("", emailFtsMatchQuery("\"*():^"))
+        assertEquals("", emailFtsMatchQuery(""))
+    }
+
+    @Test
+    fun searchPrefix_diacriticsAndHostileInput() = runTest {
+        val dao = db.queryDao()
+        db.messageDao().insertMessagesRaw(
+            listOf(
+                message(1L, subject = "Quarterly report", from = "boss@work.com", body = "numbers"),
+                message(2L, subject = "Café menu", from = "chef@x.com", body = "lunch"),
+            )
+        )
+        // Prefix matching per token.
+        assertEquals(listOf(1L), dao.searchMessages("quar").map { it.id })
+        assertEquals(listOf(1L), dao.searchMessages("numb").map { it.id })
+        // unicode61 remove_diacritics=1: unaccented query finds accented text.
+        assertEquals(listOf(2L), dao.searchMessages("cafe").map { it.id })
+        assertEquals(listOf(2L), dao.searchMessages("café").map { it.id })
+        // FTS syntax in the input is sanitised away, never executed.
+        assertEquals(listOf(1L), dao.searchMessages("quarterly:").map { it.id })
+        assertEquals(listOf(1L), dao.searchMessages("\"quarterly\"").map { it.id })
+        assertEquals(emptyList(), dao.searchMessages("*"))
+        assertEquals(emptyList(), dao.searchMessages("()"))
+        assertEquals(emptyList(), dao.searchMessages("quarterly NEAR zzz-no-match"))
+    }
+
+    @Test
+    fun searchRank_ordersMoreHitsBeforeNewerFewerHits() = runTest {
+        val dao = db.queryDao()
+        db.messageDao().insertMessagesRaw(
+            listOf(
+                message(1L, subject = "plain", body = "quarterly quarterly quarterly quarterly", dateMillis = 100L),
+                message(2L, subject = "quarterly", body = "plain", dateMillis = 9999L),
+            )
+        )
+        assertEquals(listOf(1L, 2L), dao.searchMessages("quarterly").map { it.id })
+    }
+
+    @Test
+    fun searchFts_staysInSyncOnReplaceAndDelete() = runTest {
+        val dao = db.queryDao()
+        val messages = db.messageDao()
+        messages.insertMessagesRaw(listOf(message(1L, subject = "alpha", body = "first")))
+        assertEquals(listOf(1L), dao.searchMessages("alpha").map { it.id })
+        messages.insertMessagesRaw(listOf(message(1L, subject = "beta", body = "second")))
+        assertEquals(emptyList(), dao.searchMessages("alpha"))
+        assertEquals(listOf(1L), dao.searchMessages("beta").map { it.id })
+        assertEquals(listOf(1L), dao.searchMessages("second").map { it.id })
+        messages.deleteMessageRow("me@x.com", "INBOX", 1L)
+        assertEquals(emptyList(), dao.searchMessages("beta"))
     }
 
     @Test
