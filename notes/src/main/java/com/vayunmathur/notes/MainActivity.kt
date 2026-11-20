@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.lifecycleScope
+import com.vayunmathur.library.ui.LoadingIndicator
 import com.vayunmathur.library.ui.MaActivity
 import com.vayunmathur.library.util.IntentHelper
 import com.vayunmathur.library.util.onFileDrop
@@ -19,6 +20,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 
 /** Entry activity that initialises the notes repository before showing navigation. */
@@ -56,7 +58,13 @@ class MainActivity : MaActivity() {
         Box(Modifier.fillMaxSize().onFileDrop { uris ->
             notesViewModel.importFiles(uris)
         }) {
+            // Migration (legacy-notes clear + content-addressed image rewrite)
+            // must finish before Navigation: show the shared loading indicator
+            // instead of a blank screen while it runs on Dispatchers.IO.
             if (ready) Navigation(notesViewModel)
+            else Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                LoadingIndicator()
+            }
         }
     }
 

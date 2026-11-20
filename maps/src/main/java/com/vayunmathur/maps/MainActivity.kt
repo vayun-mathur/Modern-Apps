@@ -51,6 +51,7 @@ import com.vayunmathur.maps.platform.SelectedFeatureViewModel
 import com.vayunmathur.maps.platform.MapSettingsViewModel
 import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.library.network.TrustBundle
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
@@ -86,21 +87,29 @@ class MainActivity : MaActivity() {
         // FIRST_PARTY: data.maproj.org tiles + amenities + api.maproj.org -> ISRG+GTS
         NetworkClient.init(this, TrustBundle.FIRST_PARTY)
         intentLauncher = IntentLauncher(this)
-        // Daily overlay check chain (UNMETERED): KEEP leaves an existing chain
-        // alone; the toggle gates inside syncAutoUpdateSchedule.
-        syncOverlaySchedule()
-        // Reclaim the ~44 MB bundled basemap copied into filesDir by older
-        // builds; the basemap now streams live and is cached on demand.
-        File(filesDir, "world_z0-6.pmtiles").delete()
+        // Deferred off the startup path: neither the legacy-file delete nor
+        // the overlay-schedule check gates the first frame (the theme reads
+        // DataStore via the non-blocking mirror-backed stringFlow in
+        // AppTheme, so nothing here can flicker). getBooleanAwait also fixes
+        // the cold-start snapshot race: the synchronous getBoolean reads the
+        // mirror, which is empty until hydration and would always return the
+        // default. WorkManager KEEP makes the delayed enqueue a no-op when
+        // the daily chain already exists.
+        lifecycleScope.launch(Dispatchers.IO) {
+            // Reclaim the ~44 MB bundled basemap copied into filesDir by older
+            // builds; the basemap now streams live and is cached on demand.
+            File(filesDir, "world_z0-6.pmtiles").delete()
+            syncOverlaySchedule()
+        }
 
         // Deep link that launched us cold (geo:/google.navigation:/maps URL).
         handleIntent(intent)
     }
 
     /** Enqueue the daily overlay check when the auto-update toggle is on. */
-    private fun syncOverlaySchedule() {
+    private suspend fun syncOverlaySchedule() {
         val ds = DataStoreUtils.getInstance(this)
-        if (ds.getBoolean(MapPreferences.KEY_MAP_AUTO_UPDATE, MapPreferences.DEFAULT_MAP_AUTO_UPDATE)) {
+        if (ds.getBooleanAwait(MapPreferences.KEY_MAP_AUTO_UPDATE, MapPreferences.DEFAULT_MAP_AUTO_UPDATE)) {
             MapOverlayWorker.scheduleAuto(this)
         }
     }

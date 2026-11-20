@@ -86,6 +86,30 @@ private fun buildSegments(content: List<OdfContentBlock>): List<DocSegment> {
     return segments
 }
 
+// Stable LazyColumn identity: the content index is the model's own identity
+// (every edit callback — onRunTextChange, onCellTextChange, onChartClick —
+// addresses blocks by this index), so keying by it keeps editor state with
+// its block when neighbours are inserted/removed without re-keying on text
+// (a text-derived key would change per keystroke and destroy editor state).
+private fun DocSegment.lazyKey(): String = when (this) {
+    is DocSegment.Paragraphs -> "paragraphs:$start-$endInclusive"
+    is DocSegment.Block -> "block:$index"
+}
+
+private fun DocSegment.lazyContentType(content: List<OdfContentBlock>): String = when (this) {
+    is DocSegment.Paragraphs -> "paragraphs"
+    is DocSegment.Block -> when (content[index]) {
+        is OdfContentBlock.Table -> "block-table"
+        is OdfContentBlock.Image -> "block-image"
+        is OdfContentBlock.PageBreak -> "block-pagebreak"
+        is OdfContentBlock.Chart -> "block-chart"
+        is OdfContentBlock.Formula -> "block-formula"
+        is OdfContentBlock.TableOfContents -> "block-toc"
+        is OdfContentBlock.Paragraph -> "block-paragraph"
+        is OdfContentBlock.SectionStart, OdfContentBlock.SectionEnd -> "block-section"
+    }
+}
+
 @Composable
 fun TextDocumentView(
     doc: OdfDocument.TextDocument,
@@ -111,7 +135,11 @@ fun TextDocumentView(
         modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 12.dp)
     ) {
         if (doc.headerParagraphs.isNotEmpty()) {
-            item {
+            // Header stays one composed block: its paragraphs render inside a
+            // single Surface, so splitting them into separate items would
+            // break the shared background/padding. It is already lazy at
+            // item granularity (composed only when scrolled into view).
+            item(key = "header", contentType = "header") {
                 Surface(
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
                     modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
@@ -123,7 +151,11 @@ fun TextDocumentView(
             }
         }
 
-        items(segments.size) { si ->
+        items(
+            count = segments.size,
+            key = { si -> segments[si].lazyKey() },
+            contentType = { si -> segments[si].lazyContentType(doc.content) },
+        ) { si ->
             when (val seg = segments[si]) {
                 is DocSegment.Paragraphs -> ContinuousParagraphEditor(
                     doc, seg.start, seg.endInclusive, fontSizeMultiplier, onRunSelectionChange, onRunTextChange,
@@ -173,8 +205,20 @@ fun TextDocumentView(
         }
 
         if (doc.footnotes.isNotEmpty()) {
-            item { HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp)) }
-            items(doc.footnotes.size) { index ->
+            item(key = "footnotes-divider", contentType = "divider") {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+            }
+            // Keyed by citation, the footnote's stable identity (the serializer
+            // also associates footnotes by citation). The body-paragraph loop
+            // stays a single composed block inside the footnote's Row: the
+            // citation + body are one visual unit, so per-paragraph items
+            // would fragment that Row without making the footnote itself
+            // any lazier — it is already lazy at footnote granularity.
+            items(
+                count = doc.footnotes.size,
+                key = { index -> "footnote:${doc.footnotes[index].citation}" },
+                contentType = { "footnote" },
+            ) { index ->
                 val fn = doc.footnotes[index]
                 Row(modifier = Modifier.padding(vertical = 2.dp)) {
                     Text("${fn.citation} ", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
@@ -187,7 +231,8 @@ fun TextDocumentView(
         }
 
         if (doc.footerParagraphs.isNotEmpty()) {
-            item {
+            // Single composed block, as for the header (shared Surface).
+            item(key = "footer", contentType = "footer") {
                 Surface(
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
