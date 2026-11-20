@@ -10,6 +10,7 @@ import com.vayunmathur.email.data.ImapIdleService
 import com.vayunmathur.email.data.OutboxSendWorker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 /**
@@ -34,7 +35,7 @@ class BootReceiver : BroadcastReceiver() {
             "android.intent.action.QUICKBOOT_POWERON" -> {
                 val pending = goAsync()
                 val appContext = context.applicationContext
-                CoroutineScope(Dispatchers.IO).launch {
+                CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
                     try {
                         Log.debug(TAG, "Boot (${intent.action}): restarting hourly + one-off + outbox")
                         EmailSyncWorker.scheduleHourlyNonInboxSync(appContext)

@@ -6,6 +6,7 @@ import android.content.Intent
 import com.vayunmathur.library.log.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 private const val TAG = "ScreenTimeReceiver"
@@ -28,7 +29,7 @@ class TimerReachedReceiver : BroadcastReceiver() {
         }
         val app = context.applicationContext
         val pending = goAsync()
-        CoroutineScope(Dispatchers.IO).launch {
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
                 Coordinator(app).onTimerReached(packageName)
             } catch (e: Exception) {
@@ -65,7 +66,7 @@ class ScheduleReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val app = context.applicationContext
         val pending = goAsync()
-        CoroutineScope(Dispatchers.IO).launch {
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
                 Coordinator(app).reconcile()
             } catch (e: Exception) {
@@ -102,7 +103,7 @@ class BootReceiver : BroadcastReceiver() {
         }
         val app = context.applicationContext
         val pending = goAsync()
-        CoroutineScope(Dispatchers.IO).launch {
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
                 Coordinator(app).reconcile()
             } catch (e: Exception) {

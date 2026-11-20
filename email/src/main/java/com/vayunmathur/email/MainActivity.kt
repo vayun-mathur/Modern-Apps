@@ -18,6 +18,8 @@ import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.library.network.TrustBundle
 import com.vayunmathur.library.ui.MaActivity
 import com.vayunmathur.library.widgets.updateWidgetPreviews
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 /** Entry activity that wires the email UI, navigation and background sync startup. */
 class MainActivity : MaActivity() {
@@ -29,13 +31,22 @@ class MainActivity : MaActivity() {
 
     override fun onCreateBeforeContent() {
         NetworkClient.init(this, TrustBundle.SYSTEM)
-        updateWidgetPreviews(EmailWidgetReceiver::class)
         handleIntent(intent)
-        EmailSyncWorker.scheduleHourlyNonInboxSync(this)
-        OutboxSendWorker.runNow(this)
-        ImapIdleService.start(this)
-        DateMillisBackfill.runIfNeeded(lifecycleScope, this)
-        PeekContentBackfill.runIfNeeded(lifecycleScope, this)
+        // Single deferred startup block: every worker/service enqueue below
+        // is thread-safe (WorkManager enqueues, startForegroundService) and
+        // none gates the first frame, so they leave the main thread together
+        // instead of several main-thread calls. The two backfills already
+        // launch on Dispatchers.IO themselves; calling them from here keeps
+        // one startup site. Order preserved: hourly sync, outbox, IDLE,
+        // then the one-time backfills.
+        lifecycleScope.launch(Dispatchers.IO) {
+            this@MainActivity.updateWidgetPreviews(EmailWidgetReceiver::class)
+            EmailSyncWorker.scheduleHourlyNonInboxSync(this@MainActivity)
+            OutboxSendWorker.runNow(this@MainActivity)
+            ImapIdleService.start(this@MainActivity)
+            DateMillisBackfill.runIfNeeded(lifecycleScope, this@MainActivity)
+            PeekContentBackfill.runIfNeeded(lifecycleScope, this@MainActivity)
+        }
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
             val permission = android.Manifest.permission.POST_NOTIFICATIONS
             val granted = android.content.pm.PackageManager.PERMISSION_GRANTED

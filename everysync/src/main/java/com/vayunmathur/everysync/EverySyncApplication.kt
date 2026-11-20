@@ -6,8 +6,9 @@ import com.vayunmathur.everysync.sync.SnapshotWorker
 import com.vayunmathur.everysync.sync.SyncScheduler
 import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.library.network.TrustBundle
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 /**
@@ -16,6 +17,8 @@ import kotlinx.coroutines.launch
  * keeps running without the user reopening the UI.
  */
 class EverySyncApplication : Application() {
+    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     override fun onCreate() {
         super.onCreate()
         // FIRST_PARTY covers the relay host (same bundle the office twin uses).
@@ -24,7 +27,7 @@ class EverySyncApplication : Application() {
         SnapshotWorker.scheduleDaily(this)
         // One-time: seal any plaintext vault keys stored before the Keystore
         // migration. Idempotent; runs on every process start, cheap when done.
-        GlobalScope.launch(Dispatchers.IO) {
+        appScope.launch {
             runCatching { VaultStore.migrateKeysToKeystore(this@EverySyncApplication) }
         }
     }
