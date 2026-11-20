@@ -14,6 +14,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.web.platform.shields.ShieldsEngine
@@ -46,7 +47,7 @@ class PwaActivity : ComponentActivity() {
         enableEdgeToEdge()
         // Installed sites get the same shields as the browser; loading is a no-op if the
         // engine is already up in this process.
-        lifecycleScope.launch { ShieldsEngine.load(applicationContext) }
+        lifecycleScope.launch(Dispatchers.IO) { ShieldsEngine.load(applicationContext) }
         // A pinned shortcut can be the process entry point without MainActivity ever running.
         ShieldsServiceWorkerClient.registerOnce(applicationContext)
         handleIntent(intent)

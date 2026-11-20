@@ -50,7 +50,7 @@ class MainActivity : MaActivity() {
             ImageLoader.Builder(this).remote { data, _ -> HttpImageFetcher.fetch(data, NetworkClient::getBytes) }.build(),
         )
         // Parses ~8 MB of filter lists off the main thread. Shields fail open until it lands.
-        lifecycleScope.launch { ShieldsEngine.load(applicationContext) }
+        lifecycleScope.launch(Dispatchers.IO) { ShieldsEngine.load(applicationContext) }
         // Before any WebView exists: service-worker fetches bypass the WebViewClient entirely.
         ShieldsServiceWorkerClient.registerOnce(applicationContext)
 
