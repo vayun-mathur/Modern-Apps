@@ -26,12 +26,10 @@ internal fun rememberTabsCallbacks(
 ): TabsCallbacks = remember(backStack) {
     TabsCallbacks(
         onContactClick = { contact ->
-            val last = backStack.last()
-            val isDetail = last is Route.ContactDetail || last is Route.EditContact
-            if (isDetail) {
-                backStack.setLast(Route.ContactDetail(contact.id))
-            } else {
-                backStack.add(Route.ContactDetail(contact.id))
+            // An open detail or editor is replaced, not stacked: on two-pane the list
+            // stays beside it, so a second tap must not pile detail on detail.
+            backStack.pushOrReplace(Route.ContactDetail(contact.id)) {
+                it is Route.ContactDetail || it is Route.EditContact
             }
         },
         onAddContactClick = {

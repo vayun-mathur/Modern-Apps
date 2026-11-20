@@ -140,8 +140,7 @@ fun ArtistDetailScreen(backStack: NavBackStack<Route>, musicViewModel: MusicView
                     modifier = Modifier.clickable {
                         // Another album off the same artist replaces the detail instead of
                         // stacking AlbumDetail on AlbumDetail.
-                        val route = Route.AlbumDetail(album.id)
-                        if (backStack.last() is Route.AlbumDetail) backStack.setLast(route) else backStack.add(route)
+                        backStack.pushOrReplace(Route.AlbumDetail(album.id))
                     },
                     supportingContent = { Text(albumYear) },
                     trailingContent = { Text(formatDuration(albumDurationMs)) },

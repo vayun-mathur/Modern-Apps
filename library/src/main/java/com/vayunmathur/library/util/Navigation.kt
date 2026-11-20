@@ -106,6 +106,64 @@ class NavBackStack<T: NavKey>(initial: Array<out T>) {
         backend.clear()
         backend.addAll(keys)
     }
+
+    /**
+     * Push [value], replacing the current top instead when it is already a destination of the
+     * same type.
+     *
+     * The detail-over-list case this exists for: on a two-pane layout the list stays visible
+     * beside its detail, so tapping a second item of the same kind would otherwise pile one
+     * detail on another and back would step through stale details instead of returning to
+     * the list. Class equality rather than `is`, matching the hand-rolled helpers this
+     * promotes (education's `pushChain`, photos' `pushPhoto`): a subclass instance is a
+     * different destination, not a refresh of this one. On an empty stack this is [add].
+     */
+    fun pushOrReplace(value: T) {
+        if (backend.isNotEmpty() && backend.last()::class == value::class) setLast(value) else add(value)
+    }
+
+    /**
+     * [pushOrReplace] with the replace decision left to [replaceIf] on the current top.
+     *
+     * For the tops that are interchangeable but not the same type - contacts replaces an
+     * open editor as readily as an open detail, maps swaps a place sheet for an admin
+     * label - where the same-type rule alone would stack instead of replacing. The new
+     * [value] need not be of the type [replaceIf] matches. On an empty stack this is [add].
+     */
+    fun pushOrReplace(value: T, replaceIf: (T) -> Boolean) {
+        if (backend.isNotEmpty() && replaceIf(backend.last())) setLast(value) else add(value)
+    }
+
+    /**
+     * Pop until [target] is the current destination, reporting whether it was there at all.
+     *
+     * Returns false and changes nothing when the target is absent, so a caller can fall
+     * back to pushing rather than unwinding the whole stack looking for something that was
+     * never on it (files' breadcrumb navigation is the model). Never pops the root: a
+     * target that is only reachable by emptying the stack cannot be produced here, and an
+     * absent target leaves even the root untouched. With duplicate entries it stops at the
+     * topmost one.
+     */
+    fun popTo(target: T): Boolean {
+        if (target !in backend) return false
+        while (backend.size > 1 && backend.last() != target) pop()
+        return true
+    }
+
+    /**
+     * [popTo] by predicate: pop until the top satisfies [predicate], to its topmost match.
+     *
+     * Same contract as [popTo] by value - false with no change when nothing matches, and
+     * the root is never popped, so a predicate matching only the root leaves just the root.
+     */
+    fun popTo(predicate: (T) -> Boolean): Boolean {
+        if (backend.none(predicate)) return false
+        while (backend.size > 1 && !predicate(backend.last())) pop()
+        return true
+    }
+
+    /** [popTo] to the topmost destination of type [R]; false with no change when there is none. */
+    inline fun <reified R : T> popToType(): Boolean = popTo { it is R }
 }
 
 // LocalNavResultRegistry lives in NavigationResults.kt.

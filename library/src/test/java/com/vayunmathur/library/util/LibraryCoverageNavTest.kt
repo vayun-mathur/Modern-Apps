@@ -22,6 +22,7 @@ import org.robolectric.RobolectricTestRunner
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -60,6 +61,71 @@ class LibraryCoverageNavTest {
         stack.add(Screen("y"))
         stack.clear()
         assertTrue(stack.backStack.isEmpty())
+    }
+
+    // ---- pushOrReplace / popTo (promoted from maps/files/photos/education helpers) ----
+
+    @Test fun pushOrReplaceSameTypeReplacesTopDifferentTypePushes() {
+        val stack = NavBackStack<NavKey>(arrayOf(Screen("home")))
+        stack.pushOrReplace(Screen("detail"))
+        assertEquals(listOf<NavKey>(Screen("detail")), stack.backStack, "same class replaces instead of stacking")
+        stack.pushOrReplace(Other("other"))
+        assertEquals(listOf<NavKey>(Screen("detail"), Other("other")), stack.backStack, "different class pushes")
+        stack.pushOrReplace(Other("other2"))
+        assertEquals(listOf<NavKey>(Screen("detail"), Other("other2")), stack.backStack)
+    }
+
+    @Test fun pushOrReplaceOnEmptyPushesInsteadOfFailing() {
+        val stack = NavBackStack<Screen>(emptyArray())
+        stack.pushOrReplace(Screen("first"))
+        assertEquals(listOf("first"), stack.backStack.map { it.route })
+        val emptyKeyed = NavBackStack<NavKey>(emptyArray())
+        emptyKeyed.pushOrReplace(Screen("first")) { true }
+        assertEquals(listOf<NavKey>(Screen("first")), emptyKeyed.backStack, "predicate form never consults a missing top")
+    }
+
+    @Test fun pushOrReplacePredicateReplacesInterchangeableTypesOnly() {
+        // Contacts' shape: an open detail OR editor is replaced by the next detail.
+        val stack = NavBackStack<NavKey>(arrayOf(Screen("home"), Other("editor")))
+        stack.pushOrReplace(Screen("detail")) { it is Screen || it is Other }
+        assertEquals(listOf<NavKey>(Screen("home"), Screen("detail")), stack.backStack)
+        // A predicate that rejects the top pushes, leaving the top in place below.
+        stack.pushOrReplace(Other("dialog")) { it is Other }
+        assertEquals(listOf<NavKey>(Screen("home"), Screen("detail"), Other("dialog")), stack.backStack)
+    }
+
+    @Test fun popToTargetPopsToTopmostMatchAndAbsentChangesNothing() {
+        val stack = NavBackStack(arrayOf(Screen("a"), Screen("b"), Screen("a"), Screen("c")))
+        assertTrue(stack.popTo(Screen("a")))
+        assertEquals(listOf("a", "b", "a"), stack.backStack.map { it.route }, "stops at the topmost match")
+        assertTrue(stack.popTo(Screen("a")), "already on top is a successful no-op")
+        assertEquals(3, stack.backStack.size)
+        assertFalse(stack.popTo(Screen("missing")))
+        assertEquals(listOf("a", "b", "a"), stack.backStack.map { it.route }, "absent target unwinds nothing")
+    }
+
+    @Test fun popToNeverPopsTheRoot() {
+        val stack = NavBackStack(arrayOf(Screen("root"), Screen("b"), Screen("c")))
+        assertTrue(stack.popTo(Screen("root")))
+        assertEquals(listOf("root"), stack.backStack.map { it.route })
+        assertFalse(stack.popTo(Screen("gone")))
+        assertEquals(listOf("root"), stack.backStack.map { it.route })
+        val single = NavBackStack(arrayOf(Screen("only")))
+        assertTrue(single.popTo(Screen("only")))
+        assertEquals(1, single.backStack.size)
+    }
+
+    @Test fun popToPredicateAndTypePopToTopmostMatch() {
+        val stack = NavBackStack<NavKey>(arrayOf(Screen("home"), Other("x"), Screen("detail"), Other("y")))
+        assertTrue(stack.popTo { it is Screen })
+        assertEquals(listOf<NavKey>(Screen("home"), Other("x"), Screen("detail")), stack.backStack)
+        assertTrue(stack.popToType<Other>())
+        assertEquals(listOf<NavKey>(Screen("home"), Other("x")), stack.backStack)
+        assertFalse(stack.popTo { (it as? Screen)?.route == "missing" })
+        assertEquals(2, stack.backStack.size, "no predicate match changes nothing")
+        val screensOnly = NavBackStack<NavKey>(arrayOf(Screen("home"), Screen("detail")))
+        assertFalse(screensOnly.popToType<Other>())
+        assertEquals(2, screensOnly.backStack.size)
     }
 
     // ---- EntryProviderScope ----
