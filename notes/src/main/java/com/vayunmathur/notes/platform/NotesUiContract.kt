@@ -14,7 +14,14 @@ import com.vayunmathur.notes.data.NoteBlock
 
 /** Everything the notes list draws. */
 data class NotesListUiState(
+    /** All live notes (tag counts, empty-vs-filtered decisions). */
     val notes: List<Note> = emptyList(),
+    /** [notes] after the ViewModel's search/tag filtering; defaults to unfiltered for previews. */
+    val filteredNotes: List<Note> = notes,
+    /** Current search text, owned by the ViewModel in the app. */
+    val searchQuery: String = "",
+    /** Selected tag filter (null = All), owned by the ViewModel in the app. */
+    val selectedTag: String? = null,
     /** Hidden while a note is already open beside the list in the list-detail layout. */
     val showAddButton: Boolean = true,
 )
@@ -36,6 +43,12 @@ interface NotesListActions {
 
     /** Removes [tag] from every note. Never deletes a note. */
     fun deleteTag(tag: String) {}
+
+    /** The search field text changed; the ViewModel debounces and re-filters. */
+    fun setSearchQuery(query: String) {}
+
+    /** The tag filter changed (null = All). */
+    fun setSelectedTag(tag: String?) {}
 
     /** Holds the no-op NotesListActions implementation used by previews. */
     companion object {

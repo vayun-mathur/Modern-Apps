@@ -56,6 +56,29 @@ class NotesViewModelTest {
         collectJob.cancel()
     }
 
+    @Test fun filteredNotesDebouncedSearchAndTag() {
+        val vm = vm()
+        val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main)
+        val collectJob = scope.launch { vm.notes.collect {} }
+        val collectFiltered = scope.launch { vm.filteredNotes.collect {} }
+        runBlocking {
+            repo.upsert(Note(title = "Alpha", content = "first body", syncId = "f1", tags = listOf("Work")))
+            repo.upsert(Note(title = "Beta", content = "second", syncId = "f2", tags = listOf("Home")))
+        }
+        await { vm.filteredNotes.value.size == 2 }
+        vm.setSearchQuery("first")
+        // 150ms debounce + Default-dispatcher filtering: await, don't sleep once.
+        await { vm.filteredNotes.value.map { it.syncId } == listOf("f1") }
+        vm.setSearchQuery("")
+        await { vm.filteredNotes.value.size == 2 }
+        vm.setSelectedTag("home")
+        await { vm.filteredNotes.value.map { it.syncId } == listOf("f2") }
+        vm.setSelectedTag(null)
+        vm.setSearchQuery("zzz-no-match")
+        await { vm.filteredNotes.value.isEmpty() }
+        collectJob.cancel(); collectFiltered.cancel()
+    }
+
     @Test fun parseDisplayCachesAndSearchCount() {
         val vm = vm()
         val a = vm.parseDisplay("# Hello world hello")
@@ -173,6 +196,7 @@ class NotesViewModelTest {
         // Noop actions are callable no-ops
         NotesListActions.Noop.openNote(1); NotesListActions.Noop.createNote()
         NotesListActions.Noop.delete(Note(title = "x", content = "")); NotesListActions.Noop.upsertAll(emptyList())
+        NotesListActions.Noop.setSearchQuery("q"); NotesListActions.Noop.setSelectedTag("t"); NotesListActions.Noop.setSelectedTag(null)
         NoteActions.Noop.back(); NoteActions.Noop.setTitle("t"); NoteActions.Noop.setBlockMarkdown("i", "m")
         NoteActions.Noop.addImage(null); NoteActions.Noop.addDrawing("b"); NoteActions.Noop.resizeImage("i", 0.5f)
         NoteActions.Noop.moveBlock("i", 1); NoteActions.Noop.deleteBlock("i"); NoteActions.Noop.copyNote()

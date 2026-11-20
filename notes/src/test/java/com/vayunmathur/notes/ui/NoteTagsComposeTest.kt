@@ -55,6 +55,33 @@ class NoteTagsComposeTest {
 
     private fun shown(text: String) = rule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
 
+    /** Stateful harness mimicking the ViewModel: holds query/tag and recomputes the filtered list. */
+    @androidx.compose.runtime.Composable
+    private fun FilteredList(
+        notes: List<Note>,
+        actions: NotesListActions,
+        initialQuery: String = "",
+        initialTag: String? = null,
+    ) {
+        var queryState by androidx.compose.runtime.remember { mutableStateOf(initialQuery) }
+        var tagState by androidx.compose.runtime.remember { mutableStateOf(initialTag) }
+        val wrapped = object : NotesListActions {
+            override fun renameTag(from: String, to: String) = actions.renameTag(from, to)
+            override fun deleteTag(tag: String) = actions.deleteTag(tag)
+            override fun setSearchQuery(query: String) { queryState = query }
+            override fun setSelectedTag(tag: String?) { tagState = tag }
+        }
+        NotesListScreen(
+            NotesListUiState(
+                notes = notes,
+                filteredNotes = filterNotes(notes, queryState, tagState),
+                searchQuery = queryState,
+                selectedTag = tagState,
+            ),
+            wrapped,
+        )
+    }
+
     // ---- editor ----
 
     @Test fun editorAddsTagOnDoneAndRemovesOnChipTap() {
@@ -114,7 +141,7 @@ class NoteTagsComposeTest {
     // ---- list ----
 
     @Test fun filterRowShowsCountsAndFiltersTheList() {
-        rule.setContent { NotesListScreen(NotesListUiState(notes()), RecordingListActions()) }
+        rule.setContent { FilteredList(notes(), RecordingListActions()) }
         // All + one chip per tag, most used first.
         rule.onNodeWithText("All").assertIsSelected()
         rule.onNode(hasText("Work") and hasText("2")).assertIsNotSelected()
@@ -139,7 +166,7 @@ class NoteTagsComposeTest {
     }
 
     @Test fun tappingTheSelectedTagAgainClearsTheFilter() {
-        rule.setContent { NotesListScreen(NotesListUiState(notes()), RecordingListActions(), initialTagFilter = "home") }
+        rule.setContent { FilteredList(notes(), RecordingListActions(), initialTag = "home") }
         assertTrue(shown("Groceries") && !shown("Standup"))
         rule.onNode(hasText("Home") and hasText("1")).performClick()
         rule.waitForIdle()
@@ -147,7 +174,12 @@ class NoteTagsComposeTest {
     }
 
     @Test fun searchMatchesTagNames() {
-        rule.setContent { NotesListScreen(NotesListUiState(notes()), RecordingListActions(), initialSearchQuery = "idea") }
+        rule.setContent {
+            NotesListScreen(
+                NotesListUiState(notes(), filteredNotes = listOf(notes()[2]), searchQuery = "idea"),
+                RecordingListActions(),
+            )
+        }
         assertTrue(shown("Roadmap"))
         assertTrue(!shown("Standup") && !shown("Groceries"))
     }

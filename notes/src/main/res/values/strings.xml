@@ -32,6 +32,10 @@
     <string name="tag_options">Tag options</string>
     <!-- NotesList: hint under the tag filter row; dragging to reorder is off while a tag is selected. -->
     <string name="tag_filter_reorder_hint">Showing one tag. Select All to reorder notes.</string>
+    <!-- NotesList: empty state when a search matches nothing. %1$s is the query. -->
+    <string name="no_results_for">No results for \"%1$s\"</string>
+    <!-- NotesList: clears the current search from the no-results empty state. -->
+    <string name="clear_search">Clear search</string>
     <!-- Rename tag dialog: title. -->
     <string name="rename_tag_title">Rename tag</string>
     <!-- Rename tag dialog: text field label. Noun. -->

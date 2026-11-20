@@ -1,5 +1,9 @@
 package com.vayunmathur.notes.ui
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -83,10 +87,46 @@ class NotesComposeTest {
         assertEquals(1, actions.created)
     }
 
+    /** Stateful harness mimicking the ViewModel: holds query/tag and recomputes the filtered list. */
+    @androidx.compose.runtime.Composable
+    private fun FilteredList(
+        notes: List<Note>,
+        actions: RecordingListActions,
+        initialQuery: String = "",
+        initialTag: String? = null,
+        showAddButton: Boolean = true,
+    ) {
+        var query by remember { mutableStateOf(initialQuery) }
+        var tag by remember { mutableStateOf(initialTag) }
+        val wrapped = object : NotesListActions {
+            override fun openNote(id: Long) = actions.openNote(id)
+            override fun createNote() = actions.createNote()
+            override fun delete(note: Note) = actions.delete(note)
+            override fun upsertAll(notes: List<Note>) = actions.upsertAll(notes)
+            override fun renameTag(from: String, to: String) = actions.renameTag(from, to)
+            override fun deleteTag(tag: String) = actions.deleteTag(tag)
+            override fun setSearchQuery(q: String) { query = q }
+            override fun setSelectedTag(t: String?) { tag = t }
+        }
+        NotesListScreen(
+            NotesListUiState(
+                notes = notes,
+                filteredNotes = filterNotes(notes, query, tag),
+                searchQuery = query,
+                selectedTag = tag,
+                showAddButton = showAddButton,
+            ),
+            wrapped,
+        )
+    }
+
     @Test fun listSearchFiltersAndHideAddButton() {
         val actions = RecordingListActions()
         rule.setContent {
-            NotesListScreen(NotesListUiState(notes(), showAddButton = false), actions, initialSearchQuery = "beta")
+            NotesListScreen(
+                NotesListUiState(notes(), filteredNotes = listOf(notes()[1]), searchQuery = "beta", showAddButton = false),
+                actions,
+            )
         }
         rule.onNodeWithText("Beta Title").assertIsDisplayed()
         assertEquals(0, rule.onAllNodesWithText("Alpha Title").fetchSemanticsNodes().size)
@@ -94,13 +134,22 @@ class NotesComposeTest {
 
     @Test fun listSearchTypingNarrowsResults() {
         val actions = RecordingListActions()
-        rule.setContent { NotesListScreen(NotesListUiState(notes()), actions) }
+        rule.setContent { FilteredList(notes(), actions) }
         rule.onNodeWithText("Alpha Title").assertIsDisplayed()
         // CommonSearchBar is a text field with placeholder = app name "Notes"
         rule.onNodeWithText("Notes").performTextInput("gamma")
         rule.waitForIdle()
         rule.onNodeWithText("Gamma").assertIsDisplayed()
         assertEquals(0, rule.onAllNodesWithText("Alpha Title").fetchSemanticsNodes().size)
+    }
+
+    @Test fun listSearchNoResultsShowsEmptyStateAndClear() {
+        val actions = RecordingListActions()
+        rule.setContent { FilteredList(notes(), actions, initialQuery = "zzz-no-match") }
+        rule.onNodeWithText("No results for \"zzz-no-match\"").assertIsDisplayed()
+        rule.onNodeWithText("Clear search").performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText("Alpha Title").assertIsDisplayed()
     }
 
     @Test fun noteScreenShowsTitleBlocksAndToolbarActions() {
@@ -236,7 +285,12 @@ class NotesComposeTest {
         // while searching, no reorder handle may exist — a drag would persist
         // positions computed from the filtered subset and corrupt global order.
         val actions = RecordingListActions()
-        rule.setContent { NotesListScreen(NotesListUiState(notes()), actions, initialSearchQuery = "title") }
+        rule.setContent {
+            NotesListScreen(
+                NotesListUiState(notes(), filteredNotes = notes().take(2), searchQuery = "title"),
+                actions,
+            )
+        }
         rule.onNodeWithText("Alpha Title").assertIsDisplayed()
         rule.onNodeWithText("Beta Title").assertIsDisplayed()
         assertTrue(rule.onAllNodesWithContentDescription("Reorder").fetchSemanticsNodes().isEmpty())

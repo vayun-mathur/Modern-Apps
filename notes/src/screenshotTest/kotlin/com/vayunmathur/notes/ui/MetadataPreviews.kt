@@ -117,9 +117,12 @@ class MetadataPreviews {
     fun Preview3Search() {
         DynamicTheme(darkTheme = true) {
             NotesListScreen(
-                state = NotesListUiState(notes = samples),
+                state = NotesListUiState(
+                    notes = samples,
+                    filteredNotes = filterNotes(samples, "book", null),
+                    searchQuery = "book",
+                ),
                 actions = NotesListActions.Noop,
-                initialSearchQuery = "book",
             )
         }
     }
@@ -131,9 +134,12 @@ class MetadataPreviews {
     fun Preview4Tags() {
         DynamicTheme(darkTheme = true) {
             NotesListScreen(
-                state = NotesListUiState(notes = samples),
+                state = NotesListUiState(
+                    notes = samples,
+                    filteredNotes = filterNotes(samples, "", "Work"),
+                    selectedTag = "Work",
+                ),
                 actions = NotesListActions.Noop,
-                initialTagFilter = "Work",
             )
         }
     }

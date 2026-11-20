@@ -25,6 +25,8 @@ import com.vayunmathur.library.util.parseMarkdown
 import com.vayunmathur.notes.data.Note
 import com.vayunmathur.notes.data.NotesRepository
 import com.vayunmathur.notes.domain.TagCount
+import com.vayunmathur.notes.domain.filterIndexedNotes
+import com.vayunmathur.notes.domain.noteSearchHaystack
 import com.vayunmathur.notes.domain.tagCounts as countTags
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
@@ -36,8 +38,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -57,6 +61,49 @@ class NotesViewModel(
     /** Every tag across the live notes, most used first: the list filter row and editor autocomplete. */
     val tagCounts: StateFlow<List<TagCount>> = notes
         .map { list -> countTags(list.map { it.tags }) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    private val _selectedTag = MutableStateFlow<String?>(null)
+    val selectedTag: StateFlow<String?> = _selectedTag.asStateFlow()
+
+    fun setSearchQuery(query: String) {
+        _searchQuery.value = query
+    }
+
+    fun setSelectedTag(tag: String?) {
+        _selectedTag.value = tag
+    }
+
+    /**
+     * Each note paired with its precomputed lowercase search haystack.
+     * Built once per change to the note list rather than once per keystroke
+     * (the contacts `ContactViewModel` pattern): scanning full note bodies
+     * between frames of typing was the expensive half of list search, and
+     * none of it depends on what was typed.
+     */
+    private val searchIndex: StateFlow<List<Pair<Note, String>>> =
+        notes
+            .map { all -> all.map { it to noteSearchHaystack(it) } }
+            .flowOn(Dispatchers.Default)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /**
+     * The list the UI draws: [searchIndex] filtered by the debounced query
+     * and the selected tag, off the main thread. Filtering used to run in
+     * `remember{}` on the composition thread in `NotesListScreen`.
+     */
+    @OptIn(FlowPreview::class)
+    val filteredNotes: StateFlow<List<Note>> = combine(
+        searchIndex,
+        _searchQuery.debounce(SEARCH_DEBOUNCE_MS),
+        _selectedTag,
+    ) { indexed, query, tag ->
+        filterIndexedNotes(indexed, query, tag)
+    }
+        .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     // Ids deleted from the editor, so a dispose-time flush of a pending edit
@@ -326,6 +373,7 @@ class NotesViewModel(
     companion object {
         private const val TAG = "NotesViewModel"
         private const val SAVE_DEBOUNCE_MS = 300L
+        private const val SEARCH_DEBOUNCE_MS = 150L
         // Largest importable file: readText() on an arbitrary shared file is an
         // OOM vector, and a multi-MB note would also wedge the Room row and the
         // export/share path. Oversized files are skipped, never truncated.

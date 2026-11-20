@@ -19,7 +19,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,7 +28,9 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.CommonSearchBar
+import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.util.sharedText
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.FloatingActionButton
@@ -70,28 +71,21 @@ fun NotesListScreen(
     actions: NotesListActions,
     /** Top-bar backup/restore buttons; empty in a preview, which has no database. */
     backupButtons: @Composable RowScope.() -> Unit = {},
-    /**
-     * Seed for the screen's own UI-only search state. The app always takes the default;
-     * previews set it so the search results can be captured without typing.
-     */
-    initialSearchQuery: String = "",
-    /** Seed for the tag filter (null = All), for the same reason as [initialSearchQuery]. */
-    initialTagFilter: String? = null,
 ) {
-    var searchQuery by remember { mutableStateOf(initialSearchQuery) }
-    // Tag filter (#913): single-select. One tag at a time avoids the AND-vs-OR
-    // question a multi-select row raises; the selected chip is filled and checked.
-    var selectedTag by rememberSaveable { mutableStateOf(initialTagFilter) }
+    // Search + tag filtering live in the ViewModel (debounced, off the main
+    // thread, over precomputed haystacks); this screen only draws the
+    // filtered flow it is handed via [NotesListUiState.filteredNotes].
+    val searchQuery = state.searchQuery
     val tags = remember(state.notes) { tagCounts(state.notes.map { it.tags }) }
     // The selection only applies while some note still carries the tag.
-    val activeTag = selectedTag?.let { sel -> tags.firstOrNull { tagKey(it.name) == tagKey(sel) }?.name }
-    val filtered = remember(state.notes, searchQuery, activeTag) { filterNotes(state.notes, searchQuery, activeTag) }
+    val activeTag = state.selectedTag?.let { sel -> tags.firstOrNull { tagKey(it.name) == tagKey(sel) }?.name }
+    val filtered = state.filteredNotes
 
     BackHandler(enabled = searchQuery.isNotEmpty()) {
-        searchQuery = ""
+        actions.setSearchQuery("")
     }
     BackHandler(enabled = searchQuery.isEmpty() && activeTag != null) {
-        selectedTag = null
+        actions.setSelectedTag(null)
     }
 
     val hapticFeedback = LocalHapticFeedback.current
@@ -198,7 +192,7 @@ fun NotesListScreen(
                     title = {
                         CommonSearchBar(
                             value = searchQuery,
-                            onValueChange = { searchQuery = it },
+                            onValueChange = { actions.setSearchQuery(it) },
                             placeholder = stringResource(R.string.app_name),
                             padding = PaddingValues(0.dp)
                         )
@@ -211,13 +205,13 @@ fun NotesListScreen(
                     tags = tags,
                     totalCount = state.notes.size,
                     selected = activeTag,
-                    onSelect = { selectedTag = it },
+                    onSelect = { actions.setSelectedTag(it) },
                     onRename = { from, to ->
-                        if (activeTag != null && tagKey(activeTag) == tagKey(from)) selectedTag = to
+                        if (activeTag != null && tagKey(activeTag) == tagKey(from)) actions.setSelectedTag(to)
                         actions.renameTag(from, to)
                     },
                     onDelete = { tag ->
-                        if (activeTag != null && tagKey(activeTag) == tagKey(tag)) selectedTag = null
+                        if (activeTag != null && tagKey(activeTag) == tagKey(tag)) actions.setSelectedTag(null)
                         actions.deleteTag(tag)
                     },
                 )
@@ -240,6 +234,18 @@ fun NotesListScreen(
         },
         state = listState,
     ) {
+            if (filtered.isEmpty() && searchQuery.isNotBlank()) {
+                item(key = "no-results") {
+                    EmptyState(
+                        title = stringResource(R.string.no_results_for, searchQuery),
+                        action = {
+                            Button(onClick = { actions.setSearchQuery("") }) {
+                                Text(stringResource(R.string.clear_search))
+                            }
+                        },
+                    )
+                }
+            }
             items(localData, key = { it.id }) { note ->
                 val dragging = reorderState.draggingKey == note.id
                 // Item root: follow the finger 1:1 while dragging; otherwise glide into place.

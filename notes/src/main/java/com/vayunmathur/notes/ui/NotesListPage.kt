@@ -62,6 +62,9 @@ import com.vayunmathur.library.ui.reorderDragHandle
 fun NotesListPage(backStack: NavBackStack<Route>, viewModel: NotesViewModel) {
     val context = LocalContext.current
     val notes by viewModel.notes.collectAsStateWithLifecycle()
+    val filteredNotes by viewModel.filteredNotes.collectAsStateWithLifecycle()
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val selectedTag by viewModel.selectedTag.collectAsStateWithLifecycle()
 
     val actions = remember(backStack, viewModel) {
         object : NotesListActions {
@@ -71,11 +74,19 @@ fun NotesListPage(backStack: NavBackStack<Route>, viewModel: NotesViewModel) {
             override fun upsertAll(notes: List<Note>) { viewModel.upsertAll(notes) }
             override fun renameTag(from: String, to: String) { viewModel.renameTag(from, to) }
             override fun deleteTag(tag: String) { viewModel.deleteTag(tag) }
+            override fun setSearchQuery(query: String) { viewModel.setSearchQuery(query) }
+            override fun setSelectedTag(tag: String?) { viewModel.setSelectedTag(tag) }
         }
     }
 
     NotesListScreen(
-        state = NotesListUiState(notes = notes, showAddButton = backStack.last() !is Route.Note),
+        state = NotesListUiState(
+            notes = notes,
+            filteredNotes = filteredNotes,
+            searchQuery = searchQuery,
+            selectedTag = selectedTag,
+            showAddButton = backStack.last() !is Route.Note,
+        ),
         actions = actions,
         // Passed in rather than built inside the screen: the backup buttons need the
         // database passphrase, which only exists on a real device.
