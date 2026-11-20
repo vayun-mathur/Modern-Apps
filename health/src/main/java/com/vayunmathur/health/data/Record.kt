@@ -383,7 +383,7 @@ interface HealthDao {
         DeletedMedicalResource::class, PendingMirror::class,
     ],
     version = 12,
-    exportSchema = false
+    exportSchema = true
 )
 /** Health Database: a room database implementation for health database. */
 @ColumnTypeConverters(Converters::class)

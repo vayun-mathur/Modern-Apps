@@ -17,6 +17,7 @@ import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
 import java.time.Instant
 import java.time.ZoneId
+import java.util.Locale
 import kotlinx.datetime.LocalDate as KotlinLocalDate
 
 /**
@@ -135,7 +136,7 @@ private const val ALL_DAYS_MASK = 0x7F
 
 /** A schedule date as a FHIR `date`. */
 private fun formatScheduleDate(date: KotlinLocalDate): String =
-    "%04d-%02d-%02d".format(date.year, date.monthNumber, date.dayOfMonth)
+    String.format(Locale.US, "%04d-%02d-%02d", date.year, date.monthNumber, date.dayOfMonth)
 
 /**
  * The local calendar date of an instant, for the schedule's anchor.
@@ -149,7 +150,7 @@ internal fun Instant.toScheduleDate(zone: ZoneId = ZoneId.systemDefault()): Kotl
 
 /** "08:00:00" from seconds since midnight, the form `Timing.repeat.timeOfDay` takes. */
 private fun formatTimeOfDay(seconds: Int): String =
-    "%02d:%02d:%02d".format(seconds / 3600, (seconds % 3600) / 60, seconds % 60)
+    String.format(Locale.US, "%02d:%02d:%02d", seconds / 3600, (seconds % 3600) / 60, seconds % 60)
 
 /** "Amoxicillin", "500 mg", "Capsule" rendered as one line for `display` and `text`. */
 internal fun fullMedicationName(entry: MedicationEntry): String =

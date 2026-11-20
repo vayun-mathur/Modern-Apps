@@ -216,11 +216,16 @@ internal fun DisplayColumn(state: CalculatorUiState, actions: CalculatorActions,
 /** One past calculation in the inline history stack: tapping reuses its result. */
 @Composable
 private fun HistoryRow(entry: HistoryEntry, actions: CalculatorActions, modifier: Modifier = Modifier) {
+    val historyDescription = stringResource(
+        R.string.history_entry_content_description,
+        entry.expression,
+        entry.result,
+    )
     Column(
         modifier
             .fillMaxWidth()
             .clickable(role = Role.Button, onClick = { actions.useHistory(entry) })
-            .semantics { contentDescription = "${entry.expression} equals ${entry.result}" }
+            .semantics { contentDescription = historyDescription }
             .padding(vertical = 8.dp),
         horizontalAlignment = Alignment.End,
     ) {

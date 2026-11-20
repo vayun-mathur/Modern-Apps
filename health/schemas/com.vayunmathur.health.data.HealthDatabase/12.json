@@ -1,0 +1,1627 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 12,
+    "identityHash": "085c9ef9eae62d84d1e72083adc61161",
+    "entities": [
+      {
+        "tableName": "Record",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `index` INTEGER NOT NULL, `type` TEXT NOT NULL, `startTime` INTEGER NOT NULL, `endTime` INTEGER NOT NULL, `value` REAL NOT NULL, `secondaryValue` REAL NOT NULL, `metadata` TEXT, `primaryKey` TEXT NOT NULL, `nutrition_protein` REAL, `nutrition_carbohydrates` REAL, `nutrition_fat` REAL, `nutrition_fiber` REAL, `nutrition_sugar` REAL, `nutrition_sodium` REAL, `nutrition_biotin` REAL, `nutrition_caffeine` REAL, `nutrition_calcium` REAL, `nutrition_chloride` REAL, `nutrition_cholesterol` REAL, `nutrition_chromium` REAL, `nutrition_copper` REAL, `nutrition_folate` REAL, `nutrition_folicAcid` REAL, `nutrition_iodine` REAL, `nutrition_iron` REAL, `nutrition_magnesium` REAL, `nutrition_manganese` REAL, `nutrition_molybdenum` REAL, `nutrition_monounsaturatedFat` REAL, `nutrition_niacin` REAL, `nutrition_pantothenicAcid` REAL, `nutrition_phosphorus` REAL, `nutrition_polyunsaturatedFat` REAL, `nutrition_potassium` REAL, `nutrition_riboflavin` REAL, `nutrition_saturatedFat` REAL, `nutrition_selenium` REAL, `nutrition_thiamin` REAL, `nutrition_transFat` REAL, `nutrition_unsaturatedFat` REAL, `nutrition_vitaminA` REAL, `nutrition_vitaminB12` REAL, `nutrition_vitaminB6` REAL, `nutrition_vitaminC` REAL, `nutrition_vitaminD` REAL, `nutrition_vitaminE` REAL, `nutrition_vitaminK` REAL, `nutrition_zinc` REAL, `nutrition_calories` REAL, `sleep_awakeDurationMillis` INTEGER, `sleep_remDurationMillis` INTEGER, `sleep_lightDurationMillis` INTEGER, `sleep_deepDurationMillis` INTEGER, `sleep_unknownDurationMillis` INTEGER, `sleep_stagesJson` TEXT, `exercise_exerciseType` INTEGER, `exercise_title` TEXT, `exercise_notes` TEXT, `exercise_segmentsJson` TEXT, `exercise_lapsJson` TEXT, `exercise_hasRoute` INTEGER, PRIMARY KEY(`primaryKey`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "index",
+            "columnName": "index",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startTime",
+            "columnName": "startTime",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "endTime",
+            "columnName": "endTime",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "value",
+            "columnName": "value",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "secondaryValue",
+            "columnName": "secondaryValue",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "metadata",
+            "columnName": "metadata",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "primaryKey",
+            "columnName": "primaryKey",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutritionData.protein",
+            "columnName": "nutrition_protein",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "nutritionData.carbohydrates",
+            "columnName": "nutrition_carbohydrates",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "nutritionData.fat",
+            "columnName": "nutrition_fat",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "nutritionData.fiber",
+            "columnName": "nutrition_fiber",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "nutritionData.sugar",
+            "columnName": "nutrition_sugar",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "nutritionData.sodium",
+            "columnName": "nutrition_sodium",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "nutritionData.biotin",
+            "columnName": "nutrition_biotin",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "nutritionData.caffeine",
+            "columnName": "nutrition_caffeine",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "nutritionData.calcium",
+            "columnName": "nutrition_calcium",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "nutritionData.chloride",
+            "columnName": "nutrition_chloride",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "nutritionData.cholesterol",
+            "columnName": "nutrition_cholesterol",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "nutritionData.chromium",
+            "columnName": "nutrition_chromium",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "nutritionData.copper",
+            "columnName": "nutrition_copper",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "nutritionData.folate",
+            "columnName": "nutrition_folate",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "nutritionData.folicAcid",
+            "columnName": "nutrition_folicAcid",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "nutritionData.iodine",
+            "columnName": "nutrition_iodine",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "nutritionData.iron",
+            "columnName": "nutrition_iron",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "nutritionData.magnesium",
+            "columnName": "nutrition_magnesium",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "nutritionData.manganese",
+            "columnName": "nutrition_manganese",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "nutritionData.molybdenum",
+            "columnName": "nutrition_molybdenum",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "nutritionData.monounsaturatedFat",
+            "columnName": "nutrition_monounsaturatedFat",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "nutritionData.niacin",
+            "columnName": "nutrition_niacin",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "nutritionData.pantothenicAcid",
+            "columnName": "nutrition_pantothenicAcid",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "nutritionData.phosphorus",
+            "columnName": "nutrition_phosphorus",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "nutritionData.polyunsaturatedFat",
+            "columnName": "nutrition_polyunsaturatedFat",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "nutritionData.potassium",
+            "columnName": "nutrition_potassium",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "nutritionData.riboflavin",
+            "columnName": "nutrition_riboflavin",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "nutritionData.saturatedFat",
+            "columnName": "nutrition_saturatedFat",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "nutritionData.selenium",
+            "columnName": "nutrition_selenium",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "nutritionData.thiamin",
+            "columnName": "nutrition_thiamin",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "nutritionData.transFat",
+            "columnName": "nutrition_transFat",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "nutritionData.unsaturatedFat",
+            "columnName": "nutrition_unsaturatedFat",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "nutritionData.vitaminA",
+            "columnName": "nutrition_vitaminA",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "nutritionData.vitaminB12",
+            "columnName": "nutrition_vitaminB12",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "nutritionData.vitaminB6",
+            "columnName": "nutrition_vitaminB6",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "nutritionData.vitaminC",
+            "columnName": "nutrition_vitaminC",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "nutritionData.vitaminD",
+            "columnName": "nutrition_vitaminD",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "nutritionData.vitaminE",
+            "columnName": "nutrition_vitaminE",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "nutritionData.vitaminK",
+            "columnName": "nutrition_vitaminK",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "nutritionData.zinc",
+            "columnName": "nutrition_zinc",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "nutritionData.calories",
+            "columnName": "nutrition_calories",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "sleepData.awakeDurationMillis",
+            "columnName": "sleep_awakeDurationMillis",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "sleepData.remDurationMillis",
+            "columnName": "sleep_remDurationMillis",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "sleepData.lightDurationMillis",
+            "columnName": "sleep_lightDurationMillis",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "sleepData.deepDurationMillis",
+            "columnName": "sleep_deepDurationMillis",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "sleepData.unknownDurationMillis",
+            "columnName": "sleep_unknownDurationMillis",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "sleepData.stagesJson",
+            "columnName": "sleep_stagesJson",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "exerciseData.exerciseType",
+            "columnName": "exercise_exerciseType",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "exerciseData.title",
+            "columnName": "exercise_title",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "exerciseData.notes",
+            "columnName": "exercise_notes",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "exerciseData.segmentsJson",
+            "columnName": "exercise_segmentsJson",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "exerciseData.lapsJson",
+            "columnName": "exercise_lapsJson",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "exerciseData.hasRoute",
+            "columnName": "exercise_hasRoute",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "primaryKey"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_Record_type_startTime_endTime",
+            "unique": false,
+            "columnNames": [
+              "type",
+              "startTime",
+              "endTime"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_Record_type_startTime_endTime` ON `${TABLE_NAME}` (`type`, `startTime`, `endTime`)"
+          }
+        ]
+      },
+      {
+        "tableName": "Ingredient",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `originalName` TEXT NOT NULL, `customName` TEXT, `isRecipe` INTEGER NOT NULL, `nutrition_protein` REAL NOT NULL, `nutrition_carbohydrates` REAL NOT NULL, `nutrition_fat` REAL NOT NULL, `nutrition_fiber` REAL NOT NULL, `nutrition_sugar` REAL NOT NULL, `nutrition_sodium` REAL NOT NULL, `nutrition_biotin` REAL NOT NULL, `nutrition_caffeine` REAL NOT NULL, `nutrition_calcium` REAL NOT NULL, `nutrition_chloride` REAL NOT NULL, `nutrition_cholesterol` REAL NOT NULL, `nutrition_chromium` REAL NOT NULL, `nutrition_copper` REAL NOT NULL, `nutrition_folate` REAL NOT NULL, `nutrition_folicAcid` REAL NOT NULL, `nutrition_iodine` REAL NOT NULL, `nutrition_iron` REAL NOT NULL, `nutrition_magnesium` REAL NOT NULL, `nutrition_manganese` REAL NOT NULL, `nutrition_molybdenum` REAL NOT NULL, `nutrition_monounsaturatedFat` REAL NOT NULL, `nutrition_niacin` REAL NOT NULL, `nutrition_pantothenicAcid` REAL NOT NULL, `nutrition_phosphorus` REAL NOT NULL, `nutrition_polyunsaturatedFat` REAL NOT NULL, `nutrition_potassium` REAL NOT NULL, `nutrition_riboflavin` REAL NOT NULL, `nutrition_saturatedFat` REAL NOT NULL, `nutrition_selenium` REAL NOT NULL, `nutrition_thiamin` REAL NOT NULL, `nutrition_transFat` REAL NOT NULL, `nutrition_unsaturatedFat` REAL NOT NULL, `nutrition_vitaminA` REAL NOT NULL, `nutrition_vitaminB12` REAL NOT NULL, `nutrition_vitaminB6` REAL NOT NULL, `nutrition_vitaminC` REAL NOT NULL, `nutrition_vitaminD` REAL NOT NULL, `nutrition_vitaminE` REAL NOT NULL, `nutrition_vitaminK` REAL NOT NULL, `nutrition_zinc` REAL NOT NULL, `nutrition_calories` REAL NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "originalName",
+            "columnName": "originalName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "customName",
+            "columnName": "customName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "isRecipe",
+            "columnName": "isRecipe",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutritionData.protein",
+            "columnName": "nutrition_protein",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutritionData.carbohydrates",
+            "columnName": "nutrition_carbohydrates",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutritionData.fat",
+            "columnName": "nutrition_fat",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutritionData.fiber",
+            "columnName": "nutrition_fiber",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutritionData.sugar",
+            "columnName": "nutrition_sugar",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutritionData.sodium",
+            "columnName": "nutrition_sodium",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutritionData.biotin",
+            "columnName": "nutrition_biotin",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutritionData.caffeine",
+            "columnName": "nutrition_caffeine",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutritionData.calcium",
+            "columnName": "nutrition_calcium",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutritionData.chloride",
+            "columnName": "nutrition_chloride",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutritionData.cholesterol",
+            "columnName": "nutrition_cholesterol",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutritionData.chromium",
+            "columnName": "nutrition_chromium",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutritionData.copper",
+            "columnName": "nutrition_copper",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutritionData.folate",
+            "columnName": "nutrition_folate",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutritionData.folicAcid",
+            "columnName": "nutrition_folicAcid",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutritionData.iodine",
+            "columnName": "nutrition_iodine",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutritionData.iron",
+            "columnName": "nutrition_iron",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutritionData.magnesium",
+            "columnName": "nutrition_magnesium",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutritionData.manganese",
+            "columnName": "nutrition_manganese",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutritionData.molybdenum",
+            "columnName": "nutrition_molybdenum",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutritionData.monounsaturatedFat",
+            "columnName": "nutrition_monounsaturatedFat",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutritionData.niacin",
+            "columnName": "nutrition_niacin",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutritionData.pantothenicAcid",
+            "columnName": "nutrition_pantothenicAcid",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutritionData.phosphorus",
+            "columnName": "nutrition_phosphorus",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutritionData.polyunsaturatedFat",
+            "columnName": "nutrition_polyunsaturatedFat",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutritionData.potassium",
+            "columnName": "nutrition_potassium",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutritionData.riboflavin",
+            "columnName": "nutrition_riboflavin",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutritionData.saturatedFat",
+            "columnName": "nutrition_saturatedFat",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutritionData.selenium",
+            "columnName": "nutrition_selenium",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutritionData.thiamin",
+            "columnName": "nutrition_thiamin",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutritionData.transFat",
+            "columnName": "nutrition_transFat",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutritionData.unsaturatedFat",
+            "columnName": "nutrition_unsaturatedFat",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutritionData.vitaminA",
+            "columnName": "nutrition_vitaminA",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutritionData.vitaminB12",
+            "columnName": "nutrition_vitaminB12",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutritionData.vitaminB6",
+            "columnName": "nutrition_vitaminB6",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutritionData.vitaminC",
+            "columnName": "nutrition_vitaminC",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutritionData.vitaminD",
+            "columnName": "nutrition_vitaminD",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutritionData.vitaminE",
+            "columnName": "nutrition_vitaminE",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutritionData.vitaminK",
+            "columnName": "nutrition_vitaminK",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutritionData.zinc",
+            "columnName": "nutrition_zinc",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutritionData.calories",
+            "columnName": "nutrition_calories",
+            "affinity": "REAL",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "Recipe",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "ServingUnit",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `ingredientId` TEXT, `recipeId` TEXT, `name` TEXT NOT NULL, `grams` REAL NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`ingredientId`) REFERENCES `Ingredient`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`recipeId`) REFERENCES `Recipe`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ingredientId",
+            "columnName": "ingredientId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "recipeId",
+            "columnName": "recipeId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "grams",
+            "columnName": "grams",
+            "affinity": "REAL",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_ServingUnit_ingredientId",
+            "unique": false,
+            "columnNames": [
+              "ingredientId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_ServingUnit_ingredientId` ON `${TABLE_NAME}` (`ingredientId`)"
+          },
+          {
+            "name": "index_ServingUnit_recipeId",
+            "unique": false,
+            "columnNames": [
+              "recipeId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_ServingUnit_recipeId` ON `${TABLE_NAME}` (`recipeId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "Ingredient",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "ingredientId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "Recipe",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "recipeId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "RecipeIngredient",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `recipeId` TEXT NOT NULL, `ingredientId` TEXT NOT NULL, `quantity` REAL NOT NULL, `unitId` TEXT NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`recipeId`) REFERENCES `Recipe`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`ingredientId`) REFERENCES `Ingredient`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`unitId`) REFERENCES `ServingUnit`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recipeId",
+            "columnName": "recipeId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ingredientId",
+            "columnName": "ingredientId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "quantity",
+            "columnName": "quantity",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "unitId",
+            "columnName": "unitId",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_RecipeIngredient_recipeId",
+            "unique": false,
+            "columnNames": [
+              "recipeId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_RecipeIngredient_recipeId` ON `${TABLE_NAME}` (`recipeId`)"
+          },
+          {
+            "name": "index_RecipeIngredient_ingredientId",
+            "unique": false,
+            "columnNames": [
+              "ingredientId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_RecipeIngredient_ingredientId` ON `${TABLE_NAME}` (`ingredientId`)"
+          },
+          {
+            "name": "index_RecipeIngredient_unitId",
+            "unique": false,
+            "columnNames": [
+              "unitId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_RecipeIngredient_unitId` ON `${TABLE_NAME}` (`unitId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "Recipe",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "recipeId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "Ingredient",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "ingredientId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "ServingUnit",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "unitId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "VaccinationEntry",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `cvxCode` TEXT, `displayName` TEXT NOT NULL, `occurredAt` INTEGER NOT NULL, `lotNumber` TEXT, `site` TEXT, `route` TEXT, `doseQuantity` TEXT, `performer` TEXT, `note` TEXT, `fhirResourceId` TEXT, `dataSourceId` TEXT, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cvxCode",
+            "columnName": "cvxCode",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "displayName",
+            "columnName": "displayName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "occurredAt",
+            "columnName": "occurredAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lotNumber",
+            "columnName": "lotNumber",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "site",
+            "columnName": "site",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "route",
+            "columnName": "route",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "doseQuantity",
+            "columnName": "doseQuantity",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "performer",
+            "columnName": "performer",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "note",
+            "columnName": "note",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "fhirResourceId",
+            "columnName": "fhirResourceId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "dataSourceId",
+            "columnName": "dataSourceId",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_VaccinationEntry_occurredAt",
+            "unique": false,
+            "columnNames": [
+              "occurredAt"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_VaccinationEntry_occurredAt` ON `${TABLE_NAME}` (`occurredAt`)"
+          }
+        ]
+      },
+      {
+        "tableName": "MedicationEntry",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `rxcui` TEXT, `displayName` TEXT NOT NULL, `strength` TEXT, `doseForm` TEXT, `status` TEXT NOT NULL, `startedAt` INTEGER NOT NULL, `endedAt` INTEGER, `dosageText` TEXT, `note` TEXT, `fhirResourceId` TEXT, `dataSourceId` TEXT, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rxcui",
+            "columnName": "rxcui",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "displayName",
+            "columnName": "displayName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "strength",
+            "columnName": "strength",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "doseForm",
+            "columnName": "doseForm",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startedAt",
+            "columnName": "startedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "endedAt",
+            "columnName": "endedAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "dosageText",
+            "columnName": "dosageText",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "note",
+            "columnName": "note",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "fhirResourceId",
+            "columnName": "fhirResourceId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "dataSourceId",
+            "columnName": "dataSourceId",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_MedicationEntry_startedAt",
+            "unique": false,
+            "columnNames": [
+              "startedAt"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_MedicationEntry_startedAt` ON `${TABLE_NAME}` (`startedAt`)"
+          }
+        ]
+      },
+      {
+        "tableName": "MedicalAttachment",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `vaccinationId` TEXT NOT NULL, `fileName` TEXT NOT NULL, `displayName` TEXT NOT NULL, `mimeType` TEXT NOT NULL, `sizeBytes` INTEGER NOT NULL, `importedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "vaccinationId",
+            "columnName": "vaccinationId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fileName",
+            "columnName": "fileName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "displayName",
+            "columnName": "displayName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mimeType",
+            "columnName": "mimeType",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sizeBytes",
+            "columnName": "sizeBytes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "importedAt",
+            "columnName": "importedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_MedicalAttachment_vaccinationId",
+            "unique": false,
+            "columnNames": [
+              "vaccinationId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_MedicalAttachment_vaccinationId` ON `${TABLE_NAME}` (`vaccinationId`)"
+          }
+        ]
+      },
+      {
+        "tableName": "MedicationSchedule",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `medicationId` TEXT NOT NULL, `enabled` INTEGER NOT NULL, `times` TEXT NOT NULL, `repeatUnit` TEXT NOT NULL, `interval` INTEGER NOT NULL, `daysOfWeek` INTEGER NOT NULL, `anchorDate` INTEGER NOT NULL, `endDate` INTEGER, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "medicationId",
+            "columnName": "medicationId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "enabled",
+            "columnName": "enabled",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "times",
+            "columnName": "times",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "repeatUnit",
+            "columnName": "repeatUnit",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "interval",
+            "columnName": "interval",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "daysOfWeek",
+            "columnName": "daysOfWeek",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "anchorDate",
+            "columnName": "anchorDate",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "endDate",
+            "columnName": "endDate",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_MedicationSchedule_medicationId",
+            "unique": true,
+            "columnNames": [
+              "medicationId"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_MedicationSchedule_medicationId` ON `${TABLE_NAME}` (`medicationId`)"
+          }
+        ]
+      },
+      {
+        "tableName": "AllergyEntry",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `rxcui` TEXT, `displayName` TEXT NOT NULL, `category` TEXT NOT NULL, `criticality` TEXT NOT NULL, `reaction` TEXT, `onsetAt` INTEGER, `recordedAt` INTEGER NOT NULL, `note` TEXT, `fhirResourceId` TEXT, `dataSourceId` TEXT, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rxcui",
+            "columnName": "rxcui",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "displayName",
+            "columnName": "displayName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "category",
+            "columnName": "category",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "criticality",
+            "columnName": "criticality",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reaction",
+            "columnName": "reaction",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "onsetAt",
+            "columnName": "onsetAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "recordedAt",
+            "columnName": "recordedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "note",
+            "columnName": "note",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "fhirResourceId",
+            "columnName": "fhirResourceId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "dataSourceId",
+            "columnName": "dataSourceId",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_AllergyEntry_recordedAt",
+            "unique": false,
+            "columnNames": [
+              "recordedAt"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_AllergyEntry_recordedAt` ON `${TABLE_NAME}` (`recordedAt`)"
+          }
+        ]
+      },
+      {
+        "tableName": "ConditionEntry",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `icd10Code` TEXT, `displayName` TEXT NOT NULL, `status` TEXT NOT NULL, `onsetAt` INTEGER NOT NULL, `resolvedAt` INTEGER, `note` TEXT, `fhirResourceId` TEXT, `dataSourceId` TEXT, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "icd10Code",
+            "columnName": "icd10Code",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "displayName",
+            "columnName": "displayName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "onsetAt",
+            "columnName": "onsetAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "resolvedAt",
+            "columnName": "resolvedAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "note",
+            "columnName": "note",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "fhirResourceId",
+            "columnName": "fhirResourceId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "dataSourceId",
+            "columnName": "dataSourceId",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_ConditionEntry_onsetAt",
+            "unique": false,
+            "columnNames": [
+              "onsetAt"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_ConditionEntry_onsetAt` ON `${TABLE_NAME}` (`onsetAt`)"
+          }
+        ]
+      },
+      {
+        "tableName": "LabResultEntry",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `loincCode` TEXT, `displayName` TEXT NOT NULL, `value` REAL, `valueText` TEXT, `unit` TEXT, `referenceLow` REAL, `referenceHigh` REAL, `takenAt` INTEGER NOT NULL, `note` TEXT, `fhirResourceId` TEXT, `dataSourceId` TEXT, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "loincCode",
+            "columnName": "loincCode",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "displayName",
+            "columnName": "displayName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "value",
+            "columnName": "value",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "valueText",
+            "columnName": "valueText",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "unit",
+            "columnName": "unit",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "referenceLow",
+            "columnName": "referenceLow",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "referenceHigh",
+            "columnName": "referenceHigh",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "takenAt",
+            "columnName": "takenAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "note",
+            "columnName": "note",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "fhirResourceId",
+            "columnName": "fhirResourceId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "dataSourceId",
+            "columnName": "dataSourceId",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_LabResultEntry_takenAt",
+            "unique": false,
+            "columnNames": [
+              "takenAt"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_LabResultEntry_takenAt` ON `${TABLE_NAME}` (`takenAt`)"
+          }
+        ]
+      },
+      {
+        "tableName": "HealthProfile",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `pregnancyStatus` TEXT NOT NULL, `dueDate` INTEGER, `pregnancyRecordedAt` INTEGER, `pregnancyFhirId` TEXT, `smokingStatus` TEXT NOT NULL, `smokingRecordedAt` INTEGER, `smokingFhirId` TEXT, `dataSourceId` TEXT, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pregnancyStatus",
+            "columnName": "pregnancyStatus",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dueDate",
+            "columnName": "dueDate",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "pregnancyRecordedAt",
+            "columnName": "pregnancyRecordedAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "pregnancyFhirId",
+            "columnName": "pregnancyFhirId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "smokingStatus",
+            "columnName": "smokingStatus",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "smokingRecordedAt",
+            "columnName": "smokingRecordedAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "smokingFhirId",
+            "columnName": "smokingFhirId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "dataSourceId",
+            "columnName": "dataSourceId",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "ProfileAnswer",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`loincCode` TEXT NOT NULL, `answerCode` TEXT NOT NULL, `recordedAt` INTEGER NOT NULL, `fhirResourceId` TEXT, `dataSourceId` TEXT, PRIMARY KEY(`loincCode`))",
+        "fields": [
+          {
+            "fieldPath": "loincCode",
+            "columnName": "loincCode",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "answerCode",
+            "columnName": "answerCode",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recordedAt",
+            "columnName": "recordedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fhirResourceId",
+            "columnName": "fhirResourceId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "dataSourceId",
+            "columnName": "dataSourceId",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "loincCode"
+          ]
+        }
+      },
+      {
+        "tableName": "DoseEvent",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `medicationId` TEXT NOT NULL, `takenAt` INTEGER NOT NULL, `fhirResourceId` TEXT, `dataSourceId` TEXT, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "medicationId",
+            "columnName": "medicationId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "takenAt",
+            "columnName": "takenAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fhirResourceId",
+            "columnName": "fhirResourceId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "dataSourceId",
+            "columnName": "dataSourceId",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_DoseEvent_medicationId_takenAt",
+            "unique": false,
+            "columnNames": [
+              "medicationId",
+              "takenAt"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_DoseEvent_medicationId_takenAt` ON `${TABLE_NAME}` (`medicationId`, `takenAt`)"
+          }
+        ]
+      },
+      {
+        "tableName": "DeletedMedicalResource",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`kind` TEXT NOT NULL, `dataSourceId` TEXT NOT NULL, `fhirResourceId` TEXT NOT NULL, `fhirResourceType` INTEGER NOT NULL, `retryDelete` INTEGER NOT NULL, PRIMARY KEY(`kind`, `dataSourceId`, `fhirResourceId`))",
+        "fields": [
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dataSourceId",
+            "columnName": "dataSourceId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fhirResourceId",
+            "columnName": "fhirResourceId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fhirResourceType",
+            "columnName": "fhirResourceType",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "retryDelete",
+            "columnName": "retryDelete",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "kind",
+            "dataSourceId",
+            "fhirResourceId"
+          ]
+        }
+      },
+      {
+        "tableName": "PendingMirror",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`kind` TEXT NOT NULL, `rowId` TEXT NOT NULL, PRIMARY KEY(`kind`, `rowId`))",
+        "fields": [
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rowId",
+            "columnName": "rowId",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "kind",
+            "rowId"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '085c9ef9eae62d84d1e72083adc61161')"
+    ]
+  }
+}

@@ -16,7 +16,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.vayunmathur.astronomy.R
 import com.vayunmathur.astronomy.Route
 import com.vayunmathur.astronomy.domain.projection.ViewState
 import com.vayunmathur.astronomy.platform.AstronomyViewModel
@@ -112,17 +114,17 @@ fun SkyMapScreen(
             actions = listOf(
                 OverlayAction(
                     icon = { IconSearch() },
-                    contentDescription = "Search",
+                    contentDescription = stringResource(R.string.search),
                     onClick = { backStack.add(Route.Search) },
                 ),
                 OverlayAction(
                     icon = { if (cameraOn) IconCameraOff() else IconCamera() },
-                    contentDescription = "Camera",
+                    contentDescription = stringResource(R.string.camera),
                     onClick = { cameraOn = !cameraOn },
                 ),
                 OverlayAction(
                     icon = { IconSettings() },
-                    contentDescription = "Settings",
+                    contentDescription = stringResource(R.string.settings),
                     onClick = { backStack.add(Route.Settings) },
                 ),
             ),

@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -17,9 +18,13 @@ import com.vayunmathur.library.ui.SegmentedButton
 import com.vayunmathur.library.ui.SegmentedButtonDefaults
 import com.vayunmathur.library.ui.SingleChoiceSegmentedButtonRow
 import com.vayunmathur.library.ui.Text
+import com.vayunmathur.shop.R
 
 @Composable
 internal fun ProductQuantityRow(quantity: Int, onChange: (Int) -> Unit) {
+    val decreaseQuantity = stringResource(R.string.decrease_quantity)
+    val increaseQuantity = stringResource(R.string.increase_quantity)
+    val quantityDescription = stringResource(R.string.quantity_value, quantity)
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
             SegmentedButton(
@@ -27,7 +32,7 @@ internal fun ProductQuantityRow(quantity: Int, onChange: (Int) -> Unit) {
                 onClick = { onChange((quantity - 1).coerceAtLeast(1)) },
                 enabled = quantity > 1,
                 shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
-                modifier = Modifier.semantics { contentDescription = "Decrease quantity"; role = Role.Button },
+                modifier = Modifier.semantics { contentDescription = decreaseQuantity; role = Role.Button },
                 label = { Text("-") },
             )
             SegmentedButton(
@@ -36,7 +41,7 @@ internal fun ProductQuantityRow(quantity: Int, onChange: (Int) -> Unit) {
                 enabled = false,
                 shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
                 modifier = Modifier.clearAndSetSemantics {
-                    contentDescription = "Quantity: $quantity"
+                    contentDescription = quantityDescription
                     disabled()
                 },
                 label = { Text("$quantity", color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium) },
@@ -46,7 +51,7 @@ internal fun ProductQuantityRow(quantity: Int, onChange: (Int) -> Unit) {
                 onClick = { onChange((quantity + 1).coerceAtMost(99)) },
                 enabled = quantity < 99,
                 shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
-                modifier = Modifier.semantics { contentDescription = "Increase quantity"; role = Role.Button },
+                modifier = Modifier.semantics { contentDescription = increaseQuantity; role = Role.Button },
                 label = { Text("+") },
             )
         }

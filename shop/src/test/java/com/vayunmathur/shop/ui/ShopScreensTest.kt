@@ -212,7 +212,7 @@ class ShopScreensTest {
         composeRule.setContent { OrdersScreen(vm) }
         composeRule.waitForIdle()
         composeRule.onNodeWithText("Cool Store").assertIsDisplayed()
-        composeRule.onNodeWithText("2 item(s) · $120.00").assertIsDisplayed()
+        composeRule.onNodeWithText("2 items · $120.00").assertIsDisplayed()
         composeRule.onNodeWithText(str(R.string.view_order)).assertIsDisplayed()
         composeRule.onNodeWithText(str(R.string.track_package)).assertIsDisplayed()
     }

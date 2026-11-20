@@ -61,4 +61,6 @@
     <string name="units_widget_description">Convert between units at a glance - tap to open the converter</string>
     <!-- Unit converter widget: accessibility label for the chevron that expands a unit category. -->
     <string name="units_widget_choose_category">Choose a unit category</string>
+    <!-- History row: accessibility label for a past calculation. %1$s = expression, %2$s = result -->
+    <string name="history_entry_content_description">%1$s equals %2$s</string>
 </resources>

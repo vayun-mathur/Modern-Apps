@@ -45,6 +45,11 @@
     <!-- SearchPage: hint text in search field -->
     <string name="search_stars_planets_messier">Search stars, planets, Messier</string>
 
+    <!-- SkyMapScreen: top bar action to open search -->
+    <string name="search">Search</string>
+    <!-- SkyMapScreen: top bar action to toggle the camera AR overlay -->
+    <string name="camera">Camera</string>
+
     <!-- SettingsPage -->
     <!-- SettingsPage: TopAppBar title -->
     <string name="settings">Settings</string>

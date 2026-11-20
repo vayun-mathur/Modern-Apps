@@ -24,7 +24,7 @@ val MIGRATION_1_2 = Migration(1, 2) {
 @Database(
     entities = [SavedLocation::class, WeatherCache::class],
     version = 2,
-    exportSchema = false,
+    exportSchema = true,
 )
 /** Weather Database: a room database implementation for weather database. */
 abstract class WeatherDatabase : RoomDatabase() {

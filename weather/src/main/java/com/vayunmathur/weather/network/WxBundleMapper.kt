@@ -1,5 +1,6 @@
 package com.vayunmathur.weather.network
 
+import java.util.Locale
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -28,7 +29,8 @@ private fun epochToNaiveLocal(epochSec: Long, utcOffsetSec: Int): String {
         .toLocalDateTime(TimeZone.UTC)
     val d = ldt.date
     val t = ldt.time
-    return "%04d-%02d-%02dT%02d:%02d".format(
+    return String.format(
+        Locale.US, "%04d-%02d-%02dT%02d:%02d",
         d.year, d.monthNumber, d.dayOfMonth, t.hour, t.minute,
     )
 }
@@ -49,7 +51,7 @@ private fun WxBundle.dailyResponse(off: Int): Daily? {
     return if (d == null || firstDate == null) null else Daily(
         time = List(d.count) { k ->
             val date = kotlinx.datetime.LocalDate.fromEpochDays(startDate.toEpochDays() + k)
-            "%04d-%02d-%02d".format(date.year, date.monthNumber, date.dayOfMonth)
+            String.format(Locale.US, "%04d-%02d-%02d", date.year, date.monthNumber, date.dayOfMonth)
         },
         weatherCode = d.code,
         temperatureMax = d.tmax,

@@ -29,4 +29,15 @@
     <string name="order_update_title">%1$s order%2$s</string>
     <string name="buy_now">Buy now</string>
     <string name="add_to_cart">Add to cart</string>
+    <!-- Product quantity stepper: accessibility label to decrease quantity -->
+    <string name="decrease_quantity">Decrease quantity</string>
+    <!-- Product quantity stepper: accessibility label to increase quantity -->
+    <string name="increase_quantity">Increase quantity</string>
+    <!-- Product quantity stepper: accessibility label for the current quantity. %1$d = quantity -->
+    <string name="quantity_value">Quantity: %1$d</string>
+    <!-- Order row: item count. %1$d = number of items in the order -->
+    <plurals name="order_items">
+        <item quantity="one">%1$d item</item>
+        <item quantity="other">%1$d items</item>
+    </plurals>
 </resources>

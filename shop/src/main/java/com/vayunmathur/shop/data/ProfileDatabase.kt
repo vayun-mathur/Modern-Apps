@@ -20,7 +20,7 @@ interface ProfileDao {
 }
 
 /** Profile Database: a room database implementation for profile database. */
-@Database(entities = [ShopProfile::class], version = 1, exportSchema = false)
+@Database(entities = [ShopProfile::class], version = 1, exportSchema = true)
 abstract class ProfileDatabase : RoomDatabase() {
     abstract fun profileDao(): ProfileDao
 }

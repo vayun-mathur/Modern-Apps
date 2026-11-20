@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.AppPullToRefreshBox
@@ -92,7 +93,7 @@ private fun OrderRow(order: PlacedOrder, onOpen: (String) -> Unit) {
                 tracking?.label?.let { Text(it, style = MaterialTheme.typography.labelMedium) }
             }
             Text(
-                "${order.itemCount} item(s) · ${MoneyFormat.format(order.total)}",
+                "${pluralStringResource(R.plurals.order_items, order.itemCount, order.itemCount)} · ${MoneyFormat.format(order.total)}",
                 style = MaterialTheme.typography.bodySmall,
             )
             Text(
