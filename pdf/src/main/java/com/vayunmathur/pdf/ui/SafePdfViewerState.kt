@@ -29,7 +29,9 @@ import com.vayunmathur.pdf.platform.editText
 import com.vayunmathur.pdf.platform.moveAnnotation
 import com.vayunmathur.pdf.platform.reattachAnnotation
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Mutable edit/search/session state for [SafePdfViewerScreen].
@@ -260,7 +262,8 @@ internal class SafePdfViewerState(val scope: CoroutineScope) {
         imageTarget = null
         if (imageUri != null && doc != null && target != null) {
             scope.launch {
-                val jpeg = readAsJpeg(context, imageUri) ?: return@launch
+                // Decode/re-encode off the main thread (as in CutGlueScreen).
+                val jpeg = withContext(Dispatchers.IO) { readAsJpeg(context, imageUri) } ?: return@launch
                 val (index, pt) = target
                 // Default 150pt-wide stamp preserving aspect ratio.
                 val w = 150f

@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -25,6 +24,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.library.ui.AppScaffold
+import com.vayunmathur.library.ui.adaptiveGridCells
 import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.DropdownMenu
 import com.vayunmathur.library.ui.DropdownMenuItem
@@ -142,7 +142,7 @@ fun CutGlueContent(
                 )
             } else {
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(3),
+                    columns = adaptiveGridCells(100.dp),
                     state = gridState,
                     horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp),
                     modifier = Modifier.fillMaxSize().padding(8.dp),

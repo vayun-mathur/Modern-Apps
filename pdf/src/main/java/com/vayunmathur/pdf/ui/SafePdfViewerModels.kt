@@ -34,6 +34,8 @@ import com.vayunmathur.library.ui.IconSquiggly
 import com.vayunmathur.library.ui.IconStrikethrough
 import com.vayunmathur.pdf.platform.SafePdfDocument
 import java.io.ByteArrayOutputStream
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 internal sealed interface LoadState {
     data object Loading : LoadState
@@ -279,12 +281,43 @@ internal data class TextSession(
 )
 internal class JpegImage(val bytes: ByteArray, val width: Int, val height: Int)
 
-/** Read [uri] and re-encode it as JPEG for a stamp; null on failure. */
-internal fun readAsJpeg(context: android.content.Context, uri: Uri): JpegImage? = runCatching {
-    val bmp = context.contentResolver.openInputStream(uri)?.use {
-        BitmapFactory.decodeStream(it)
-    } ?: return null
-    val out = ByteArrayOutputStream()
-    bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, out)
-    JpegImage(out.toByteArray(), bmp.width, bmp.height)
-}.getOrNull()
+/**
+ * Longest edge a decoded stamp image needs. Stamps are placed 150 pt wide,
+ * so this keeps ample resolution for print without decoding a full-size
+ * photo (a 20 MP decode would commit ~80 MB before re-encoding).
+ */
+private const val MAX_STAMP_IMAGE_PX = 1024
+
+/** Power-of-two sample size keeping both dimensions at or above [MAX_STAMP_IMAGE_PX] where possible. */
+private fun stampSampleSize(width: Int, height: Int): Int {
+    var sample = 1
+    while (width / (sample * 2) >= MAX_STAMP_IMAGE_PX && height / (sample * 2) >= MAX_STAMP_IMAGE_PX) {
+        sample *= 2
+    }
+    return sample
+}
+
+/**
+ * Read [uri] and re-encode it as JPEG for a stamp; null on failure.
+ * Runs on [Dispatchers.IO]: the stream read, the sampled decode (bounds
+ * pass first, so large photos are never decoded at full size) and the
+ * JPEG re-encode all happen off the main thread.
+ */
+internal suspend fun readAsJpeg(context: android.content.Context, uri: Uri): JpegImage? =
+    withContext(Dispatchers.IO) {
+        runCatching {
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            context.contentResolver.openInputStream(uri)?.use {
+                BitmapFactory.decodeStream(it, null, bounds)
+            }
+            val opts = BitmapFactory.Options().apply {
+                inSampleSize = stampSampleSize(bounds.outWidth, bounds.outHeight)
+            }
+            val bmp = context.contentResolver.openInputStream(uri)?.use {
+                BitmapFactory.decodeStream(it, null, opts)
+            } ?: return@runCatching null
+            val out = ByteArrayOutputStream()
+            bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, out)
+            JpegImage(out.toByteArray(), bmp.width, bmp.height)
+        }.getOrNull()
+    }

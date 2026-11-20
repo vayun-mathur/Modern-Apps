@@ -18,8 +18,9 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
-import android.graphics.BitmapFactory
+import android.graphics.Bitmap
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -33,10 +34,13 @@ import com.vayunmathur.library.ui.IconCrop
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -56,6 +60,8 @@ import com.vayunmathur.library.ui.odf.OdfDocument
 import com.vayunmathur.library.ui.odf.OdfImage
 import com.vayunmathur.library.ui.odf.OdfTableCell
 import com.vayunmathur.office.R
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 import com.vayunmathur.office.platform.firstSpan
 // --- Text Document (continuous editor) ---
@@ -197,17 +203,28 @@ fun TextDocumentView(
 
 @Composable
 private fun FullScreenImage(image: OdfImage, onCrop: (() -> Unit)? = null, onDismiss: () -> Unit) {
-    val bitmap = remember(
-        image.path,
-        image.imageData.size) { BitmapFactory.decodeByteArray(image.imageData, 0, image.imageData.size) }
     Box(
         Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.9f)).clickable { onDismiss() },
         contentAlignment = Alignment.Center) {
-        if (bitmap != null) Image(
-            bitmap = bitmap.asImageBitmap(),
-            contentDescription = null,
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            contentScale = ContentScale.Fit)
+        BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            val density = LocalDensity.current.density
+            val reqWidthPx = if (maxWidth == Dp.Infinity) 1024 else (maxWidth.value * density).toInt().coerceAtLeast(1)
+            val reqHeightPx = if (maxHeight == Dp.Infinity) reqWidthPx else (maxHeight.value * density).toInt().coerceAtLeast(1)
+            val bitmap by produceState<Bitmap?>(
+                null, image.path, image.imageData.size, reqWidthPx, reqHeightPx) {
+                value = withContext(Dispatchers.IO) {
+                    decodeSampledBitmap(image.imageData, reqWidthPx, reqHeightPx)
+                }
+            }
+            // No image while decoding or for undecodable data, as before.
+            bitmap?.let { decoded ->
+                Image(
+                    bitmap = decoded.asImageBitmap(),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    contentScale = ContentScale.Fit)
+            }
+        }
         if (onCrop != null) {
             TextButton(onClick = onCrop, modifier = Modifier.align(Alignment.TopStart).padding(8.dp)) {
                 IconCrop(tint = Color.White)
