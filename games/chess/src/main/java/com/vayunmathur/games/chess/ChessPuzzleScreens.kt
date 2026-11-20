@@ -36,7 +36,7 @@ import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.OutlinedButton
 import com.vayunmathur.library.ui.R as UiR
-import com.vayunmathur.library.ui.Scaffold
+import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.SegmentedButton
 import com.vayunmathur.library.ui.SegmentedButtonDefaults
 import com.vayunmathur.library.ui.SingleChoiceSegmentedButtonRow
@@ -95,8 +95,7 @@ fun PuzzleBoardScreen(state: PuzzleUiState, actions: PuzzleActions) {
     }
 
     // No app bar: the tab has no title worth showing and no actions, so the content gets the space.
-    // RAW SCAFFOLD EXCEPTION: bar-less game board; the shared scaffolds all impose a top app bar.
-    Scaffold { innerPadding ->
+    AppScaffold(topBar = {}) { innerPadding ->
         BoxWithConstraints(
             Modifier
                 .fillMaxSize()

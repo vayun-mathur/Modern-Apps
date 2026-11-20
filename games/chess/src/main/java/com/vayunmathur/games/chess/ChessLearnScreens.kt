@@ -64,7 +64,6 @@ import com.vayunmathur.library.ui.Icon
 import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.R as UiR
-import com.vayunmathur.library.ui.Scaffold
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
 import kotlinx.coroutines.Dispatchers
@@ -84,12 +83,11 @@ fun LearnHomeScreen(onOpenStage: (String, String) -> Unit) {
         }
     }
     // No app bar: the tab has no title worth showing and no actions, so the content gets the space.
-    // RAW SCAFFOLD EXCEPTION: bar-less game list; the shared scaffolds all impose a top app bar.
-    Scaffold { pad ->
+    AppScaffold(topBar = {}) { pad ->
         val cats = categories
         if (cats == null) {
             Box(Modifier.fillMaxSize().padding(pad), Alignment.Center) { CircularProgressIndicator() }
-            return@Scaffold
+            return@AppScaffold
         }
         LazyColumn(
             Modifier.fillMaxSize(),

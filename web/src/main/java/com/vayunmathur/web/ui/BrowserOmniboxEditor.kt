@@ -35,7 +35,6 @@ import com.vayunmathur.library.ui.IconClose
 import com.vayunmathur.library.ui.IconSearch
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.OutlinedTextField
-import com.vayunmathur.library.ui.Scaffold
 import com.vayunmathur.library.ui.Surface
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.web.R
@@ -140,11 +139,8 @@ internal fun OmniboxEditor(
             )
         }
         if (effectiveAtBottom) {
-            // RAW SCAFFOLD EXCEPTION: with the toolbar at the bottom the editing
-            // omnibox has no top bar at all, which AppScaffold cannot express - its
-            // top bar is mandatory and would leave an empty bar hanging above the
-            // suggestions.
-            Scaffold(
+            AppScaffold(
+                topBar = {},
                 bottomBar = {
                     Surface(Modifier.fillMaxWidth()) {
                         Row(

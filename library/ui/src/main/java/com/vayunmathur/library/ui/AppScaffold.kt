@@ -7,6 +7,7 @@ import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.NavKey
@@ -67,6 +68,7 @@ fun AppScaffold(
     floatingActionButton: @Composable () -> Unit = {},
     bottomBar: @Composable () -> Unit = {},
     snackbarHost: (@Composable () -> Unit)? = null,
+    containerColor: Color = MaterialTheme.colorScheme.background,
     content: @Composable (PaddingValues) -> Unit,
 ) = AppScaffold(
     title = { Text(title) },
@@ -82,6 +84,7 @@ fun AppScaffold(
     floatingActionButton = floatingActionButton,
     bottomBar = bottomBar,
     snackbarHost = snackbarHost,
+    containerColor = containerColor,
     content = content,
 )
 
@@ -106,6 +109,7 @@ fun AppScaffold(
     floatingActionButton: @Composable () -> Unit = {},
     bottomBar: @Composable () -> Unit = {},
     snackbarHost: (@Composable () -> Unit)? = null,
+    containerColor: Color = MaterialTheme.colorScheme.background,
     content: @Composable (PaddingValues) -> Unit,
 ) {
     val resolvedNavigationIcon = resolveNavigationIcon(navigationIcon, onClose, onNavigateBack)
@@ -126,6 +130,7 @@ fun AppScaffold(
         floatingActionButton = floatingActionButton,
         bottomBar = bottomBar,
         snackbarHost = snackbarHost,
+        containerColor = containerColor,
         content = content,
     )
 }
@@ -142,6 +147,7 @@ fun AppScaffold(
     floatingActionButton: @Composable () -> Unit = {},
     bottomBar: @Composable () -> Unit = {},
     snackbarHost: (@Composable () -> Unit)? = null,
+    containerColor: Color = MaterialTheme.colorScheme.background,
     content: @Composable (PaddingValues) -> Unit,
 ) = Scaffold(
     modifier = modifier,
@@ -149,6 +155,7 @@ fun AppScaffold(
     floatingActionButton = floatingActionButton,
     bottomBar = bottomBar,
     snackbarHost = snackbarHost,
+    containerColor = containerColor,
     content = content,
 )
 
@@ -168,6 +175,7 @@ fun <T : NavKey> AppScaffold(
     floatingActionButton: @Composable () -> Unit = {},
     bottomBar: @Composable () -> Unit = {},
     snackbarHost: (@Composable () -> Unit)? = null,
+    containerColor: Color = MaterialTheme.colorScheme.background,
     content: @Composable (PaddingValues) -> Unit,
 ) = AppScaffold(
     title = title,
@@ -183,6 +191,7 @@ fun <T : NavKey> AppScaffold(
     floatingActionButton = floatingActionButton,
     bottomBar = bottomBar,
     snackbarHost = snackbarHost,
+    containerColor = containerColor,
     content = content,
 )
 

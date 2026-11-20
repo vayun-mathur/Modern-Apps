@@ -49,7 +49,6 @@ import com.vayunmathur.library.ui.ListItem
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.OutlinedButton
 import com.vayunmathur.library.ui.OutlinedTextField
-import com.vayunmathur.library.ui.Scaffold
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.library.util.OfflineBanner
@@ -106,10 +105,7 @@ internal fun OnlineInit(viewModel: OfficeViewModel) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun OnlineDisabledScreen(onEnable: () -> Unit) {
-    // RAW SCAFFOLD EXCEPTION: bar-less full-screen opt-in prompt; the shared scaffolds all
-    // impose a top app bar (AppScaffold/DetailScaffold) or lazy-list content semantics
-    // (LazyListScaffold), none of which fit a centered, bar-less message screen.
-    Scaffold { pad ->
+    AppScaffold(topBar = {}) { pad ->
         Column(
             Modifier.fillMaxSize().padding(pad).padding(SpacingScreen),
             horizontalAlignment = Alignment.CenterHorizontally

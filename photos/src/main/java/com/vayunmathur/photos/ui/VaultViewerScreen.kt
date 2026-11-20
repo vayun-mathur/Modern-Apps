@@ -27,7 +27,7 @@ import com.vayunmathur.library.ui.FadeVisibility
 import com.vayunmathur.library.ui.IconBack
 import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.MaterialTheme
-import com.vayunmathur.library.ui.Scaffold
+import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.ZoomState
 import com.vayunmathur.library.ui.zoomGestures
@@ -56,10 +56,7 @@ fun VaultViewerScreen(
     val zoomState = rememberUpdatedState(zoom)
     var containerSize by remember { mutableStateOf(IntSize.Zero) }
 
-    // RAW SCAFFOLD EXCEPTION: bar-less full-screen black media viewer (no top/bottom
-    // bar); chrome is a floating overlay inside the viewer. AppScaffold always renders a
-    // top app bar, which would break the immersive viewer.
-    Scaffold(containerColor = Color.Black) { paddingValues ->
+    AppScaffold(topBar = {}, containerColor = Color.Black) { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()

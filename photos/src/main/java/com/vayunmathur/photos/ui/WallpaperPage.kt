@@ -30,7 +30,7 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.ui.MaterialTheme
-import com.vayunmathur.library.ui.Scaffold
+import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.SnackbarHost
 import com.vayunmathur.library.ui.SnackbarHostState
 import com.vayunmathur.library.ui.Text
@@ -113,10 +113,7 @@ fun WallpaperPage(
         targetW.toFloat() / targetH.toFloat()
     } else 9f / 16f
 
-    // RAW SCAFFOLD EXCEPTION: immersive black wallpaper preview with a transparent,
-    // white-tinted TopAppBar (title + back). AppScaffold exposes no top-bar color slot, so
-    // the transparent/white immersive bar cannot be preserved.
-    Scaffold(
+    AppScaffold(
         containerColor = Color.Black,
         topBar = {
             TopAppBar(

@@ -25,7 +25,7 @@ import com.vayunmathur.library.ui.FilledTonalButton
 import com.vayunmathur.library.ui.IconAlarm
 import com.vayunmathur.library.ui.IconPause
 import com.vayunmathur.library.ui.MaterialTheme
-import com.vayunmathur.library.ui.Scaffold
+import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Surface
 import com.vayunmathur.library.ui.Text
 
@@ -38,10 +38,7 @@ fun AlarmRingingScreen(
     onSnooze: () -> Unit,
     snoozeEnabled: Boolean = true,
 ) {
-    // RAW SCAFFOLD EXCEPTION: full-screen alarm-ringing takeover — no top bar, nav,
-    // actions or FAB, just centered content with SpaceBetween. None of the shared
-    // scaffolds (which all add chrome) fit; a minimal Scaffold is intentional here.
-    Scaffold(modifier = Modifier.fillMaxSize()) { paddingValues ->
+    AppScaffold(topBar = {}, modifier = Modifier.fillMaxSize()) { paddingValues ->
         Column(
             modifier = Modifier.fillMaxSize().padding(paddingValues).padding(horizontal = 24.dp, vertical = 48.dp),
             horizontalAlignment = Alignment.CenterHorizontally,

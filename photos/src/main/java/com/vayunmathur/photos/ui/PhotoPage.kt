@@ -30,7 +30,7 @@ import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.vayunmathur.library.ui.Scaffold
+import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.ZoomState
 import com.vayunmathur.library.ui.isExpandedWidth
 import com.vayunmathur.library.util.NavBackStack
@@ -150,10 +150,7 @@ fun PhotoPage(galleryViewModel: GalleryViewModel, photoMapViewModel: PhotoMapVie
         val pagerState =
             rememberPagerState(initialPage = initialIndex.coerceAtLeast(0), pageCount = { photosSorted.size })
 
-        // RAW SCAFFOLD EXCEPTION: bar-less full-screen black media viewer (no top/bottom
-        // bar); controls are a bottom overlay inside the pager. AppScaffold always renders a
-        // top app bar, which would break the immersive viewer.
-        Scaffold(containerColor = Color.Black) { paddingValues ->
+        AppScaffold(topBar = {}, containerColor = Color.Black) { paddingValues ->
             // Expanded windows keep the same pager but beside a filmstrip of the
             // surrounding photos; compact keeps the full-bleed pager.
             val pagerContent: @Composable (Modifier) -> Unit = { pagerModifier ->

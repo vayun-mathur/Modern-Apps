@@ -59,9 +59,7 @@ internal fun FilmstripPane(photos: List<Photo>, pagerState: PagerState) {
  */
 @Composable
 internal fun PendingPhotoView(uri: String, context: Context) {
-    // RAW SCAFFOLD EXCEPTION: bar-less full-screen black viewer for a not-yet-indexed image;
-    // AppScaffold always renders a top app bar, which would break the immersive viewer.
-    com.vayunmathur.library.ui.Scaffold(containerColor = Color.Black) { paddingValues ->
+    com.vayunmathur.library.ui.AppScaffold(topBar = {}, containerColor = Color.Black) { paddingValues ->
         AsyncImage(
             model = ImageRequest.Builder(context).data(uri.toUri()).build(),
             contentDescription = null,

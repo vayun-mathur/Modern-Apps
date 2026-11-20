@@ -21,7 +21,7 @@ import androidx.compose.foundation.shape.CircleShape
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.LinearProgressIndicator
 import com.vayunmathur.library.ui.MaterialTheme
-import com.vayunmathur.library.ui.Scaffold
+import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TopAppBar
 import androidx.compose.runtime.Composable
@@ -81,10 +81,8 @@ fun PeopleScreen(
     val showProgress = state.faceTargetCount > 0 &&
         (state.indexing || state.faceScannedCount < state.faceTargetCount)
 
-    // RAW SCAFFOLD EXCEPTION: main-nav page with only a bottom NavigationBar and no top
-    // app bar. AppScaffold always renders a top app bar (which would break the layout) and
-    // the body is a Column (progress + grid), not a LazyColumn.
-    Scaffold(
+    AppScaffold(
+        topBar = {},
         bottomBar = { NavigationBar(Route.People, backStack) },
     ) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {

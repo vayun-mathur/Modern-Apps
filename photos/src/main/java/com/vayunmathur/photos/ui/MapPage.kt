@@ -17,7 +17,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import com.vayunmathur.library.ui.MaterialTheme
-import com.vayunmathur.library.ui.Scaffold
+import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Surface
 import com.vayunmathur.library.ui.Text
 import androidx.compose.runtime.Composable
@@ -125,10 +125,7 @@ fun MapPage(
         }
     }
 
-    // RAW SCAFFOLD EXCEPTION: full-bleed map main-nav page with only a bottom
-    // NavigationBar and no top app bar. AppScaffold always renders a top app bar (which
-    // would break the immersive map) and the body is not a LazyColumn.
-    Scaffold(bottomBar = { NavigationBar(Route.Map, backStack) }) { paddingValues ->
+    AppScaffold(topBar = {}, bottomBar = { NavigationBar(Route.Map, backStack) }) { paddingValues ->
         Box(Modifier.padding(paddingValues).fillMaxSize()) {
             VectorMap(
                 cameraState = cameraState,
