@@ -3,9 +3,11 @@ package com.vayunmathur.communicate.data.whatsapp
 import android.content.Context
 import com.vayunmathur.communicate.data.whatsapp.registration.WhatsAppDeviceFingerprint
 import com.vayunmathur.library.util.DataStoreUtils
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 
 /**
  * Session facade for the WhatsApp primary line, mirroring [GoogleVoiceSession]'s shape so the UI and
@@ -45,9 +47,12 @@ class WhatsAppLineSession private constructor(
      * Initialize + connect the primary client if we have usable credentials. Safe to call repeatedly
      * (WhatsAppClient.init is idempotent). Call from the sync service / MainActivity.
      */
-    fun init(context: Context) {
+    suspend fun init(context: Context) {
         WhatsAppClient.init(context.applicationContext)
-        if (hasUsableCredentials(context)) {
+        // Suspend until the saved-auth load lands (on IO, never blocking the
+        // caller), preserving the old synchronous-init ordering.
+        WhatsAppClient.awaitInitAuth()
+        if (withContext(Dispatchers.IO) { hasUsableCredentials(context) }) {
             WhatsAppClient.start()
         }
     }
@@ -57,6 +62,10 @@ class WhatsAppLineSession private constructor(
         store.setString(KEY_PHONE_NUMBER, auth.phoneNumber)
         store.setBoolean(KEY_SIGNED_IN, true)
         WhatsAppClient.init(context.applicationContext)
+        // Registration still waits for init's saved-auth load before
+        // proceeding (incl. the caller's onVerified), just not on Main:
+        // this suspends on the client's IO scope instead of runBlocking.
+        WhatsAppClient.awaitInitAuth()
         WhatsAppClient.start()
     }
 

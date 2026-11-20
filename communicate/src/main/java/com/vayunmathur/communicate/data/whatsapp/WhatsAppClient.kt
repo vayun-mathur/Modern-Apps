@@ -32,7 +32,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
 
 /** The WhatsApp primary client: owns the socket, E2E stores and event stream for the WhatsApp line. */
@@ -165,13 +164,22 @@ object WhatsAppClient {
     // Pages requested per chat, to bound pagination (see MAX_ON_DEMAND_PAGES_PER_CHAT).
     internal val onDemandPageCount = ConcurrentHashMap<String, Int>()
 
+    // The one-shot saved-auth load launched by init(); joinable so a suspend
+    // caller (registration) can wait for it without blocking its own thread.
+    @Volatile
+    private var initAuthJob: Job? = null
+
     fun init(context: Context) {
         if (!initialized.compareAndSet(false, true)) return
         appContext = context.applicationContext as Application
         db = WhatsAppDatabase.getDatabase(appContext)
         WhatsAppCallManager.init(appContext, callBridge)
         Log.status(TAG, "init")
-        runBlocking {
+        // Load saved auth off the caller's thread: init() is reachable from
+        // Main-adjacent registration scopes, and SharedPreferences + JSON
+        // decode must not block there. State/authData land asynchronously;
+        // suspend callers that must observe them use awaitInitAuth().
+        initAuthJob = scope.launch {
             val auth = WhatsAppAuthData.load(appContext)
             if (auth != null) {
                 authData = auth
@@ -181,6 +189,11 @@ object WhatsAppClient {
                 stateMutable.value = State.NeedsSetup
             }
         }
+    }
+
+    /** Wait (suspending, never blocking) until init()'s saved-auth load has landed. */
+    internal suspend fun awaitInitAuth() {
+        initAuthJob?.join()
     }
 
     fun start() {

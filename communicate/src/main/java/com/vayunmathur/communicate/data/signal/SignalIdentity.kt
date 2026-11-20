@@ -3,7 +3,9 @@ package com.vayunmathur.communicate.data.signal
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.communicate.data.signal.e2e.acceptIdentity
 import com.vayunmathur.communicate.data.signal.e2e.storedIdentityKey
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.signal.libsignal.protocol.IdentityKey
 import org.whispersystems.signalservice.internal.push.SignalServiceProtos
 
@@ -51,11 +53,13 @@ fun SignalClient.pendingIdentityChange(peerAci: String): ByteArray? = pendingIde
  * The safety number to show for [peerAci] — for the key they are currently presenting when that
  * differs from the one on record, otherwise for the accepted one. Null when it cannot be computed.
  */
-suspend fun SignalClient.safetyNumber(peerAci: String): String? {
-    val e = e2e ?: return null
-    val localAci = authData?.aci?.takeIf { it.isNotEmpty() } ?: return null
-    val remoteKey = pendingIdentityChanges[peerAci] ?: e.storedIdentityKey(peerAci) ?: return null
-    return SignalSafetyNumber.compute(
+suspend fun SignalClient.safetyNumber(peerAci: String): String? = withContext(Dispatchers.IO) {
+    // protocolStore hits Room via runBlocking inside, so self-guard on IO:
+    // callers may invoke this from any dispatcher (incl. Main-adjacent scopes).
+    val e = e2e ?: return@withContext null
+    val localAci = authData?.aci?.takeIf { it.isNotEmpty() } ?: return@withContext null
+    val remoteKey = pendingIdentityChanges[peerAci] ?: e.storedIdentityKey(peerAci) ?: return@withContext null
+    SignalSafetyNumber.compute(
         localAci = localAci,
         localIdentityKey = e.ownIdentityPublicKeySerialized,
         remoteAci = peerAci,
@@ -70,23 +74,26 @@ suspend fun SignalClient.safetyNumber(peerAci: String): String? {
  * whose safety number was actually shown — otherwise a key swapped in between display and tap would
  * be trusted instead. Existing sessions are archived so the next send builds against the new key.
  */
-suspend fun SignalClient.acceptIdentityChange(peerAci: String, expectedKeyHex: String): Boolean {
-    val e = e2e ?: return false
-    val pending = pendingIdentityChanges[peerAci] ?: run {
-        Log.status(TAG, "no pending identity change for $peerAci")
-        return false
+suspend fun SignalClient.acceptIdentityChange(peerAci: String, expectedKeyHex: String): Boolean =
+    withContext(Dispatchers.IO) {
+        // protocolStore hits Room via runBlocking inside, so self-guard on IO
+        // (see safetyNumber); double-shifting an already-IO caller is harmless.
+        val e = e2e ?: return@withContext false
+        val pending = pendingIdentityChanges[peerAci] ?: run {
+            Log.status(TAG, "no pending identity change for $peerAci")
+            return@withContext false
+        }
+        if (!SignalGroups.run { pending.toHex() }.equals(expectedKeyHex, ignoreCase = true)) {
+            Log.status(TAG, "refusing to accept a different key than the one shown for $peerAci")
+            return@withContext false
+        }
+        val accepted = e.acceptIdentity(peerAci, pending)
+        if (accepted) {
+            pendingIdentityChanges.remove(peerAci)
+            Log.status(TAG, "accepted the new identity key for $peerAci")
+        }
+        accepted
     }
-    if (!SignalGroups.run { pending.toHex() }.equals(expectedKeyHex, ignoreCase = true)) {
-        Log.status(TAG, "refusing to accept a different key than the one shown for $peerAci")
-        return false
-    }
-    val accepted = e.acceptIdentity(peerAci, pending)
-    if (accepted) {
-        pendingIdentityChanges.remove(peerAci)
-        Log.status(TAG, "accepted the new identity key for $peerAci")
-    }
-    return accepted
-}
 
 /**
  * Associate a sender's ACI with the PNI we already knew them by, when they prove the link.

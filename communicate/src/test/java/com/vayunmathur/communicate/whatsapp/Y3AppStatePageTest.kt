@@ -451,6 +451,8 @@ class Y3AppStatePageTest {
         try {
             setInitialized(false)
             WhatsAppClient.init(app)
+            // Saved auth loads asynchronously off the calling thread; await it.
+            runBlocking { WhatsAppClient.awaitInitAuth() }
             // Saved auth: the client arms the network monitor and starts connecting.
             assertEquals(WhatsAppClient.State.Connecting, WhatsAppClient.stateMutable.value)
             assertEquals(AUTH.wid, WhatsAppClient.authData?.wid)
