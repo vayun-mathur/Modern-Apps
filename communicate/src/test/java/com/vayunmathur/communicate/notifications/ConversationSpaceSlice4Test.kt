@@ -98,7 +98,8 @@ class ConversationSpaceSlice4Test {
         val first = nm.activeNotifications.size
         assertEquals(1, first)
 
-        // A second message in the same thread replaces, not stacks.
+        // A second message in the same thread re-posts (not stacks), but its
+        // MessagingStyle now accumulates both unread messages.
         ConversationSpace.notifyIncoming(
             context = context,
             target = target(),
@@ -108,6 +109,11 @@ class ConversationSpaceSlice4Test {
             smallIcon = android.R.drawable.sym_action_call,
         )
         assertEquals(1, nm.activeNotifications.size)
+        val accumulated = androidx.core.app.NotificationCompat.MessagingStyle
+            .extractMessagingStyleFromNotification(nm.activeNotifications.single().notification)
+            ?.messages
+            ?.map { it.text.toString() }
+        assertEquals(listOf("hello", "hello again"), accumulated)
 
         // A different conversation gets its own slot.
         ConversationSpace.notifyIncoming(
@@ -119,6 +125,33 @@ class ConversationSpaceSlice4Test {
             smallIcon = android.R.drawable.sym_action_call,
         )
         assertEquals(2, nm.activeNotifications.size)
+    }
+
+    @Test
+    fun `cancelIncoming clears the notification and resets accumulation`() {
+        val nm = context.getSystemService(android.app.NotificationManager::class.java)!!
+        ConversationSpace.ensureIncomingChannel(
+            context, ConversationSpace.SIM_CHANNEL_ID, "SMS", "incoming sms",
+        )
+        fun post(body: String, ts: Long) = ConversationSpace.notifyIncoming(
+            context = context, target = target(),
+            channelId = ConversationSpace.SIM_CHANNEL_ID, body = body, timestamp = ts,
+            smallIcon = android.R.drawable.sym_action_call,
+        )
+        post("one", 1_700_000_000_000L)
+        post("two", 1_700_000_000_001L)
+        assertEquals(1, nm.activeNotifications.size)
+
+        // Same tag/id contract as before: cancelIncoming removes it.
+        ConversationSpace.cancelIncoming(context, target())
+        assertEquals(0, nm.activeNotifications.size)
+
+        // The next message starts a fresh style, not the read history.
+        post("three", 1_700_000_000_002L)
+        val texts = androidx.core.app.NotificationCompat.MessagingStyle
+            .extractMessagingStyleFromNotification(nm.activeNotifications.single().notification)
+            ?.messages?.map { it.text.toString() }
+        assertEquals(listOf("three"), texts)
     }
 
     @Test

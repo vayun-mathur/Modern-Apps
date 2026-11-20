@@ -26,6 +26,22 @@ object EmailNotifications {
     /** Stable per-account channel id so each account gets its own OS toggle. */
     private fun channelId(accountEmail: String) = CHANNEL_PREFIX + accountEmail
 
+    /**
+     * Stable notification group key for one account. It is deliberately the
+     * account email itself: every child for the account shares it, and the
+     * single group-summary notification (below) joins the same group.
+     */
+    private fun groupKey(accountEmail: String) = accountEmail
+
+    /**
+     * Id of the one group-summary notification for [accountEmail]. Derived
+     * from a summary-specific string, not from any message id, so it never
+     * reuses a child's [notificationId] for the messages in the tests/callers
+     * (a child id is `accountHash * 31 xor messageId`).
+     */
+    private fun summaryNotificationId(accountEmail: String): Int =
+        "summary::${channelId(accountEmail)}".hashCode()
+
     /** Idempotent — creates a per-account notification channel. */
     fun ensureChannel(context: Context, accountEmail: String) {
         context.ensureNotificationChannel(
@@ -58,6 +74,7 @@ object EmailNotifications {
         for (msg in ordered) {
             postOne(nm, context, accountEmail, msg)
         }
+        postSummary(nm, context, accountEmail, ordered)
     }
 
     /**
@@ -76,11 +93,132 @@ object EmailNotifications {
                 // Notifications revoked — nothing to cancel.
             }
         }
+        // Child ids above are unchanged, so cancel-on-read keeps working.
+        // Drop the summary only once its group has no children left;
+        // otherwise it must stay to summarise the remaining unread mail.
+        for (accountEmail in messages.map { it.accountEmail }.distinct()) {
+            cancelSummaryIfNoChildren(context, accountEmail)
+        }
+    }
+
+    /**
+     * Cancel [accountEmail]'s group summary iff no grouped child remains.
+     * Also called after a notification action (mark-read/delete) dismisses
+     * a single child directly by id, so the summary never outlives its group.
+     */
+    fun cancelSummaryIfNoChildren(context: Context, accountEmail: String) {
+        val manager = context.getSystemService(NotificationManager::class.java) ?: return
+        val hasChild = runCatching {
+            manager.activeNotifications.any { sbn ->
+                sbn.id != summaryNotificationId(accountEmail) &&
+                    sbn.notification.group == groupKey(accountEmail)
+            }
+        }.getOrDefault(true) // On any doubt keep the summary.
+        if (hasChild) return
+        try {
+            NotificationManagerCompat.from(context).cancel(summaryNotificationId(accountEmail))
+        } catch (_: SecurityException) {
+            // Notifications revoked — nothing to cancel.
+        }
     }
 
     /** Cancel the notification for a single message (see [cancelForMessages]). */
     fun cancelForMessage(context: Context, msg: EmailMessage) =
         cancelForMessages(context, listOf(msg))
+
+    /**
+     * Post (or refresh) the single group-summary notification for an account.
+     *
+     * Lines/count are rebuilt from the account's currently active grouped
+     * children when the system can report them, so successive sync batches
+     * accumulate in the summary instead of the newest batch replacing the
+     * unread picture; [ordered] is the fallback when they cannot be read.
+     * Re-posting under [summaryNotificationId] keeps it one-per-account.
+     */
+    private fun postSummary(
+        nm: NotificationManagerCompat,
+        context: Context,
+        accountEmail: String,
+        ordered: List<EmailMessage>,
+    ) {
+        try {
+            nm.notify(summaryNotificationId(accountEmail), buildSummary(context, accountEmail, ordered))
+        } catch (_: SecurityException) {
+            // Pre-permission grant on Android 13+ — silently drop.
+        }
+    }
+
+    private fun buildSummary(
+        context: Context,
+        accountEmail: String,
+        ordered: List<EmailMessage>,
+    ): Notification {
+        val activeChildren = runCatching {
+            context.getSystemService(NotificationManager::class.java)
+                ?.activeNotifications
+                ?.filter { sbn ->
+                    sbn.id != summaryNotificationId(accountEmail) &&
+                        sbn.notification.group == groupKey(accountEmail)
+                }
+                ?.sortedByDescending { it.notification.`when` }
+                .orEmpty()
+        }.getOrDefault(emptyList())
+
+        val lines: List<String>
+        val count: Int
+        val latestWhen: Long
+        if (activeChildren.isNotEmpty()) {
+            count = activeChildren.size
+            latestWhen = activeChildren.first().notification.`when`
+            lines = activeChildren.map { sbn ->
+                val title = sbn.notification.extras.getCharSequence("android.title")?.toString()
+                val text = sbn.notification.extras.getCharSequence("android.text")?.toString()
+                listOfNotNull(title?.takeIf { it.isNotBlank() }, text?.takeIf { it.isNotBlank() })
+                    .joinToString(": ")
+                    .ifBlank { accountEmail }
+            }
+        } else {
+            count = ordered.size
+            latestWhen = ordered.maxOfOrNull { it.dateMillis }?.takeIf { it > 0L }
+                ?: System.currentTimeMillis()
+            lines = ordered.asReversed().map { msg ->
+                val sender = msg.from.substringBefore("<").trim().ifEmpty { msg.from }
+                "$sender: ${msg.subject.ifBlank { "(no subject)" }}"
+            }
+        }
+
+        val title = if (count == 1) "1 new message" else "$count new messages"
+        val style = NotificationCompat.InboxStyle()
+            .setBigContentTitle(title)
+            .setSummaryText(accountEmail)
+        for (line in lines) style.addLine(line)
+
+        // Summary tap opens the app (account inbox, no specific thread).
+        val launch = Intent(context, MainActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            putExtra("accountEmail", accountEmail)
+        }
+        val pi = PendingIntent.getActivity(
+            context,
+            summaryNotificationId(accountEmail),
+            launch,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        return NotificationCompat.Builder(context, channelId(accountEmail))
+            .setSmallIcon(R.drawable.ic_notification_mail)
+            .setContentTitle(title)
+            .setContentText(accountEmail)
+            .setSubText(accountEmail)
+            .setWhen(latestWhen)
+            .setShowWhen(true)
+            .setNumber(count)
+            .setStyle(style)
+            .setGroup(groupKey(accountEmail))
+            .setGroupSummary(true)
+            .setAutoCancel(true)
+            .setContentIntent(pi)
+            .build()
+    }
 
     private fun postOne(
         nm: NotificationManagerCompat,
@@ -153,6 +291,7 @@ object EmailNotifications {
                     }
                 )
             )
+            .setGroup(groupKey(accountEmail))
             .setAutoCancel(true)
             .setContentIntent(pi)
             .build()

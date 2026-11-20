@@ -66,6 +66,7 @@ class EmailNotificationActionReceiver : BroadcastReceiver() {
                     }
                 }
                 NotificationManagerCompat.from(context).cancel(notifId)
+                EmailNotifications.cancelSummaryIfNoChildren(context, accountEmail)
             } catch (_: Exception) {
                 Log.status("EmailNotifAction", "Action $action failed")
             } finally {

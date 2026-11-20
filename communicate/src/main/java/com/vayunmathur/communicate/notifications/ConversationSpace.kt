@@ -57,9 +57,20 @@ object ConversationSpace {
 
     private const val CONVERSATION_CATEGORY = "com.google.android.category.CONVERSATIONS"
 
-    // One notification per conversation: newer messages replace the previous one under the same tag,
-    // which is what makes a thread accumulate in the shade rather than stacking N separate entries.
+    // One notification per conversation, under the same tag/id: re-posting it
+    // updates the shade entry in place rather than stacking N entries. Since
+    // this change the re-post carries every still-unread message in its
+    // MessagingStyle (recovered from the previous posting, see notifyIncoming),
+    // so the entry accumulates messages instead of showing only the newest.
+    // No cross-conversation group summary: conversations already live in the
+    // system's dedicated conversations section keyed by shortcut/bubble, and
+    // each line owns a different channel — a single summary would have to pick
+    // one line's channel/shortcut and would fight that ranking, so grouping
+    // here is per-conversation only.
     private const val MESSAGE_NOTIFICATION_ID = 1
+
+    /** Cap on messages retained in one conversation's [NotificationCompat.MessagingStyle]. */
+    private const val MAX_MESSAGING_STYLE_MESSAGES = 25
 
     /** Stable per-conversation id, unique across lines. */
     fun shortcutId(target: ConversationTarget): String {
@@ -174,11 +185,39 @@ object ConversationSpace {
         val shortcutId = pushShortcut(context, target)
         val sender = person(context, target)
         val self = Person.Builder().setName(context.getString(R.string.you)).build()
+        val nm = context.getSystemService(NotificationManager::class.java) ?: return
+
+        // Accumulate unread messages: recover the MessagingStyle from the
+        // notification currently posted under this conversation's tag/id and
+        // carry its messages forward. Reading the live notification (rather
+        // than an in-memory list) survives process death, and cancelIncoming
+        // removing that notification is exactly what resets the accumulation
+        // once the conversation is read — no extra state to keep in sync.
+        val previous = runCatching {
+            nm.activeNotifications
+                .firstOrNull { it.tag == shortcutId && it.id == MESSAGE_NOTIFICATION_ID }
+                ?.notification
+                ?.let { NotificationCompat.MessagingStyle.extractMessagingStyleFromNotification(it) }
+                ?.messages
+                .orEmpty()
+        }.getOrDefault(emptyList())
 
         val messagingStyle = NotificationCompat.MessagingStyle(self)
             .setGroupConversation(target.isGroup)
             .setConversationTitle(target.title.takeIf { target.isGroup })
-            .addMessage(body, timestamp, sender)
+        val retained = previous.takeLast(MAX_MESSAGING_STYLE_MESSAGES - 1)
+        for (message in retained) {
+            val text = message.text ?: continue
+            messagingStyle.addMessage(text, message.timestamp, message.person)
+        }
+        // An exact re-delivery of the newest message (sync retry) must not
+        // duplicate it; anything else appends, never replaces.
+        val alreadyPresent = retained.any {
+            it.text?.toString() == body && it.timestamp == timestamp
+        }
+        if (!alreadyPresent) {
+            messagingStyle.addMessage(body, timestamp, sender)
+        }
 
         val contentIntent = PendingIntent.getActivity(
             context,
@@ -228,7 +267,6 @@ object ConversationSpace {
             .extend(carExtender(target.title ?: target.personName, body, smallIcon))
             .build()
 
-        val nm = context.getSystemService(NotificationManager::class.java) ?: return
         nm.notify(shortcutId, MESSAGE_NOTIFICATION_ID, notification)
     }
 
