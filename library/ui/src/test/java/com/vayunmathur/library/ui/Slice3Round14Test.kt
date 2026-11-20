@@ -209,11 +209,10 @@ class Slice3Round14Test {
             )
         }
         rule.onNodeWithText("21:05").assertIsDisplayed()
-        // The switch itself carries the toggle semantics.
+        // The row itself is the merged Switch toggleable carrying its label.
         rule.onNode(
-            androidx.compose.ui.test.hasAnyAncestor(
-                androidx.compose.ui.test.hasText("Daily puzzle reminder"),
-            ) and androidx.compose.ui.test.isToggleable(),
+            androidx.compose.ui.test.hasText("Daily puzzle reminder") and
+                androidx.compose.ui.test.isToggleable(),
         ).performClick()
         assertEquals(listOf(true), toggles)
     }

@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
@@ -17,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.util.sharedText
 
@@ -114,6 +116,16 @@ fun SettingsRow(
  *
  * The whole row toggles, not just the switch - a switch is a small target and
  * every app that hand-rolled this made a different call about it.
+ *
+ * Accessibility: the row itself is the single [Role.Switch] toggleable. Its
+ * `toggleable` semantics merge descendants, so the title (and supporting
+ * text) and the checked state live on one semantics node and TalkBack
+ * announces e.g. "Night mode, Switch, on" as one item instead of focusing
+ * the bare switch and reading only "Switch, on". The trailing [Switch] is
+ * visual only (`onCheckedChange = null`): it contributes no toggleable or
+ * click handler of its own, so a tap anywhere on the row — the label area
+ * or the switch thumb/track — fires [onCheckedChange] exactly once and
+ * cannot double-toggle.
  */
 @Composable
 fun SettingsSwitchRow(
@@ -127,13 +139,18 @@ fun SettingsSwitchRow(
 ) {
     SettingsRow(
         title = title,
-        modifier = modifier,
+        modifier = modifier.toggleable(
+            value = checked,
+            enabled = enabled,
+            role = Role.Switch,
+            onValueChange = onCheckedChange,
+        ),
         supportingText = supportingText,
         enabled = enabled,
-        onClick = { onCheckedChange(!checked) },
+        onClick = null,
         leadingContent = leadingContent,
         trailingContent = {
-            Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled)
+            Switch(checked = checked, onCheckedChange = null, enabled = enabled)
         },
     )
 }

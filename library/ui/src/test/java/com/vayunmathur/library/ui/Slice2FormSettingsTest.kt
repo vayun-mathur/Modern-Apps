@@ -2,14 +2,21 @@ package com.vayunmathur.library.ui
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.test.click
+import androidx.compose.ui.test.performTouchInput
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -236,6 +243,52 @@ class Slice2FormSettingsTest {
         }
         rule.onNodeWithText("Slice2 Toggle").performClick()
         assertEquals(listOf(true), seen)
+    }
+
+    @Test
+    fun `switch row is one merged switch node carrying label and state`() {
+        rule.setContent {
+            SettingsSwitchRow(
+                title = "Slice2 Toggle",
+                supportingText = "slice2 toggle hint",
+                checked = true,
+                onCheckedChange = {},
+            )
+        }
+        // Exactly one toggleable in the (merged) tree: the row, not a bare
+        // switch next to a separate label. That single node must carry the
+        // label text, the Switch role and the on state together, which is
+        // what TalkBack announces as one item ("Slice2 Toggle, Switch, on").
+        val toggleables = rule.onAllNodes(isToggleable()).fetchSemanticsNodes()
+        assertEquals(1, toggleables.size)
+        val node = toggleables.single()
+        assertEquals(Role.Switch, node.config[SemanticsProperties.Role])
+        assertEquals(ToggleableState.On, node.config[SemanticsProperties.ToggleableState])
+        val texts = node.config[SemanticsProperties.Text].map { it.text }
+        assertTrue("Slice2 Toggle" in texts, "merged node texts: $texts")
+        assertTrue("slice2 toggle hint" in texts, "merged node texts: $texts")
+        // The same node is findable by label + toggleable together.
+        rule.onNode(hasText("Slice2 Toggle") and isToggleable()).assertIsDisplayed()
+    }
+
+    @Test
+    fun `switch row switch-area tap toggles exactly once`() {
+        val seen = mutableListOf<Boolean>()
+        rule.setContent {
+            SettingsSwitchRow(title = "Slice2 Toggle", checked = false, onCheckedChange = seen::add)
+        }
+        // Tap the trailing switch area (right end of the row), not the label:
+        // the visual switch has no handler of its own, so this must fire the
+        // row toggle once — a double-toggle would append two entries.
+        val row = rule.onNode(hasText("Slice2 Toggle") and isToggleable())
+        val bounds = row.fetchSemanticsNode().boundsInRoot
+        row.performTouchInput {
+            click(Offset(bounds.width - 24f, bounds.height / 2f))
+        }
+        assertEquals(listOf(true), seen)
+        // And a label-area tap likewise fires exactly once more.
+        rule.onNodeWithText("Slice2 Toggle").performClick()
+        assertEquals(listOf(true, true), seen)
     }
 
     // --- SettingsSelectRow --------------------------------------------------------
