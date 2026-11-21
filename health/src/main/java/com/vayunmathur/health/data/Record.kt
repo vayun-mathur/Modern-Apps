@@ -395,6 +395,116 @@ abstract class HealthDatabase : RoomDatabase() {
     /** Shared constants and helpers for HealthDatabase. */
     companion object : com.vayunmathur.library.util.DatabaseMigrations {
         override val migrations = listOf(
+            // v1 -> v2 (reconstructed): nutrition columns + the type/time index.
+            // History: v1 (74d509796, "health: sync to local db first") had only
+            // Record(id, index, type, startTime, endTime, value, secondaryValue,
+            // primaryKey). 51de2c18a then embedded NutritionData (every field
+            // except calories) and 4af82b094 added the (type, startTime, endTime)
+            // index, both WITHOUT a version bump, and b091920a9 jumped straight
+            // to version = 3 - version 2 was never committed or shipped. This
+            // step assigns the nutrition+index half of that diff to 1->2. The
+            // table is recreated (copying only the v1-guaranteed columns) so a
+            // v1 file that already carries the unversioned nutrition columns
+            // does not die on a duplicate-column ALTER; those columns restart
+            // NULL, as they do for a plain v1 file.
+            Migration(1, 2) {
+                it.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `Record_new` (`id` TEXT NOT NULL, `index` INTEGER NOT NULL, " +
+                        "`type` TEXT NOT NULL, `startTime` INTEGER NOT NULL, `endTime` INTEGER NOT NULL, " +
+                        "`value` REAL NOT NULL, `secondaryValue` REAL NOT NULL, `primaryKey` TEXT NOT NULL, " +
+                        "PRIMARY KEY(`primaryKey`))"
+                )
+                listOf(
+                    "protein", "carbohydrates", "fat", "fiber", "sugar", "sodium", "biotin", "caffeine",
+                    "calcium", "chloride", "cholesterol", "chromium", "copper", "folate", "folicAcid",
+                    "iodine", "iron", "magnesium", "manganese", "molybdenum", "monounsaturatedFat",
+                    "niacin", "pantothenicAcid", "phosphorus", "polyunsaturatedFat", "potassium",
+                    "riboflavin", "saturatedFat", "selenium", "thiamin", "transFat", "unsaturatedFat",
+                    "vitaminA", "vitaminB12", "vitaminB6", "vitaminC", "vitaminD", "vitaminE",
+                    "vitaminK", "zinc",
+                ).forEach { field -> it.execSQL("ALTER TABLE `Record_new` ADD COLUMN `nutrition_$field` REAL") }
+                it.execSQL(
+                    "INSERT INTO `Record_new` (`id`, `index`, `type`, `startTime`, `endTime`, `value`, " +
+                        "`secondaryValue`, `primaryKey`) SELECT `id`, `index`, `type`, `startTime`, " +
+                        "`endTime`, `value`, `secondaryValue`, `primaryKey` FROM `Record`"
+                )
+                it.execSQL("DROP TABLE IF EXISTS `Record`")
+                it.execSQL("ALTER TABLE `Record_new` RENAME TO `Record`")
+                it.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_Record_type_startTime_endTime` " +
+                        "ON `Record` (`type`, `startTime`, `endTime`)"
+                )
+            },
+            // v2 -> v3 (reconstructed): the rest of b091920a9's 1->3 diff -
+            // nutrition_calories, Record.metadata, and the four food-logging
+            // tables (Ingredient/Recipe/ServingUnit/RecipeIngredient, with
+            // their foreign keys and indices) exactly as created at v3.
+            Migration(2, 3) {
+                it.execSQL("ALTER TABLE Record ADD COLUMN nutrition_calories REAL")
+                it.execSQL("ALTER TABLE Record ADD COLUMN metadata TEXT")
+                val nutrition = listOf(
+                    "protein", "carbohydrates", "fat", "fiber", "sugar", "sodium", "biotin", "caffeine",
+                    "calcium", "chloride", "cholesterol", "chromium", "copper", "folate", "folicAcid",
+                    "iodine", "iron", "magnesium", "manganese", "molybdenum", "monounsaturatedFat",
+                    "niacin", "pantothenicAcid", "phosphorus", "polyunsaturatedFat", "potassium",
+                    "riboflavin", "saturatedFat", "selenium", "thiamin", "transFat", "unsaturatedFat",
+                    "vitaminA", "vitaminB12", "vitaminB6", "vitaminC", "vitaminD", "vitaminE",
+                    "vitaminK", "zinc", "calories",
+                ).joinToString(", ") { field -> "`nutrition_$field` REAL NOT NULL" }
+                it.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `Ingredient` (`id` TEXT NOT NULL, `originalName` TEXT NOT NULL, " +
+                        "`customName` TEXT, `isRecipe` INTEGER NOT NULL, $nutrition, PRIMARY KEY(`id`))"
+                )
+                it.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `Recipe` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, " +
+                        "PRIMARY KEY(`id`))"
+                )
+                it.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `ServingUnit` (`id` TEXT NOT NULL, `ingredientId` TEXT, " +
+                        "`recipeId` TEXT, `name` TEXT NOT NULL, `grams` REAL NOT NULL, PRIMARY KEY(`id`), " +
+                        "FOREIGN KEY(`ingredientId`) REFERENCES `Ingredient`(`id`) ON UPDATE NO ACTION " +
+                        "ON DELETE CASCADE , FOREIGN KEY(`recipeId`) REFERENCES `Recipe`(`id`) " +
+                        "ON UPDATE NO ACTION ON DELETE CASCADE )"
+                )
+                it.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_ServingUnit_ingredientId` ON `ServingUnit` (`ingredientId`)"
+                )
+                it.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_ServingUnit_recipeId` ON `ServingUnit` (`recipeId`)"
+                )
+                it.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `RecipeIngredient` (`id` TEXT NOT NULL, `recipeId` TEXT NOT NULL, " +
+                        "`ingredientId` TEXT NOT NULL, `quantity` REAL NOT NULL, `unitId` TEXT NOT NULL, " +
+                        "PRIMARY KEY(`id`), FOREIGN KEY(`recipeId`) REFERENCES `Recipe`(`id`) " +
+                        "ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`ingredientId`) " +
+                        "REFERENCES `Ingredient`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , " +
+                        "FOREIGN KEY(`unitId`) REFERENCES `ServingUnit`(`id`) ON UPDATE NO ACTION " +
+                        "ON DELETE RESTRICT )"
+                )
+                it.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_RecipeIngredient_recipeId` " +
+                        "ON `RecipeIngredient` (`recipeId`)"
+                )
+                it.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_RecipeIngredient_ingredientId` " +
+                        "ON `RecipeIngredient` (`ingredientId`)"
+                )
+                it.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_RecipeIngredient_unitId` ON `RecipeIngredient` (`unitId`)"
+                )
+            },
+            // v3 -> v4 (reconstructed): a86f12f81 ("health: fix sleep page
+            // layout", version 3 -> 4) embedded SleepData in Record. The
+            // embedded object is nullable, so every sleep column is nullable.
+            Migration(3, 4) {
+                listOf(
+                    "awakeDurationMillis" to "INTEGER", "remDurationMillis" to "INTEGER",
+                    "lightDurationMillis" to "INTEGER", "deepDurationMillis" to "INTEGER",
+                    "unknownDurationMillis" to "INTEGER", "stagesJson" to "TEXT",
+                ).forEach { (field, type) ->
+                    it.execSQL("ALTER TABLE Record ADD COLUMN `sleep_$field` $type")
+                }
+            },
             Migration(4, 5) {
                 it.execSQL("ALTER TABLE Record ADD COLUMN exercise_exerciseType INTEGER NOT NULL DEFAULT 0")
                 it.execSQL("ALTER TABLE Record ADD COLUMN exercise_title TEXT")

@@ -42,6 +42,121 @@ abstract class EmailDatabase : RoomDatabase() {
         @Volatile
         private var instance: EmailDatabase? = null
 
+        /**
+         * v1 → v2 (reconstructed; see below): multi-account keys.
+         *
+         * History: v1 (f554d13d6, "email: more comprehensive inbox") had only
+         * EmailFolder(fullName PK, name, parentFullName, delimiter) and
+         * EmailMessage(id+folderName PK, subject, from, date, body, isHtml).
+         * The next commit touching the DB, 742082c48 ("email: make loading
+         * faster"), jumped straight to version = 3 — version 2 was never
+         * committed or shipped, so no device carries a "v2 schema" to match.
+         * This step therefore takes the first half of that 1→3 diff: both
+         * tables are recreated with `accountEmail` in their primary keys and
+         * EmailFolder gains `holdsMessages`. Primary keys cannot be altered,
+         * so the tables are rebuilt and rows copied; v1 had no account
+         * concept, so existing rows are stamped with the empty account,
+         * which matches no account and is repopulated per-account on sync
+         * (the 1→3 build of the day wiped these rows via destructive
+         * fallback, so preserving them at all is strictly better).
+         */
+        private val MIGRATION_1_2 = Migration(1, 2) {
+            it.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `EmailFolder_new` (
+                    `accountEmail` TEXT NOT NULL,
+                    `fullName` TEXT NOT NULL,
+                    `name` TEXT NOT NULL,
+                    `parentFullName` TEXT,
+                    `holdsMessages` INTEGER NOT NULL,
+                    `delimiter` TEXT NOT NULL,
+                    PRIMARY KEY(`accountEmail`, `fullName`)
+                )
+                """.trimIndent()
+            )
+            it.execSQL(
+                "INSERT INTO `EmailFolder_new` (`accountEmail`, `fullName`, `name`, `parentFullName`, `holdsMessages`, `delimiter`) " +
+                    "SELECT '', `fullName`, `name`, `parentFullName`, 1, `delimiter` FROM `EmailFolder`"
+            )
+            it.execSQL("DROP TABLE IF EXISTS `EmailFolder`")
+            it.execSQL("ALTER TABLE `EmailFolder_new` RENAME TO `EmailFolder`")
+            it.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `EmailMessage_new` (
+                    `accountEmail` TEXT NOT NULL,
+                    `folderName` TEXT NOT NULL,
+                    `id` INTEGER NOT NULL,
+                    `subject` TEXT NOT NULL,
+                    `from` TEXT NOT NULL,
+                    `date` TEXT NOT NULL,
+                    `body` TEXT,
+                    `isHtml` INTEGER NOT NULL,
+                    PRIMARY KEY(`accountEmail`, `folderName`, `id`)
+                )
+                """.trimIndent()
+            )
+            it.execSQL(
+                "INSERT INTO `EmailMessage_new` (`accountEmail`, `folderName`, `id`, `subject`, `from`, `date`, `body`, `isHtml`) " +
+                    "SELECT '', `folderName`, `id`, `subject`, `from`, `date`, `body`, `isHtml` FROM `EmailMessage`"
+            )
+            it.execSQL("DROP TABLE IF EXISTS `EmailMessage`")
+            it.execSQL("ALTER TABLE `EmailMessage_new` RENAME TO `EmailMessage`")
+        }
+
+        /**
+         * v2 → v3 (reconstructed): the EmailAccount table, the second half
+         * of 742082c48's 1→3 diff (EmailAccount(email PK, accessToken,
+         * refreshToken, expiresAt)). Creates the table empty: a v1 install
+         * held its single Gmail OAuth identity outside Room, and the tokens
+         * are re-established by signing in again.
+         */
+        private val MIGRATION_2_3 = Migration(2, 3) {
+            it.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `EmailAccount` (
+                    `email` TEXT NOT NULL,
+                    `accessToken` TEXT NOT NULL,
+                    `refreshToken` TEXT,
+                    `expiresAt` INTEGER NOT NULL,
+                    PRIMARY KEY(`email`)
+                )
+                """.trimIndent()
+            )
+        }
+
+        /**
+         * v3 → v4 (reconstructed): a18f75606 ("email: sending emails", the
+         * commit that raised version 3 → 4) added Attachment and the
+         * EmailMessage columns serverId, threadId, to, cc, references and
+         * hasAttachments; a3f7b10dd then added isRead without a version
+         * bump, so every shipped v4 database carries it and MIGRATION_4_5
+         * already assumes it. Attachment is created exactly as at v4.
+         */
+        private val MIGRATION_3_4 = Migration(3, 4) {
+            it.execSQL("ALTER TABLE EmailMessage ADD COLUMN serverId TEXT")
+            it.execSQL("ALTER TABLE EmailMessage ADD COLUMN threadId TEXT")
+            it.execSQL("ALTER TABLE EmailMessage ADD COLUMN `to` TEXT")
+            it.execSQL("ALTER TABLE EmailMessage ADD COLUMN cc TEXT")
+            it.execSQL("ALTER TABLE EmailMessage ADD COLUMN `references` TEXT")
+            it.execSQL("ALTER TABLE EmailMessage ADD COLUMN hasAttachments INTEGER NOT NULL DEFAULT 0")
+            it.execSQL("ALTER TABLE EmailMessage ADD COLUMN isRead INTEGER NOT NULL DEFAULT 0")
+            it.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `Attachment` (
+                    `accountEmail` TEXT NOT NULL,
+                    `folderName` TEXT NOT NULL,
+                    `messageId` INTEGER NOT NULL,
+                    `partId` TEXT NOT NULL,
+                    `fileName` TEXT NOT NULL,
+                    `mimeType` TEXT NOT NULL,
+                    `size` INTEGER NOT NULL,
+                    `localUri` TEXT,
+                    PRIMARY KEY(`accountEmail`, `messageId`, `partId`)
+                )
+                """.trimIndent()
+            )
+        }
+
         private val MIGRATION_4_5 = Migration(4, 5) {
             it.execSQL(
                 """
@@ -243,6 +358,9 @@ abstract class EmailDatabase : RoomDatabase() {
          * irrelevant to Room; kept numeric here for readability.
          */
         override val migrations: List<Migration> = listOf(
+            MIGRATION_1_2,
+            MIGRATION_2_3,
+            MIGRATION_3_4,
             MIGRATION_4_5,
             MIGRATION_5_6,
             MIGRATION_6_7,

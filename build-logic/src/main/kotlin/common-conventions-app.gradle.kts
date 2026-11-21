@@ -39,14 +39,48 @@ fun readVersionInfoOnce(): Pair<Int, String> {
         return extra.get("modernAppsVersionInfo") as Pair<Int, String>
     }
     val versionFile = File(rootDir, "version.txt")
+    // Fail the build loudly on a missing or malformed version.txt. This used
+    // to fall back to versionCode 1 for a non-numeric first line, which once
+    // shipped a build whose code was lower than the previous release (and so
+    // could never be installed as an update). There is no safe default for a
+    // release version code: every app in the build shares this one file.
     val info = if (versionFile.exists()) {
         val lines = versionFile.readLines()
-        if (lines.size >= 2) {
-            val code = lines[0].trim().toIntOrNull() ?: 1
-            val name = lines[1].trim()
-            code to name
-        } else throw IllegalStateException("Invalid version.txt format")
-    } else throw IllegalStateException("version.txt not found")
+        if (lines.size < 2) {
+            throw IllegalStateException(
+                "Invalid version.txt at ${versionFile.absolutePath}: expected 2 lines " +
+                    "(versionCode, versionName) but found ${lines.size}. " +
+                    "Fix version.txt - refusing to build with a guessed versionCode."
+            )
+        }
+        val codeText = lines[0].trim()
+        val code = codeText.toIntOrNull()
+            ?: throw IllegalStateException(
+                "Invalid version.txt at ${versionFile.absolutePath}: first line must be the " +
+                    "integer versionCode but was '$codeText'. " +
+                    "Fix version.txt - refusing to build with a guessed versionCode."
+            )
+        if (code <= 0) {
+            throw IllegalStateException(
+                "Invalid version.txt at ${versionFile.absolutePath}: versionCode must be " +
+                    "positive but was $code. Fix version.txt."
+            )
+        }
+        val name = lines[1].trim()
+        if (name.isBlank()) {
+            throw IllegalStateException(
+                "Invalid version.txt at ${versionFile.absolutePath}: second line (versionName) " +
+                    "is blank. Fix version.txt."
+            )
+        }
+        code to name
+    } else {
+        throw IllegalStateException(
+            "version.txt not found at ${versionFile.absolutePath}: every app build reads its " +
+                "versionCode/versionName from that 2-line file (code, name). " +
+                "Restore version.txt - refusing to build with a guessed versionCode."
+        )
+    }
     extra.set("modernAppsVersionInfo", info)
     return info
 }
@@ -71,8 +105,18 @@ val (releaseVersionCode, appVersionName) = readVersionInfo()
  *
  * Read at configuration time, which the configuration cache requires.
  */
-val appVersionCode: Int =
-    (findProperty("versionCodeOverride") as String?)?.trim()?.toIntOrNull() ?: releaseVersionCode
+val appVersionCode: Int = run {
+    val overrideText = (findProperty("versionCodeOverride") as String?)?.trim()
+    if (overrideText.isNullOrEmpty()) {
+        releaseVersionCode
+    } else {
+        overrideText.toIntOrNull()?.takeIf { it > 0 }
+            ?: throw IllegalStateException(
+                "Invalid -PversionCodeOverride='$overrideText': expected a positive integer " +
+                    "versionCode. Refusing to fall back silently to $releaseVersionCode."
+            )
+    }
+}
 
 // Adaptive launcher icons are generated at build time from Material Symbols
 // instead of committing an ic_launcher_foreground.xml per app. Each app declares

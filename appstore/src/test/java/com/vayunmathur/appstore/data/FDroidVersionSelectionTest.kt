@@ -83,6 +83,26 @@ class FDroidVersionSelectionTest {
     }
 
     @Test
+    fun `highest versionCode wins even when a lower versionCode was added later`() {
+        val versions = listOf(
+            version(200, "/app_reindexed_old.apk", versionCode = 11, nativeCode = listOf("arm64-v8a")),
+            version(100, "/app_latest.apk", versionCode = 12, nativeCode = listOf("arm64-v8a")),
+        )
+
+        assertEquals("/app_latest.apk", FDroidRepository.selectVersion(versions, arm64Device)?.fileName)
+    }
+
+    @Test
+    fun `added breaks the tie between equal versionCodes`() {
+        val versions = listOf(
+            version(100, "/app_first.apk", versionCode = 12, nativeCode = listOf("arm64-v8a")),
+            version(200, "/app_second.apk", versionCode = 12, nativeCode = listOf("arm64-v8a")),
+        )
+
+        assertEquals("/app_second.apk", FDroidRepository.selectVersion(versions, arm64Device)?.fileName)
+    }
+
+    @Test
     fun `falls back to an older release when the newest has no build for this device`() {
         val versions = listOf(
             version(100, "/app_old_arm64.apk", nativeCode = listOf("arm64-v8a")),

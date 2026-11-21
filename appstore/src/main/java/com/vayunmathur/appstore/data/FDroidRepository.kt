@@ -651,10 +651,16 @@ object FDroidRepository {
             .filter { it.requiredSplitTypes.isNotEmpty() || it.versionCode !in splitSetCodes }
             .mapNotNull { candidate -> abiRank(candidate.nativeCode, deviceAbis)?.let { candidate to it } }
             .minWithOrNull(
-                compareByDescending<Pair<VersionCandidate, Int>> { it.first.added }
-                    .thenBy { it.second }
-                    .thenByDescending { it.first.requiredSplitTypes.isNotEmpty() }
+                // ABI fitness first (a build for the wrong ABI cannot be used
+                // at all), then the highest versionCode - `added` alone used
+                // to win here, so a re-indexed older release could shadow the
+                // latest versionCode and the store offered a downgrade. `added`
+                // is now only the tie-break between equal versionCodes, ahead
+                // of the split-base and size tie-breaks as before.
+                compareBy<Pair<VersionCandidate, Int>> { it.second }
                     .thenByDescending { it.first.versionCode }
+                    .thenByDescending { it.first.added }
+                    .thenByDescending { it.first.requiredSplitTypes.isNotEmpty() }
                     .thenByDescending { it.first.size }
             )
             ?.first
