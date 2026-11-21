@@ -319,6 +319,8 @@ internal fun CameraViewModel.buildPortraitCapture(maxResCapture: Boolean, ultraH
     val captureBuilder = ImageCapture.Builder()
         .setResolutionSelector(captureSelectorBuilder.build())
         .setFlashMode(getImageCaptureFlashMode())
+    // Builder.setScreenFlash is @NonNull; the instance setter (nullable) runs in applyImageCaptureFlashMode.
+    getScreenFlashForCapture()?.let { captureBuilder.setScreenFlash(it) }
     if (ultraHdr) {
         captureBuilder.setOutputFormat(ImageCapture.OUTPUT_FORMAT_JPEG_ULTRA_HDR)
     }

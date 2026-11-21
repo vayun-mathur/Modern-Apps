@@ -8,6 +8,7 @@ import androidx.core.net.toUri
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
 import com.vayunmathur.camera.platform.AspectRatioOption
+import com.vayunmathur.camera.platform.AudioCodec
 import com.vayunmathur.camera.platform.AudioInputSource
 import com.vayunmathur.camera.platform.CameraViewModel
 import com.vayunmathur.camera.platform.CodecSupport
@@ -50,6 +51,13 @@ private fun CameraViewModel.loadCaptureSettings() {
             AudioInputSource.valueOf(it)
         } catch (_: Exception) {
             AudioInputSource.CAMCORDER
+        }
+    }
+    ds.getString("camera_audio_codec")?.let {
+        audioCodecMutable.value = try {
+            AudioCodec.valueOf(it)
+        } catch (_: Exception) {
+            AudioCodec.AAC
         }
     }
     loadSaveTarget()
@@ -146,6 +154,11 @@ fun CameraViewModel.setVideoCodec(codec: VideoCodec) {
 fun CameraViewModel.setMotionPhotoDuration(duration: MotionPhotoDuration) {
     motionPhotoDurationMutable.value = duration
     viewModelScope.launch { ds.setString("camera_motion_duration", duration.name) }
+}
+
+fun CameraViewModel.setAudioCodec(codec: AudioCodec) {
+    audioCodecMutable.value = codec
+    viewModelScope.launch { ds.setString("camera_audio_codec", codec.name) }
 }
 
 fun CameraViewModel.setAudioInputSource(source: AudioInputSource) {

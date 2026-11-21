@@ -11,6 +11,7 @@ import androidx.camera.core.SessionConfig
 import androidx.camera.core.UseCase
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.lifecycle.LifecycleOwner
+import kotlinx.coroutines.delay
 
 /**
  * Binds [useCases] via a [SessionConfig] with auto-rotation enabled, so CameraX applies the
@@ -27,6 +28,44 @@ internal fun CameraViewModel.bindSession(
     selector,
     SessionConfig.Builder(*useCases).setAutoRotationEnabled(true).build(),
 )
+
+/** Bounded bind retries after the first attempt (3 attempts in total). */
+internal const val SESSION_BIND_MAX_RETRIES = 2
+
+/** Pause between bind retries: long enough for a transient HAL teardown to settle. */
+internal const val SESSION_BIND_RETRY_DELAY_MS = 300L
+
+/**
+ * Runs [bind] until it succeeds or [maxRetries] retries are exhausted, waiting
+ * [retryDelayMs] (via [delayFn]) between attempts. Cancellation is never
+ * swallowed: a [kotlinx.coroutines.CancellationException] from [bind] or
+ * [delayFn] propagates, so a session-effect key change (mode/lens/lifecycle)
+ * supersedes an in-progress retry ladder immediately.
+ */
+internal suspend fun runSessionBindWithRetry(
+    maxRetries: Int = SESSION_BIND_MAX_RETRIES,
+    retryDelayMs: Long = SESSION_BIND_RETRY_DELAY_MS,
+    delayFn: suspend (Long) -> Unit = { delay(it) },
+    bind: suspend () -> Boolean,
+): Boolean {
+    var retriesLeft = maxRetries
+    while (true) {
+        if (bind()) return true
+        if (retriesLeft <= 0) return false
+        retriesLeft--
+        delayFn(retryDelayMs)
+    }
+}
+
+/**
+ * Manual retry after a bind exhausted its retries: clears the failure so the
+ * preview placeholder returns, then bumps the retry counter the session
+ * effect is keyed on, which cancels the parked effect and rebinds.
+ */
+fun CameraViewModel.retrySessionBind() {
+    sessionBindFailedMutable.value = false
+    sessionBindRetryMutable.value += 1
+}
 
 /** Tears down whatever session is currently bound and clears the shared preview surface. */
 fun CameraViewModel.teardownSession() {
@@ -266,11 +305,57 @@ internal fun <T> CameraViewModel.applyVideoCaptureRequestOptions(
     }
 }
 
-fun CameraViewModel.getImageCaptureFlashMode(): Int = when (flashModeMutable.value) {
-    FlashMode.ON -> ImageCapture.FLASH_MODE_ON
-    FlashMode.OFF -> ImageCapture.FLASH_MODE_OFF
-    FlashMode.AUTO -> ImageCapture.FLASH_MODE_AUTO
+/** The pure lens-facing model for the currently selected facing. */
+internal fun CameraViewModel.currentLensFacing(): com.vayunmathur.camera.domain.LensFacing =
+    if (lensFacingMutable.value == CameraSelector.LENS_FACING_FRONT) {
+        com.vayunmathur.camera.domain.LensFacing.FRONT
+    } else {
+        com.vayunmathur.camera.domain.LensFacing.BACK
+    }
+
+private fun FlashMode.toFlashSetting(): com.vayunmathur.camera.domain.FlashSetting = when (this) {
+    FlashMode.ON -> com.vayunmathur.camera.domain.FlashSetting.ON
+    FlashMode.OFF -> com.vayunmathur.camera.domain.FlashSetting.OFF
+    FlashMode.AUTO -> com.vayunmathur.camera.domain.FlashSetting.AUTO
 }
+
+/** How the next still will be illuminated for the bound lens + user setting. */
+internal fun CameraViewModel.currentFlashResolution(): com.vayunmathur.camera.domain.FlashResolution =
+    com.vayunmathur.camera.domain.FlashModePolicy.resolve(
+        currentLensFacing(),
+        hasFlashUnitMutable.value,
+        flashModeMutable.value.toFlashSetting(),
+    )
+
+/**
+ * The CameraX flash mode for the next still. A front lens with no flash
+ * unit resolves ON/AUTO to [ImageCapture.FLASH_MODE_SCREEN] (display as
+ * flash); a lens with a real unit keeps the hardware modes exactly as
+ * before. CameraX rejects FLASH_MODE_SCREEN on a back camera, which the
+ * policy can never produce (screen is front-only).
+ */
+fun CameraViewModel.getImageCaptureFlashMode(): Int =
+    when (currentFlashResolution()) {
+        com.vayunmathur.camera.domain.FlashResolution.SCREEN -> ImageCapture.FLASH_MODE_SCREEN
+        com.vayunmathur.camera.domain.FlashResolution.NONE -> ImageCapture.FLASH_MODE_OFF
+        com.vayunmathur.camera.domain.FlashResolution.HARDWARE -> when (flashModeMutable.value) {
+            FlashMode.ON -> ImageCapture.FLASH_MODE_ON
+            FlashMode.AUTO -> ImageCapture.FLASH_MODE_AUTO
+            FlashMode.OFF -> ImageCapture.FLASH_MODE_OFF
+        }
+    }
+
+/**
+ * The viewfinder-provided [ImageCapture.ScreenFlash] to attach to a still
+ * capture, or null unless the resolution is SCREEN. Null also clears a
+ * stale instance when flipping back to a hardware-flash lens.
+ */
+internal fun CameraViewModel.getScreenFlashForCapture(): ImageCapture.ScreenFlash? =
+    if (currentFlashResolution() == com.vayunmathur.camera.domain.FlashResolution.SCREEN) {
+        screenFlash
+    } else {
+        null
+    }
 
 /**
  * Best-effort unbind used inside bind-retry catch blocks: logs (with [tag]) instead of

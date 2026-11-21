@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.camera.platform.BOKEH_SHADER
@@ -47,10 +48,15 @@ import com.vayunmathur.camera.data.setExposureCompensation
 import com.vayunmathur.camera.platform.setExposureTimeIndex
 import com.vayunmathur.camera.platform.setManualIsoIndex
 import com.vayunmathur.camera.platform.setQrResult
+import com.vayunmathur.camera.platform.setScreenFlash
 import com.vayunmathur.camera.data.setShadows
 import com.vayunmathur.camera.data.setWarmth
 import com.vayunmathur.camera.platform.setZoomRatio
+import com.vayunmathur.camera.platform.retrySessionBind
 import com.vayunmathur.camera.platform.toggleNightModeOverride
+import com.vayunmathur.camera.R
+import com.vayunmathur.library.ui.ErrorState
+import com.vayunmathur.library.ui.R as UiR
 
 /** Maps the CameraX selector facing int to the pure lens-facing model. */
 private fun currentLensFacing(selectorInt: Int): com.vayunmathur.camera.domain.LensFacing =
@@ -223,12 +229,30 @@ internal fun BoxWithConstraintsScope.CameraPreviewBox(
             isTapToFocusEnabled = false,
             isPinchToZoomEnabled = true,
             onZoomRatioChanged = { ratio -> viewModel.onViewfinderZoomRatio(ratio) },
+            // CameraX owns the screen-flash UI (white overlay + window brightness):
+            // hand its ScreenFlash to the ViewModel so ImageCapture can invoke it
+            // for front captures on lenses with no flash unit. Never hand-roll
+            // brightness here.
+            onScreenFlashReady = { screenFlash -> viewModel.setScreenFlash(screenFlash) },
         )
     }
     if (surfaceRequest == null) {
-        // Brief gap between a mode's teardown and the next session's first frame.
-        // Show a plain black fill (no debug text) so the switch reads as instant.
-        Box(modifier = previewModifier.background(Color.Black))
+        if (state.sessionBindFailed) {
+            // Bind exhausted its retries: a visible, retryable error instead
+            // of parking on a black preview until the next mode/lens change.
+            Box(modifier = previewModifier.background(Color.Black), contentAlignment = Alignment.Center) {
+                ErrorState(
+                    title = stringResource(R.string.camera_bind_failed_title),
+                    message = stringResource(R.string.camera_bind_failed_message),
+                    retryLabel = stringResource(UiR.string.retry),
+                    onRetry = { viewModel.retrySessionBind() },
+                )
+            }
+        } else {
+            // Brief gap between a mode's teardown and the next session's first frame.
+            // Show a plain black fill (no debug text) so the switch reads as instant.
+            Box(modifier = previewModifier.background(Color.Black))
+        }
     }
     CaptureFlashOverlay(viewModel.shutterFeedback, previewSize.clip(RoundedCornerShape(12.dp)))
 

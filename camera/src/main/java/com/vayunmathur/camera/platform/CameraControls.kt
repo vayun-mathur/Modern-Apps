@@ -211,9 +211,25 @@ fun CameraViewModel.applyExposureCompensation(value: Float) {
     cam.cameraControl.setExposureCompensationIndex(index)
 }
 
-/** Pushes the current flash mode onto the bound ImageCapture (runtime-mutable, no rebind). */
+/**
+ * Pushes the current flash mode onto the bound ImageCapture (runtime-mutable, no rebind).
+ * The ScreenFlash is attached first (and cleared on hardware lenses) so a
+ * FLASH_MODE_SCREEN capture never fires without its UI mechanism in place.
+ */
 fun CameraViewModel.applyImageCaptureFlashMode() {
-    imageCapture?.flashMode = getImageCaptureFlashMode()
+    val capture = imageCapture ?: return
+    capture.setScreenFlash(getScreenFlashForCapture())
+    capture.flashMode = getImageCaptureFlashMode()
+}
+
+/**
+ * Receives the [androidx.camera.core.ImageCapture.ScreenFlash] created by
+ * the Compose viewfinder (its overlay + window-brightness mechanism) and
+ * re-applies it to the bound capture. Brightness is CameraX's job, not ours.
+ */
+fun CameraViewModel.setScreenFlash(screenFlash: androidx.camera.core.ImageCapture.ScreenFlash?) {
+    this.screenFlash = screenFlash
+    applyImageCaptureFlashMode()
 }
 
 /** Swaps the analyzer on the bound ImageAnalysis without rebinding. */

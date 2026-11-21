@@ -40,6 +40,24 @@ enum class VideoCodec(@StringRes val labelRes: Int, @StringRes val descriptionRe
     HEVC(R.string.codec_hevc_label, R.string.codec_hevc_description),
     AV1(R.string.codec_av1_label, R.string.codec_av1_description),
 }
+
+/** Audio codecs selectable for video recording, with display text and Recorder mime. */
+enum class AudioCodec(
+    @StringRes val labelRes: Int,
+    @StringRes val descriptionRes: Int,
+    val mimeType: String,
+) {
+    AAC(
+        R.string.audio_codec_aac_label,
+        R.string.audio_codec_aac_description,
+        android.media.MediaFormat.MIMETYPE_AUDIO_AAC,
+    ),
+    OPUS(
+        R.string.audio_codec_opus_label,
+        R.string.audio_codec_opus_description,
+        android.media.MediaFormat.MIMETYPE_AUDIO_OPUS,
+    ),
+}
 /** Motion-Photo clip durations (seconds). */
 private const val MOTION_ONE_SECOND = 1
 private const val MOTION_THREE_SECONDS = 3

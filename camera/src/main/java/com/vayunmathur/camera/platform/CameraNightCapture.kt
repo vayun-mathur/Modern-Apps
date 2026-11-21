@@ -79,6 +79,7 @@ internal suspend fun CameraViewModel.captureNightPhotoExtension() {
             .setFlashMode(getImageCaptureFlashMode())
             .build()
         imageCapture = capture
+        capture.setScreenFlash(getScreenFlashForCapture())
         // Match the still crop the normal photo session uses (1:1 / 3:2 / 16:9 / 4:3), or
         // night-extension shots always save full-frame while the preview shows cropped.
         capture.setCropAspectRatio(currentCropAspectRatio())

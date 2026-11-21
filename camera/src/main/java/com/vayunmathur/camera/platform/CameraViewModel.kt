@@ -202,6 +202,11 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
     internal val audioInputSourceMutable = MutableStateFlow(AudioInputSource.CAMCORDER)
     val audioInputSource = audioInputSourceMutable.asStateFlow()
 
+    // Recording audio codec. Default AAC preserves the long-standing Recorder
+    // default; Opus is opt-in and only used when the Recorder reports support.
+    internal val audioCodecMutable = MutableStateFlow(AudioCodec.AAC)
+    val audioCodec = audioCodecMutable.asStateFlow()
+
     internal val saveTargetMutable = MutableStateFlow<SaveTarget>(SaveTarget.MediaStoreDefault)
     val saveTarget = saveTargetMutable.asStateFlow()
 
@@ -458,6 +463,18 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
     internal val surfaceRequestMutable = MutableStateFlow<SurfaceRequest?>(null)
     val surfaceRequest = surfaceRequestMutable.asStateFlow()
 
+    // Session bind exhausted its bounded retries: the preview has no surface,
+    // so the UI shows an error with a manual retry instead of a black frame.
+    // Cleared when a bind succeeds, a bind (re)starts, or a key change
+    // supersedes the failed bind.
+    internal val sessionBindFailedMutable = MutableStateFlow(false)
+    val sessionBindFailed = sessionBindFailedMutable.asStateFlow()
+
+    // Monotonic manual-retry counter: bumping it is a session-effect key, so
+    // a tap re-runs the bind (cancelling the parked failed effect first).
+    internal val sessionBindRetryMutable = MutableStateFlow(0)
+    val sessionBindRetry = sessionBindRetryMutable.asStateFlow()
+
     // Monotonic count of teardownSession() calls. The UI session effect owns binding; a
     // capture-time rebind (captureNightPhotoExtension) snapshots this so its finally-restore
     // can tell whether the effect already tore down / rebound meanwhile (mode switch, lens
@@ -471,6 +488,12 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
     internal var sessionLifecycleOwner: ManualLifecycleOwner? = null
     internal var boundCamera: Camera? = null
     internal var imageCapture: ImageCapture? = null
+
+    // The Compose viewfinder's CameraX ScreenFlash (white overlay + window
+    // brightness, owned by CameraXViewfinder), handed over via
+    // onScreenFlashReady. Attached to ImageCapture only when the front lens
+    // has no flash unit and the resolution is SCREEN (see FlashModePolicy).
+    internal var screenFlash: ImageCapture.ScreenFlash? = null
     internal var imageAnalysis: ImageAnalysis? = null
 
     // The analyzer the UI wants running, kept across teardown/rebind. Every session bind re-attaches

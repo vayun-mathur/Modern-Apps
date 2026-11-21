@@ -92,6 +92,32 @@ class CameraCovC2CapabilitiesTest {
         assertTrue(viewModel.hasFlashUnitMutable.value)
     }
 
+    @Test fun refreshCapabilitiesReassertsTorchFromUiState() = runBlocking<Unit> {
+        val viewModel = vm()
+        viewModel.cameraModeMutable.value = CameraMode.VIDEO
+        // Recording control so the re-assert onto the fresh bind is observable.
+        val control = org.mockito.Mockito.mock(CameraControl::class.java)
+        val info = cameraInfo(zoomState(0.5f, 8f), flash = true)
+        val bound = proxy(Camera::class.java) { name ->
+            when (name) {
+                "getCameraInfo" -> info
+                "getCameraControl" -> control
+                else -> null
+            }
+        } as Camera
+        // Torch left on in the UI across a mode/lens rebind must be re-applied
+        // to the new bind (the torch effect only fires on value change).
+        viewModel.torchEnabledMutable.value = true
+        viewModel.refreshCapabilities(bound, "lens-1")
+        org.mockito.Mockito.verify(control).enableTorch(true)
+        // And a torch-off UI state is re-asserted off, not left as the
+        // previous bind's hardware state.
+        org.mockito.Mockito.clearInvocations(control)
+        viewModel.torchEnabledMutable.value = false
+        viewModel.refreshCapabilities(bound, "lens-1")
+        org.mockito.Mockito.verify(control).enableTorch(false)
+    }
+
     @Test fun refreshCapabilitiesDefaultsWhenZoomUnreadable() = runBlocking<Unit> {
         val viewModel = vm()
         viewModel.cameraModeMutable.value = CameraMode.TIMELAPSE

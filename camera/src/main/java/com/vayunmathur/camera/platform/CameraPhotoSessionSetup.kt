@@ -243,6 +243,8 @@ internal fun CameraViewModel.buildPhotoCapture(
         .setCaptureMode(
             if (zsl) ImageCapture.CAPTURE_MODE_ZERO_SHUTTER_LAG else ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY
         )
+    // Builder.setScreenFlash is @NonNull; the instance setter (nullable) runs in applyImageCaptureFlashMode.
+    getScreenFlashForCapture()?.let { captureBuilder.setScreenFlash(it) }
     if (ultraHdr) {
         captureBuilder.setOutputFormat(ImageCapture.OUTPUT_FORMAT_JPEG_ULTRA_HDR)
     }

@@ -36,6 +36,33 @@ suspend fun CameraViewModel.setupVideoSession(): Boolean {
     }
 }
 
+/** Explicit video bitrate ladder, bits per second. */
+private const val VIDEO_BITRATE_UHD_BPS = 48_000_000
+private const val VIDEO_BITRATE_FHD_BPS = 25_000_000
+private const val VIDEO_BITRATE_HD_BPS = 12_000_000
+private const val VIDEO_BITRATE_SD_BPS = 6_000_000
+
+/** Explicit recording audio: 128 kbps stereo, for AAC and Opus alike. */
+private const val AUDIO_BITRATE_BPS = 128_000
+private const val AUDIO_CHANNEL_COUNT = 2
+
+/**
+ * Bitrate for [quality], scaled by pixel count at the fixed 30 fps video rate:
+ * UHD (3840x2160, 8.3 MP) at 48 Mbps, FHD (1920x1080, 2.1 MP) at 25 Mbps,
+ * HD (1280x720, 0.9 MP) at 12 Mbps, SD at 6 Mbps. Each step roughly halves
+ * with the pixel count, keeping bits per pixel in the same high-quality
+ * band instead of leaving the encoder at its macro-block-prone default.
+ * Unknown/unprobeable quality falls back to the FHD rung: high enough for
+ * HD/FHD, low enough that UHD-only encoder ranges are not required.
+ */
+internal fun videoBitRateForQuality(quality: Quality?): Int = when (quality) {
+    Quality.UHD -> VIDEO_BITRATE_UHD_BPS
+    Quality.FHD -> VIDEO_BITRATE_FHD_BPS
+    Quality.HD -> VIDEO_BITRATE_HD_BPS
+    Quality.SD -> VIDEO_BITRATE_SD_BPS
+    else -> VIDEO_BITRATE_FHD_BPS
+}
+
 /** Codec/quality choices resolved off the camera info. */
 internal data class VideoChoices(
     val useAv1: Boolean,
@@ -44,7 +71,10 @@ internal data class VideoChoices(
     val hlgSupported: Boolean,
     val bestFpsRange: android.util.Range<Int>?,
     val stabilizationMode: Int?,
-    val qualitySelector: QualitySelector
+    val qualitySelector: QualitySelector,
+    val videoEncodingBitRate: Int = VIDEO_BITRATE_FHD_BPS,
+    val audioEncodingBitRate: Int = AUDIO_BITRATE_BPS,
+    val audioChannelCount: Int = AUDIO_CHANNEL_COUNT
 )
 
 /** Video session scaffolding: provider, lens, owner, choices. */
@@ -83,18 +113,26 @@ internal fun CameraViewModel.resolveVideoChoices(cameraInfo: androidx.camera.cor
         CodecSupport.isHardwareAv1EncoderAvailable && av1SupportedByCamera(cameraInfo)
     val useHevc = !useAv1 && selectedCodec != VideoCodec.AVC &&
         CodecSupport.isHevcEncoderAvailable && hevcSupportedByCamera(cameraInfo)
-    val useOpus = false
+    // Audio codec follows the user setting with the video-codec fallback style:
+    // Opus only when chosen AND the Recorder reports an Opus encoder, else AAC.
+    val useOpus = audioCodecMutable.value == AudioCodec.OPUS &&
+        CodecSupport.isOpusAudioEncoderAvailable
     // HLG10 (10-bit HDR) when the camera's video pipeline supports it. Uses the default
     // HEVC/H.264 codec (AV1 stays off). Preview and VideoCapture must share the dynamic
     // range or the bind fails, so both are gated together.
     val hlgSupported = hlgSupportedByCamera(cameraInfo)
     Log.debug("VideoSession", "Codec selection: av1=$useAv1, hevc=$useHevc, opus=$useOpus, hlg10=$hlgSupported")
 
-    // Cinematic mode enables video stabilization; all video modes always record at max
-    // quality/fps (no UI picker).
-    val cinematic = cameraModeMutable.value == CameraMode.CINEMATIC
+    // Standard and Cinematic video enable stabilization when the device probe
+    // reports a mode; other modes (timelapse/slo-mo/photo) leave it unset.
+    // All video modes always record at max quality/fps (no UI picker).
+    val mode = cameraModeMutable.value
     val bestFpsRange = highestFpsRange(cameraInfo)
-    val stabilizationMode = if (cinematic) preferredStabilizationMode(cameraInfo) else null
+    val stabilizationMode = if (mode == CameraMode.VIDEO || mode == CameraMode.CINEMATIC) {
+        preferredStabilizationMode(cameraInfo)
+    } else {
+        null
+    }
     Log.debug("VideoSession", "Video tuning: fps=$bestFpsRange, stabilization=$stabilizationMode")
 
     // Prefer UHD, then FHD, then HD, falling back to the next lower supported quality.
@@ -102,7 +140,45 @@ internal fun CameraViewModel.resolveVideoChoices(cameraInfo: androidx.camera.cor
         listOf(Quality.UHD, Quality.FHD, Quality.HD),
         FallbackStrategy.lowerQualityOrHigherThan(Quality.HD)
     )
-    return VideoChoices(useAv1, useHevc, useOpus, hlgSupported, bestFpsRange, stabilizationMode, qualitySelector)
+    // Explicit bitrate for the highest quality the probe reports, instead of
+    // the encoder default. The Recorder is built inside each bind rung, so a
+    // device that rejects these encoding options fails that rung and the
+    // existing bind ladder (HDR/snapshot x lens) walks on.
+    val videoEncodingBitRate = videoBitRateForQuality(
+        highestSupportedVideoQuality(cameraInfo, hlgSupported)
+    )
+    Log.debug("VideoSession", "Video encoding bitrate=$videoEncodingBitRate")
+    return VideoChoices(
+        useAv1, useHevc, useOpus, hlgSupported, bestFpsRange, stabilizationMode,
+        qualitySelector, videoEncodingBitRate = videoEncodingBitRate
+    )
+}
+
+/**
+ * Highest of UHD/FHD/HD/SD in the camera's supported qualities for the
+ * recording dynamic range (SDR when HLG is unsupported), or null when the
+ * capabilities probe cannot answer - the caller then uses the FHD bitrate.
+ */
+internal fun CameraViewModel.highestSupportedVideoQuality(
+    cameraInfo: androidx.camera.core.CameraInfo,
+    hlgSupported: Boolean
+): Quality? = try {
+    val capabilities = Recorder.getVideoCapabilities(cameraInfo)
+    val range = if (hlgSupported) {
+        androidx.camera.core.DynamicRange.HLG_10_BIT
+    } else {
+        androidx.camera.core.DynamicRange.SDR
+    }
+    val supported = capabilities.getSupportedQualities(range)
+        .ifEmpty { capabilities.getSupportedQualities(androidx.camera.core.DynamicRange.SDR) }
+    listOf(Quality.UHD, Quality.FHD, Quality.HD, Quality.SD)
+        .firstOrNull { supported.contains(it) }
+} catch (e: IllegalStateException) {
+    Log.status("VideoSession", "Could not query supported video qualities", e)
+    null
+} catch (e: IllegalArgumentException) {
+    Log.status("VideoSession", "Could not query supported video qualities", e)
+    null
 }
 
 /**
@@ -264,9 +340,13 @@ internal fun CameraViewModel.buildVideoCapture(
     val recorderBuilder = Recorder.Builder()
         .setQualitySelector(choices.qualitySelector)
         .setAudioSource(audioInputSourceMutable.value.specValue)
+        .setTargetVideoEncodingBitRate(choices.videoEncodingBitRate)
+        .setTargetAudioEncodingBitRate(choices.audioEncodingBitRate)
+        .setTargetAudioChannelCount(choices.audioChannelCount)
     if (choices.useAv1) recorderBuilder.setVideoMimeType(MediaFormat.MIMETYPE_VIDEO_AV1)
     else if (choices.useHevc) recorderBuilder.setVideoMimeType(MediaFormat.MIMETYPE_VIDEO_HEVC)
     if (choices.useOpus) recorderBuilder.setAudioMimeType(MediaFormat.MIMETYPE_AUDIO_OPUS)
+    else recorderBuilder.setAudioMimeType(MediaFormat.MIMETYPE_AUDIO_AAC)
     val captureBuilder = VideoCapture.Builder(recorderBuilder.build())
         .setMirrorMode(
             if (mirrorFrontMutable.value) MirrorMode.MIRROR_MODE_ON_FRONT_ONLY

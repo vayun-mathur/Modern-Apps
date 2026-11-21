@@ -48,6 +48,7 @@ internal fun CameraTopBar(
     flashMode: FlashMode,
     torchEnabled: Boolean,
     hasFlashUnit: Boolean,
+    screenFlashAvailable: Boolean = false,
     gridEnabled: Boolean,
     levelEnabled: Boolean,
     aspectRatio: AspectRatioOption,
@@ -74,9 +75,12 @@ internal fun CameraTopBar(
         horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Flash/torch share the same LED: without a flash unit (some front lenses) the
-        // control is dead, so hide it instead of showing a button that does nothing.
-        if (hasFlashUnit) {
+        // Flash/torch share the same LED: without a flash unit the torch is dead, but a
+        // front lens can still flash via the screen (CameraX FLASH_MODE_SCREEN), so the
+        // flash cycle stays available there and only the torch long-press goes away.
+        // With neither a unit nor screen flash the control is dead, so hide it instead
+        // of showing a button that does nothing.
+        if (hasFlashUnit || screenFlashAvailable) {
             val flashBg = if (torchEnabled || flashMode != FlashMode.OFF) Color(0xFF3C3C3C) else Color.Transparent
             Box(
                 modifier = Modifier
@@ -85,7 +89,7 @@ internal fun CameraTopBar(
                     .background(flashBg, CircleShape)
                     .combinedClickable(
                         onClick = onFlashToggle,
-                        onLongClick = onTorchToggle
+                        onLongClick = if (hasFlashUnit) onTorchToggle else null
                     ),
                 contentAlignment = Alignment.Center
             ) {

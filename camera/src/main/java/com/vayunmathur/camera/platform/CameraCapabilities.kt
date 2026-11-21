@@ -46,6 +46,7 @@ suspend fun CameraViewModel.refreshCapabilities(bound: Camera, lensId: String?) 
 
     readManualControlRanges()
     reapplyCaptureControls()
+    reapplyTorch(bound)
 
     val hasFlash = readFlashUnit(bound)
     hasFlashUnitMutable.value = hasFlash
@@ -107,6 +108,26 @@ private fun CameraViewModel.reapplyCaptureControls() {
         Log.status("LensSelector", "Could not re-apply exposure compensation", e)
     } catch (e: IllegalArgumentException) {
         Log.status("LensSelector", "Could not re-apply exposure compensation", e)
+    }
+}
+
+/**
+ * Re-asserts the UI's torch state onto the fresh bind. The session effect
+ * only calls `enableTorch` when `torchEnabled` changes, so a mode/lens
+ * rebind (which resets the hardware torch) left the UI lit with the torch
+ * off until the user toggled it twice.
+ */
+private fun CameraViewModel.reapplyTorch(bound: Camera) {
+    try {
+        bound.cameraControl.enableTorch(torchEnabledMutable.value)
+    } catch (e: IllegalStateException) {
+        Log.status("LensSelector", "Could not re-apply torch", e)
+    } catch (e: IllegalArgumentException) {
+        Log.status("LensSelector", "Could not re-apply torch", e)
+    } catch (e: NullPointerException) {
+        // Fake controls in unit tests return a null future for enableTorch;
+        // a real bind always returns one, so this is "unavailable", not a crash.
+        Log.status("LensSelector", "Could not re-apply torch", e)
     }
 }
 

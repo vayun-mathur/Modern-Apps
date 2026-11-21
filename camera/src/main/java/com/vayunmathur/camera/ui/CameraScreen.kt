@@ -111,6 +111,7 @@ fun CameraScreen(
                     flashMode = state.flashMode,
                     torchEnabled = state.torchEnabled,
                     hasFlashUnit = state.hasFlashUnit,
+                    screenFlashAvailable = state.screenFlashAvailable,
                     gridEnabled = state.gridEnabled,
                     levelEnabled = state.levelEnabled,
                     aspectRatio = state.aspectRatio,

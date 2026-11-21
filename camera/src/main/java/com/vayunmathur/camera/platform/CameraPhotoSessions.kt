@@ -132,6 +132,7 @@ internal suspend fun CameraViewModel.prepareNightPreview(): NightPreviewPrep? {
         .setFlashMode(getImageCaptureFlashMode())
         .build()
     imageCapture = capture
+    capture.setScreenFlash(getScreenFlashForCapture())
     return NightPreviewPrep(
         provider,
         mgr,

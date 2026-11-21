@@ -26,6 +26,7 @@ import com.vayunmathur.camera.platform.applyImageCaptureFlashMode
 import com.vayunmathur.camera.platform.enableTorch
 import com.vayunmathur.camera.platform.onLuminance
 import com.vayunmathur.camera.platform.refreshNightExtensionUsable
+import com.vayunmathur.camera.platform.runSessionBindWithRetry
 import com.vayunmathur.camera.platform.setBokehAnalyzer
 import com.vayunmathur.camera.platform.setImageAnalyzer
 import com.vayunmathur.camera.platform.setPhotoAnalyzer
@@ -77,7 +78,10 @@ internal fun CameraScreenEffects(
         viewModel.updateLocation()
     }
 
-    LaunchedEffect(state.flashMode) {
+    // Lens facing / flash-unit changes flip the resolution (hardware <-> screen)
+    // without a flashMode change, so they re-apply too; the session rebind that
+    // follows picks the same resolution up in its ImageCapture builder.
+    LaunchedEffect(state.flashMode, state.lensFacing, state.hasFlashUnit) {
         viewModel.applyImageCaptureFlashMode()
     }
 
@@ -244,35 +248,46 @@ internal fun CameraScreenEffects(
     // manual exposure or night mode makes ZSL unsafe, or safe again (#914). Other kinds ignore it.
     val zslCompatible by viewModel.zslCompatible.collectAsState()
     val zslKey = if (sessionKind == SessionKind.PHOTO) zslCompatible else null
-    LaunchedEffect(cameraMode, lensFacing, selectedLens, sessionKind, useNightPreview, zslKey, state.videoCodec, state.audioInputSource, state.mirrorFront, lifecycleOwner) {
+    LaunchedEffect(cameraMode, lensFacing, selectedLens, sessionKind, useNightPreview, zslKey, state.videoCodec, state.audioInputSource, state.mirrorFront, state.sessionBindRetry, lifecycleOwner) {
         Log.dev("NightPreview", "CameraScreen session LaunchedEffect START keys zsl=$zslKey lensFacing=$lensFacing selectedLens=${selectedLens?.labelKey} sessionKind=$sessionKind useNightPreview=$useNightPreview codec=${state.videoCodec} audio=${state.audioInputSource} mirror=${state.mirrorFront} lifecycle=${lifecycleOwner.lifecycle.currentState} thread=${Thread.currentThread().name}")
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            Log.dev("NightPreview", "CameraScreen repeatOnLifecycle STARTED – calling teardownSession()")
-            viewModel.teardownSession()
-            // Brief yield so the previous session's surface detaches before the next binds; short
-            // enough that a mode switch reads as instant, long enough to avoid a bind-over-teardown race.
-            delay(40)
-            val bindStart = System.currentTimeMillis()
-            val bindSuccess = try {
-                when (sessionKind) {
-                    SessionKind.HIGH_SPEED -> viewModel.setupHighSpeedSession()
-                    SessionKind.VIDEO -> viewModel.setupVideoSession()
-                    SessionKind.PANORAMA -> viewModel.setupPanoramaSession()
-                    SessionKind.PORTRAIT -> viewModel.setupPortraitSession()
-                    SessionKind.PHOTO ->
-                        if (useNightPreview) viewModel.setupNightPreviewSession()
-                        else viewModel.setupPhotoSession()
+            // A fresh (re)bind supersedes any earlier exhausted-retry failure.
+            viewModel.sessionBindFailedMutable.value = false
+            // Bounded retry: a failed setup used to park here on a black
+            // preview until the next key change. Retry twice with a short
+            // delay (teardown before each attempt clears a partial bind),
+            // then surface a visible error with a manual retry instead.
+            // Cancellation (key change / lifecycle drop) aborts the ladder.
+            val bindSuccess = runSessionBindWithRetry {
+                Log.dev("NightPreview", "CameraScreen repeatOnLifecycle STARTED – calling teardownSession()")
+                viewModel.teardownSession()
+                // Brief yield so the previous session's surface detaches before the next binds; short
+                // enough that a mode switch reads as instant, long enough to avoid a bind-over-teardown race.
+                delay(40)
+                val bindStart = System.currentTimeMillis()
+                val success = try {
+                    when (sessionKind) {
+                        SessionKind.HIGH_SPEED -> viewModel.setupHighSpeedSession()
+                        SessionKind.VIDEO -> viewModel.setupVideoSession()
+                        SessionKind.PANORAMA -> viewModel.setupPanoramaSession()
+                        SessionKind.PORTRAIT -> viewModel.setupPortraitSession()
+                        SessionKind.PHOTO ->
+                            if (useNightPreview) viewModel.setupNightPreviewSession()
+                            else viewModel.setupPhotoSession()
+                    }
+                } catch (e: IllegalStateException) {
+                    Log.error("NightPreview", "CameraScreen session binding THREW (was not logged before) kind=$sessionKind useNightPreview=$useNightPreview nightExtAvailable=${state.nightExtAvailable}", e)
+                    false
+                } catch (e: IllegalArgumentException) {
+                    Log.error("NightPreview", "CameraScreen session binding THREW (was not logged before) kind=$sessionKind useNightPreview=$useNightPreview nightExtAvailable=${state.nightExtAvailable}", e)
+                    false
                 }
-            } catch (e: IllegalStateException) {
-                Log.error("NightPreview", "CameraScreen session binding THREW (was not logged before) kind=$sessionKind useNightPreview=$useNightPreview nightExtAvailable=${state.nightExtAvailable}", e)
-                false
-            } catch (e: IllegalArgumentException) {
-                Log.error("NightPreview", "CameraScreen session binding THREW (was not logged before) kind=$sessionKind useNightPreview=$useNightPreview nightExtAvailable=${state.nightExtAvailable}", e)
-                false
+                Log.dev("NightPreview", "CameraScreen session bind finished success=$success took=${System.currentTimeMillis() - bindStart}ms surface after=${viewModel.surfaceRequest.value?.resolution} zoomLevels=${viewModel.availableZoomLevels.value} zoomRatio=${viewModel.zoomRatio.value}")
+                success
             }
-            Log.dev("NightPreview", "CameraScreen session bind finished success=$bindSuccess took=${System.currentTimeMillis() - bindStart}ms surface after=${viewModel.surfaceRequest.value?.resolution} zoomLevels=${viewModel.availableZoomLevels.value} zoomRatio=${viewModel.zoomRatio.value}")
             if (!bindSuccess) {
-                Log.error("NightPreview", "CameraScreen BIND FAILED – this produces solid black preview and zoom bar showing only 1x (fallback?). Check logcat for NightPreview tag – exception was previously swallowed as warning")
+                Log.error("NightPreview", "CameraScreen BIND FAILED after retries – showing bind error instead of a solid black preview")
+                viewModel.sessionBindFailedMutable.value = true
             }
             try {
                 awaitCancellation()

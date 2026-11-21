@@ -92,6 +92,8 @@ import com.vayunmathur.camera.platform.BokehAnalyzer
     activeSettingState: MutableState<CameraSetting?>,
     maskBitmapState: MutableState<Bitmap?>,
     deviceRotationState: MutableIntState,
+    val sessionBindFailed: Boolean = false,
+    val sessionBindRetry: Int = 0,
 ) {
     var activeSetting by activeSettingState
     var maskBitmap by maskBitmapState
@@ -129,6 +131,16 @@ import com.vayunmathur.camera.platform.BokehAnalyzer
     }
 
     val mirrorPreview get() = lensFacing == CameraSelector.LENS_FACING_FRONT && !mirrorFront
+
+    /** Front lens with no LED unit: stills flash via the screen instead. */
+    val screenFlashAvailable get() = com.vayunmathur.camera.domain.FlashModePolicy.usesScreenFlash(
+        if (lensFacing == CameraSelector.LENS_FACING_FRONT) {
+            com.vayunmathur.camera.domain.LensFacing.FRONT
+        } else {
+            com.vayunmathur.camera.domain.LensFacing.BACK
+        },
+        hasFlashUnit,
+    )
 }
 
 @Composable
@@ -179,6 +191,8 @@ internal fun rememberCameraScreenState(viewModel: CameraViewModel): CameraScreen
     val analysisStreamActive by viewModel.analysisStreamActive.collectAsState()
     val nightExtAvailable by viewModel.nightExtensionUsable.collectAsState()
     val surfaceRequest by viewModel.surfaceRequest.collectAsState()
+    val sessionBindFailed by viewModel.sessionBindFailed.collectAsState()
+    val sessionBindRetry by viewModel.sessionBindRetry.collectAsState()
     val availableZoomLevels by viewModel.availableZoomLevels.collectAsState()
     val galleryBitmap by viewModel.galleryThumbnail.collectAsState()
 
@@ -205,6 +219,7 @@ internal fun rememberCameraScreenState(viewModel: CameraViewModel): CameraScreen
         isoStops, longExposureProgress, longExposureRemaining, lowLightDetected,
         nightModeActive, extensionStrength, sloMoSupported, highSpeedActive,
         photoSessionActive, analysisStreamActive, nightExtAvailable, surfaceRequest,
+        sessionBindFailed, sessionBindRetry,
         availableZoomLevels, galleryBitmap, panoSweeping, panoStitching, panoDots,
         panoCurrentAngle, panoDirection, panoPitch,
     ) {
@@ -266,6 +281,8 @@ internal fun rememberCameraScreenState(viewModel: CameraViewModel): CameraScreen
             activeSettingState = activeSettingState,
             maskBitmapState = maskBitmapState,
             deviceRotationState = deviceRotationState,
+            sessionBindFailed = sessionBindFailed,
+            sessionBindRetry = sessionBindRetry,
         )
     }
 }
