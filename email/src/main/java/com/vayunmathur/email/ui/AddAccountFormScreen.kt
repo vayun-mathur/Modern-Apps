@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -128,7 +129,7 @@ private fun OutlookOAuthForm(
             label = { Text(stringResource(R.string.email_address_optional)) },
             placeholder = { Text("Optional — pre-fills Microsoft login") },
             singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
             modifier = Modifier.fillMaxWidth(),
         )
 
@@ -153,7 +154,7 @@ private fun OutlookOAuthForm(
                 label = { Text(stringResource(R.string.app_password)) },
                 singleLine = true,
                 visualTransformation = if (appPasswordVisible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
                 trailingIcon = {
                     TextButton(onClick = { appPasswordVisible = !appPasswordVisible }) {
                         Text(if (appPasswordVisible) stringResource(R.string.hide) else stringResource(R.string.show))
@@ -234,14 +235,14 @@ private fun PasswordForm(
     ) {
         if (preset.instructions.isNotEmpty()) { InstructionsCard(preset = preset) }
 
-        OutlinedTextField(value = email, onValueChange = { email = it.trim() }, label = { Text(stringResource(R.string.email_address)) }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = email, onValueChange = { email = it.trim() }, label = { Text(stringResource(R.string.email_address)) }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next), modifier = Modifier.fillMaxWidth())
         if (preset.id == PROVIDER_CUSTOM) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { useDifferentUsername = !useDifferentUsername }) {
                 Checkbox(checked = useDifferentUsername, onCheckedChange = { useDifferentUsername = it })
                 Text(stringResource(R.string.username_is_not_my_email), style = MaterialTheme.typography.bodyMedium)
             }
             if (useDifferentUsername) {
-                OutlinedTextField(value = username, onValueChange = { username = it.trim() }, label = { Text(stringResource(R.string.username)) }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii), modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = username, onValueChange = { username = it.trim() }, label = { Text(stringResource(R.string.username)) }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, imeAction = ImeAction.Next), modifier = Modifier.fillMaxWidth())
             }
         }
         OutlinedTextField(
@@ -250,7 +251,10 @@ private fun PasswordForm(
             label = { Text(if (preset.id == PROVIDER_CUSTOM) stringResource(R.string.password) else stringResource(R.string.app_password)) },
             singleLine = true,
             visualTransformation = if (passwordVisible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Password,
+                imeAction = if (preset.id == PROVIDER_CUSTOM) ImeAction.Next else ImeAction.Done,
+            ),
             trailingIcon = {
                 TextButton(onClick = { passwordVisible = !passwordVisible }) { Text(if (passwordVisible) stringResource(R.string.hide) else stringResource(R.string.show)) }
             },
@@ -261,7 +265,7 @@ private fun PasswordForm(
             Text(stringResource(R.string.imap_incoming), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
             AddAccountSection(host = imapHost, onHostChange = { imapHost = it.trim() }, port = imapPort, onPortChange = { imapPort = it.filter(Char::isDigit) }, useSsl = imapUseSsl, onSslChange = { imapUseSsl = it })
             Text(stringResource(R.string.smtp_outgoing), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-            AddAccountSection(host = smtpHost, onHostChange = { smtpHost = it.trim() }, port = smtpPort, onPortChange = { smtpPort = it.filter(Char::isDigit) }, useSsl = smtpUseSsl, onSslChange = { smtpUseSsl = it })
+            AddAccountSection(host = smtpHost, onHostChange = { smtpHost = it.trim() }, port = smtpPort, onPortChange = { smtpPort = it.filter(Char::isDigit) }, useSsl = smtpUseSsl, onSslChange = { smtpUseSsl = it }, portImeAction = ImeAction.Done)
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { allowInsecureCerts = !allowInsecureCerts }) {
                 Checkbox(checked = allowInsecureCerts, onCheckedChange = { allowInsecureCerts = it })
                 Text(stringResource(R.string.allow_insecure_certificates), style = MaterialTheme.typography.bodyMedium)

@@ -43,6 +43,10 @@ interface LauncherItemDao {
     @Query("SELECT * FROM launcher_items WHERE containerId = :folderId ORDER BY rank")
     suspend fun getFolderChildren(folderId: Long): List<LauncherItemEntity>
 
+    /** All folder rows (for the empty-folder sweep), filtered in SQL not in memory. */
+    @Query("SELECT * FROM launcher_items WHERE itemType = 'FOLDER'")
+    suspend fun getFolders(): List<LauncherItemEntity>
+
     @Query("SELECT COUNT(*) FROM launcher_items WHERE containerId = :folderId")
     suspend fun countFolderChildren(folderId: Long): Int
 

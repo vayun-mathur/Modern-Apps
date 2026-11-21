@@ -10,6 +10,7 @@ import com.vayunmathur.securemail.data.MailFolder
 import com.vayunmathur.securemail.data.MailIdentity
 import com.vayunmathur.securemail.data.OutboxMessage
 import com.vayunmathur.securemail.data.StoredMessage
+import com.vayunmathur.securemail.data.StoredMessagePreview
 import com.vayunmathur.securemail.platform.MailUiState
 import org.junit.Rule
 import org.junit.runner.RunWith
@@ -27,6 +28,13 @@ class MailScreensTest {
         StoredMessage(id = id, from = "ada@example.org", toJson = "[]", dateMillis = 1700000000000, messageId = id,
             blobBase64 = "", decryptedBody = body, decryptedSubject = subject, isRead = read, folder = folder)
 
+    private fun StoredMessage.toPreview() = StoredMessagePreview(
+        id = id, from = from, toJson = toJson, dateMillis = dateMillis, messageId = messageId,
+        decryptedSubject = decryptedSubject, verifiedSigner = verifiedSigner, unencrypted = unencrypted,
+        isRead = isRead, folder = folder, deliveredTo = deliveredTo,
+        preview = decryptedBody, hasDecryptedBody = decryptedBody != null,
+    )
+
     private fun folderActions(opened: MutableList<String> = mutableListOf()) = FolderActions(
         onOpen = { opened += it }, onCompose = {}, onSetRead = { _, _ -> }, onTrash = {},
         onMoveTo = { _, _ -> }, onRestore = {}, onDeleteForever = {}, onEmptyTrash = {}, onConsumeMessage = {},
@@ -36,7 +44,7 @@ class MailScreensTest {
         val opened = mutableListOf<String>()
         rule.setContent {
             InboxScreen(state = MailUiState(address = "me@maemail.org"), folder = MailFolder.INBOX,
-                actions = folderActions(opened), messages = listOf(msg("1", "Hello there"), msg("2", "Second", read = true)))
+                actions = folderActions(opened), messages = listOf(msg("1", "Hello there").toPreview(), msg("2", "Second", read = true).toPreview()))
         }
         rule.onNodeWithText("Hello there").assertExists()
         rule.onNodeWithText("Second").assertExists()
@@ -106,7 +114,7 @@ class MailScreensTest {
             OutScreen(
                 drafts = listOf(msg("d1", "Draft subject", folder = MailFolder.DRAFTS)),
                 outbox = listOf(OutboxMessage(toJson = "[]", subject = "Queued", body = "b", createdMillis = 1)),
-                sent = listOf(msg("s1", "Sent subject", folder = MailFolder.SENT)),
+                sent = listOf(msg("s1", "Sent subject", folder = MailFolder.SENT).toPreview()),
                 actions = actions,
             )
         }

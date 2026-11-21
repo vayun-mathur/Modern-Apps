@@ -15,7 +15,7 @@ class EmailMigrationsW5Test {
 
     private fun openV4(): SQLiteConnection {
         val conn = AndroidSQLiteDriver().open(":memory:")
-        conn.execSQL("CREATE TABLE EmailMessage (accountEmail TEXT NOT NULL, folderName TEXT NOT NULL, id INTEGER NOT NULL, subject TEXT, `from` TEXT, body TEXT)")
+        conn.execSQL("CREATE TABLE EmailMessage (accountEmail TEXT NOT NULL, folderName TEXT NOT NULL, id INTEGER NOT NULL, threadId TEXT, subject TEXT, `from` TEXT, body TEXT)")
         conn.execSQL("CREATE TABLE EmailAccount (email TEXT NOT NULL PRIMARY KEY)")
         conn.execSQL("CREATE TABLE EmailFolder (accountEmail TEXT NOT NULL, fullName TEXT NOT NULL, parentFullName TEXT)")
         conn.execSQL("CREATE TABLE Attachment (accountEmail TEXT NOT NULL, folderName TEXT NOT NULL, messageId INTEGER NOT NULL)")
@@ -54,7 +54,7 @@ class EmailMigrationsW5Test {
     @Test
     fun migrationChainIsCompleteAndOrdered() {
         assertEquals(
-            (4..21).map { it to it + 1 },
+            (4..22).map { it to it + 1 },
             EmailDatabase.migrations.map { it.startVersion to it.endVersion }.sortedBy { it.first },
         )
     }
@@ -86,7 +86,7 @@ class EmailMigrationsW5Test {
     }
 
     @Test
-    fun v4DatabaseUpgradesToV22Shape() {
+    fun v4DatabaseUpgradesToV23Shape() {
         val conn = openV4()
         migrate(conn, 4)
         assertTrue(tableExists(conn, "OutboxEntry"))

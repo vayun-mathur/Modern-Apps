@@ -4,6 +4,7 @@ import androidx.room3.ColumnInfo
 import androidx.room3.Dao
 import androidx.room3.Database
 import androidx.room3.Entity
+import androidx.room3.Index
 import androidx.room3.Insert
 import androidx.room3.OnConflictStrategy
 import androidx.room3.PrimaryKey
@@ -35,7 +36,7 @@ enum class MailFolder {
  * as it arrived over the socket (raw bytes, base64 in the DB). The server never
  * sees plaintext; neither does this table — decryption happens in memory only.
  */
-@Entity
+@Entity(indices = [Index(value = ["folder", "dateMillis"])])
 data class StoredMessage(
     @PrimaryKey val id: String,
     val from: String,
@@ -56,6 +57,24 @@ data class StoredMessage(
     val decryptedHtml: String? = null,
     /** Own address (primary or alias) the relay delivered this to; null = primary. */
     val deliveredTo: String? = null,
+)
+
+/** Lightweight list projection of [StoredMessage]: no blob/decrypted body/html columns. */
+data class StoredMessagePreview(
+    val id: String,
+    val from: String,
+    val toJson: String,
+    val dateMillis: Long,
+    val messageId: String,
+    val decryptedSubject: String? = null,
+    val verifiedSigner: String? = null,
+    val unencrypted: Boolean = false,
+    val isRead: Boolean = false,
+    val folder: MailFolder = MailFolder.INBOX,
+    val deliveredTo: String? = null,
+    /** First non-blank line of the decrypted body, truncated in SQL; null when undecrypted. */
+    val preview: String? = null,
+    val hasDecryptedBody: Boolean = false,
 )
 
 /** Cached public key for a recipient (own directory, WKD, or VKS result). */
@@ -103,11 +122,27 @@ data class MailIdentity(
 /** Contract for message dao. */
 @Dao
 interface MessageDao {
-    @Query("SELECT * FROM StoredMessage ORDER BY dateMillis DESC")
-    fun observeAll(): Flow<List<StoredMessage>>
+    @Query(
+        "SELECT id, `from`, toJson, dateMillis, messageId, decryptedSubject, verifiedSigner, " +
+            "unencrypted, isRead, folder, deliveredTo, substr(decryptedBody, 1, 200) AS preview, " +
+            "(decryptedBody IS NOT NULL) AS hasDecryptedBody FROM StoredMessage ORDER BY dateMillis DESC",
+    )
+    fun observeAll(): Flow<List<StoredMessagePreview>>
 
+    @Query(
+        "SELECT id, `from`, toJson, dateMillis, messageId, decryptedSubject, verifiedSigner, " +
+            "unencrypted, isRead, folder, deliveredTo, substr(decryptedBody, 1, 200) AS preview, " +
+            "(decryptedBody IS NOT NULL) AS hasDecryptedBody FROM StoredMessage " +
+            "WHERE folder = :folder ORDER BY dateMillis DESC",
+    )
+    fun observeFolder(folder: MailFolder): Flow<List<StoredMessagePreview>>
+
+    /** Full rows for folders whose contents are read (drafts decode body/subject). */
     @Query("SELECT * FROM StoredMessage WHERE folder = :folder ORDER BY dateMillis DESC")
-    fun observeFolder(folder: MailFolder): Flow<List<StoredMessage>>
+    fun observeFolderFull(folder: MailFolder): Flow<List<StoredMessage>>
+
+    @Query("SELECT * FROM StoredMessage WHERE id = :id LIMIT 1")
+    fun observeById(id: String): Flow<StoredMessage?>
 
     @Query("SELECT * FROM StoredMessage WHERE id = :id LIMIT 1")
     suspend fun get(id: String): StoredMessage?
@@ -203,7 +238,7 @@ interface IdentityDao {
 
 @Database(
     entities = [StoredMessage::class, CachedKey::class, OutboxMessage::class, MailIdentity::class],
-    version = 5,
+    version = 6,
     exportSchema = true,
 )
 /** Mail Database: a room database implementation for mail database. */
@@ -286,7 +321,15 @@ abstract class MailDatabase : RoomDatabase() {
             it.execSQL("ALTER TABLE OutboxMessage ADD COLUMN fromAddress TEXT")
         }
 
+        /** v5 → v6: (folder, dateMillis) index for folder list reads. */
+        private val MIGRATION_5_6 = Migration(5, 6) {
+            it.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_StoredMessage_folder_dateMillis` " +
+                    "ON `StoredMessage` (`folder`, `dateMillis`)",
+            )
+        }
+
         override val migrations: List<Migration> =
-            listOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+            listOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
     }
 }

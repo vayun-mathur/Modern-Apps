@@ -34,6 +34,7 @@ import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.securemail.R
 import com.vayunmathur.securemail.data.OutboxMessage
 import com.vayunmathur.securemail.data.StoredMessage
+import com.vayunmathur.securemail.data.StoredMessagePreview
 import com.vayunmathur.securemail.platform.Draft
 import com.vayunmathur.securemail.platform.DraftsController
 
@@ -58,7 +59,7 @@ class OutActions(
 fun OutScreen(
     drafts: List<StoredMessage>,
     outbox: List<OutboxMessage>,
-    sent: List<StoredMessage>,
+    sent: List<StoredMessagePreview>,
     actions: OutActions,
 ) {
     val messenger = rememberMessenger()

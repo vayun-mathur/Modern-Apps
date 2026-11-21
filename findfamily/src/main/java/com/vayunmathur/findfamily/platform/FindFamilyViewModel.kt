@@ -139,8 +139,7 @@ class FindFamilyViewModel(
             // Cancel pending no-show work before the cascade deletes its rows,
             // so no orphan WorkManager job fires for a removed person.
             runCatching {
-                repository.noShowAlertStore.getAll()
-                    .filter { it.watchedUserId == user.id }
+                repository.noShowAlertStore.getByWatchedUserId(user.id)
                     .forEach { NoShowCheckScheduler.cancel(ctx, it.id) }
             }
             repository.deleteUser(user)
@@ -210,8 +209,7 @@ class FindFamilyViewModel(
     fun deleteWaypoint(waypoint: Waypoint) {
         viewModelScope.launch(Dispatchers.IO) {
             runCatching {
-                repository.noShowAlertStore.getAll()
-                    .filter { it.waypointId == waypoint.id }
+                repository.noShowAlertStore.getByWaypointId(waypoint.id)
                     .forEach { NoShowCheckScheduler.cancel(ctx, it.id) }
             }
             repository.waypointStore.delete(waypoint)

@@ -198,7 +198,7 @@ class OfficeViewModel(application: Application) : AndroidViewModel(application) 
 
     // --- Auto-save ---
     internal var autoSaveJob: Job? = null
-    internal var autoSaveEnabledMutable = MutableStateFlow(false)
+    internal var autoSaveEnabledMutable = MutableStateFlow(true)
     val autoSaveEnabled: StateFlow<Boolean> = autoSaveEnabledMutable
     internal var autoSaveIntervalMs: Long = 60_000L // default 1 minute
 
@@ -225,7 +225,8 @@ class OfficeViewModel(application: Application) : AndroidViewModel(application) 
     // --- Settings ---
     fun loadSettings(context: Context) {
         val prefs = context.getSharedPreferences("office_settings", Context.MODE_PRIVATE)
-        val autoSave = prefs.getBoolean("auto_save", false)
+        // Default on for new installs; a stored value (Settings toggle) always wins.
+        val autoSave = prefs.getBoolean("auto_save", true)
         val interval = prefs.getInt("auto_save_interval", DEFAULT_AUTO_SAVE_SECONDS)
         setAutoSave(autoSave, interval)
         val themeName = prefs.getString("document_theme_mode", DocumentThemeMode.UNCHANGED.name)
@@ -287,7 +288,7 @@ class OfficeViewModel(application: Application) : AndroidViewModel(application) 
 
     fun getAutoSaveEnabled(context: Context): Boolean {
         return context.getSharedPreferences("office_settings", Context.MODE_PRIVATE)
-            .getBoolean("auto_save", false)
+            .getBoolean("auto_save", true)
     }
 
     // --- Undo/Redo ---

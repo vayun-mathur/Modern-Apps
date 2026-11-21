@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -22,6 +23,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.VisualTransformation
 
@@ -57,6 +59,8 @@ fun LabeledTextField(
     readOnly: Boolean = false,
     singleLine: Boolean = true,
     keyboardType: KeyboardType = KeyboardType.Text,
+    imeAction: ImeAction = ImeAction.Default,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
     visualTransformation: VisualTransformation = VisualTransformation.None,
     isError: Boolean = false,
     supportingText: String? = null,
@@ -85,6 +89,8 @@ fun LabeledTextField(
             readOnly = readOnly,
             singleLine = singleLine,
             keyboardType = keyboardType,
+            imeAction = imeAction,
+            keyboardActions = keyboardActions,
             visualTransformation = visualTransformation,
             isError = isError,
             placeholder = placeholder,
@@ -106,7 +112,8 @@ fun LabeledTextField(
         supportingText = supportingText?.let { { Text(it) } },
         isError = isError,
         visualTransformation = visualTransformation,
-        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
+        keyboardActions = keyboardActions,
         singleLine = singleLine,
     )
 }
@@ -130,6 +137,8 @@ private fun SharedTextLabeledField(
     readOnly: Boolean,
     singleLine: Boolean,
     keyboardType: KeyboardType,
+    imeAction: ImeAction = ImeAction.Default,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
     visualTransformation: VisualTransformation,
     isError: Boolean,
     placeholder: String?,
@@ -144,7 +153,8 @@ private fun SharedTextLabeledField(
         enabled = enabled,
         readOnly = readOnly,
         textStyle = LocalTextStyle.current.copy(color = MaterialTheme.colorScheme.onSurface),
-        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
+        keyboardActions = keyboardActions,
         singleLine = singleLine,
         visualTransformation = visualTransformation,
         interactionSource = interactionSource,

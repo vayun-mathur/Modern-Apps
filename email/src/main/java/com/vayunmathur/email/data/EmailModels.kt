@@ -2,6 +2,7 @@ package com.vayunmathur.email.data
 
 import androidx.room3.ColumnInfo
 import androidx.room3.Entity
+import androidx.room3.Index
 import androidx.room3.PrimaryKey
 import androidx.core.text.HtmlCompat
 import kotlinx.serialization.Serializable
@@ -20,7 +21,14 @@ data class EmailFolder(
 )
 
 @Serializable
-@Entity(primaryKeys = ["accountEmail", "folderName", "id"])
+@Entity(
+    primaryKeys = ["accountEmail", "folderName", "id"],
+    indices = [
+        Index(value = ["folderName", "dateMillis"]),
+        Index(value = ["accountEmail", "folderName", "dateMillis"]),
+        Index(value = ["threadId"]),
+    ],
+)
 /** A stored email message keyed by account, folder and IMAP UID. */
 data class EmailMessage(
     val accountEmail: String,

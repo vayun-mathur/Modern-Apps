@@ -74,7 +74,7 @@ internal suspend fun CommunicateRepository.loadSignalMessages(
     conversationId: String): List<SmsMessage> =
     runCatching {
         val db = SignalDatabase.getDatabase(context)
-        db.cachedMessageDao().getForConversation(conversationId).map { m ->
+        db.cachedMessageDao().getForConversationBefore(conversationId).asReversed().map { m ->
             SmsMessage(
                 id = (m.messageId.hashCode().toLong() and 0xFFFFFFFFL),
                 threadId = stableThreadId(conversationId),

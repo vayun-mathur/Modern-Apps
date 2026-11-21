@@ -21,7 +21,7 @@ open class PhotosRepository internal constructor(context: Context) :
     // ------------------------------------------------------------------
     fun getAllFlow(): Flow<List<Photo>> = photoDao.getAllFlow()
     fun getFavoritesFlow(): Flow<List<Photo>> = photoDao.getFavoritesFlow()
-    suspend fun getAllForSync(): List<Photo> = photoDao.getAllForSync()
+    open suspend fun getAllForSync(): List<Photo> = photoDao.getAllForSync()
     fun getByIdFlow(id: Long): Flow<Photo?> = photoDao.getByIdFlow(id)
     fun getOCRCountFlow(): Flow<Int> = photoDao.getOCRCountFlow()
     fun getClipCountFlow(): Flow<Int> = photoDao.getClipCountFlow()

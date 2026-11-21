@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.email.R
@@ -28,10 +29,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 @Composable
-fun AddAccountSection(host: String, onHostChange: (String) -> Unit, port: String, onPortChange: (String) -> Unit, useSsl: Boolean, onSslChange: (Boolean) -> Unit) {
+fun AddAccountSection(host: String, onHostChange: (String) -> Unit, port: String, onPortChange: (String) -> Unit, useSsl: Boolean, onSslChange: (Boolean) -> Unit, portImeAction: ImeAction = ImeAction.Next) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedTextField(value = host, onValueChange = onHostChange, label = { Text(stringResource(R.string.host_label)) }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri), modifier = Modifier.weight(2f))
-        OutlinedTextField(value = port, onValueChange = onPortChange, label = { Text(stringResource(R.string.port_label)) }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
+        OutlinedTextField(value = host, onValueChange = onHostChange, label = { Text(stringResource(R.string.host_label)) }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next), modifier = Modifier.weight(2f))
+        OutlinedTextField(value = port, onValueChange = onPortChange, label = { Text(stringResource(R.string.port_label)) }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = portImeAction), modifier = Modifier.weight(1f))
     }
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(stringResource(R.string.security), modifier = Modifier.padding(end = 8.dp))

@@ -10,6 +10,7 @@ import com.vayunmathur.securemail.data.MessageDao
 import com.vayunmathur.securemail.data.OutboxDao
 import com.vayunmathur.securemail.data.OutboxMessage
 import com.vayunmathur.securemail.data.StoredMessage
+import com.vayunmathur.securemail.data.StoredMessagePreview
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
@@ -26,10 +27,24 @@ class FakeMessageDao : MessageDao {
 
     fun snapshot(): List<StoredMessage> = allFlow.value
 
-    override fun observeAll(): Flow<List<StoredMessage>> = allFlow
+    private fun StoredMessage.toPreview() = StoredMessagePreview(
+        id = id, from = from, toJson = toJson, dateMillis = dateMillis, messageId = messageId,
+        decryptedSubject = decryptedSubject, verifiedSigner = verifiedSigner,
+        unencrypted = unencrypted, isRead = isRead, folder = folder, deliveredTo = deliveredTo,
+        preview = decryptedBody?.take(200), hasDecryptedBody = decryptedBody != null,
+    )
 
-    override fun observeFolder(folder: MailFolder): Flow<List<StoredMessage>> =
+    override fun observeAll(): Flow<List<StoredMessagePreview>> =
+        allFlow.map { list -> list.map { it.toPreview() } }
+
+    override fun observeFolder(folder: MailFolder): Flow<List<StoredMessagePreview>> =
+        allFlow.map { list -> list.filter { it.folder == folder }.map { it.toPreview() } }
+
+    override fun observeFolderFull(folder: MailFolder): Flow<List<StoredMessage>> =
         allFlow.map { list -> list.filter { it.folder == folder } }
+
+    override fun observeById(id: String): Flow<StoredMessage?> =
+        allFlow.map { list -> list.firstOrNull { it.id == id } }
 
     override suspend fun get(id: String): StoredMessage? = byId[id]
 

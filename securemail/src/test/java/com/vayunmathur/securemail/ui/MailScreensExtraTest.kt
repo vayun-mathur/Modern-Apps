@@ -12,6 +12,7 @@ import androidx.compose.ui.test.performTextInput
 import com.vayunmathur.securemail.data.MailFolder
 import com.vayunmathur.securemail.data.MailIdentity
 import com.vayunmathur.securemail.data.StoredMessage
+import com.vayunmathur.securemail.data.StoredMessagePreview
 import com.vayunmathur.securemail.platform.MailUiState
 import org.junit.Rule
 import org.junit.runner.RunWith
@@ -40,6 +41,13 @@ class MailScreensExtraTest {
         id = id, from = from, toJson = toJson, dateMillis = date, messageId = id, blobBase64 = "",
         decryptedBody = body, decryptedSubject = subject, folder = folder, verifiedSigner = verified,
         unencrypted = unencrypted, isRead = read,
+    )
+
+    private fun StoredMessage.toPreview() = StoredMessagePreview(
+        id = id, from = from, toJson = toJson, dateMillis = dateMillis, messageId = messageId,
+        decryptedSubject = decryptedSubject, verifiedSigner = verifiedSigner, unencrypted = unencrypted,
+        isRead = isRead, folder = folder, deliveredTo = deliveredTo,
+        preview = decryptedBody, hasDecryptedBody = decryptedBody != null,
     )
 
     private fun identity(address: String, primary: Boolean, label: String = "", disabled: Boolean = false, fp: String = "AABBCCDD") =
@@ -155,7 +163,7 @@ class MailScreensExtraTest {
         var longs = 0
         rule.setContent {
             MessageRow(
-                msg = msg(body = "\n\n  First non-blank line\nsecond", read = false),
+                msg = msg(body = "\n\n  First non-blank line\nsecond", read = false).toPreview(),
                 showRecipient = false, isSelected = true,
                 onClick = { clicks++ }, onLongClick = { longs++ }, onToggleRead = {}, onSwipeDelete = {}, inTrash = false,
             )
@@ -170,7 +178,7 @@ class MailScreensExtraTest {
     @Test fun `message row recipient and encrypted placeholders`() {
         rule.setContent {
             MessageRow(
-                msg = msg(body = null, from = "", toJson = "", subject = null),
+                msg = msg(body = null, from = "", toJson = "", subject = null).toPreview(),
                 showRecipient = true, isSelected = false,
                 onClick = {}, onLongClick = {}, onToggleRead = {}, onSwipeDelete = {}, inTrash = true,
             )
@@ -183,7 +191,7 @@ class MailScreensExtraTest {
     @Test fun `message row blank sender shows encrypted sender placeholder`() {
         rule.setContent {
             MessageRow(
-                msg = msg(body = null, from = "", unencrypted = true),
+                msg = msg(body = null, from = "", unencrypted = true).toPreview(),
                 showRecipient = false, isSelected = false,
                 onClick = {}, onLongClick = {}, onToggleRead = {}, onSwipeDelete = {}, inTrash = false,
             )

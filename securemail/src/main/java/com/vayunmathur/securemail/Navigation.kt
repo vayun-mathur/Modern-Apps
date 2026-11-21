@@ -30,7 +30,6 @@ import com.vayunmathur.securemail.ui.MailTab
 fun Navigation(viewModel: MailViewModel, initialRoute: Route? = null) {
     val state = viewModel.state
     val context = LocalContext.current
-    val allMessages by viewModel.messages.collectAsState(emptyList())
     val outbox by viewModel.outboxCount.collectAsState(0)
     // The stack follows the account flag, not navigation events: once an address
     // is claimed there is no going back to onboarding, and a locked key gates
@@ -83,7 +82,7 @@ fun Navigation(viewModel: MailViewModel, initialRoute: Route? = null) {
             }
         },
     ) {
-        mainEntries(viewModel, backStack, state, allMessages, folderActions, context)
+        mainEntries(viewModel, backStack, state, folderActions, context)
         composerEntry(viewModel, backStack)
         outEntry(viewModel, backStack)
     }

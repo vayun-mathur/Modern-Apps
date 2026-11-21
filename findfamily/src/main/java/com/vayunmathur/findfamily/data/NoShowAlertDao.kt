@@ -18,6 +18,16 @@ interface NoShowAlertDao {
     @Query("SELECT * FROM NoShowAlert")
     suspend fun getAll(): List<NoShowAlert>
 
+    @Query("SELECT * FROM NoShowAlert WHERE watchedUserId = :watchedUserId")
+    suspend fun getByWatchedUserId(watchedUserId: Long): List<NoShowAlert>
+
+    @Query("SELECT * FROM NoShowAlert WHERE waypointId = :waypointId")
+    suspend fun getByWaypointId(waypointId: Long): List<NoShowAlert>
+
+    /** Not-yet-fired alerts (the scheduler's pending set). */
+    @Query("SELECT * FROM NoShowAlert WHERE fired = 0")
+    suspend fun getPending(): List<NoShowAlert>
+
     @Query("SELECT * FROM NoShowAlert WHERE id = :id")
     suspend fun get(id: Long): NoShowAlert?
 

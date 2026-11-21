@@ -16,13 +16,11 @@ import com.vayunmathur.library.util.ListPage
 import com.vayunmathur.library.util.SiblingPage
 import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.securemail.data.MailFolder
-import com.vayunmathur.securemail.data.StoredMessage
 import com.vayunmathur.securemail.platform.MailUiState
 import com.vayunmathur.securemail.domain.mail.AddressValidator
 import com.vayunmathur.securemail.platform.Draft
 import com.vayunmathur.securemail.platform.MailViewModel
 import com.vayunmathur.securemail.platform.deleteForever
-import com.vayunmathur.securemail.platform.envelopeOf
 import com.vayunmathur.securemail.platform.markRead
 import com.vayunmathur.securemail.platform.moveTo
 import com.vayunmathur.securemail.platform.moveToTrash
@@ -36,7 +34,6 @@ internal fun EntryProviderScope<Route>.mainEntries(
     viewModel: MailViewModel,
     backStack: NavBackStack<Route>,
     state: MailUiState,
-    allMessages: List<StoredMessage>,
     folderActions: FolderActions,
     context: android.content.Context,
 ) {
@@ -72,7 +69,7 @@ internal fun EntryProviderScope<Route>.mainEntries(
             messages = folderMessages,
         )
     }
-    readerEntry(viewModel, backStack, state, allMessages)
+    readerEntry(viewModel, backStack, state)
     entry<Route.Settings>(metadata = SiblingPage()) {
         val identities by viewModel.identities.collectAsState(emptyList())
         SettingsScreen(
@@ -93,13 +90,11 @@ internal fun EntryProviderScope<Route>.readerEntry(
     viewModel: MailViewModel,
     backStack: NavBackStack<Route>,
     state: MailUiState,
-    allMessages: List<StoredMessage>,
 ) {
 entry<Route.Reader>(metadata = ListDetailPage()) { route ->
     val context = LocalContext.current
-    val msg = remember(route.messageId, allMessages) {
-        allMessages.firstOrNull { it.id == route.messageId }
-    }
+    val msgFlow = remember(route.messageId) { viewModel.messageFlow(route.messageId) }
+    val msg by msgFlow.collectAsState(null)
     LaunchedEffect(route.messageId) {
         viewModel.decryptStored(route.messageId)
         viewModel.markRead(route.messageId)
@@ -176,6 +171,9 @@ internal fun EntryProviderScope<Route>.composerEntry(viewModel: MailViewModel, b
                 saveOrDropDraft(viewModel, draftId, subject, body, route.inReplyTo, draftSaved)
                 close()
             },
+            onAutosave = { subject, body ->
+                saveOrDropDraft(viewModel, draftId, subject, body, route.inReplyTo, draftSaved, notify = false)
+            },
             onDiscard = {
                 viewModel.drafts.delete(draftId)
                 close()
@@ -193,6 +191,7 @@ internal fun saveOrDropDraft(
     body: String,
     inReplyTo: String?,
     draftSaved: String,
+    notify: Boolean = true,
 ) {
     val draft = Draft(
         id = draftId,
@@ -208,7 +207,7 @@ internal fun saveOrDropDraft(
         viewModel.drafts.delete(draftId)
     } else {
         viewModel.drafts.save(draft)
-        AppMessages.show(draftSaved)
+        if (notify) AppMessages.show(draftSaved)
     }
 }
 

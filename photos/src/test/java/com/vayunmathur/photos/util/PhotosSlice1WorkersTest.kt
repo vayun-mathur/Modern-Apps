@@ -24,6 +24,7 @@ import com.vayunmathur.photos.data.MIGRATION_17_18
 import com.vayunmathur.photos.data.MIGRATION_18_19
 import com.vayunmathur.photos.data.MIGRATION_19_20
 import com.vayunmathur.photos.data.MIGRATION_20_21
+import com.vayunmathur.photos.data.MIGRATION_21_22
 import com.vayunmathur.photos.data.MIGRATION_1_2
 import com.vayunmathur.photos.data.MIGRATION_2_3
 import com.vayunmathur.photos.data.MIGRATION_3_4
@@ -86,7 +87,7 @@ class PhotosSlice1WorkersTest {
             // Minimal v1 Photo table: the columns the early migrations index
             // or update, before any ALTER ran.
             connection.execSQL(
-                "CREATE TABLE Photo (id INTEGER PRIMARY KEY NOT NULL, name TEXT NOT NULL DEFAULT '', " +
+                "CREATE TABLE Photo (id INTEGER PRIMARY KEY NOT NULL, name TEXT NOT NULL DEFAULT '', uri TEXT NOT NULL DEFAULT '', " +
                     "date INTEGER NOT NULL, exifSet INTEGER NOT NULL DEFAULT 0, duration INTEGER)",
             )
             connection.execSQL("INSERT INTO Photo (id, date) VALUES (1, 1000), (2, 2000)")
@@ -140,9 +141,9 @@ class PhotosSlice1WorkersTest {
     }
 
     @Test
-    fun migrationListIsContiguousFrom1To21() {
+    fun migrationListIsContiguousFrom1To22() {
         val versions = PhotoDatabase.migrations.map { it.startVersion to it.endVersion }
-        assertEquals((1..20).map { it to it + 1 }, versions)
+        assertEquals((1..21).map { it to it + 1 }, versions)
     }
 
     // ---- Worker scheduling ----

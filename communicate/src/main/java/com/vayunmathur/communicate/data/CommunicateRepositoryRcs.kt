@@ -85,7 +85,7 @@ internal suspend fun CommunicateRepository.loadRcsThreads(context: Context): Lis
 internal suspend fun CommunicateRepository.loadRcsMessages(context: Context, conversationId: String): List<SmsMessage> =
     runCatching {
         val db = RcsDatabase.getDatabase(context)
-        db.cachedMessageDao().getForConversation(conversationId).map { m ->
+        db.cachedMessageDao().getForConversationBefore(conversationId).asReversed().map { m ->
             SmsMessage(
                 id = (m.messageId.hashCode().toLong() and 0xFFFFFFFFL),
                 threadId = stableThreadId(conversationId),

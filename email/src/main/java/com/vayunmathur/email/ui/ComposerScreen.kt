@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vayunmathur.email.R
@@ -252,6 +253,10 @@ fun ComposerScreen(
                     DropdownMenuItem(text = { Text(stringResource(R.string.tomorrow_8_am)) }, onClick = { schedule(scheduleTime(8, sameDay = false)) })
                 }
             }
+            // Mirror securemail's ComposeScreen gate: Send needs at least
+            // one recipient and a non-blank body (HTML stripped for the check).
+            val hasRecipient = to.isNotBlank() || cc.isNotBlank() || bcc.isNotBlank()
+            val hasBody = bodyController.html.replace(Regex("<[^>]*>"), "").isNotBlank()
             IconButton(onClick = {
                 val acc = fromAccount ?: return@IconButton
                 sending = true
@@ -279,7 +284,7 @@ fun ComposerScreen(
                         onBack()
                     }
                 )
-            }, enabled = !sending && fromAccount != null) {
+            }, enabled = !sending && fromAccount != null && hasRecipient && hasBody) {
                 if (sending) CircularProgressIndicator(modifier = Modifier.size(24.dp))
                 else IconSend()
             }
@@ -326,6 +331,7 @@ fun ComposerScreen(
                 onValueChange = { subject = it },
                 label = stringResource(R.string.subject_label),
                 modifier = Modifier.fillMaxWidth(),
+                imeAction = ImeAction.Next,
                 sharedTextKey = draftId?.let { "email-draft-subject-$it" },
             )
 

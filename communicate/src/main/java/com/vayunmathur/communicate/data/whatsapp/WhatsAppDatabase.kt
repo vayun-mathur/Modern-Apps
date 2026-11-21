@@ -6,6 +6,7 @@ import androidx.room3.ColumnTypeConverters
 import androidx.room3.Database
 import androidx.room3.Dao
 import androidx.room3.Entity
+import androidx.room3.Index
 import androidx.room3.Insert
 import androidx.room3.OnConflictStrategy
 import androidx.room3.PrimaryKey
@@ -51,7 +52,7 @@ import com.vayunmathur.library.util.DatabaseMigrations
         // communicate v4: call log.
         WhatsAppCallLog::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true
 )
 @ColumnTypeConverters(WhatsAppTypeConverters::class)
@@ -127,7 +128,17 @@ abstract class WhatsAppDatabase : RoomDatabase() {
             }
         }
 
-        override val migrations: List<Migration> = listOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+        /** v4 → v5: (conversationJid, timestamp) index for keyset conversation windows. */
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override suspend fun migrate(connection: SQLiteConnection) {
+                connection.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_whatsapp_cached_message_conversationJid_timestamp` " +
+                        "ON `whatsapp_cached_message` (`conversationJid`, `timestamp`)",
+                )
+            }
+        }
+
+        override val migrations: List<Migration> = listOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
 
         /**
          * Test seam: when set, [getDatabase] returns this instance instead
@@ -471,7 +482,7 @@ interface WhatsAppE2ESenderKeyDao {
  * Cached WhatsApp message for the merged inbox. `serviceData` carries the rich-feature JSON
  * (reactions/poll/edited/revoked/quoted/group) that [WhatsAppServiceData] serializes.
  */
-@Entity(tableName = "whatsapp_cached_message")
+@Entity(tableName = "whatsapp_cached_message", indices = [Index(value = ["conversationJid", "timestamp"])])
 data class WhatsAppCachedMessage(
     @PrimaryKey val messageId: String,
     val conversationJid: String,
@@ -505,6 +516,17 @@ interface WhatsAppCachedMessageDao {
 
     @Query("SELECT * FROM whatsapp_cached_message WHERE conversationJid = :jid ORDER BY timestamp ASC")
     suspend fun getForConversation(jid: String): List<WhatsAppCachedMessage>
+
+    /** Keyset window: newest [limit] before [before], newest first (reverse to render). */
+    @Query(
+        "SELECT * FROM whatsapp_cached_message WHERE conversationJid = :jid AND timestamp < :before " +
+            "ORDER BY timestamp DESC LIMIT :limit",
+    )
+    suspend fun getForConversationBefore(
+        jid: String,
+        before: Long = Long.MAX_VALUE,
+        limit: Int = 100,
+    ): List<WhatsAppCachedMessage>
 
     @Query("SELECT * FROM whatsapp_cached_message WHERE messageId = :messageId LIMIT 1")
     suspend fun get(messageId: String): WhatsAppCachedMessage?

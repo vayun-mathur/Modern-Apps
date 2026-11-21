@@ -39,7 +39,7 @@ import com.vayunmathur.library.ui.SwipeActionSide
 import com.vayunmathur.library.ui.SwipeActionsBox
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.securemail.R
-import com.vayunmathur.securemail.data.StoredMessage
+import com.vayunmathur.securemail.data.StoredMessagePreview
 import java.text.DateFormat
 import java.util.Date
 
@@ -51,7 +51,7 @@ import java.util.Date
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MessageRow(
-    msg: StoredMessage,
+    msg: StoredMessagePreview,
     showRecipient: Boolean,
     isSelected: Boolean,
     onClick: () -> Unit,
@@ -109,7 +109,7 @@ fun MessageRow(
 }
 
 @Composable
-private fun RowSupport(msg: StoredMessage, showRecipient: Boolean) {
+private fun RowSupport(msg: StoredMessagePreview, showRecipient: Boolean) {
     Column {
         Text(
             if (showRecipient) stringResource(R.string.message_to_format, msg.toJson.ifBlank { stringResource(R.string.unknown_parenthesized) }) else msg.from.ifBlank { stringResource(R.string.encrypted_sender_parenthesized) },
@@ -117,8 +117,8 @@ private fun RowSupport(msg: StoredMessage, showRecipient: Boolean) {
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        val preview = remember(msg.decryptedBody) {
-            msg.decryptedBody?.lineSequence()?.map { it.trim() }?.firstOrNull { it.isNotEmpty() }
+        val preview = remember(msg.preview) {
+            msg.preview?.lineSequence()?.map { it.trim() }?.firstOrNull { it.isNotEmpty() }
         }
         Text(
             preview ?: if (msg.unencrypted) "" else stringResource(R.string.message_open_to_decrypt),
@@ -131,7 +131,7 @@ private fun RowSupport(msg: StoredMessage, showRecipient: Boolean) {
 }
 
 @Composable
-private fun RowTrailing(msg: StoredMessage) {
+private fun RowTrailing(msg: StoredMessagePreview) {
     val context = LocalContext.current
     val date = remember(msg.dateMillis) {
         if (DateUtils.isToday(msg.dateMillis)) {
@@ -160,7 +160,7 @@ private fun RowTrailing(msg: StoredMessage) {
         Box(Modifier.size(16.dp)) {
             when {
                 msg.unencrypted -> IconWarning(Modifier.size(16.dp), tint = MaterialTheme.colorScheme.error)
-                msg.decryptedBody == null -> IconLock(Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                !msg.hasDecryptedBody -> IconLock(Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }

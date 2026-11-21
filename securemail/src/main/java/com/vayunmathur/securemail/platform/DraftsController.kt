@@ -3,6 +3,7 @@ package com.vayunmathur.securemail.platform
 import com.vayunmathur.securemail.data.MailFolder
 import com.vayunmathur.securemail.data.MailStore
 import com.vayunmathur.securemail.data.StoredMessage
+import com.vayunmathur.securemail.data.StoredMessagePreview
 import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -37,8 +38,8 @@ class DraftsController(
     private val scope: CoroutineScope,
     private val ownAddress: () -> String,
 ) {
-    val drafts: Flow<List<StoredMessage>> = repo.messageDao().observeFolder(MailFolder.DRAFTS)
-    val sent: Flow<List<StoredMessage>> = repo.messageDao().observeFolder(MailFolder.SENT)
+    val drafts: Flow<List<StoredMessage>> = repo.messageDao().observeFolderFull(MailFolder.DRAFTS)
+    val sent: Flow<List<StoredMessagePreview>> = repo.messageDao().observeFolder(MailFolder.SENT)
 
     fun save(draft: Draft) {
         scope.launch(Dispatchers.IO) {

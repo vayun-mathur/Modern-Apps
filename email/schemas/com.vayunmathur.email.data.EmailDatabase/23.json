@@ -1,0 +1,678 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 23,
+    "identityHash": "5206c9a643160bbea25d58c9c1a9344c",
+    "entities": [
+      {
+        "tableName": "EmailFolder",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`accountEmail` TEXT NOT NULL, `fullName` TEXT NOT NULL, `name` TEXT NOT NULL, `parentFullName` TEXT, `holdsMessages` INTEGER NOT NULL, `delimiter` TEXT NOT NULL, PRIMARY KEY(`accountEmail`, `fullName`))",
+        "fields": [
+          {
+            "fieldPath": "accountEmail",
+            "columnName": "accountEmail",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fullName",
+            "columnName": "fullName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "parentFullName",
+            "columnName": "parentFullName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "holdsMessages",
+            "columnName": "holdsMessages",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "delimiter",
+            "columnName": "delimiter",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "accountEmail",
+            "fullName"
+          ]
+        }
+      },
+      {
+        "tableName": "EmailMessage",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`accountEmail` TEXT NOT NULL, `folderName` TEXT NOT NULL, `id` INTEGER NOT NULL, `serverId` TEXT, `threadId` TEXT, `subject` TEXT NOT NULL, `from` TEXT NOT NULL, `to` TEXT, `cc` TEXT, `date` TEXT NOT NULL, `dateMillis` INTEGER NOT NULL, `body` TEXT, `isHtml` INTEGER NOT NULL, `isRead` INTEGER NOT NULL, `references` TEXT, `hasAttachments` INTEGER NOT NULL, `snoozedUntil` INTEGER NOT NULL, `listUnsubscribe` TEXT, `listUnsubscribePost` TEXT, `peekContent` TEXT NOT NULL DEFAULT '', PRIMARY KEY(`accountEmail`, `folderName`, `id`))",
+        "fields": [
+          {
+            "fieldPath": "accountEmail",
+            "columnName": "accountEmail",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "folderName",
+            "columnName": "folderName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "serverId",
+            "columnName": "serverId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "threadId",
+            "columnName": "threadId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "subject",
+            "columnName": "subject",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "from",
+            "columnName": "from",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "to",
+            "columnName": "to",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "cc",
+            "columnName": "cc",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "date",
+            "columnName": "date",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dateMillis",
+            "columnName": "dateMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "body",
+            "columnName": "body",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "isHtml",
+            "columnName": "isHtml",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isRead",
+            "columnName": "isRead",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "references",
+            "columnName": "references",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "hasAttachments",
+            "columnName": "hasAttachments",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "snoozedUntil",
+            "columnName": "snoozedUntil",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "listUnsubscribe",
+            "columnName": "listUnsubscribe",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "listUnsubscribePost",
+            "columnName": "listUnsubscribePost",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "peekContent",
+            "columnName": "peekContent",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "accountEmail",
+            "folderName",
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_EmailMessage_folderName_dateMillis",
+            "unique": false,
+            "columnNames": [
+              "folderName",
+              "dateMillis"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_EmailMessage_folderName_dateMillis` ON `${TABLE_NAME}` (`folderName`, `dateMillis`)"
+          },
+          {
+            "name": "index_EmailMessage_accountEmail_folderName_dateMillis",
+            "unique": false,
+            "columnNames": [
+              "accountEmail",
+              "folderName",
+              "dateMillis"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_EmailMessage_accountEmail_folderName_dateMillis` ON `${TABLE_NAME}` (`accountEmail`, `folderName`, `dateMillis`)"
+          },
+          {
+            "name": "index_EmailMessage_threadId",
+            "unique": false,
+            "columnNames": [
+              "threadId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_EmailMessage_threadId` ON `${TABLE_NAME}` (`threadId`)"
+          }
+        ]
+      },
+      {
+        "tableName": "EmailAccount",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`email` TEXT NOT NULL, `accessToken` TEXT NOT NULL, `refreshToken` TEXT, `expiresAt` INTEGER NOT NULL, `provider` TEXT NOT NULL DEFAULT 'gmail', `imapHost` TEXT NOT NULL DEFAULT 'imap.gmail.com', `imapPort` INTEGER NOT NULL DEFAULT 993, `imapUseSsl` INTEGER NOT NULL DEFAULT 1, `smtpHost` TEXT NOT NULL DEFAULT 'smtp.gmail.com', `smtpPort` INTEGER NOT NULL DEFAULT 465, `smtpUseSsl` INTEGER NOT NULL DEFAULT 1, `username` TEXT NOT NULL DEFAULT '', `authType` TEXT NOT NULL DEFAULT 'oauth2', `passwordEncrypted` BLOB, `passwordIv` BLOB, `signature` TEXT NOT NULL DEFAULT '', `allowInsecureCertificates` INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(`email`))",
+        "fields": [
+          {
+            "fieldPath": "email",
+            "columnName": "email",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "accessToken",
+            "columnName": "accessToken",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "refreshToken",
+            "columnName": "refreshToken",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "expiresAt",
+            "columnName": "expiresAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "provider",
+            "columnName": "provider",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'gmail'"
+          },
+          {
+            "fieldPath": "imapHost",
+            "columnName": "imapHost",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'imap.gmail.com'"
+          },
+          {
+            "fieldPath": "imapPort",
+            "columnName": "imapPort",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "993"
+          },
+          {
+            "fieldPath": "imapUseSsl",
+            "columnName": "imapUseSsl",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "1"
+          },
+          {
+            "fieldPath": "smtpHost",
+            "columnName": "smtpHost",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'smtp.gmail.com'"
+          },
+          {
+            "fieldPath": "smtpPort",
+            "columnName": "smtpPort",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "465"
+          },
+          {
+            "fieldPath": "smtpUseSsl",
+            "columnName": "smtpUseSsl",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "1"
+          },
+          {
+            "fieldPath": "username",
+            "columnName": "username",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          },
+          {
+            "fieldPath": "authType",
+            "columnName": "authType",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'oauth2'"
+          },
+          {
+            "fieldPath": "passwordEncrypted",
+            "columnName": "passwordEncrypted",
+            "affinity": "BLOB"
+          },
+          {
+            "fieldPath": "passwordIv",
+            "columnName": "passwordIv",
+            "affinity": "BLOB"
+          },
+          {
+            "fieldPath": "signature",
+            "columnName": "signature",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          },
+          {
+            "fieldPath": "allowInsecureCertificates",
+            "columnName": "allowInsecureCertificates",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "email"
+          ]
+        }
+      },
+      {
+        "tableName": "Attachment",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`accountEmail` TEXT NOT NULL, `folderName` TEXT NOT NULL, `messageId` INTEGER NOT NULL, `partId` TEXT NOT NULL, `fileName` TEXT NOT NULL, `mimeType` TEXT NOT NULL, `size` INTEGER NOT NULL, `localUri` TEXT, PRIMARY KEY(`accountEmail`, `messageId`, `partId`))",
+        "fields": [
+          {
+            "fieldPath": "accountEmail",
+            "columnName": "accountEmail",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "folderName",
+            "columnName": "folderName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "messageId",
+            "columnName": "messageId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "partId",
+            "columnName": "partId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fileName",
+            "columnName": "fileName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mimeType",
+            "columnName": "mimeType",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "size",
+            "columnName": "size",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "localUri",
+            "columnName": "localUri",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "accountEmail",
+            "messageId",
+            "partId"
+          ]
+        }
+      },
+      {
+        "tableName": "OutboxEntry",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `accountEmail` TEXT NOT NULL, `to` TEXT NOT NULL, `cc` TEXT, `bcc` TEXT, `subject` TEXT NOT NULL, `body` TEXT NOT NULL, `attachmentLocalPaths` TEXT NOT NULL, `inlineImageJson` TEXT NOT NULL DEFAULT '[]', `inReplyTo` TEXT, `references` TEXT, `createdAt` INTEGER NOT NULL, `lastError` TEXT, `attemptCount` INTEGER NOT NULL, `lastAttemptAt` INTEGER NOT NULL, `scheduledAt` INTEGER NOT NULL, `isHtml` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "accountEmail",
+            "columnName": "accountEmail",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "to",
+            "columnName": "to",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cc",
+            "columnName": "cc",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "bcc",
+            "columnName": "bcc",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "subject",
+            "columnName": "subject",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "body",
+            "columnName": "body",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "attachmentLocalPaths",
+            "columnName": "attachmentLocalPaths",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "inlineImageJson",
+            "columnName": "inlineImageJson",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'[]'"
+          },
+          {
+            "fieldPath": "inReplyTo",
+            "columnName": "inReplyTo",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "references",
+            "columnName": "references",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastError",
+            "columnName": "lastError",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "attemptCount",
+            "columnName": "attemptCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastAttemptAt",
+            "columnName": "lastAttemptAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "scheduledAt",
+            "columnName": "scheduledAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isHtml",
+            "columnName": "isHtml",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "DraftEntry",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `accountEmail` TEXT NOT NULL, `to` TEXT NOT NULL, `cc` TEXT NOT NULL, `bcc` TEXT NOT NULL, `subject` TEXT NOT NULL, `body` TEXT NOT NULL, `inlineImageJson` TEXT NOT NULL DEFAULT '[]', `updatedAt` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "accountEmail",
+            "columnName": "accountEmail",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "to",
+            "columnName": "to",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cc",
+            "columnName": "cc",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bcc",
+            "columnName": "bcc",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "subject",
+            "columnName": "subject",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "body",
+            "columnName": "body",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "inlineImageJson",
+            "columnName": "inlineImageJson",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'[]'"
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "BlockedSender",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`address` TEXT NOT NULL, PRIMARY KEY(`address`))",
+        "fields": [
+          {
+            "fieldPath": "address",
+            "columnName": "address",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "address"
+          ]
+        }
+      },
+      {
+        "tableName": "DeletedUid",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`accountEmail` TEXT NOT NULL, `folderName` TEXT NOT NULL, `uid` INTEGER NOT NULL, PRIMARY KEY(`accountEmail`, `folderName`, `uid`))",
+        "fields": [
+          {
+            "fieldPath": "accountEmail",
+            "columnName": "accountEmail",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "folderName",
+            "columnName": "folderName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "uid",
+            "columnName": "uid",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "accountEmail",
+            "folderName",
+            "uid"
+          ]
+        }
+      },
+      {
+        "tableName": "EmailMessageFts",
+        "createSql": "CREATE VIRTUAL TABLE IF NOT EXISTS `${TABLE_NAME}` USING FTS4(`subject` TEXT NOT NULL, `from` TEXT NOT NULL, `body` TEXT, tokenize=unicode61 `remove_diacritics=1`, content=`EmailMessage`)",
+        "fields": [
+          {
+            "fieldPath": "subject",
+            "columnName": "subject",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "from",
+            "columnName": "from",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "body",
+            "columnName": "body",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "rowid"
+          ]
+        },
+        "ftsVersion": "FTS4",
+        "ftsOptions": {
+          "tokenizer": "unicode61",
+          "tokenizerArgs": [
+            "remove_diacritics=1"
+          ],
+          "contentTable": "EmailMessage",
+          "languageIdColumnName": "",
+          "matchInfo": "FTS4",
+          "notIndexedColumns": [],
+          "prefixSizes": [],
+          "preferredOrder": "ASC"
+        },
+        "contentSyncTriggers": [
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_EmailMessageFts_BEFORE_UPDATE BEFORE UPDATE ON `EmailMessage` BEGIN DELETE FROM `EmailMessageFts` WHERE `docid`=OLD.`rowid`; END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_EmailMessageFts_BEFORE_DELETE BEFORE DELETE ON `EmailMessage` BEGIN DELETE FROM `EmailMessageFts` WHERE `docid`=OLD.`rowid`; END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_EmailMessageFts_AFTER_UPDATE AFTER UPDATE ON `EmailMessage` BEGIN INSERT INTO `EmailMessageFts`(`docid`, `subject`, `from`, `body`) VALUES (NEW.`rowid`, NEW.`subject`, NEW.`from`, NEW.`body`); END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_EmailMessageFts_AFTER_INSERT AFTER INSERT ON `EmailMessage` BEGIN INSERT INTO `EmailMessageFts`(`docid`, `subject`, `from`, `body`) VALUES (NEW.`rowid`, NEW.`subject`, NEW.`from`, NEW.`body`); END"
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '5206c9a643160bbea25d58c9c1a9344c')"
+    ]
+  }
+}

@@ -6,6 +6,7 @@ import androidx.room3.ColumnTypeConverters
 import androidx.room3.Dao
 import androidx.room3.Database
 import androidx.room3.Entity
+import androidx.room3.Index
 import androidx.room3.Insert
 import androidx.room3.OnConflictStrategy
 import androidx.room3.PrimaryKey
@@ -30,7 +31,7 @@ import com.vayunmathur.library.util.DatabaseMigrations
         RcsMlsGroup::class,
         RcsOutboxMessage::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 @ColumnTypeConverters(RcsTypeConverters::class)
@@ -92,7 +93,17 @@ abstract class RcsDatabase : RoomDatabase() {
             }
         }
 
-        override val migrations = listOf(MIGRATION_1_2, MIGRATION_2_3)
+        /** v3 → v4: (conversationId, timestamp) index for keyset conversation windows. */
+        private val MIGRATION_3_4 = object : androidx.room3.migration.Migration(3, 4) {
+            override suspend fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+                connection.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_rcs_cached_message_conversationId_timestamp` " +
+                        "ON `rcs_cached_message` (`conversationId`, `timestamp`)",
+                )
+            }
+        }
+
+        override val migrations = listOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
 
         /**
          * Test seam: when set, [getDatabase] returns this instance instead
@@ -178,7 +189,7 @@ interface RcsConversationDao {
 
 // -- Cached messages --
 /** A cached RCS message row, including file-transfer and delivery state. */
-@Entity(tableName = "rcs_cached_message")
+@Entity(tableName = "rcs_cached_message", indices = [Index(value = ["conversationId", "timestamp"])])
 data class RcsCachedMessage(
     @PrimaryKey val messageId: String,
     val conversationId: String,
@@ -211,6 +222,17 @@ interface RcsCachedMessageDao {
 
     @Query("SELECT * FROM rcs_cached_message WHERE conversationId = :id ORDER BY timestamp ASC")
     suspend fun getForConversation(id: String): List<RcsCachedMessage>
+
+    /** Keyset window: newest [limit] before [before], newest first (reverse to render). */
+    @Query(
+        "SELECT * FROM rcs_cached_message WHERE conversationId = :id AND timestamp < :before " +
+            "ORDER BY timestamp DESC LIMIT :limit",
+    )
+    suspend fun getForConversationBefore(
+        id: String,
+        before: Long = Long.MAX_VALUE,
+        limit: Int = 100,
+    ): List<RcsCachedMessage>
 
     @Query("SELECT * FROM rcs_cached_message WHERE messageId = :messageId LIMIT 1")
     suspend fun get(messageId: String): RcsCachedMessage?

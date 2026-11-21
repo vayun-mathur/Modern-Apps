@@ -27,6 +27,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -45,6 +46,7 @@ import com.vayunmathur.library.ui.rememberMessenger
 import com.vayunmathur.securemail.R
 import com.vayunmathur.securemail.data.MailIdentity
 import com.vayunmathur.securemail.platform.MailUiState
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 
 /**
@@ -53,6 +55,7 @@ import kotlinx.coroutines.launch
  * (`Next`), body multi-line (`Done`). Draft recipients live in the ViewModel
  * so picker navigation doesn't wipe them.
  */
+@OptIn(kotlinx.coroutines.FlowPreview::class)
 @Composable
 fun ComposeScreen(
     state: MailUiState,
@@ -69,6 +72,7 @@ fun ComposeScreen(
     onSend: (List<String>, List<String>, List<String>, String, String, String?) -> Unit,
     onLeave: (subject: String, body: String) -> Unit,
     onDiscard: () -> Unit,
+    onAutosave: (subject: String, body: String) -> Unit = { _, _ -> },
     onConsumeMessage: () -> Unit = {},
 ) {
     val context = LocalContext.current
@@ -104,6 +108,21 @@ fun ComposeScreen(
         }
     }
     val allRecipients = draftTo + draftCc + draftBcc
+    // Draft autosave: debounce subject/body edits and persist the draft
+    // (mirrors email's 800ms autosave) so process death doesn't lose work.
+    // The first emission is the initial composition, which needs no save.
+    LaunchedEffect(Unit) {
+        var isInitial = true
+        snapshotFlow { subject to body }
+            .debounce(800)
+            .collect { (s, b) ->
+                if (isInitial) {
+                    isInitial = false
+                } else {
+                    onAutosave(s, b)
+                }
+            }
+    }
     // Back saves the composition as a draft (handled by the caller); Discard drops it.
     BackHandler { onLeave(subject, body) }
     // No top app bar by design; systemBarsPadding keeps the form clear of

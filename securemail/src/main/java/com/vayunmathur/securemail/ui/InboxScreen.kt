@@ -43,7 +43,7 @@ import com.vayunmathur.library.ui.rememberMessenger
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.securemail.R
 import com.vayunmathur.securemail.data.MailFolder
-import com.vayunmathur.securemail.data.StoredMessage
+import com.vayunmathur.securemail.data.StoredMessagePreview
 import com.vayunmathur.securemail.platform.MailUiState
 
 /** Row actions for a folder list; ids are always the affected messages. */
@@ -72,7 +72,7 @@ fun InboxScreen(
     state: MailUiState,
     folder: MailFolder,
     actions: FolderActions,
-    messages: List<StoredMessage> = emptyList(),
+    messages: List<StoredMessagePreview> = emptyList(),
 ) {
     val messenger = rememberMessenger()
     val context = LocalContext.current

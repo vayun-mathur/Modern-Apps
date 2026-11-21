@@ -4,6 +4,7 @@ import androidx.room3.ColumnTypeConverter
 import androidx.room3.Dao
 import androidx.room3.Delete
 import androidx.room3.Entity
+import androidx.room3.Index
 import androidx.room3.PrimaryKey
 import androidx.room3.Query
 import androidx.room3.RoomDatabase
@@ -24,7 +25,12 @@ interface DatabaseItem {
 }
 
 /** Join row linking a left id to a right id under a typed many-to-many relation. */
-@Entity
+@Entity(
+    indices = [
+        Index(value = ["leftID", "type"]),
+        Index(value = ["rightID", "type"]),
+    ],
+)
 data class ManyManyMatching(
     val leftID: Long,
     val rightID: Long,

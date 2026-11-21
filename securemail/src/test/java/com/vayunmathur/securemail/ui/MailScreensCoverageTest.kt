@@ -18,6 +18,7 @@ import com.vayunmathur.securemail.data.MailFolder
 import com.vayunmathur.securemail.data.MailIdentity
 import com.vayunmathur.securemail.data.OutboxMessage
 import com.vayunmathur.securemail.data.StoredMessage
+import com.vayunmathur.securemail.data.StoredMessagePreview
 import com.vayunmathur.securemail.platform.MailUiState
 import org.junit.Rule
 import org.junit.runner.RunWith
@@ -48,6 +49,13 @@ class MailScreensCoverageTest {
         folder = folder, unencrypted = unencrypted, verifiedSigner = verified, decryptedHtml = html,
     )
 
+    private fun StoredMessage.toPreview() = StoredMessagePreview(
+        id = id, from = from, toJson = toJson, dateMillis = dateMillis, messageId = messageId,
+        decryptedSubject = decryptedSubject, verifiedSigner = verifiedSigner, unencrypted = unencrypted,
+        isRead = isRead, folder = folder, deliveredTo = deliveredTo,
+        preview = decryptedBody, hasDecryptedBody = decryptedBody != null,
+    )
+
     private fun folderActions(
         opened: MutableList<String> = mutableListOf(),
         composed: MutableList<Boolean> = mutableListOf(),
@@ -75,7 +83,7 @@ class MailScreensCoverageTest {
             InboxScreen(
                 state = MailUiState(error = "Relay offline — kept in outbox."),
                 folder = MailFolder.INBOX, actions = folderActions(composed = composed),
-                messages = listOf(msg("1", "Hello")),
+                messages = listOf(msg("1", "Hello").toPreview()),
             )
         }
         rule.onNodeWithText("Relay offline — kept in outbox.").assertExists()
@@ -87,7 +95,7 @@ class MailScreensCoverageTest {
         rule.setContent {
             InboxScreen(
                 state = MailUiState(), folder = MailFolder.TRASH, actions = folderActions(),
-                messages = listOf(msg("t1", null, body = null)),
+                messages = listOf(msg("t1", null, body = null).toPreview()),
             )
         }
         rule.onNodeWithText("Empty trash").assertExists()
@@ -99,7 +107,7 @@ class MailScreensCoverageTest {
         rule.setContent {
             InboxScreen(
                 state = MailUiState(), folder = MailFolder.SENT, actions = folderActions(),
-                messages = listOf(msg("s1", "Sent one", toJson = "bob@example.org")),
+                messages = listOf(msg("s1", "Sent one", toJson = "bob@example.org").toPreview()),
             )
         }
         rule.onNodeWithText("To: bob@example.org", substring = true).assertExists()
@@ -258,7 +266,7 @@ class MailScreensCoverageTest {
                     OutboxMessage(rowId = 3, toJson = "ada@example.org", subject = "Queued one", body = "b",
                         createdMillis = 1, lastError = "publish failed: no session", attemptCount = 2),
                 ),
-                sent = listOf(msg("s1", "Already sent", folder = MailFolder.SENT)),
+                sent = listOf(msg("s1", "Already sent", folder = MailFolder.SENT).toPreview()),
                 actions = actions,
             )
         }
@@ -326,7 +334,7 @@ class MailScreensCoverageTest {
         )
         rule.setContent {
             InboxScreen(state = MailUiState(), folder = MailFolder.TRASH, actions = actions,
-                messages = listOf(msg("t1", "Trash one"), msg("t2", "Trash two")))
+                messages = listOf(msg("t1", "Trash one").toPreview(), msg("t2", "Trash two").toPreview()))
         }
         rule.onNodeWithText("Empty trash").performClick()
         rule.onNodeWithText("Empty trash?").assertExists()
@@ -343,7 +351,7 @@ class MailScreensCoverageTest {
     @Test fun `inbox long press opens selection bar`() {
         rule.setContent {
             InboxScreen(state = MailUiState(), folder = MailFolder.INBOX, actions = folderActions(),
-                messages = listOf(msg("1", "Selectable"), msg("2", "Other row")))
+                messages = listOf(msg("1", "Selectable").toPreview(), msg("2", "Other row").toPreview()))
         }
         rule.onNodeWithText("Selectable").performTouchInput { longClick() }
         rule.onNodeWithText("1 selected").assertExists()

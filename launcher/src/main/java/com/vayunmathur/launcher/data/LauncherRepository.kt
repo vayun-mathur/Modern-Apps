@@ -385,7 +385,7 @@ class LauncherRepository private constructor(context: Context) :
     }
 
     private suspend fun collapseEmptyFolders() {
-        val folders = dao.getAll().filter { it.itemType == LauncherItemType.FOLDER }
+        val folders = dao.getFolders()
         for (folder in folders) {
             val children = dao.getFolderChildren(folder.id)
             if (!FolderRules.shouldCollapse(children.size)) continue

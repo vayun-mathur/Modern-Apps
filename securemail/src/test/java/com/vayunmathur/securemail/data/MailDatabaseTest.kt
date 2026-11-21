@@ -39,7 +39,7 @@ class MailDatabaseTest {
         assertNull(dao.get("1")); assertNull(dao.get("3")); assertEquals("2", dao.get("2")?.id)
         dao.deleteAll(listOf("2")); assertEquals(0, dao.observeAll().first().size)
         dao.upsert(msg("9")); dao.delete("9"); assertNull(dao.get("9"))
-        assertEquals(4, MailDatabase.migrations.size)
+        assertEquals(5, MailDatabase.migrations.size)
         db.close()
     }
 

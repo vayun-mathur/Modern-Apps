@@ -44,6 +44,7 @@ class PhotosFavoritesSyncTest {
         val upsertedBatches = mutableListOf<List<Photo>>()
         val favoriteWrites = mutableListOf<Pair<List<Long>, Boolean>>()
         override suspend fun getAll(): List<Photo> = all
+        override suspend fun getAllForSync(): List<Photo> = all
         override suspend fun deleteByIds(ids: List<Long>) {
             deletedBatches += ids
         }

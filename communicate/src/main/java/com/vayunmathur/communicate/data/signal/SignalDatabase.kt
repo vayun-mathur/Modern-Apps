@@ -7,6 +7,7 @@ import androidx.room3.ColumnTypeConverters
 import androidx.room3.Dao
 import androidx.room3.Database
 import androidx.room3.Entity
+import androidx.room3.Index
 import androidx.room3.Insert
 import androidx.room3.OnConflictStrategy
 import androidx.room3.PrimaryKey
@@ -42,7 +43,7 @@ import com.vayunmathur.library.util.DatabaseMigrations
         SignalProfileKey::class,
         SignalCallLog::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = true
 )
 @ColumnTypeConverters(SignalTypeConverters::class)
@@ -139,11 +140,22 @@ abstract class SignalDatabase : RoomDatabase() {
             }
         }
 
+        /** v5 → v6: (conversationId, timestamp) index for keyset conversation windows. */
+        private val MIGRATION_5_6 = object : androidx.room3.migration.Migration(5, 6) {
+            override suspend fun migrate(connection: SQLiteConnection) {
+                connection.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_signal_cached_message_conversationId_timestamp` " +
+                        "ON `signal_cached_message` (`conversationId`, `timestamp`)",
+                )
+            }
+        }
+
         override val migrations = listOf<androidx.room3.migration.Migration>(
             MIGRATION_1_2,
             MIGRATION_2_3,
             MIGRATION_3_4,
-            MIGRATION_4_5)
+            MIGRATION_4_5,
+            MIGRATION_5_6)
 
         /**
          * Test seam: when set, [getDatabase] returns this instance instead
@@ -293,7 +305,7 @@ interface SignalConversationDao {
 // -- Cached messages --
 
 /** A cached Signal message row, including edit/revoke state, media pointer and delivery status. */
-@Entity(tableName = "signal_cached_message")
+@Entity(tableName = "signal_cached_message", indices = [Index(value = ["conversationId", "timestamp"])])
 data class SignalCachedMessage(
     @PrimaryKey val messageId: String,
     val conversationId: String,
@@ -321,6 +333,21 @@ interface SignalCachedMessageDao {
 
     @Query("SELECT * FROM signal_cached_message WHERE conversationId = :id ORDER BY timestamp ASC")
     suspend fun getForConversation(id: String): List<SignalCachedMessage>
+
+    /**
+     * Keyset window: the newest [limit] messages before [before] (exclusive),
+     * newest first. Callers that render chronologically reverse the result.
+     * Served by index_signal_cached_message_conversationId_timestamp.
+     */
+    @Query(
+        "SELECT * FROM signal_cached_message WHERE conversationId = :id AND timestamp < :before " +
+            "ORDER BY timestamp DESC LIMIT :limit",
+    )
+    suspend fun getForConversationBefore(
+        id: String,
+        before: Long = Long.MAX_VALUE,
+        limit: Int = 100,
+    ): List<SignalCachedMessage>
 
     @Query("SELECT * FROM signal_cached_message WHERE messageId = :messageId LIMIT 1")
     suspend fun get(messageId: String): SignalCachedMessage?

@@ -27,7 +27,7 @@ import com.vayunmathur.email.data.Attachment
         DeletedUid::class,
         EmailMessageFts::class,
     ],
-    version = 22,
+    version = 23,
     exportSchema = true,
 )
 /** Room database holding email folders, messages, accounts and outbox state. */
@@ -222,6 +222,21 @@ abstract class EmailDatabase : RoomDatabase() {
             it.execSQL("INSERT INTO `EmailMessageFts`(`EmailMessageFts`) VALUES('rebuild')")
         }
 
+        /** v22 → v23: indices for folder/unified/thread reads ordered by dateMillis. */
+        private val MIGRATION_22_23 = Migration(22, 23) {
+            it.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_EmailMessage_folderName_dateMillis` " +
+                    "ON `EmailMessage` (`folderName`, `dateMillis`)",
+            )
+            it.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_EmailMessage_accountEmail_folderName_dateMillis` " +
+                    "ON `EmailMessage` (`accountEmail`, `folderName`, `dateMillis`)",
+            )
+            it.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_EmailMessage_threadId` ON `EmailMessage` (`threadId`)",
+            )
+        }
+
         /**
          * Every migration for this database, registered with the Room builder via the
          * [DatabaseMigrations] reflection hook in `openRoomDatabase`. Order is
@@ -246,6 +261,7 @@ abstract class EmailDatabase : RoomDatabase() {
             MIGRATION_19_20,
             MIGRATION_20_21,
             MIGRATION_21_22,
+            MIGRATION_22_23,
         )
 
         fun getInstance(context: Context): EmailDatabase =

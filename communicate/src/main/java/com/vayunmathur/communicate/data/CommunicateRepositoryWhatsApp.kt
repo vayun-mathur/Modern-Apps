@@ -88,7 +88,7 @@ internal fun CommunicateRepository.parseParticipantsCsv(stored: String?): List<S
 internal suspend fun CommunicateRepository.loadWhatsAppMessages(context: Context, jid: String): List<SmsMessage> =
     runCatching {
         val db = WhatsAppDatabase.getDatabase(context)
-        db.cachedMessageDao().getForConversation(jid).map { m ->
+        db.cachedMessageDao().getForConversationBefore(jid).asReversed().map { m ->
             SmsMessage(
                 id = (m.messageId.hashCode().toLong() and 0xFFFFFFFFL),
                 threadId = stableThreadId(jid),

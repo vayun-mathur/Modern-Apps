@@ -49,6 +49,7 @@ class PhotosSlice1SyncTest {
         val deletedBatches = mutableListOf<List<Long>>()
         val upsertedBatches = mutableListOf<List<Photo>>()
         override suspend fun getAll(): List<Photo> = all
+        override suspend fun getAllForSync(): List<Photo> = all
         override suspend fun deleteByIds(ids: List<Long>) {
             deletedBatches += ids
         }

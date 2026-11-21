@@ -82,6 +82,9 @@ class MailViewModel(
         private set
 
     val messages = repo.messageDao().observeAll()
+
+    /** Full row for one message (reader), loaded by id — not from the list. */
+    fun messageFlow(id: String) = repo.messageDao().observeById(id)
     val outboxCount = repo.outboxDao().observeCount()
     val outboxMessages = repo.outboxDao().observeAll()
     /** Own addresses: primary first, then aliases by creation time. */

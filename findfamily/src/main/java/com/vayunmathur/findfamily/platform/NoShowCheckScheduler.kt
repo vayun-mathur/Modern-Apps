@@ -190,7 +190,7 @@ object NoShowCheckScheduler {
      */
     suspend fun rescheduleAll(context: Context) {
         val repository = FindFamilyRepository.get(context.applicationContext)
-        val pending = repository.noShowAlertStore.getAll().filter { !it.fired }
+        val pending = repository.noShowAlertStore.getPending()
         for (alert in pending) {
             runCatching { schedule(context, alert) }
                 .onFailure { e -> Log.status(TAG, "reschedule alert ${alert.id} failed", e) }
