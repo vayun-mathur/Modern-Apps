@@ -12,6 +12,7 @@ import java.io.EOFException
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
+import java.net.InetSocketAddress
 import java.net.Socket
 import java.net.URI
 import java.net.URL
@@ -40,7 +41,9 @@ class WebSocketHandshakeException(
  * - Frame codec: TEXT(0x1), BINARY(0x2), CLOSE(0x8), PING(0x9), PONG(0xA), masking on send
  * - Exposes WsSession { send(String/ByteArray), incoming Flow<WsFrame>, close() }
  * - Top-level webSocket(url, headers, block) for OfficeSync WS & CableTunnel WS
- * - TLS: uses explicit factory, else NetworkClient.defaultSslSocketFactory, else system default.
+ * - TLS: uses explicit factory, else NetworkClient.defaultSslSocketFactory, else system default;
+ *   hostname verification (endpoint identification "HTTPS") plus connect/handshake timeouts
+ *   apply before the upgrade, and a failed handshake fails [connect] instead of being swallowed.
  */
 class WebSocketClient private constructor(
     private val socket: Socket,
@@ -329,6 +332,16 @@ class WebSocketClient private constructor(
         private const val MAX_HANDSHAKE_HEADER_BYTES = 8192
         private const val HANDSHAKE_ERROR_LINES = 10
 
+        /** TCP connect budget; a peer that never answers must not hang the caller. */
+        internal const val CONNECT_TIMEOUT_MS = 15_000
+
+        /**
+         * Read budget while the TLS + WebSocket upgrade handshakes are in flight.
+         * Cleared back to 0 once the socket becomes a long-lived WebSocket, whose
+         * frame reads block indefinitely by design (keepalive is the caller's loop).
+         */
+        internal const val HANDSHAKE_TIMEOUT_MS = 30_000
+
         /** Parsed endpoint pieces for one connection attempt. */
         private data class WsEndpoint(
             val uri: URI,
@@ -358,6 +371,9 @@ class WebSocketClient private constructor(
                 val respHeaders = parseHandshakeHeaders(responseLines)
                 checkAccept(respHeaders, expectedAccept)
                 val captured = captureHeaders(respHeaders, captureResponseHeaders)
+                // Upgrade done: frame reads block indefinitely by design, so the
+                // handshake read budget must not kill a healthy idle socket.
+                sock.soTimeout = 0
                 WebSocketClient(sock, sock.getInputStream(), sock.getOutputStream(), respHeaders.multi, captured)
             } catch (e: IOException) {
                 runCatching { sock.close() }
@@ -404,9 +420,11 @@ class WebSocketClient private constructor(
             val sock: Socket = if (secure) {
                 openTlsSocket(endpoint, sslSocketFactory, useSystemTrust)
             } else {
-                Socket(endpoint.host, endpoint.port)
+                Socket().apply {
+                    connect(InetSocketAddress(endpoint.host, endpoint.port), CONNECT_TIMEOUT_MS)
+                    soTimeout = HANDSHAKE_TIMEOUT_MS
+                }
             }
-            sock.soTimeout = 0
             sock.tcpNoDelay = true
             return sock
         }
@@ -419,9 +437,26 @@ class WebSocketClient private constructor(
             val defaultFactory = NetworkClient.defaultSslSocketFactory ?: SSLSocketFactory.getDefault()
             val factory: javax.net.SocketFactory =
                 if (useSystemTrust) SSLSocketFactory.getDefault() else sslSocketFactory ?: defaultFactory
-            val sock = factory.createSocket(endpoint.host, endpoint.port) as Socket
-            if (sock is SSLSocket) {
-                try { sock.startHandshake() } catch (_: Exception) { }
+            val sock = factory.createSocket() as? SSLSocket
+                ?: throw IOException("TLS factory produced no SSLSocket for ${endpoint.host}:${endpoint.port}")
+            try {
+                sock.connect(InetSocketAddress(endpoint.host, endpoint.port), CONNECT_TIMEOUT_MS)
+                sock.soTimeout = HANDSHAKE_TIMEOUT_MS
+                // Hostname verification is off by default on a raw SSLSocket: without
+                // endpoint identification the bundled pins would accept any host's
+                // chain to our roots. Must be set before the handshake starts.
+                sock.sslParameters = sock.sslParameters.apply {
+                    endpointIdentificationAlgorithm = "HTTPS"
+                }
+                sock.startHandshake()
+            } catch (e: IOException) {
+                Log.error(TAG, "TLS handshake failed for ${endpoint.host}:${endpoint.port}", e)
+                runCatching { sock.close() }
+                throw IOException("TLS handshake failed for ${endpoint.host}:${endpoint.port}: ${e.message}", e)
+            } catch (e: RuntimeException) {
+                Log.error(TAG, "TLS handshake failed for ${endpoint.host}:${endpoint.port}", e)
+                runCatching { sock.close() }
+                throw IOException("TLS handshake failed for ${endpoint.host}:${endpoint.port}: ${e.message}", e)
             }
             return sock
         }

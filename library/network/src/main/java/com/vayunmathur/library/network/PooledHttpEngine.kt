@@ -130,11 +130,7 @@ internal object PooledHttpEngine {
         val call = client.newCall(builder.build())
         // try-with-resources equivalent: `use` closes the response (and its body) on every path.
         call.execute().use { response ->
-            val bytes = try {
-                response.body?.bytes() ?: ByteArray(0)
-            } catch (e: IOException) {
-                throw IOException("Failed to read response body from $url", e)
-            }
+            val bytes = readPooledBody(response.body, url)
             val respHeaders = mutableMapOf<String, List<String>>()
             for (name in response.headers.names()) {
                 respHeaders[name] = response.headers.values(name)
@@ -150,6 +146,36 @@ internal object PooledHttpEngine {
                 respHeaders,
                 finalUrl,
             )
+        }
+    }
+
+    /**
+     * Streams a pooled body under [HttpUrlEngine.MAX_BODY_BYTES] instead of
+     * OkHttp's unbounded `bytes()`: the cap is counted as bytes arrive (via
+     * [HttpUrlEngine.drainFully], same as `readBodyText`), so a lying or
+     * absent Content-Length cannot defeat it. No pre-size hint is passed:
+     * OkHttp may have transparently decompressed the body, so its
+     * Content-Length no longer describes the stream in hand.
+     */
+    internal fun readPooledBody(
+        body: okhttp3.ResponseBody?,
+        url: String,
+        maxBytes: Long = HttpUrlEngine.MAX_BODY_BYTES,
+    ): ByteArray {
+        if (body == null) return ByteArray(0)
+        return try {
+            body.byteStream().use { stream ->
+                HttpUrlEngine.drainFully(stream, null, false, maxBytes)
+            }
+        } catch (e: HttpUrlEngine.BodyTooLargeException) {
+            throw IOException(
+                "Response body from $url exceeds ${e.maxBytes} bytes after ${e.bytesRead} bytes",
+                e,
+            )
+        } catch (e: HttpUrlEngine.BodyReadException) {
+            throw IOException("Failed to read response body from $url after ${e.bytesRead} bytes", e)
+        } catch (e: IOException) {
+            throw IOException("Failed to read response body from $url", e)
         }
     }
 

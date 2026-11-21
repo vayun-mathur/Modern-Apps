@@ -160,8 +160,8 @@ object NetworkClient {
         if (isAlreadyInitialized(bundle)) {
             return
         }
-        // Total: BundledTrust.createFactory catches its own failures and returns null,
-        // so there is nothing left here that needs a catch-all.
+        // Fail closed: applyBundle throws for a non-SYSTEM bundle it cannot build,
+        // so a caller can never silently end up on system trust with a narrow bundle.
         applyBundle(appCtx, bundle)
         initialized = true
     }
@@ -181,13 +181,20 @@ object NetworkClient {
             return
         }
         val result = BundledTrust.createFactory(appCtx, bundle)
-        defaultSslSocketFactory = result?.first
-        defaultTrustManager = result?.second
-        if (defaultSslSocketFactory == null) {
-            Log.status(TAG, "Bundle $bundle produced no factory (missing DERs?), falling back to system trust")
-        } else {
-            Log.status(TAG, "Initialized with bundle $bundle")
+        if (result == null) {
+            // Never widen a narrow bundle to system trust: that would silently talk
+            // to FIRST_PARTY/STANDARD/EXTENDED/ESIM hosts under any public CA.
+            // Throwing from init() is the one shape no caller can ignore.
+            defaultSslSocketFactory = null
+            defaultTrustManager = null
+            Log.error(TAG, "Bundle $bundle produced no factory (missing DERs?); refusing to fall back to system trust")
+            throw IllegalStateException(
+                "TrustBundle $bundle produced no SSLSocketFactory; refusing system-trust fallback",
+            )
         }
+        defaultSslSocketFactory = result.first
+        defaultTrustManager = result.second
+        Log.status(TAG, "Initialized with bundle $bundle")
     }
 
     @Synchronized

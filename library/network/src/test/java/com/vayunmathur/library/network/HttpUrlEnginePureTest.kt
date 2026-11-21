@@ -76,6 +76,26 @@ class HttpUrlEnginePureTest {
     }
 
     @Test
+    fun read_body_default_cap_names_the_endpoint_on_breach() {
+        val data = ByteArray(10_000) { (it % 251).toByte() }
+        val resp = response(200, ByteArrayInputStream(data), url = "https://example.test/big")
+        val e = assertFailsWith<IOException> {
+            resp.use { HttpUrlEngine.readBody(it, maxBytes = 1024) }
+        }
+        assertTrue(e.message!!.contains("https://example.test/big"), "got: ${e.message}")
+        assertTrue(e.message!!.contains("1024"), "got: ${e.message}")
+    }
+
+    @Test
+    fun read_body_null_cap_stays_uncapped() {
+        val data = ByteArray(5000) { (it % 251).toByte() }
+        assertContentEquals(
+            data,
+            HttpUrlEngine.readBody(response(200, ByteArrayInputStream(data)), maxBytes = null),
+        )
+    }
+
+    @Test
     fun read_body_names_the_endpoint_on_failure() {
         val resp = response(200, failingAfter(300), url = "https://example.test/models/x")
         val e = assertFailsWith<IOException> { resp.use { HttpUrlEngine.readBody(it) } }

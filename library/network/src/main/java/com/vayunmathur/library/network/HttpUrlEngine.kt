@@ -58,6 +58,14 @@ internal object HttpUrlEngine {
      */
     const val MAX_TEXT_BODY_BYTES = 16L * 1024 * 1024
 
+    /**
+     * Hard cap on bodies returned as [ByteArray] (see [readBody]). Byte bodies
+     * (protobuf, images, archives) legitimately run larger than JSON text, so
+     * the cap sits above [MAX_TEXT_BODY_BYTES]; anything bigger belongs on the
+     * streaming path, not materialised whole in the heap.
+     */
+    const val MAX_BODY_BYTES = 64L * 1024 * 1024
+
     private val EMPTY_BYTES = ByteArray(0)
 
     data class InternalResult(
@@ -500,9 +508,18 @@ internal object HttpUrlEngine {
      *
      * A truncated body is an error here, where it used to be silently reported as an empty one:
      * hiding it left no way to tell which endpoint had failed, which is what #582 asked for.
+     *
+     * [maxBytes] caps the read exactly like [readBodyText]'s: counted as bytes
+     * arrive, never trusted from Content-Length. Null keeps the read uncapped
+     * for a caller that has its own bound; the default caps at [MAX_BODY_BYTES].
      */
-    fun readBody(response: OpenResponse): ByteArray = try {
-        drainFully(response.stream, response.contentLength, response.isIdentityEncoding)
+    fun readBody(response: OpenResponse, maxBytes: Long? = MAX_BODY_BYTES): ByteArray = try {
+        drainFully(response.stream, response.contentLength, response.isIdentityEncoding, maxBytes)
+    } catch (e: BodyTooLargeException) {
+        throw IOException(
+            "Response body from ${response.finalUrl} exceeds ${e.maxBytes} bytes after ${e.bytesRead} bytes",
+            e,
+        )
     } catch (e: BodyReadException) {
         throw IOException(
             "Failed to read response body from ${response.finalUrl} after ${e.bytesRead} bytes",

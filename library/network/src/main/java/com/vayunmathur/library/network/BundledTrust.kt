@@ -57,13 +57,16 @@ object BundledTrust {
         val cf = CertificateFactory.getInstance("X.509")
         val ks = KeyStore.getInstance(KeyStore.getDefaultType()).apply { load(null, null) }
 
-        val loaded = seedSystemIssuers(ks, bundle) + loadBundledAssets(context, cf, ks, assetPaths)
+        val systemLoaded = seedSystemIssuers(ks, bundle)
+        val bundledLoaded = loadBundledAssets(context, cf, ks, assetPaths)
+        val loaded = systemLoaded + bundledLoaded
 
-        if (loaded == 0) {
-            Log.status(
+        if (bundledLoaded == 0) {
+            // Even for ESIM (system-seeded), a bundle whose own roots all failed is
+            // not the bundle that was asked for; NetworkClient fails closed on null.
+            Log.error(
                 TAG,
-                "No CAs loaded for bundle $bundle (checked ${assetPaths.size} assets)" +
-                    " — falling back to system trust",
+                "No bundled CAs loaded for bundle $bundle (checked ${assetPaths.size} assets)",
             )
             return null
         }

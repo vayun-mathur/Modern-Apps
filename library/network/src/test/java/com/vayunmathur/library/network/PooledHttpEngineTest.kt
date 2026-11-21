@@ -110,4 +110,28 @@ class PooledHttpEngineTest {
     fun per_host_concurrency_matches_maplibre() {
         assertEquals(20, PooledHttpEngine.MAX_REQUESTS_PER_HOST)
     }
+
+    @Test
+    fun pooled_body_read_is_capped_and_names_the_url() {
+        val body = ByteArray(10_000) { (it % 251).toByte() }
+            .toResponseBodyForTest()
+        val e = kotlin.test.assertFailsWith<java.io.IOException> {
+            PooledHttpEngine.readPooledBody(body, "http://127.0.0.1/big", maxBytes = 1024)
+        }
+        assertTrue(e.message!!.contains("http://127.0.0.1/big"), "got: ${e.message}")
+    }
+
+    @Test
+    fun pooled_body_under_the_cap_reads_exact_and_null_is_empty() {
+        val data = "tiles".toByteArray()
+        kotlin.test.assertContentEquals(
+            data,
+            PooledHttpEngine.readPooledBody(data.toResponseBodyForTest(), "http://x/", maxBytes = 1024),
+        )
+        assertEquals(0, PooledHttpEngine.readPooledBody(null, "http://x/").size)
+    }
+}
+
+private fun ByteArray.toResponseBodyForTest(): okhttp3.ResponseBody {
+    return with(okhttp3.ResponseBody.Companion) { this@toResponseBodyForTest.toResponseBody(null) }
 }

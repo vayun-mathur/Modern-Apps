@@ -8,6 +8,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
+import java.time.DateTimeException
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.random.Random
 
@@ -72,6 +76,51 @@ class PlayHttpClient : IHttpClient {
             synchronized(pacingLock) { nextRequestAtMs = 0L }
             waiting.set(0)
             _throttled.value = false
+        }
+
+        /** RFC 850 (obsolete) HTTP-date, e.g. `Sunday, 06-Nov-94 08:49:37 GMT`. */
+        private val RFC_850_FORMAT: DateTimeFormatter =
+            DateTimeFormatter.ofPattern("EEEE, dd-MMM-yy HH:mm:ss z", Locale.US)
+
+        /** ANSI C asctime (obsolete) HTTP-date, e.g. `Sun Nov  6 08:49:37 1994` (GMT assumed). */
+        private val ASCTIME_FORMAT: DateTimeFormatter =
+            DateTimeFormatter.ofPattern("EEE MMM d HH:mm:ss yyyy", Locale.US)
+
+        /**
+         * Parses a `Retry-After` header value (RFC 9110 §10.2.3) to milliseconds
+         * from [nowMs]: either delay-seconds (`120`) or an HTTP-date
+         * (`Sun, 06 Nov 1994 08:49:37 GMT`, in any of the three formats a
+         * recipient must accept). A date in the past, an absent header and an
+         * unparseable value all yield 0, which the caller reads as "no server
+         * delay named" and falls back to exponential backoff for.
+         */
+        internal fun parseRetryAfterMs(header: String?, nowMs: Long = System.currentTimeMillis()): Long {
+            val value = header?.trim()?.takeIf { it.isNotEmpty() } ?: return 0L
+            value.toLongOrNull()?.let { seconds ->
+                return if (seconds >= 0) seconds * MILLIS_PER_SECOND else 0L
+            }
+            val dateMs = parseHttpDateMs(value) ?: return 0L
+            return (dateMs - nowMs).coerceAtLeast(0L)
+        }
+
+        private fun parseHttpDateMs(value: String): Long? {
+            // Collapse runs of spaces: asctime pads a single-digit day with one.
+            val normalized = value.replace(Regex(" +"), " ")
+            val formatters = listOf(DateTimeFormatter.RFC_1123_DATE_TIME, RFC_850_FORMAT, ASCTIME_FORMAT)
+            for (formatter in formatters) {
+                try {
+                    return ZonedDateTime.parse(normalized, formatter).toInstant().toEpochMilli()
+                } catch (_: DateTimeException) {
+                    // Try the next sanctioned format.
+                }
+            }
+            // asctime carries no zone; RFC 9110 dates are GMT, so retry it as UTC.
+            return try {
+                java.time.LocalDateTime.parse(normalized, ASCTIME_FORMAT)
+                    .toInstant(java.time.ZoneOffset.UTC).toEpochMilli()
+            } catch (_: DateTimeException) {
+                null
+            }
         }
     }
 
@@ -201,12 +250,9 @@ class PlayHttpClient : IHttpClient {
 
     private fun sleep(millis: Long) = sleeper(millis)
 
-    /** `Retry-After` in milliseconds, or 0 when the server did not name a delay in seconds. */
+    /** `Retry-After` in milliseconds, or 0 when the server named no usable delay. */
     private fun retryAfterMs(conn: HttpURLConnection): Long =
-        conn.getHeaderField("Retry-After")?.trim()?.toLongOrNull()
-            ?.takeIf { it >= 0 }
-            ?.times(MILLIS_PER_SECOND)
-            ?: 0L
+        parseRetryAfterMs(conn.getHeaderField("Retry-After"))
 
     private fun executeOnce(
         url: String,
