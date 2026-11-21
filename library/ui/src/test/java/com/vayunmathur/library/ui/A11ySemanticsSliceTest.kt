@@ -11,14 +11,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -161,5 +165,82 @@ class A11ySemanticsSliceTest {
             SemanticsMatcher.keyIsDefined(SemanticsActions.CustomActions),
         ).fetchSemanticsNodes()
         assertTrue(withActions.isEmpty())
+    }
+
+    @Test fun multiCategoryPickerOpenerIsANamedCollapsedButtonNotAToggle() {
+        rule.setContent {
+            MultiCategoryPicker(
+                label = "Tags",
+                selected = listOf("a"),
+                available = listOf("a", "b"),
+                itemLabel = { it },
+                onAdd = {},
+                onRemove = {},
+            )
+        }
+        // The opener is the one node named after the field: a Button whose
+        // state description carries the collapsed/expanded state. Before the
+        // fix it was an unnamed ToggleableState=Off toggleable, which TalkBack
+        // mislabels as a switch/checkbox.
+        val opener = rule.onNode(hasContentDescription("Tags")).fetchSemanticsNode()
+        assertEquals(Role.Button, opener.config[SemanticsProperties.Role])
+        assertEquals("Collapsed", opener.config[SemanticsProperties.StateDescription])
+        assertTrue(
+            SemanticsProperties.ToggleableState !in opener.config,
+            "opener must not be toggleable: ${opener.config}",
+        )
+        assertTrue(SemanticsActions.OnClick in opener.config, "opener must be clickable")
+        // Nothing in the whole field poses as a toggle any more.
+        val toggles = rule.onAllNodes(isToggleable()).fetchSemanticsNodes()
+        assertTrue(toggles.isEmpty(), "unexpected toggleables: $toggles")
+    }
+
+    @Test fun multiCategoryPickerOpenerExpandsOnClickAndPicks() {
+        var added: String? = null
+        rule.setContent {
+            MultiCategoryPicker(
+                label = "Tags",
+                selected = emptyList(),
+                available = listOf("a", "b"),
+                itemLabel = { it },
+                onAdd = { added = it },
+                onRemove = {},
+            )
+        }
+        rule.onNode(hasContentDescription("Tags")).performClick()
+        // While the menu is open the opener itself reports Expanded, so the
+        // state change is announced on the control that caused it.
+        val open = rule.onNode(hasContentDescription("Tags")).fetchSemanticsNode()
+        assertEquals("Expanded", open.config[SemanticsProperties.StateDescription])
+        rule.onNodeWithText("b").performClick()
+        assertEquals("b", added)
+        // Choosing closes the menu, so the opener collapses again.
+        val closed = rule.onNode(hasContentDescription("Tags")).fetchSemanticsNode()
+        assertEquals("Collapsed", closed.config[SemanticsProperties.StateDescription])
+    }
+
+    @Test fun multiCategoryPickerChipsKeepTheirOwnRemoveSemantics() {
+        var removed: String? = null
+        rule.setContent {
+            MultiCategoryPicker(
+                label = "Tags",
+                selected = listOf("a"),
+                available = listOf("a", "b"),
+                itemLabel = { it },
+                onAdd = {},
+                onRemove = { removed = it },
+            )
+        }
+        // The chip is its own node, not merged into the opener: the opener
+        // carries no chip text, and tapping the chip removes it.
+        val opener = rule.onNode(hasContentDescription("Tags")).fetchSemanticsNode()
+        val openerTexts = if (SemanticsProperties.Text in opener.config) {
+            opener.config[SemanticsProperties.Text].map { it.text }
+        } else {
+            emptyList()
+        }
+        assertTrue("a" !in openerTexts, "chip leaked into opener node: $openerTexts")
+        rule.onNodeWithText("a").performClick()
+        assertEquals("a", removed)
     }
 }
