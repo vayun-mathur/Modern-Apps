@@ -106,7 +106,9 @@ internal suspend fun CameraViewModel.prepareVideoSession(): VideoSessionPrep {
 
 /** Resolves codec selection (AV1 > HEVC > AVC) + fps/stabilization/quality tuning. */
 internal fun CameraViewModel.resolveVideoChoices(cameraInfo: androidx.camera.core.CameraInfo): VideoChoices {
-    val selectedCodec = videoCodecMutable.value
+    // Bind-time snapshot, not the live desired flows: a Settings change made
+    // mid-recording must not leak into any (re)bind until the recording stops.
+    val selectedCodec = bindTimeSettings.value.videoCodec
     // Respect user setting with fallback: AV1 > HEVC > AVC priority for availability check.
     // If selected codec isn't available, fall back to next best available.
     val useAv1 = selectedCodec == VideoCodec.AV1 &&
@@ -115,7 +117,7 @@ internal fun CameraViewModel.resolveVideoChoices(cameraInfo: androidx.camera.cor
         CodecSupport.isHevcEncoderAvailable && hevcSupportedByCamera(cameraInfo)
     // Audio codec follows the user setting with the video-codec fallback style:
     // Opus only when chosen AND the Recorder reports an Opus encoder, else AAC.
-    val useOpus = audioCodecMutable.value == AudioCodec.OPUS &&
+    val useOpus = bindTimeSettings.value.audioCodec == AudioCodec.OPUS &&
         CodecSupport.isOpusAudioEncoderAvailable
     // HLG10 (10-bit HDR) when the camera's video pipeline supports it. Uses the default
     // HEVC/H.264 codec (AV1 stays off). Preview and VideoCapture must share the dynamic
@@ -339,7 +341,7 @@ internal fun CameraViewModel.buildVideoCapture(
     val choices = session.choices
     val recorderBuilder = Recorder.Builder()
         .setQualitySelector(choices.qualitySelector)
-        .setAudioSource(audioInputSourceMutable.value.specValue)
+        .setAudioSource(bindTimeSettings.value.audioInputSource.specValue)
         .setTargetVideoEncodingBitRate(choices.videoEncodingBitRate)
         .setTargetAudioEncodingBitRate(choices.audioEncodingBitRate)
         .setTargetAudioChannelCount(choices.audioChannelCount)
@@ -349,7 +351,7 @@ internal fun CameraViewModel.buildVideoCapture(
     else recorderBuilder.setAudioMimeType(MediaFormat.MIMETYPE_AUDIO_AAC)
     val captureBuilder = VideoCapture.Builder(recorderBuilder.build())
         .setMirrorMode(
-            if (mirrorFrontMutable.value) MirrorMode.MIRROR_MODE_ON_FRONT_ONLY
+            if (bindTimeSettings.value.mirrorFront) MirrorMode.MIRROR_MODE_ON_FRONT_ONLY
             else MirrorMode.MIRROR_MODE_OFF
         )
         .setDynamicRange(dynamicRange)

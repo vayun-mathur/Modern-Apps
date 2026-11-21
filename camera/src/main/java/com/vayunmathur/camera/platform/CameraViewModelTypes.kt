@@ -93,6 +93,21 @@ enum class AudioInputSource(
     ),
 }
 
+/**
+ * The bind-time recording settings snapshot: video/audio codec, audio source and
+ * front mirroring are baked into the Recorder/VideoCapture when the session binds
+ * and cannot change mid-recording. The user's chosen (desired) values live in the
+ * individual CameraViewModel flows and persist immediately; this snapshot is what
+ * a bind actually uses, held unchanged while a recording is in progress and
+ * released to the desired values when it stops (see CameraViewModel.bindTimeSettings).
+ */
+data class BindTimeSettings(
+    val videoCodec: VideoCodec,
+    val audioCodec: AudioCodec,
+    val audioInputSource: AudioInputSource,
+    val mirrorFront: Boolean,
+)
+
 /** Zoom-label tuning: sub-1x threshold, decimal scaling, near-integer snap tolerance. */
 private const val ZOOM_SUB_UNIT_MAX = 1f
 private const val ZOOM_DECIMAL_SCALE = 10f

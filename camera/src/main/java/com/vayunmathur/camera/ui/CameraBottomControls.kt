@@ -15,7 +15,10 @@ import com.vayunmathur.camera.platform.captureVideoSnapshot
 import com.vayunmathur.camera.platform.startBurst
 import com.vayunmathur.camera.platform.stopBurst
 import com.vayunmathur.camera.platform.togglePauseRecording
+import androidx.compose.ui.res.stringResource
+import com.vayunmathur.camera.R
 import com.vayunmathur.library.ui.ExternalIntents
+import com.vayunmathur.library.ui.rememberMessenger
 import com.vayunmathur.library.util.NavBackStack
 
 /**
@@ -73,11 +76,19 @@ internal fun CameraBottomControls(
             }
         }.onFailure { Log.status("CameraScreen", "Could not open image viewer", it) }
     }
+    // Mode switches rebind the session, which would stop an active recording:
+    // gated in the ViewModel and explained here instead of silently killing the take.
+    val messenger = rememberMessenger()
+    val switchBlockedNote = stringResource(R.string.switch_blocked_while_recording)
+    val onModeSelected: (CameraMode) -> Unit = { mode ->
+        if (state.isRecording && mode != cameraMode) messenger.show(switchBlockedNote)
+        else viewModel.switchCameraMode(mode)
+    }
     val onPickerChanged: (Boolean) -> Unit = { photo ->
         if (photo) {
-            viewModel.switchCameraMode(CameraMode.PHOTO)
+            onModeSelected(CameraMode.PHOTO)
         } else {
-            viewModel.switchCameraMode(CameraMode.VIDEO)
+            onModeSelected(CameraMode.VIDEO)
         }
     }
 
@@ -110,7 +121,7 @@ internal fun CameraBottomControls(
                 isPhotoType = state.isPhotoType,
                 sloMoSupported = state.sloMoSupported,
                 captureForResult = onCaptureResult != null,
-                onModeSelected = { viewModel.switchCameraMode(it) },
+                onModeSelected = onModeSelected,
                 iconRotation = animatedRotation,
                 onPickerChanged = onPickerChanged,
                 onSettingsClick = { backStack.add(Route.Settings) },

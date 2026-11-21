@@ -56,6 +56,7 @@ import com.vayunmathur.camera.platform.retrySessionBind
 import com.vayunmathur.camera.platform.toggleNightModeOverride
 import com.vayunmathur.camera.R
 import com.vayunmathur.library.ui.ErrorState
+import com.vayunmathur.library.ui.rememberMessenger
 import com.vayunmathur.library.ui.R as UiR
 
 /** Maps the CameraX selector facing int to the pure lens-facing model. */
@@ -279,11 +280,18 @@ internal fun BoxWithConstraintsScope.CameraPreviewBox(
     // below the settings column so its controls stay visually on top.
     TapToFocus(state = tapToFocusState, modifier = previewSize)
 
+    // A lens switch rebinds the session, which would stop an active recording:
+    // gated in the ViewModel and explained here instead of silently killing the take.
+    val lensMessenger = rememberMessenger()
+    val lensBlockedNote = stringResource(R.string.switch_blocked_while_recording)
     CameraSettingsColumn(
         activeSetting = state.activeSetting,
         availableLenses = state.availableLenses.filter { it.facing == currentLensFacing(state.lensFacing) },
         selectedLens = state.selectedLens,
-        onLensSelected = { viewModel.selectLens(it) },
+        onLensSelected = { lens ->
+            if (state.isRecording && lens != state.selectedLens) lensMessenger.show(lensBlockedNote)
+            else viewModel.selectLens(lens)
+        },
         zoomRatio = state.zoomRatio,
         availableZoomLevels = state.availableZoomLevels,
         onZoomSelected = { viewModel.setZoomRatio(it) },

@@ -377,6 +377,42 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
         .runningFold(true) { held, gate -> if (gate.capturing) held else gate.compatible }
         .stateIn(viewModelScope, SharingStarted.Eagerly, true)
 
+    /** The user's chosen bind-time settings, before any recording deferral. */
+    private val desiredBindSettings = combine(
+        videoCodecMutable, audioCodecMutable, audioInputSourceMutable, mirrorFrontMutable
+    ) { video, audio, source, mirror -> BindTimeSettings(video, audio, source, mirror) }
+
+    /**
+     * The bind-time settings a session bind must actually use. Codec, audio source and
+     * mirroring are fixed when the Recorder/VideoCapture is built, so changing them used
+     * to rebind the session mid-recording: teardown stopped the active recording with no
+     * warning and the user lost the take believing it continued. While recording, this
+     * snapshot is held at the bound values (the desired values still persist and show in
+     * Settings); when the recording stops it releases to the desired values, whose change
+     * is the session-effect key that rebinds for the next recording. Same held-value
+     * pattern as [zslCompatible] while a still is in flight.
+     */
+    val bindTimeSettings = combine(desiredBindSettings, isRecordingMutable) { desired, recording ->
+        BindSettingsGate(desired, recording)
+    }
+        .runningFold(
+            BindTimeSettings(
+                CodecSupport.defaultVideoCodec, AudioCodec.AAC, AudioInputSource.CAMCORDER, true
+            )
+        ) { held, gate -> if (gate.recording) held else gate.settings }
+        .stateIn(
+            viewModelScope, SharingStarted.Eagerly,
+            BindTimeSettings(
+                CodecSupport.defaultVideoCodec, AudioCodec.AAC, AudioInputSource.CAMCORDER, true
+            )
+        )
+
+    /** True while a bind-time setting has been changed mid-recording and awaits the stop. */
+    val deferredBindSettingsPending = combine(
+        desiredBindSettings, bindTimeSettings, isRecordingMutable
+    ) { desired, applied, recording -> recording && desired != applied }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
     // Whether to offer the vendor NIGHT extension. We optimistically probe with the
     // isSessionConfigSupported check, but the authoritative signal is the actual bind: if
     // the night preview session ever fails to bind on this device, we remember that (persisted, with a
@@ -637,6 +673,11 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
     // Last-capture persistence lives in CameraSettings.kt as an extension.
 
     fun switchCameraMode(newMode: CameraMode) {
+        // Mid-recording mode switches rebind the session, whose teardown stops the
+        // active recording. Unlike the persisted bind-time settings they cannot be
+        // deferred (a mode jump on stop would surprise), so the switch is gated
+        // while recording; the UI explains why. Same-mode taps stay harmless.
+        if (isRecordingMutable.value && newMode != cameraModeMutable.value) return
         // A pending shutter timer belongs to the old mode: firing capturePhoto() into the
         // new session would capture unprompted (and with the wrong use cases bound).
         if (newMode != cameraModeMutable.value) {
@@ -656,6 +697,9 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
     fun flipCamera() {
         // Disallow flipping while in Slo-Mo — it's back-camera only, true HFR.
         if (cameraModeMutable.value == CameraMode.SLOW_MO) return
+        // A flip rebinds the session and teardown would stop an active recording
+        // (the shutter row already hides flip while recording; this is the backstop).
+        if (isRecordingMutable.value) return
         lensFacingMutable.value = if (lensFacingMutable.value == CameraSelector.LENS_FACING_BACK)
             CameraSelector.LENS_FACING_FRONT else CameraSelector.LENS_FACING_BACK
         // Preserve the lens family across the flip: e.g. UW back -> front lens,
@@ -677,6 +721,9 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
      * ignored so a stale UI entry can never crash a bind.
      */
     fun selectLens(lens: com.vayunmathur.camera.domain.PhysicalLens) {
+        // A lens switch rebinds the session and teardown would stop an active
+        // recording; gated while recording (the lens bar explains why in the UI).
+        if (isRecordingMutable.value) return
         if (lens.facing != (
             if (lensFacingMutable.value == CameraSelector.LENS_FACING_BACK)
                 com.vayunmathur.camera.domain.LensFacing.BACK
@@ -744,3 +791,6 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
 
 /** One [CameraViewModel.zslCompatible] input sample: wanted value plus whether a shot is in flight. */
 internal class ZslGate(val compatible: Boolean, val capturing: Boolean)
+
+/** One [CameraViewModel.bindTimeSettings] input sample: desired settings plus recording state. */
+internal class BindSettingsGate(val settings: BindTimeSettings, val recording: Boolean)

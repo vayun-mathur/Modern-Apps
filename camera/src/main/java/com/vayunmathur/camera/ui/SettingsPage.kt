@@ -78,6 +78,13 @@ fun <T : NavKey> SettingsPage(backStack: NavBackStack<T>, viewModel: CameraViewM
     val context = LocalContext.current
     val messenger = rememberMessenger()
     val saveLocationError = stringResource(R.string.settings_save_location_error)
+    // Bind-time settings (codec/audio/mirror) changed mid-recording are persisted
+    // by their setters but deferred by the ViewModel until the recording stops;
+    // say so instead of letting the user believe the take switched — or died.
+    val deferredNote = stringResource(R.string.setting_applies_after_recording)
+    val noteIfDeferred: () -> Unit = {
+        if (viewModel.isRecording.value) messenger.show(deferredNote)
+    }
 
     val requestLocation = rememberPermissionRequest(
         Manifest.permission.ACCESS_FINE_LOCATION
@@ -180,6 +187,7 @@ fun <T : NavKey> SettingsPage(backStack: NavBackStack<T>, viewModel: CameraViewM
                                     selected = codec == videoCodec,
                                     onClick = {
                                         viewModel.setVideoCodec(codec)
+                                        noteIfDeferred()
                                         expanded = false
                                     },
                                     text = {
@@ -253,6 +261,7 @@ fun <T : NavKey> SettingsPage(backStack: NavBackStack<T>, viewModel: CameraViewM
                                     selected = codec == effectiveAudioCodec,
                                     onClick = {
                                         viewModel.setAudioCodec(codec)
+                                        noteIfDeferred()
                                         audioCodecExpanded = false
                                     },
                                     text = {
@@ -304,6 +313,7 @@ fun <T : NavKey> SettingsPage(backStack: NavBackStack<T>, viewModel: CameraViewM
                                 selected = source == audioInputSource,
                                 onClick = {
                                     viewModel.setAudioInputSource(source)
+                                    noteIfDeferred()
                                     audioExpanded = false
                                 },
                                 text = {
@@ -327,7 +337,7 @@ fun <T : NavKey> SettingsPage(backStack: NavBackStack<T>, viewModel: CameraViewM
                 SettingsSwitchRow(
                     title = stringResource(R.string.settings_mirror_front_description),
                     checked = mirrorFront,
-                    onCheckedChange = { viewModel.setMirrorFront(it) },
+                    onCheckedChange = { viewModel.setMirrorFront(it); noteIfDeferred() },
                 )
             }
 

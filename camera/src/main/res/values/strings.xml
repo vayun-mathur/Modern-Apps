@@ -53,6 +53,12 @@
     <!-- SettingsPage: summary explaining edge-sharpening toggle -->
     <string name="settings_edge_sharpening_description">Sharpen edges in photos and video (turn off for a natural look)</string>
 
+    <!-- Messenger note when a bind-time setting is changed mid-recording: it is saved
+         and takes effect on the next recording, the current one continues untouched -->
+    <string name="setting_applies_after_recording">Saved — applies after this recording</string>
+    <!-- Messenger note when a mode/lens switch is tapped mid-recording and blocked -->
+    <string name="switch_blocked_while_recording">Stop the recording first to switch</string>
+
     <!-- Video codec settings (SettingsPage) -->
     <!-- SettingsPage: section header for video codec selection -->
     <string name="settings_video_codec">Video codec</string>

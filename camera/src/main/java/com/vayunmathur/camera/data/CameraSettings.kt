@@ -85,6 +85,8 @@ fun CameraViewModel.setFlashMode(mode: FlashMode) {
 /**
  * Toggle horizontal mirroring of the front-camera preview and saved photo/video (issue #632).
  * Takes effect on the next capture; the preview updates immediately via the UI layer.
+ * Mid-recording the value persists but the bound session keeps the old MirrorMode
+ * (bindTimeSettings) until the recording stops — it never rebinds under a take.
  */
 fun CameraViewModel.setMirrorFront(enabled: Boolean) {
     mirrorFrontMutable.value = enabled
