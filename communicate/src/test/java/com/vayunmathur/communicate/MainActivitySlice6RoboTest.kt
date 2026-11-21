@@ -1,6 +1,5 @@
 package com.vayunmathur.communicate
 
-import android.Manifest
 import android.content.Intent
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -15,6 +14,7 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import org.junit.Rule
 import org.junit.runner.RunWith
@@ -31,8 +31,8 @@ import org.robolectric.annotation.Config
  * hooks (`userLeaving()` dispatches `onUserLeaveHint`, `newIntent(intent)` dispatches
  * `onNewIntent`) — no production change, no reflection.
  *
- * Covers what only an activity can exercise: the notification-permission gate in
- * [MainActivity.onCreateBeforeContent], the picture-in-picture gating in
+ * Covers what only an activity can exercise: the no-permission-ask-at-startup
+ * contract of [MainActivity.onCreateBeforeContent], the picture-in-picture gating in
  * [MainActivity.onUserLeaveHint] (driven through the real [InAppCallRegistry] state
  * machine), and [MainActivity.onNewIntent] deep-link delivery into the nav graph.
  */
@@ -68,11 +68,13 @@ class MainActivitySlice6RoboTest {
     }
 
     @Test
-    fun launchRequestsNotificationPermission() {
-        val requested = shadowOf(composeRule.activity).lastRequestedPermission
-        assertEquals(
-            listOf(Manifest.permission.POST_NOTIFICATIONS),
-            requested.requestedPermissions.toList(),
+    fun launchDoesNotRequestNotificationPermission() {
+        // Deliberate contract (e94deeb00): no POST_NOTIFICATIONS ask on the
+        // first frame — no startup permission spam. Robolectric records no
+        // permission request at all when launching.
+        assertNull(
+            shadowOf(composeRule.activity).lastRequestedPermission,
+            "launch must not request POST_NOTIFICATIONS (or any permission) at startup",
         )
     }
 

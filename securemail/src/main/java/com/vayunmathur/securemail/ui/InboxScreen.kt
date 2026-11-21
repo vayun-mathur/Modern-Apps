@@ -37,7 +37,6 @@ import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.ErrorState
 import com.vayunmathur.library.ui.TextButton
-import com.vayunmathur.library.ui.friendlyErrorMessage
 import com.vayunmathur.library.ui.TopAppBar
 import com.vayunmathur.library.ui.rememberMessenger
 import com.vayunmathur.library.ui.R as UiR
@@ -118,9 +117,14 @@ fun InboxScreen(
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
             state.error?.let {
+                // state.error is already user-facing: MailViewModel stores
+                // authored domain messages verbatim and maps genuine
+                // exceptions through friendlyError before storing. Render it
+                // as-is — re-mapping here would replace authored text (e.g.
+                // "Relay offline — kept in outbox.") with generic wording.
                 ErrorState(
                     title = stringResource(R.string.inbox_something_went_wrong),
-                    message = friendlyErrorMessage(it),
+                    message = it,
                     retryLabel = stringResource(UiR.string.retry),
                     onRetry = actions.onRetry,
                 )

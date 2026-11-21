@@ -199,6 +199,20 @@ class MailViewModel(
         passphraseCache ?: passphraseLoader()?.also { passphraseCache = it }
         ?: error("No key passphrase stored — restore from your recovery passphrase.")
 
+    /**
+     * Maps a failed operation to the text stored in [MailUiState.error].
+     *
+     * This module raises its own known domain conditions with `error(...)`
+     * (relay offline, address taken, disabled sender, key changed, no stored
+     * passphrase, ... in this class and [AliasController]): those messages
+     * are user-authored and actionable, so keep them verbatim. Every other
+     * throwable is a genuine caught exception — never surface its raw text,
+     * map it through [friendlyError] instead.
+     */
+    private fun Throwable.toStateError(): String =
+        (this as? IllegalStateException)?.message?.takeIf { it.isNotBlank() }
+            ?: getApplication<Application>().friendlyError(this)
+
     init {
         config.settings
             .onEach { s ->
@@ -273,7 +287,7 @@ class MailViewModel(
                 },
                 onFailure = {
                     Log.status(TAG, "claim failed", it)
-                    state.copy(busy = false, error = getApplication<Application>().friendlyError(it))
+                    state.copy(busy = false, error = it.toStateError())
                 },
             )
         }
@@ -293,7 +307,7 @@ class MailViewModel(
                 onSuccess = { state.copy(busy = false, message = "Alias $it created.") },
                 onFailure = {
                     Log.status(TAG, "createAlias failed", it)
-                    state.copy(busy = false, error = getApplication<Application>().friendlyError(it))
+                    state.copy(busy = false, error = it.toStateError())
                 },
             )
         }
@@ -574,7 +588,7 @@ class MailViewModel(
                 },
                 onFailure = {
                     Log.status(TAG, "send failed", it)
-                    state.copy(busy = false, error = getApplication<Application>().friendlyError(it))
+                    state.copy(busy = false, error = it.toStateError())
                         .also { onDone(false) }
                 },
             )
