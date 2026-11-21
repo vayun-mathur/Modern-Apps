@@ -32,6 +32,11 @@ import com.vayunmathur.camera.platform.refreshCapabilities
  *   only touches the HFR Recorder built here.
  */
 suspend fun CameraViewModel.setupHighSpeedSession(): Boolean {
+    // Phase 5: evaluate/log the Camera2 slo-mo decision when its gate is
+    // on. It never routes the recording today (SloMoEnginePolicy keeps
+    // CameraX while the recording engine is uncoupled/unverified), so the
+    // CameraX setup below is unchanged in every configuration.
+    evaluateCamera2SloMoDecision()
     return try {
         val session = prepareHighSpeedSession() ?: return false
         if (!bindHfrLadder(session)) return false

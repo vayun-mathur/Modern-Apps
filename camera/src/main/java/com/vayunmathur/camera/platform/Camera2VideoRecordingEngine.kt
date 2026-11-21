@@ -57,6 +57,13 @@ data class CustomRecordingConfig(
     val width: Int,
     val height: Int,
     val fps: Int = 30,
+    /**
+     * Rate frames are captured at, when it differs from the playback
+     * [fps] (Phase-5 slo-mo: 120/240 captured, 30 played back). Equal to
+     * [fps] for normal recording; the encoder is then configured with
+     * `KEY_CAPTURE_RATE = captureFps`, `KEY_FRAME_RATE = fps`.
+     */
+    val captureFps: Int = fps,
     val videoMime: String = MediaFormat.MIMETYPE_VIDEO_AVC,
     val audioSampleRate: Int = 48_000,
     val audioBitrateBps: Int = 128_000,
@@ -217,6 +224,11 @@ class Camera2VideoRecordingEngine(
                 )
                 setInteger(MediaFormat.KEY_BIT_RATE, controller.currentBitrateBps)
                 setInteger(MediaFormat.KEY_FRAME_RATE, config.fps)
+                // Slo-mo (Phase 5): capture faster than playback so the
+                // encoder stretches sample timestamps into a slow MP4.
+                if (config.captureFps != config.fps) {
+                    setInteger(MediaFormat.KEY_CAPTURE_RATE, config.captureFps)
+                }
                 setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, config.iFrameIntervalSec)
             }
         videoCodec = MediaCodec.createEncoderByType(config.videoMime).apply {
@@ -303,7 +315,7 @@ class Camera2VideoRecordingEngine(
                                 addTarget(reader.surface)
                                 set(
                                     CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE,
-                                    android.util.Range(config.fps, config.fps)
+                                    android.util.Range(config.captureFps, config.captureFps)
                                 )
                             }.build()
                             try {

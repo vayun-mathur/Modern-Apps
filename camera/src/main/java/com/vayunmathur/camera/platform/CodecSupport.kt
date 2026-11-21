@@ -78,6 +78,34 @@ object CodecSupport {
     }
 
     /**
+     * True when some encoder for [mimeType] supports [fps] at
+     * [width]x[height], ignoring bitrate. Used by the Phase-5 slo-mo
+     * decision: an encoder that cannot take 120/240 fps input at the
+     * high-speed size cannot record slo-mo, whatever its bitrate range.
+     */
+    fun supportsVideoFrameRate(
+        mimeType: String,
+        width: Int,
+        height: Int,
+        fps: Int,
+    ): Boolean = try {
+        val list = android.media.MediaCodecList(android.media.MediaCodecList.REGULAR_CODECS)
+        list.codecInfos.any { info ->
+            if (!info.isEncoder) return@any false
+            val caps = try {
+                info.getCapabilitiesForType(mimeType)
+            } catch (_: IllegalArgumentException) {
+                return@any false
+            }
+            val video = caps.videoCapabilities ?: return@any false
+            video.isSizeSupported(width, height) &&
+                video.getSupportedFrameRatesFor(width, height).contains(fps.toDouble())
+        }
+    } catch (_: Exception) {
+        false
+    }
+
+    /**
      * Default recording codec (issue #757): HEVC when the Recorder supports it, else AVC.
      * AV1 hardware encoders stall on several devices, so AV1 stays opt-in via Settings.
      */

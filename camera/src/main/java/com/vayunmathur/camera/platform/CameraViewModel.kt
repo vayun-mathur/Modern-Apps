@@ -171,6 +171,21 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
     }
 
     /**
+     * Gate for the Camera2 slo-mo path (Phase 5). Default OFF — SLOW_MO
+     * stays on the CameraX high-speed session and the Camera2 decision in
+     * `Camera2SloMoGlue` is not even evaluated. In-memory only;
+     * `SloMoEnginePolicy` further requires a constrained-HFR lens, a
+     * capable encoder and a coupled, device-verified recording engine.
+     */
+    internal val camera2SloMoEnabledMutable = MutableStateFlow(false)
+    val camera2SloMoEnabled = camera2SloMoEnabledMutable.asStateFlow()
+
+    /** Turns the Camera2 slo-mo gate on/off (SLOW_MO only; see SloMoEnginePolicy). */
+    fun setCamera2SloMoEnabled(enabled: Boolean) {
+        camera2SloMoEnabledMutable.value = enabled
+    }
+
+    /**
      * The live Camera2 session while the gated preview is composed
      * (Phase 4a stills), registered by `Camera2Preview`; null otherwise.
      * The shutter glue reads it synchronously — it is only ever set/cleared

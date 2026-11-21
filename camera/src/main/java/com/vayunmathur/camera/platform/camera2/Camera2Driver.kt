@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Rect
 import android.hardware.camera2.CameraCaptureSession
+import android.hardware.camera2.CameraConstrainedHighSpeedCaptureSession
 import android.hardware.camera2.CameraDevice
 import android.hardware.camera2.CameraManager
 import android.hardware.camera2.CaptureRequest
@@ -52,6 +53,20 @@ interface CaptureSessionCallback {
 interface DeviceHandle {
     val cameraId: String
     fun createCaptureSession(surfaces: List<Surface>, callback: CaptureSessionCallback)
+
+    /**
+     * Creates a constrained high-speed session (Phase 5) over [surfaces],
+     * which must be a combination the HAL advertised for high speed. The
+     * default fails the configure: silently substituting a regular session
+     * would record realtime video and call it slo-mo.
+     */
+    fun createConstrainedHighSpeedCaptureSession(
+        surfaces: List<Surface>,
+        callback: CaptureSessionCallback,
+    ) {
+        callback.onConfigureFailed()
+    }
+
     fun close()
 }
 
@@ -73,6 +88,18 @@ interface CaptureSessionHandle {
      * carries the `CaptureResult` metadata for the same frame.
      */
     fun captureStill(params: ResolvedStillParams, stillTarget: Surface, callback: StillResultCallback)
+
+    /**
+     * Issues [params] as the TEMPLATE_RECORD repeating burst on [targets]
+     * (encoder surface first, preview second) of a constrained high-speed
+     * session. Only valid on a session created via
+     * [DeviceHandle.createConstrainedHighSpeedCaptureSession]; the default
+     * throws rather than issuing a regular repeating request at HFR.
+     */
+    fun setRepeatingHighSpeed(params: ResolvedHighSpeedParams, targets: List<Surface>) {
+        throw IllegalStateException("not a constrained high-speed session")
+    }
+
     fun close()
 }
 
@@ -167,6 +194,20 @@ internal fun CaptureRequest.Builder.applyStillParams(
     }
 }
 
+/** Applies resolved high-speed fields onto a TEMPLATE_RECORD builder. */
+internal fun CaptureRequest.Builder.applyHighSpeedParams(
+    params: ResolvedHighSpeedParams,
+    targets: List<Surface>,
+) {
+    targets.forEach { addTarget(it) }
+    set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_AUTO)
+    set(CaptureRequest.CONTROL_AF_MODE, params.afMode)
+    set(CaptureRequest.CONTROL_AE_MODE, params.aeMode)
+    // Exact fixed range: no AE wandering to a lower rate mid-recording.
+    set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, params.aeTargetFpsRange)
+    set(CaptureRequest.FLASH_MODE, params.flashMode)
+}
+
 /** Extracts the pure metadata shape from a completed capture result. */
 internal fun TotalCaptureResult.toRawStillMetadata(): RawStillMetadata = RawStillMetadata(
     sensorTimestampNs = get(CaptureResult.SENSOR_TIMESTAMP),
@@ -256,6 +297,34 @@ private class AndroidDeviceHandle(
         }
     }
 
+    override fun createConstrainedHighSpeedCaptureSession(
+        surfaces: List<Surface>,
+        callback: CaptureSessionCallback,
+    ) {
+        val stateCallback = object : CameraCaptureSession.StateCallback() {
+            override fun onConfigured(session: CameraCaptureSession) =
+                callback.onConfigured(AndroidCaptureSessionHandle(device, session, handler))
+
+            override fun onConfigureFailed(session: CameraCaptureSession) =
+                callback.onConfigureFailed()
+
+            override fun onClosed(session: CameraCaptureSession) = callback.onClosed()
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            val outputs = surfaces.map { OutputConfiguration(it) }
+            val config = SessionConfiguration(
+                SessionConfiguration.SESSION_HIGH_SPEED,
+                outputs,
+                { command -> handler.post(command) },
+                stateCallback,
+            )
+            device.createCaptureSession(config)
+        } else {
+            @Suppress("DEPRECATION")
+            device.createConstrainedHighSpeedCaptureSession(surfaces, stateCallback, handler)
+        }
+    }
+
     override fun close() = device.close()
 }
 
@@ -269,6 +338,17 @@ private class AndroidCaptureSessionHandle(
         val builder = device.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
         builder.applyPreviewParams(params, target)
         session.setRepeatingRequest(builder.build(), null, handler)
+    }
+
+    override fun setRepeatingHighSpeed(params: ResolvedHighSpeedParams, targets: List<Surface>) {
+        val highSpeed = session as? CameraConstrainedHighSpeedCaptureSession
+            ?: throw IllegalStateException("not a constrained high-speed session")
+        val builder = device.createCaptureRequest(CameraDevice.TEMPLATE_RECORD)
+        builder.applyHighSpeedParams(params, targets)
+        // High-speed sessions only accept requests batched via the
+        // high-speed request list, issued as a repeating burst.
+        val requests = highSpeed.createHighSpeedRequestList(builder.build())
+        highSpeed.setRepeatingBurst(requests, null, handler)
     }
 
     override fun captureStill(

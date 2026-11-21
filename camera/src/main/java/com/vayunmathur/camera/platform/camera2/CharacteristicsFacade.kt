@@ -113,6 +113,19 @@ data class LensCharacteristicsSnapshot(
     val maxAfRegions: Int = 0,
     val maxAeRegions: Int = 0,
     /**
+     * Sizes legal for a constrained high-speed session
+     * (`StreamConfigurationMap.getHighSpeedVideoSizes`); empty when the lens
+     * advertises none. Phase 5 (slo-mo) selects the encoder/preview size
+     * exclusively from this list — a regular stream size is not a substitute.
+     */
+    val highSpeedVideoSizes: List<Size> = emptyList(),
+    /**
+     * Advertised FPS ranges keyed by high-speed size
+     * (`getHighSpeedVideoFpsRangesFor`). Only fixed ranges (lower == upper)
+     * are usable for a pinned slo-mo request; see `HighSpeedPlanner`.
+     */
+    val highSpeedFpsRangesBySize: Map<Size, List<Range<Int>>> = emptyMap(),
+    /**
      * True when `CONTROL_ZOOM_RATIO_RANGE` itself was reported, i.e. the
      * request key `CONTROL_ZOOM_RATIO` is honoured. False when [zoomRatioRange]
      * was synthesised from `SCALER_AVAILABLE_MAX_DIGITAL_ZOOM` — zoom then
@@ -134,6 +147,10 @@ data class LensCharacteristicsSnapshot(
             CameraMetadata.REQUEST_AVAILABLE_CAPABILITIES_PRIVATE_REPROCESSING in availableCapabilities
     val supportsManualSensor: Boolean
         get() = CameraMetadata.REQUEST_AVAILABLE_CAPABILITIES_MANUAL_SENSOR in availableCapabilities
+    /** True when the HAL offers `CONSTRAINED_HIGH_SPEED_VIDEO` (Phase 5). */
+    val supportsConstrainedHighSpeedVideo: Boolean
+        get() = CameraMetadata.REQUEST_AVAILABLE_CAPABILITIES_CONSTRAINED_HIGH_SPEED_VIDEO in
+            availableCapabilities
     fun hasExtension(mode: Int): Boolean = mode in availableExtensionModes
 }
 
@@ -181,6 +198,8 @@ class CharacteristicsFacade private constructor(
             maxAeRegions: Int = 0,
             supportsZoomRatioKey: Boolean = zoomRatioRange != null,
             surfaceTextureSizes: List<Size> = emptyList(),
+            highSpeedVideoSizes: List<Size> = emptyList(),
+            highSpeedFpsRangesBySize: Map<Size, List<Range<Int>>> = emptyMap(),
         ): CharacteristicsFacade = fromSnapshot(
             LensCharacteristicsSnapshot(
                 cameraId = cameraId,
@@ -209,6 +228,8 @@ class CharacteristicsFacade private constructor(
                 maxAfRegions = maxAfRegions,
                 maxAeRegions = maxAeRegions,
                 supportsZoomRatioKey = supportsZoomRatioKey,
+                highSpeedVideoSizes = highSpeedVideoSizes,
+                highSpeedFpsRangesBySize = highSpeedFpsRangesBySize,
             ),
         )
 
@@ -243,6 +264,17 @@ class CharacteristicsFacade private constructor(
                 runCatching { chars.physicalCameraIds }.getOrDefault(emptySet())
             } else {
                 emptySet()
+            }
+            // Constrained-high-speed tables live on the same stream map but
+            // are not part of the generic format summary: read them once here.
+            val streamMap = get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
+            val highSpeedSizes = runCatching {
+                streamMap?.highSpeedVideoSizes?.toList().orEmpty()
+            }.getOrDefault(emptyList())
+            val highSpeedRanges = highSpeedSizes.associateWith { size ->
+                runCatching {
+                    streamMap?.getHighSpeedVideoFpsRangesFor(size)?.toList().orEmpty()
+                }.getOrDefault(emptyList())
             }
             return fromSnapshot(
                 LensCharacteristicsSnapshot(
@@ -280,6 +312,8 @@ class CharacteristicsFacade private constructor(
                     maxAfRegions = get(CameraCharacteristics.CONTROL_MAX_REGIONS_AF) ?: 0,
                     maxAeRegions = get(CameraCharacteristics.CONTROL_MAX_REGIONS_AE) ?: 0,
                     supportsZoomRatioKey = zoomRatioRange != null,
+                    highSpeedVideoSizes = highSpeedSizes,
+                    highSpeedFpsRangesBySize = highSpeedRanges,
                 ),
             )
         }
