@@ -36,6 +36,7 @@ fun IssuesScreen(state: MaDevUiState, onOpenIssue: (GitIssue) -> Unit, onBack: (
             Modifier.fillMaxSize().padding(padding),
             verticalArrangement = Arrangement.spacedBy(Spacing.md),
         ) {
+            item { StaleBanner(state) }
             if (state.issues.isEmpty()) {
                 item {
                     EmptyState(

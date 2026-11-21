@@ -33,6 +33,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.EmptyState
+import com.vayunmathur.library.ui.ErrorState
 import com.vayunmathur.library.ui.HorizontalDivider
 import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.IconButton
@@ -65,8 +66,9 @@ private val BoardStatusHeight = 160.dp
  * shared [ModalBottomSheet] from `:library:ui` (no raw scaffold), mirroring
  * [ParkingSheet] / [LayersSheet].
  *
- * The board is ONLINE-ONLY (Transitous); a failed fetch degrades to the
- * "no departures" state rather than an error.
+ * The live overlay is ONLINE-ONLY (Transitous); a failed fetch serves the
+ * last-good board with a stale indication, or an unavailable state with
+ * retry when no last-good board exists — never a silent blank.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -137,18 +139,45 @@ fun DeparturesSheet(
                 )
                 DeparturesState.Idle -> Unit
                 is DeparturesState.Loaded -> {
-                    if (state.departures.isEmpty()) {
-                        EmptyState(
-                            title = stringResource(R.string.transit_departures_none),
+                    when {
+                        state.unavailable -> ErrorState(
+                            title = stringResource(R.string.transit_departures_unavailable_title),
+                            message = stringResource(R.string.transit_departures_unavailable_message),
+                            retryLabel = stringResource(R.string.transit_departures_retry),
+                            onRetry = onRefresh,
                             modifier = Modifier.height(BoardStatusHeight),
                         )
-                    } else {
-                        DepartureList(state.departures, now, onTrainTap)
+                        state.departures.isEmpty() -> {
+                            if (state.stale) StaleDeparturesBanner(state.fetchedAtMillis)
+                            EmptyState(
+                                title = stringResource(R.string.transit_departures_none),
+                                modifier = Modifier.height(BoardStatusHeight),
+                            )
+                        }
+                        else -> {
+                            if (state.stale) StaleDeparturesBanner(state.fetchedAtMillis)
+                            DepartureList(state.departures, now, onTrainTap)
+                        }
                     }
                 }
             }
         }
     }
+}
+
+/** Stale indication above a last-good board (or a last-good empty board). */
+@Composable
+private fun StaleDeparturesBanner(fetchedAtMillis: Long?) {
+    Text(
+        if (fetchedAtMillis != null) {
+            stringResource(R.string.transit_departures_stale_at, DepartureTime.clock(fetchedAtMillis))
+        } else {
+            stringResource(R.string.transit_departures_stale)
+        },
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.error,
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+    )
 }
 
 /**

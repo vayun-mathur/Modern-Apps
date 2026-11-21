@@ -68,6 +68,7 @@ fun HomeScreen(
                 Modifier.fillMaxSize().padding(padding),
                 verticalArrangement = Arrangement.spacedBy(Spacing.md),
             ) {
+                item { StaleBanner(state) }
                 item { PushStatusSection(state, onOpenPush) }
                 state.tests?.latest?.let { latest ->
                     item {

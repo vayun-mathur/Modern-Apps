@@ -121,6 +121,13 @@
     <!-- MainPage: BatteryBar percentage label. %1$d = battery level 0-100, e.g. 85 -->
     <string name="battery_percentage"><xliff:g id="battery_level" example="85">%1$d</xliff:g>%%</string>
 
+    <!-- MainPage: relay status chip while the live socket is connected. Short label -->
+    <string name="relay_connected">Relay connected</string>
+    <!-- MainPage: relay status chip while disconnected. %1$s = age of newest location, e.g. 5 minutes ago -->
+    <string name="relay_disconnected_last_updated">Relay offline · Last updated <xliff:g id="last_updated" example="5 minutes ago">%1$s</xliff:g></string>
+    <!-- MainPage: relay status chip while disconnected with no location received yet -->
+    <string name="relay_disconnected_no_locations">Relay offline · Locations may be out of date</string>
+
     <!-- MainPage: timestring helper for just now. Adverbial phrase, past -->
     <string name="time_just_now">just now</string>
     <!-- MainPage: timestring past minutes. %1$d = count, e.g. 5 -->

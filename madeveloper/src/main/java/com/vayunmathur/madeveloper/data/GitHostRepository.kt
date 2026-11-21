@@ -15,6 +15,9 @@ import com.vayunmathur.madeveloper.domain.TestsStatus
 import com.vayunmathur.madeveloper.domain.TreeEntry
 import java.net.URLEncoder
 
+/** A parsed payload plus provenance: [stale] means it came from the last-good disk cache. */
+data class LastGoodResult<T>(val value: T, val stale: Boolean, val fetchedAtMillis: Long?)
+
 /**
  * Reads the maproj git host through [NetworkClient] (FIRST_PARTY trust is
  * set once by the activity). Repositories, branches, commits, trees and
@@ -28,12 +31,38 @@ class GitHostRepository(
     // through NetworkClient (below); tests substitute canned host replies so
     // the parsing, caching and error behaviour above it run off-device.
     private val fetcher: suspend (String) -> String = { url -> fetchViaNetwork(url) },
+    // Disk last-good store for the outage path; null in tests that do not
+    // exercise it. The in-memory tree/file caches below stay as-is.
+    private val lastGood: LastGoodStore? = null,
 ) {
     private var treeCache: Map<String, List<TreeEntry>> = emptyMap()
     private var fileCache: Map<String, GitFile> = emptyMap()
 
+    /**
+     * Fetch [url] live, persisting the raw JSON under [key]; on any failure
+     * serve the persisted last-good instead. Rethrows when no last-good
+     * exists, so first-run outages still surface as errors.
+     */
+    private suspend fun <T> fetchLastGood(key: String, url: String, parse: (String) -> T): LastGoodResult<T> {
+        return try {
+            val text = fetchText(url)
+            val now = System.currentTimeMillis()
+            lastGood?.write(key, text, now)
+            LastGoodResult(withContext(Dispatchers.IO) { parse(text) }, stale = false, fetchedAtMillis = now)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            val cached = lastGood?.read(key) ?: throw e
+            LastGoodResult(withContext(Dispatchers.IO) { parse(cached.text) }, stale = true, fetchedAtMillis = cached.fetchedAtMillis)
+        }
+    }
+
     /** Repositories from `GET /api/repos`. */
-    suspend fun repos(): List<GitRepo> = withContext(Dispatchers.IO) { GitParsers.parseRepos(fetchText("$GIT_HOST/api/repos")) }
+    suspend fun repos(): List<GitRepo> = reposResult().value
+
+    /** Repositories with last-good provenance, for the stale indicator. */
+    suspend fun reposResult(): LastGoodResult<List<GitRepo>> =
+        fetchLastGood("repos", "$GIT_HOST/api/repos", GitParsers::parseRepos)
 
     /** Branches and recent commits from `GET /api/repos/<repo>`. */
     suspend fun repo(name: String): RepoDetail = withContext(Dispatchers.IO) {
@@ -50,18 +79,34 @@ class GitHostRepository(
     }
 
     /** CI status from `/tests.json`. */
-    suspend fun tests(): TestsStatus = withContext(Dispatchers.IO) { fetchText("$GIT_HOST/tests.json").let(GitParsers::parseTests) }
+    suspend fun tests(): TestsStatus = testsResult().value
+
+    /** CI status with last-good provenance, for the stale indicator. */
+    suspend fun testsResult(): LastGoodResult<TestsStatus> =
+        fetchLastGood("tests", "$GIT_HOST/tests.json", GitParsers::parseTests)
 
     /** Open issues from `/issues.json?view=open`. */
-    suspend fun issues(): List<GitIssue> = withContext(Dispatchers.IO) { GitParsers.parseIssues(fetchText("$GIT_HOST/issues.json?view=open")) }
+    suspend fun issues(): List<GitIssue> = issuesResult().value
+
+    /** Open issues with last-good provenance, for the stale indicator. */
+    suspend fun issuesResult(): LastGoodResult<List<GitIssue>> =
+        fetchLastGood("issues", "$GIT_HOST/issues.json?view=open", GitParsers::parseIssues)
 
     /** Open pull requests from `/prs.json`. */
-    suspend fun prs(): List<GitPr> = withContext(Dispatchers.IO) { GitParsers.parsePrs(fetchText("$GIT_HOST/prs.json")) }
+    suspend fun prs(): List<GitPr> = prsResult().value
+
+    /** Open pull requests with last-good provenance, for the stale indicator. */
+    suspend fun prsResult(): LastGoodResult<List<GitPr>> =
+        fetchLastGood("prs", "$GIT_HOST/prs.json", GitParsers::parsePrs)
 
     /** Available builds from the first-party F-Droid repo (read-only catalog). */
-    suspend fun catalog(): List<CatalogApp> = withContext(Dispatchers.IO) {
-        GitParsers.parseFdroidIndex(fetchText("$FDROID_BASE/index-v2.json"), FDROID_BASE)
-    }
+    suspend fun catalog(): List<CatalogApp> = catalogResult().value
+
+    /** Catalog with last-good provenance, for the stale indicator. */
+    suspend fun catalogResult(): LastGoodResult<List<CatalogApp>> = fetchLastGood(
+        "catalog",
+        "$FDROID_BASE/index-v2.json",
+    ) { text -> GitParsers.parseFdroidIndex(text, FDROID_BASE) }
 
     /** Tree of [path] in [repo] on [branch]; cached per repo+branch+path. */
     suspend fun tree(repo: String, branch: String, path: String): List<TreeEntry> {

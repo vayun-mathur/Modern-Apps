@@ -30,6 +30,7 @@ fun CatalogScreen(state: MaDevUiState, onBack: () -> Unit) {
             Modifier.fillMaxSize().padding(padding),
             verticalArrangement = Arrangement.spacedBy(Spacing.md),
         ) {
+            item { StaleBanner(state) }
             item {
                 DashboardSection(
                     title = "About this catalog",

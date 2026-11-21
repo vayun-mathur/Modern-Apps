@@ -71,6 +71,11 @@ internal fun MapOverlayBar(
     TopAppBarOverlay(
         onNavigateBack = null,
         actions = overlayActions,
-        title = null
+        title = {
+            RelayStatusChip(
+                relayConnected = state.relayConnected,
+                lastLocationMillis = state.lastLocationMillis,
+            )
+        }
     )
 }

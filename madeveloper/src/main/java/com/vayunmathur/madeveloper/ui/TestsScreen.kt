@@ -35,6 +35,7 @@ fun TestsScreen(state: MaDevUiState, onBack: () -> Unit) {
             Modifier.fillMaxSize().padding(padding),
             verticalArrangement = Arrangement.spacedBy(Spacing.md),
         ) {
+            item { StaleBanner(state) }
             if (state.tests == null) {
                 item {
                     EmptyState(

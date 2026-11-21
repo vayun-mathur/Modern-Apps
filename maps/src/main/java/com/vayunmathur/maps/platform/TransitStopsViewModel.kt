@@ -105,14 +105,33 @@ class TransitStopsViewModel(application: Application) : AndroidViewModel(applica
                                 .distinctBy { it.line to it.scheduledMillis }
                                 .sortedBy { it.realtimeMillis }
                         }.getOrDefault(emptyList())
-                        val deps = offline.ifEmpty {
-                            if (ConnectivityMonitor.isOnline(getApplication())) {
-                                TransitousDataSource.departures(stop.id, force = force)
-                            } else {
-                                emptyList()
-                            }
+                        if (offline.isNotEmpty()) {
+                            emit(DeparturesState.Loaded(stop, offline))
+                        } else if (ConnectivityMonitor.isOnline(getApplication())) {
+                            val result = TransitousDataSource.departuresResult(stop.id, force = force)
+                            emit(
+                                DeparturesState.Loaded(
+                                    stop,
+                                    result.departures,
+                                    stale = result.stale,
+                                    unavailable = result.unavailable,
+                                    fetchedAtMillis = result.fetchedAtMillis,
+                                )
+                            )
+                        } else {
+                            // No pack schedule and no connectivity: serve any
+                            // last-good board from this session, else unavailable.
+                            val result = TransitousDataSource.cachedResult(stop.id)
+                            emit(
+                                DeparturesState.Loaded(
+                                    stop,
+                                    result.departures,
+                                    stale = result.stale,
+                                    unavailable = result.unavailable,
+                                    fetchedAtMillis = result.fetchedAtMillis,
+                                )
+                            )
                         }
-                        emit(DeparturesState.Loaded(stop, deps))
                     }.flowOn(Dispatchers.IO)
                 }
             }
@@ -242,6 +261,20 @@ sealed interface DeparturesState {
     data object Idle : DeparturesState
     /** Immutable value describing loading; carries stop. */
     data class Loading(val stop: TransitStop) : DeparturesState
-    /** Immutable value describing loaded; carries stop, departures. */
-    data class Loaded(val stop: TransitStop, val departures: List<Departure>) : DeparturesState
+
+    /**
+     * Immutable value describing loaded; carries stop, departures.
+     *
+     * [stale] means the live fetch failed and [departures] are last-good;
+     * [unavailable] means it failed with no last-good to serve. Neither is
+     * set for a genuinely empty successful board. [fetchedAtMillis] is when
+     * [departures] were fetched (the last-good time when [stale]).
+     */
+    data class Loaded(
+        val stop: TransitStop,
+        val departures: List<Departure>,
+        val stale: Boolean = false,
+        val unavailable: Boolean = false,
+        val fetchedAtMillis: Long? = null,
+    ) : DeparturesState
 }

@@ -21,6 +21,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -305,6 +308,19 @@ object Networking {
     /** True while the live socket is connected. */
     val liveConnected: Boolean get() = wsSession != null
 
+    private val _liveConnectedFlow = MutableStateFlow(false)
+
+    /**
+     * Observable form of [liveConnected] for the UI: false means the relay is
+     * unreachable, so family positions on screen may be stale rather than
+     * current. Updated only where [wsSession] is assigned/cleared.
+     */
+    val liveConnectedFlow: StateFlow<Boolean> = _liveConnectedFlow.asStateFlow()
+
+    internal fun setLiveConnected(connected: Boolean) {
+        _liveConnectedFlow.value = connected
+    }
+
     internal data class KeyResult(val status: Int, val bundle: ByteArray?)
 
     /** Reads 8 big-endian bytes at [off] back into the original Long bit pattern. */
@@ -354,6 +370,7 @@ object Networking {
                 runCatching {
                     webSocket(WS_URL) {
                         wsSession = this
+                        setLiveConnected(true)
                         sendSubscribe()
                         backoff = BACKOFF_INITIAL_MS
                         superviseConnection(connScope, outerScope, onLocations, onUwb, onRawMsg)
@@ -361,6 +378,7 @@ object Networking {
                 }.onFailure { Log.status(TAG, "live WS loop error", it) }
                 connScope.cancel()
                 wsSession = null
+                setLiveConnected(false)
                 // Fail any awaiting key lookups so their callers don't hang until timeout.
                 pendingKeyRequests.values.forEach { it.complete(null) }
                 pendingKeyRequests.clear()
@@ -376,7 +394,7 @@ object Networking {
 
     @Synchronized
     fun stopLive() {
-        liveJob?.cancel(); liveJob = null; wsSession = null
+        liveJob?.cancel(); liveJob = null; wsSession = null; setLiveConnected(false)
         pendingKeyRequests.values.forEach { it.complete(null) }
         pendingKeyRequests.clear()
         pendingResolves.values.forEach { it.complete(null) }

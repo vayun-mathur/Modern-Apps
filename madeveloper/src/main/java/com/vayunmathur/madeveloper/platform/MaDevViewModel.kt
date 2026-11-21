@@ -62,6 +62,10 @@ data class MaDevUiState(
     /** Registered but the server has not approved this device yet (socket refused 403). */
     val awaitingApproval: Boolean = false,
     val pending: List<PendingInstall> = emptyList(),
+    /** True when the git/catalog data on screen is last-good, not a live fetch. */
+    val stale: Boolean = false,
+    /** When the stale data was fetched, if known. */
+    val staleAtMillis: Long? = null,
 )
 
 /** Holds Developer state: git pages, catalog, push socket and installs. */
@@ -70,7 +74,14 @@ class MaDevViewModel(app: Application) : AndroidViewModel(app) {
     // the push socket is opened, and how a pushed APK's bytes are fetched.
     // They exist so the state machine below can run off-device; the app
     // itself always takes the defaults.
-    internal var repo: GitHostRepository = GitHostRepository()
+    internal var repo: GitHostRepository = GitHostRepository(
+        lastGood = com.vayunmathur.madeveloper.data.FileLastGoodStore(
+            File(app.filesDir, "git_host_last_good")
+        ),
+    )
+
+    /** Fetch time of the newest live data shown, for labelling kept/stale data. */
+    private var lastLiveFetchMillis: Long? = null
     internal var transportFactory: suspend (String, String?) -> DevSocketTransport =
         { url, token -> WebSocketDevTransport.connect(url, token) }
     internal var deviceRegistrar: suspend (String) -> DevRegistration =
@@ -112,21 +123,49 @@ class MaDevViewModel(app: Application) : AndroidViewModel(app) {
     fun refresh() {
         state = state.copy(loading = true, error = null)
         viewModelScope.launch {
-            try {
-                // All four host fetches run concurrently; any IOException
-                // cancels the rest and lands in the same error state.
-                coroutineScope {
-                    val repos = async { repo.repos() }
-                    val tests = async { repo.tests() }
-                    val issues = async { repo.issues() }
-                    val prs = async { repo.prs() }
-                    state = state.copy(
-                        loading = false, repos = repos.await(), tests = tests.await(),
-                        issues = issues.await(), prs = prs.await(),
-                    )
-                }
-            } catch (e: java.io.IOException) {
-                state = state.copy(loading = false, error = getApplication<Application>().friendlyError(e))
+            // Each fetch settles independently: one failing endpoint must not
+            // blank the others, and a failure with last-good (disk, or data
+            // already on screen) serves that instead of emptying the app.
+            coroutineScope {
+                val repos = async { runCatching { repo.reposResult() } }
+                val tests = async { runCatching { repo.testsResult() } }
+                val issues = async { runCatching { repo.issuesResult() } }
+                val prs = async { runCatching { repo.prsResult() } }
+                val reposR = repos.await()
+                val testsR = tests.await()
+                val issuesR = issues.await()
+                val prsR = prs.await()
+                val results = listOf(reposR, testsR, issuesR, prsR)
+                val anyStale = results.any { it.getOrNull()?.stale == true } ||
+                    (reposR.isFailure && state.repos.isNotEmpty()) ||
+                    (testsR.isFailure && state.tests != null) ||
+                    (issuesR.isFailure && state.issues.isNotEmpty()) ||
+                    (prsR.isFailure && state.prs.isNotEmpty())
+                val staleAt = results.mapNotNull { it.getOrNull() }
+                    .filter { it.stale }.mapNotNull { it.fetchedAtMillis }.maxOrNull()
+                    ?: if (anyStale) lastLiveFetchMillis else null
+                results.mapNotNull { it.getOrNull() }.filter { !it.stale }
+                    .mapNotNull { it.fetchedAtMillis }.maxOrNull()
+                    ?.let { lastLiveFetchMillis = it }
+                state = state.copy(
+                    loading = false,
+                    repos = reposR.getOrNull()?.value ?: state.repos,
+                    tests = testsR.getOrNull()?.value ?: state.tests,
+                    issues = issuesR.getOrNull()?.value ?: state.issues,
+                    prs = prsR.getOrNull()?.value ?: state.prs,
+                    stale = anyStale,
+                    staleAtMillis = if (anyStale) staleAt else null,
+                    // An error only when there is nothing (live, stale or
+                    // already on screen) to show for the headline fetch.
+                    error = if (reposR.isFailure && state.repos.isEmpty()) {
+                        getApplication<Application>().friendlyError(
+                            reposR.exceptionOrNull() as? java.io.IOException
+                                ?: java.io.IOException(reposR.exceptionOrNull()?.message)
+                        )
+                    } else {
+                        null
+                    },
+                )
             }
         }
     }
@@ -135,8 +174,22 @@ class MaDevViewModel(app: Application) : AndroidViewModel(app) {
     fun loadCatalog() {
         if (state.catalog.isNotEmpty()) return
         viewModelScope.launch {
-            try { state = state.copy(catalog = repo.catalog()) }
-            catch (e: java.io.IOException) { state = state.copy(error = getApplication<Application>().friendlyError(e)) }
+            runCatching { repo.catalogResult() }
+                .onSuccess { result ->
+                    if (!result.stale) result.fetchedAtMillis?.let { lastLiveFetchMillis = it }
+                    state = state.copy(
+                        catalog = result.value,
+                        stale = state.stale || result.stale,
+                        staleAtMillis = if (result.stale) result.fetchedAtMillis else state.staleAtMillis,
+                    )
+                }
+                .onFailure { e ->
+                    state = if (state.catalog.isEmpty()) {
+                        state.copy(error = getApplication<Application>().friendlyError(e))
+                    } else {
+                        state.copy(stale = true, staleAtMillis = state.staleAtMillis ?: lastLiveFetchMillis)
+                    }
+                }
         }
     }
 

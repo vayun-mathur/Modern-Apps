@@ -118,6 +118,10 @@ interface PersonActions {
 data class MainPageUiState(
     val usingGpsFallback: Boolean = false,
     val familyList: FamilyListUiState = FamilyListUiState(),
+    /** True while the live relay socket is connected; false means positions may be stale. */
+    val relayConnected: Boolean = true,
+    /** Epoch millis of the newest family location report, for the disconnected staleness line. */
+    val lastLocationMillis: Long? = null,
 )
 
 /**

@@ -34,6 +34,7 @@ fun PullRequestsScreen(state: MaDevUiState, onOpenPr: (GitPr) -> Unit, onBack: (
             Modifier.fillMaxSize().padding(padding),
             verticalArrangement = Arrangement.spacedBy(Spacing.md),
         ) {
+            item { StaleBanner(state) }
             if (state.prs.isEmpty()) {
                 item {
                     EmptyState(

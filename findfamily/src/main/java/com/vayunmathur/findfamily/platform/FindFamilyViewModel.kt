@@ -89,6 +89,9 @@ class FindFamilyViewModel(
     val latestLocationByUser: StateFlow<Map<Long, LocationValue>> = repository.latestLocationByUser
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
+    /** Relay socket connectivity for the top-bar status; false must not read as family offline. */
+    val relayConnected: StateFlow<Boolean> = Networking.liveConnectedFlow
+
     /** Connected people (mutual connection or awaiting our response) — the main list. */
     val connectedUsers: StateFlow<List<User>> = repository.users
         .map { list ->

@@ -33,6 +33,20 @@ import java.time.OffsetDateTime
  * and cannot be exercised at compile time; the endpoint/parse below is
  * verified by shape only.
  */
+/**
+ * A departure board plus its provenance.
+ *
+ * [stale] means [departures] are the last-good board served because the live
+ * fetch failed; [unavailable] means the fetch failed and no last-good board
+ * exists. [fetchedAtMillis] is when [departures] were actually fetched.
+ */
+data class DeparturesResult(
+    val departures: List<Departure>,
+    val stale: Boolean,
+    val unavailable: Boolean,
+    val fetchedAtMillis: Long?,
+)
+
 object TransitousDataSource {
 
     private const val BASE_URL = "https://api.maproj.org/api/transit"
@@ -55,19 +69,27 @@ object TransitousDataSource {
         "User-Agent" to "Modern-Apps-Maps/1.0",
     )
 
-    /**
-     * A cached fetch. [ok] separates "successfully fetched, genuinely empty"
-     * from "the fetch failed", so only the latter expires quickly.
-     */
-    private class Cached<T>(val value: T, val ok: Boolean) {
+    /** A successful fetch; failures never overwrite it, so it doubles as last-good. */
+    private class Cached<T>(val value: T) {
         val at: Long = System.currentTimeMillis()
-        fun isFresh(okTtlMs: Long): Boolean =
-            System.currentTimeMillis() - at < if (ok) okTtlMs else FAILURE_TTL_MS
+        fun isFresh(ttlMs: Long): Boolean = System.currentTimeMillis() - at < ttlMs
     }
 
-    // Departures cache keyed on stop id, with a short TTL (live data).
+    // Last-good departures keyed on stop id, with a short freshness TTL (live data).
     private val departuresCache = object : LinkedHashMap<String, Cached<List<Departure>>>(16, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Cached<List<Departure>>>) = size > 32
+    }
+
+    /** When each stop last failed, so failures expire after [FAILURE_TTL_MS] without erasing last-good. */
+    private val failureAt = object : LinkedHashMap<String, Long>(16, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Long>) = size > 32
+    }
+
+    private fun lastGood(stopId: String): Cached<List<Departure>>? =
+        synchronized(departuresCache) { departuresCache[stopId] }
+
+    private fun staleResult(stopId: String): DeparturesResult? = lastGood(stopId)?.let {
+        DeparturesResult(it.value, stale = true, unavailable = false, fetchedAtMillis = it.at)
     }
 
     /**
@@ -88,19 +110,46 @@ object TransitousDataSource {
      * [DEPARTURES_TTL_MS] on success and only [FAILURE_TTL_MS] on failure; pass
      * [force] (a manual refresh) to bypass the cache.
      */
-    suspend fun departures(stopId: String, force: Boolean = false): List<Departure> {
+    suspend fun departures(stopId: String, force: Boolean = false): List<Departure> =
+        departuresResult(stopId, force).departures
+
+    /**
+     * Live departures plus provenance for [stopId]. Never throws.
+     *
+     * On failure the last-good board is served with [DeparturesResult.stale]
+     * instead of blanking; only when no fetch has ever succeeded for the stop
+     * is the result [DeparturesResult.unavailable]. A genuinely empty
+     * successful board is neither stale nor unavailable.
+     */
+    suspend fun departuresResult(stopId: String, force: Boolean = false): DeparturesResult {
         if (!force) {
-            synchronized(departuresCache) {
-                departuresCache[stopId]?.let { if (it.isFresh(DEPARTURES_TTL_MS)) return it.value }
+            lastGood(stopId)?.let {
+                if (it.isFresh(DEPARTURES_TTL_MS)) {
+                    return DeparturesResult(it.value, stale = false, unavailable = false, fetchedAtMillis = it.at)
+                }
+            }
+            val failedAt = synchronized(failureAt) { failureAt[stopId] }
+            if (failedAt != null && System.currentTimeMillis() - failedAt < FAILURE_TTL_MS) {
+                return staleResult(stopId)
+                    ?: DeparturesResult(emptyList(), stale = false, unavailable = true, fetchedAtMillis = null)
             }
         }
-        val fetched = runCatching {
-            fetchStoptimes(stopId)?.stopTimes?.mapNotNull { it.toDeparture() }.orEmpty()
-        }
-        val deps = fetched.getOrDefault(emptyList())
-        synchronized(departuresCache) { departuresCache[stopId] = Cached(deps, fetched.isSuccess) }
-        return deps
+        val dto = runCatching { fetchStoptimes(stopId) }.getOrNull()
+            ?: run {
+                synchronized(failureAt) { failureAt[stopId] = System.currentTimeMillis() }
+                return staleResult(stopId)
+                    ?: DeparturesResult(emptyList(), stale = false, unavailable = true, fetchedAtMillis = null)
+            }
+        val deps = dto.stopTimes.mapNotNull { it.toDeparture() }
+        val cached = Cached(deps)
+        synchronized(departuresCache) { departuresCache[stopId] = cached }
+        synchronized(failureAt) { failureAt.remove(stopId) }
+        return DeparturesResult(deps, stale = false, unavailable = false, fetchedAtMillis = cached.at)
     }
+
+    /** Last-good board without fetching, or unavailable when none exists. For known-offline callers. */
+    fun cachedResult(stopId: String): DeparturesResult = staleResult(stopId)
+        ?: DeparturesResult(emptyList(), stale = false, unavailable = true, fetchedAtMillis = null)
 
     private suspend fun fetchDepartures(stopId: String): List<Departure> = withContext(Dispatchers.IO) {
         // Proxied via self-hosted (same object-singleton shape as the retired Google fetchers):

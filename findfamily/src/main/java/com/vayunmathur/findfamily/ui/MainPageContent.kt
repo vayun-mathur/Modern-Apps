@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import com.vayunmathur.library.ui.BottomSheetDefaults
 import com.vayunmathur.library.ui.BottomSheetScaffold
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
@@ -90,7 +91,16 @@ fun MainPageContent(
 
     if (expanded) {
         FindFamilyWideLayout(
-            map = { map() },
+            map = {
+                Box(Modifier.fillMaxSize()) {
+                    map()
+                    RelayStatusChip(
+                        relayConnected = state.relayConnected,
+                        lastLocationMillis = state.lastLocationMillis,
+                        modifier = Modifier.align(Alignment.TopStart).padding(16.dp),
+                    )
+                }
+            },
             panel = { modifier ->
                 // Always the family list: person/waypoint sheets are
                 // separate destinations over the map, on every form factor.

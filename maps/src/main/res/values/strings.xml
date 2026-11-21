@@ -295,6 +295,16 @@
     <string name="transit_departures_loading">Loading departures\u2026</string>
     <!-- Departure board: shown when no upcoming departures were found. -->
     <string name="transit_departures_none">No upcoming departures</string>
+    <!-- Departure board: live fetch failed and the board shown is the last-good one. -->
+    <string name="transit_departures_stale">Live departures unavailable — showing the last board we fetched</string>
+    <!-- Departure board: live fetch failed with the fetch time of the last-good board. %1$s = time, e.g. 5:04 PM -->
+    <string name="transit_departures_stale_at">Live departures unavailable — last updated %1$s</string>
+    <!-- Departure board: live fetch failed and no last-good board exists. -->
+    <string name="transit_departures_unavailable_title">Departures unavailable</string>
+    <!-- Departure board: explanation for the unavailable state. -->
+    <string name="transit_departures_unavailable_message">Couldn\'t load live departures. Check your connection and try again.</string>
+    <!-- Departure board: retry action for the unavailable state. -->
+    <string name="transit_departures_retry">Retry</string>
     <!-- Departure board: platform/track label. %1$s = platform name e.g. "3" -->
     <string name="transit_platform">Platform %1$s</string>
     <!-- Departure board: a cancelled trip. -->

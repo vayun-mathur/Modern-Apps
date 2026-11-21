@@ -202,6 +202,8 @@ fun MainPage(
     val usersByLocationName by ffViewModel.usersByLocationName.collectAsState()
     val userPositions by ffViewModel.latestLocationByUser.collectAsState()
 
+    val relayConnected by ffViewModel.relayConnected.collectAsState()
+
     val context = LocalContext.current
 
     // The selected contact (from the sheet route on top of the stack),
@@ -219,6 +221,10 @@ fun MainPage(
 
     val state = MainPageUiState(
         usingGpsFallback = usingGpsFallback,
+        relayConnected = relayConnected,
+        // Newest report on screen (reportedAt, not the fix's measurement
+        // time) — what "last updated" means when the relay drops.
+        lastLocationMillis = userPositions.values.maxOfOrNull { it.reportedAt.toEpochMilliseconds() },
         familyList = FamilyListUiState(
             connectedUsers = connectedUsers,
             awaitingRequestUsers = awaitingRequestUsers,
