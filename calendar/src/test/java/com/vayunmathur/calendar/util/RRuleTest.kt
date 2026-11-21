@@ -285,6 +285,49 @@ class RRuleTest {
     }
 
     @Test
+    fun testMultiOrdinalByDayMonthlyRoundTrip() {
+        // Neither occurrence is derivable from the supplied start date, so an
+        // identical emit proves the parsed list itself was preserved.
+        for (input in listOf(
+            "FREQ=MONTHLY;INTERVAL=1;BYDAY=2TU,4TU",
+            "FREQ=MONTHLY;INTERVAL=1;BYDAY=1MO,-1FR",
+            "FREQ=MONTHLY;INTERVAL=2;BYDAY=2TU,4TU;COUNT=10",
+        )) {
+            val parsed = RRule.parse(input, timeZone)
+            assertTrue(parsed is RRule.EveryXMonths, input)
+            assertEquals(input, parsed.asString(LocalDate(2025, 1, 1), timeZone), input)
+        }
+    }
+
+    @Test
+    fun testSingleOrdinalByDayMonthlyRoundTripUnchanged() {
+        for (input in listOf(
+            "FREQ=MONTHLY;INTERVAL=1;BYDAY=2TU",
+            "FREQ=MONTHLY;INTERVAL=1;BYDAY=-1MO",
+        )) {
+            val parsed = RRule.parse(input, timeZone)
+            assertTrue(parsed is RRule.EveryXMonths, input)
+            assertEquals(input, parsed.asString(LocalDate(2025, 1, 1), timeZone), input)
+        }
+        // Constructed (not parsed) rules still derive their single BYDAY from
+        // the start date, as before.
+        val derived = RRule.EveryXMonths(1, 1, RRule.EndCondition.Never)
+            .asString(LocalDate(2025, 1, 14), timeZone) // second Tuesday
+        assertTrue(derived.contains("BYDAY=2TU"), derived)
+    }
+
+    @Test
+    fun testImportedMonthlyByMonthDayRoundTripsUnchanged() {
+        // Calendar keeps RFC semantics for imported rules: BYMONTHDAY=31 is
+        // not rewritten here. Clamp encoding is gated to todo-mirror rules
+        // at emission (see todo Recurrence.toRRule).
+        val input = "FREQ=MONTHLY;INTERVAL=1;BYMONTHDAY=31"
+        val parsed = RRule.parse(input, timeZone)
+        assertTrue(parsed is RRule.EveryXMonths)
+        assertEquals(input, parsed.asString(LocalDate(2025, 1, 31), timeZone))
+    }
+
+    @Test
     fun testRoundTripParsing() {
         val original = RRule.EveryXWeeks(
             weeks = 2,

@@ -1,10 +1,16 @@
 package com.vayunmathur.todo.domain
 
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
+import kotlinx.datetime.number
+import kotlinx.datetime.plus
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class RecurrenceTest {
     private fun d(y: Int, m: Int, day: Int) = LocalDate(y, m, day)
@@ -90,6 +96,45 @@ class RecurrenceTest {
     }
 
     @Test
+    fun `mirror rule clamps monthly on the 31st instead of skipping February`() {
+        val rule = Recurrence.Monthly().toRRule(d(2025, 1, 31))!!
+        assertEquals("FREQ=MONTHLY;BYMONTHDAY=31,-1", rule)
+        // RFC expansion of the emitted rule (what the calendar provider does):
+        // February gets an occurrence, and the anchor day returns afterwards.
+        val occurrences = expandRfc(rule, d(2025, 1, 31), d(2025, 1, 1), d(2025, 4, 30))
+        assertEquals(
+            listOf(d(2025, 1, 31), d(2025, 2, 28), d(2025, 3, 31), d(2025, 4, 30)),
+            occurrences,
+        )
+        // The un-encoded storage form keeps RFC skip semantics, proving the
+        // clamp is gated to mirror emission rather than applied generally.
+        assertFalse(
+            d(2025, 2, 28) in expandRfc(
+                Recurrence.Monthly(1, 31).serialize(), d(2025, 1, 31), d(2025, 2, 1), d(2025, 2, 28),
+            ),
+        )
+    }
+
+    @Test
+    fun `mirror rule clamps monthly on the 30th without adding the 31st`() {
+        val rule = Recurrence.Monthly(1, 30).toRRule(d(2025, 1, 30))!!
+        assertEquals("FREQ=MONTHLY;BYMONTHDAY=30,-1;BYSETPOS=1", rule)
+        assertEquals(
+            listOf(d(2025, 2, 28), d(2025, 3, 30)),
+            expandRfc(rule, d(2025, 1, 30), d(2025, 2, 1), d(2025, 3, 31)),
+        )
+    }
+
+    @Test
+    fun `mirror rule clamps yearly Feb 29 to Feb 28 in non-leap years`() {
+        val rule = Recurrence.Yearly().toRRule(d(2024, 2, 29))!!
+        assertEquals("FREQ=YEARLY;BYMONTH=2;BYMONTHDAY=29,-1", rule)
+        val in2025 = expandRfc(rule, d(2024, 2, 29), d(2025, 1, 1), d(2025, 12, 31))
+        assertEquals(listOf(d(2025, 2, 28)), in2025)
+        assertTrue(d(2024, 2, 29) in expandRfc(rule, d(2024, 2, 29), d(2024, 1, 1), d(2024, 12, 31)))
+    }
+
+    @Test
     fun `garbage parses to null and bad intervals are clamped`() {
         assertNull(Recurrence.parse(null))
         assertNull(Recurrence.parse(""))
@@ -108,4 +153,58 @@ class RecurrenceTest {
         assertEquals(d(2026, 3, 31), Recurrence.Monthly(1, Recurrence.LAST_DAY).firstOnOrAfter(today))
         assertEquals(d(2026, 3, 31), Recurrence.Monthly(1, Recurrence.LAST_DAY).firstOnOrAfter(d(2026, 3, 31)))
     }
+}
+
+/**
+ * Minimal RFC 5545 expansion of the monthly/yearly BYMONTHDAY shapes the
+ * calendar mirror emits — BYMONTHDAY (incl. -1 = last day), BYMONTH and
+ * BYSETPOS over INTERVAL steps — mirroring what the calendar provider does
+ * with the stored RRULE. Invalid days (e.g. Feb 31) are skipped, per RFC.
+ */
+private fun expandRfc(rrule: String, dtstart: LocalDate, from: LocalDate, to: LocalDate): List<LocalDate> {
+    val parts = rrule.split(';').associate { it.substringBefore('=') to it.substringAfter('=') }
+    val interval = parts["INTERVAL"]?.toIntOrNull() ?: 1
+    val byMonthDay = parts["BYMONTHDAY"]?.split(',')?.map { it.toInt() }
+    val bySetPos = parts["BYSETPOS"]?.split(',')?.map { it.toInt() }.orEmpty()
+
+    fun monthCandidates(year: Int, month: Int): List<LocalDate> {
+        val first = LocalDate(year, month, 1)
+        val length = first.plus(1, DateTimeUnit.MONTH).minus(1, DateTimeUnit.DAY).day
+        val days = (byMonthDay ?: listOf(dtstart.day)).mapNotNull { wanted ->
+            when {
+                wanted > 0 -> wanted.takeIf { it <= length }
+                wanted < 0 -> (length + 1 + wanted).takeIf { it >= 1 }
+                else -> null
+            }
+        }
+        val all = days.distinct().sorted().map { LocalDate(year, month, it) }
+        if (bySetPos.isEmpty()) return all
+        return bySetPos.mapNotNull { pos ->
+            when {
+                pos > 0 -> all.getOrNull(pos - 1)
+                pos < 0 -> all.getOrNull(all.size + pos)
+                else -> null
+            }
+        }
+    }
+
+    val out = mutableListOf<LocalDate>()
+    when (parts["FREQ"]) {
+        "MONTHLY" -> {
+            var cursor = LocalDate(dtstart.year, dtstart.month.number, 1)
+            while (cursor <= to) {
+                out += monthCandidates(cursor.year, cursor.month.number)
+                cursor = cursor.plus(interval, DateTimeUnit.MONTH)
+            }
+        }
+        "YEARLY" -> {
+            val months = parts["BYMONTH"]?.split(',')?.map { it.toInt() } ?: listOf(dtstart.month.number)
+            var year = dtstart.year
+            while (LocalDate(year, 1, 1) <= to) {
+                months.forEach { out += monthCandidates(year, it) }
+                year += interval
+            }
+        }
+    }
+    return out.filter { it in from..to && it >= dtstart }.distinct().sorted()
 }

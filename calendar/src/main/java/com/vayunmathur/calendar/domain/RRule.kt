@@ -152,8 +152,16 @@ sealed class RRule {
             // Preserve BYDAY days so type-0 round-trips; type 1/2 keep
             // type-derived emission in asString (generic byDay suppressed there).
             val parsedDays = byDayRaw?.split(",")?.mapNotNull { dayOfWeekByIcal[it.takeLast(2)] }
+            // Preserve the ordinal BYDAY list verbatim (e.g. 2TU,4TU or
+            // 1MO,-1FR): deriving a single occurrence from the start date
+            // in asString would silently drop every other occurrence.
+            val byDayTokens = byDayRaw?.split(",")?.map { it.trim() }?.filter { it.isNotEmpty() }
+            val ordinalByDay = byDayTokens?.takeIf { tokens ->
+                tokens.any { it.dropLast(2).toIntOrNull() != null }
+            }
             return EveryXMonths(interval, type, endCondition, common.byMonthDay, common.byMonth,
-                common.bySetPos, common.byYearDay, common.byWeekNo, common.wkst, parsedDays)
+                common.bySetPos, common.byYearDay, common.byWeekNo, common.wkst, parsedDays,
+                ordinalByDay)
         }
 
         private fun parseYearly(
@@ -268,10 +276,19 @@ sealed class RRule {
         override val byYearDay: List<Int>? = null,
         override val byWeekNo: List<Int>? = null,
         override val wkst: DayOfWeek? = null,
-        override val byDay: List<DayOfWeek>? = null
+        override val byDay: List<DayOfWeek>? = null,
+        /** Ordinal BYDAY tokens exactly as parsed (e.g. ["2TU", "4TU"]); null for rules built in-app. */
+        val byDayRaw: List<String>? = null
     ) : RRule() {
         override fun asString(firstDay: LocalDate, timeZone: TimeZone): String {
             val base = "FREQ=MONTHLY;INTERVAL=$months"
+            // A parsed ordinal BYDAY list round-trips verbatim: it may name
+            // several occurrences (or a mix like 1MO,-1FR) that no single
+            // start-date-derived token could represent.
+            if (!byDayRaw.isNullOrEmpty()) {
+                val withRaw = "$base;BYDAY=${byDayRaw.joinToString(",")}"
+                return copy(byDay = null).buildRRuleString(withRaw, timeZone)
+            }
             val byDayPart = when (typeE) {
                 1 -> {
                     val dayOfWeek = firstDay.dayOfWeek.toIcal()

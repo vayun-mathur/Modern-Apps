@@ -80,12 +80,54 @@ sealed interface Recurrence {
         return parts.joinToString(";")
     }
 
-    /** The plain RRULE for calendars, or null when the schedule depends on completion. */
-    fun toRRule(): String? = if (this is AfterCompletion) null else serialize()
+    /**
+     * The RRULE handed to calendars (the todo mirror), or null when the schedule
+     * depends on completion.
+     *
+     * Gating decision for month-end/leap alignment: todo's own expansion clamps
+     * (Jan 31 -> Feb 28 -> Mar 31; Feb 29 -> Feb 28 in non-leap years), but a
+     * plain `BYMONTHDAY=31` / bare `FREQ=YEARLY` from a Feb-29 start is expanded
+     * by the calendar provider with RFC 5545 skip-short-months semantics, so the
+     * mirrored task vanished in February / non-leap years. The rule source is
+     * distinguishable here — this function is only called for mirror-originated
+     * rules ([serialize] stays the unchanged storage form, and imported calendar
+     * rules keep their RFC semantics) — so the clamp is encoded only here, in
+     * RFC terms the provider expands clamped:
+     *  - monthly anchor day 29-31: `BYMONTHDAY=<day>,-1` (plus `BYSETPOS=1` for
+     *    29/30, where `-1` alone would add the 31st in long months) makes every
+     *    short month land on its last day instead of being skipped;
+     *  - yearly Feb-29 anchor: `BYMONTH=2;BYMONTHDAY=29,-1` lands on Feb 28 in
+     *    non-leap years.
+     * [due] is the task's due date; it supplies the anchor day for a [Monthly]
+     * with no explicit [Monthly.dayOfMonth] and detects a Feb-29 [Yearly].
+     */
+    fun toRRule(due: LocalDate? = null): String? {
+        if (this is AfterCompletion) return null
+        val parts = serialize().split(';').toMutableList()
+        when (this) {
+            is Monthly -> {
+                val anchor = dayOfMonth ?: due?.day
+                if (anchor != null && anchor >= FIRST_CLAMP_DAY) {
+                    parts.removeAll { it.startsWith("BYMONTHDAY=") }
+                    parts += "BYMONTHDAY=$anchor,-1"
+                    if (anchor < LAST_POSSIBLE_DAY) parts += "BYSETPOS=1"
+                }
+            }
+            is Yearly -> if (due != null && due.month.number == 2 && due.day == 29) {
+                parts += "BYMONTH=2"
+                parts += "BYMONTHDAY=29,-1"
+            }
+            else -> Unit
+        }
+        return parts.joinToString(";")
+    }
 
     /** Parsing, serialisation constants and limits for the RRULE-style recurrence format. */
     companion object {
         const val LAST_DAY = -1
+        /** First month day that some month is too short for (needs clamp encoding for calendars). */
+        private const val FIRST_CLAMP_DAY = 29
+        private const val LAST_POSSIBLE_DAY = 31
         private const val X_FROM = "X-FROM"
         private const val MAX_INTERVAL = 999
         private const val MAX_DAY = 31

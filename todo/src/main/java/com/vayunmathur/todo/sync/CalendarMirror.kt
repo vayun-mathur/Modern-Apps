@@ -91,7 +91,9 @@ object CalendarMirror {
     private fun eventValues(todo: Todo, calendarId: Long, zone: TimeZone): ContentValues {
         val due = todo.dueAt!!
         val start = if (todo.dueAllDay) DueDates.startOfDay(DueDates.localDate(due, zone), TimeZone.UTC) else due
-        val rrule = Recurrence.parse(todo.recurrence)?.toRRule()
+        // Pass the due date so mirror-originated rules encode todo's
+        // clamp-to-month-end semantics (see Recurrence.toRRule).
+        val rrule = Recurrence.parse(todo.recurrence)?.toRRule(DueDates.localDate(due, zone))
         return ContentValues().apply {
             put(Events.CALENDAR_ID, calendarId)
             put(Events._SYNC_ID, todo.syncId)
