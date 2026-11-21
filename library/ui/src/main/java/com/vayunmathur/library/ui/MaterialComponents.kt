@@ -46,14 +46,22 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusTarget
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
@@ -1000,6 +1008,17 @@ fun VerticalDivider(
 ) = androidx.compose.material3.VerticalDivider(modifier = modifier, thickness = thickness, color = color)
 
 // --- Alert dialog ---
+/**
+ * Shared [androidx.compose.material3.AlertDialog] wrapper.
+ *
+ * Accessibility: focus moves onto the dialog when it opens (the
+ * [FocusRequester] + `focusTarget` pattern from `GameResultOverlay`), so
+ * TalkBack and keyboard/D-pad users land on the dialog — announced via any
+ * `paneTitle` the caller sets in [modifier] — instead of staying on the
+ * control behind it that opened the dialog. Callers should set
+ * `Modifier.semantics { paneTitle = <title> }` when they have a title
+ * string, as [ConfirmDialog] does.
+ */
 @Composable
 fun AlertDialog(
     onDismissRequest: () -> Unit,
@@ -1011,10 +1030,26 @@ fun AlertDialog(
     text: (@Composable () -> Unit)? = null,
     shape: Shape = androidx.compose.material3.AlertDialogDefaults.shape,
     properties: DialogProperties = DialogProperties(),
-) = androidx.compose.material3.AlertDialog(
-    onDismissRequest = onDismissRequest, confirmButton = confirmButton, modifier = modifier,
-    dismissButton = dismissButton, icon = icon, title = title, text = text, shape = shape, properties = properties,
-)
+) {
+    val focusRequester = remember { FocusRequester() }
+    // A Dialog's popup is not laid out when a LaunchedEffect first runs, so
+    // requesting focus there is lost ("FocusRequester is not initialized").
+    // Request once the dialog surface is placed instead, exactly once.
+    var focusRequested by remember { mutableStateOf(false) }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismissRequest, confirmButton = confirmButton,
+        modifier = modifier
+            .focusRequester(focusRequester)
+            .focusTarget()
+            .onGloballyPositioned {
+                if (!focusRequested) {
+                    focusRequested = true
+                    runCatching { focusRequester.requestFocus() }
+                }
+            },
+        dismissButton = dismissButton, icon = icon, title = title, text = text, shape = shape, properties = properties,
+    )
+}
 
 // --- Time picker ---
 @Composable

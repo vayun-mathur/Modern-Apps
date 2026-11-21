@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.health.R
 import com.vayunmathur.health.domain.SocialHistoryQuestions
@@ -74,11 +75,13 @@ private fun AnswerRow(label: String, selected: Boolean, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             // selectable on the row, so the whole line is the target rather than the radio alone.
-            .selectable(selected = selected, onClick = onClick, role = null),
+            // The row carries the RadioButton role; the inner radio is visual only
+            // (onClick = null) so there is a single toggle target for TalkBack.
+            .selectable(selected = selected, onClick = onClick, role = Role.RadioButton),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        RadioButton(selected = selected, onClick = onClick)
+        RadioButton(selected = selected, onClick = null)
         Text(label, style = MaterialTheme.typography.bodyLarge)
     }
 }

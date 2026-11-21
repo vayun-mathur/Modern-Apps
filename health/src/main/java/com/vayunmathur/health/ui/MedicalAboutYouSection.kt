@@ -16,6 +16,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.health.R
 import com.vayunmathur.health.Route
@@ -216,13 +217,14 @@ private fun AboutYouOptionDialog(
                             .selectable(
                                 selected = index == selectedIndex,
                                 onClick = { onPick(index) },
+                                role = Role.RadioButton,
                             ),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         RadioButton(
                             selected = index == selectedIndex,
-                            onClick = { onPick(index) },
+                            onClick = null,
                         )
                         Text(label, style = MaterialTheme.typography.bodyLarge)
                     }

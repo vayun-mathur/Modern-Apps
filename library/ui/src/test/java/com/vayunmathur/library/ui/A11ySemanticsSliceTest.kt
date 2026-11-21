@@ -16,6 +16,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.unit.dp
@@ -75,6 +76,25 @@ class A11ySemanticsSliceTest {
             SemanticsMatcher.keyIsDefined(SemanticsProperties.Error),
         ).fetchSemanticsNodes()
         assertTrue(errors.isEmpty(), "unexpected Error semantics: $errors")
+    }
+
+    @Test fun confirmDialogMovesFocusToDialogOnOpen() {
+        rule.setContent {
+            ConfirmDialog(
+                title = "Delete?",
+                confirmLabel = "Delete",
+                onConfirm = {},
+                onDismiss = {},
+                dismissLabel = "Cancel",
+            )
+        }
+        rule.waitForIdle()
+        // The dialog is announced by its pane title, and initial focus lands
+        // inside it on the safe (dismiss) button, not on whatever opened it.
+        rule.onNode(
+            SemanticsMatcher.expectValue(SemanticsProperties.PaneTitle, "Delete?"),
+        ).assertIsDisplayed()
+        rule.onNodeWithText("Cancel").assertIsFocused()
     }
 
     @Test fun loadingMessageIsAPoliteLiveRegion() {

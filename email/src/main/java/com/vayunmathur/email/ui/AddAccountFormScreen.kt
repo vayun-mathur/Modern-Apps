@@ -1,6 +1,5 @@
 package com.vayunmathur.email.ui
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -27,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -142,8 +143,11 @@ private fun OutlookOAuthForm(
 
         HorizontalDivider()
 
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { useAppPassword = !useAppPassword }) {
-            Checkbox(checked = useAppPassword, onCheckedChange = { useAppPassword = it })
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.toggleable(value = useAppPassword, role = Role.Checkbox) { useAppPassword = it },
+        ) {
+            Checkbox(checked = useAppPassword, onCheckedChange = null)
             Text(stringResource(R.string.use_app_password_instead), style = MaterialTheme.typography.bodyMedium)
         }
 
@@ -237,8 +241,11 @@ private fun PasswordForm(
 
         OutlinedTextField(value = email, onValueChange = { email = it.trim() }, label = { Text(stringResource(R.string.email_address)) }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next), modifier = Modifier.fillMaxWidth())
         if (preset.id == PROVIDER_CUSTOM) {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { useDifferentUsername = !useDifferentUsername }) {
-                Checkbox(checked = useDifferentUsername, onCheckedChange = { useDifferentUsername = it })
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.toggleable(value = useDifferentUsername, role = Role.Checkbox) { useDifferentUsername = it },
+            ) {
+                Checkbox(checked = useDifferentUsername, onCheckedChange = null)
                 Text(stringResource(R.string.username_is_not_my_email), style = MaterialTheme.typography.bodyMedium)
             }
             if (useDifferentUsername) {
@@ -266,8 +273,11 @@ private fun PasswordForm(
             AddAccountSection(host = imapHost, onHostChange = { imapHost = it.trim() }, port = imapPort, onPortChange = { imapPort = it.filter(Char::isDigit) }, useSsl = imapUseSsl, onSslChange = { imapUseSsl = it })
             Text(stringResource(R.string.smtp_outgoing), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
             AddAccountSection(host = smtpHost, onHostChange = { smtpHost = it.trim() }, port = smtpPort, onPortChange = { smtpPort = it.filter(Char::isDigit) }, useSsl = smtpUseSsl, onSslChange = { smtpUseSsl = it }, portImeAction = ImeAction.Done)
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { allowInsecureCerts = !allowInsecureCerts }) {
-                Checkbox(checked = allowInsecureCerts, onCheckedChange = { allowInsecureCerts = it })
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.toggleable(value = allowInsecureCerts, role = Role.Checkbox) { allowInsecureCerts = it },
+            ) {
+                Checkbox(checked = allowInsecureCerts, onCheckedChange = null)
                 Text(stringResource(R.string.allow_insecure_certificates), style = MaterialTheme.typography.bodyMedium)
             }
             if (allowInsecureCerts) {

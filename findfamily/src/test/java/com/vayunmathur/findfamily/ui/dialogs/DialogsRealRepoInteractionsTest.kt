@@ -184,10 +184,15 @@ class DialogsRealRepoInteractionsTest {
     }
 
     @Test fun addTrackerDialogTypesNameAndCancels() {
-        val stack = stack()
+        val stack = NavBackStack(arrayOf(Route.MainPage, Route.AddTrackerDialog))
         rule.setContent { DynamicTheme { AddTrackerDialog(stack) } }
         rule.waitForIdle()
         assertTrue(rule.onAllNodesWithText("tracker", substring = true).fetchSemanticsNodes().isNotEmpty())
+        // Cancel is always reachable (previously blocked while binding):
+        // tapping it pops the dialog route.
+        rule.onNodeWithText("Cancel", substring = true).performClick()
+        rule.waitForIdle()
+        assertEquals(Route.MainPage, stack.last())
     }
 
     @Test fun securityCodeDialogShowsCodeForBundledPeer() = runBlocking {

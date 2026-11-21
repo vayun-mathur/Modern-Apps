@@ -19,6 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -102,8 +103,8 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions) {
 @Composable
 private fun ConflictOption(labelRes: Int, value: String, selected: String, onSelect: (String) -> Unit) {
     ListItem(
-        modifier = Modifier.selectable(selected = selected == value, onClick = { onSelect(value) }),
+        modifier = Modifier.selectable(selected = selected == value, role = Role.RadioButton, onClick = { onSelect(value) }),
         content = { Text(stringResource(labelRes)) },
-        leadingContent = { RadioButton(selected = selected == value, onClick = { onSelect(value) }) },
+        leadingContent = { RadioButton(selected = selected == value, onClick = null) },
     )
 }

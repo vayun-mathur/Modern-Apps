@@ -35,6 +35,7 @@ import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.OutlinedTextField
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.util.NavBackStack
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 /**
@@ -52,7 +53,18 @@ fun AddTrackerDialog(backStack: NavBackStack<Route>) {
     var name by remember { mutableStateOf("") }
     var binding by remember { mutableStateOf(false) }
     var failed by remember { mutableStateOf(false) }
+    var bindJob by remember { mutableStateOf<Job?>(null) }
     val devices = remember { mutableStateListOf<BluetoothDevice>() }
+
+    // Cancel must always be reachable: while binding, the old code disabled
+    // the Cancel button and blocked onDismissRequest, trapping the user
+    // (TalkBack included) in the dialog until the BLE bind finished or
+    // failed. Cancelling now cancels the in-flight bind and pops.
+    val cancelAndPop = {
+        bindJob?.cancel()
+        bindJob = null
+        backStack.pop()
+    }
 
     LaunchedEffect(Unit) {
         runCatching {
@@ -62,7 +74,7 @@ fun AddTrackerDialog(backStack: NavBackStack<Route>) {
         }
     }
 
-    Dialog({ if (!binding) backStack.pop() }) {
+    Dialog({ cancelAndPop() }) {
         Card {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(stringResource(R.string.add_tracker_title), style = MaterialTheme.typography.headlineMedium)
@@ -87,7 +99,7 @@ fun AddTrackerDialog(backStack: NavBackStack<Route>) {
                             Card(Modifier.clickable(enabled = !binding && name.isNotBlank()) {
                                 failed = false
                                 binding = true
-                                scope.launch {
+                                bindJob = scope.launch {
                                     val ok = TrackerBinder.bind(context, name, device)
                                     binding = false
                                     if (ok) backStack.pop() else failed = true
@@ -114,7 +126,7 @@ fun AddTrackerDialog(backStack: NavBackStack<Route>) {
                     )
                 }
 
-                Button({ if (!binding) backStack.pop() }, enabled = !binding) {
+                Button({ cancelAndPop() }) {
                     Text(stringResource(android.R.string.cancel))
                 }
             }

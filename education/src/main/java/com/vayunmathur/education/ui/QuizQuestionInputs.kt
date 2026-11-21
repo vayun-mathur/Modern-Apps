@@ -22,6 +22,7 @@ import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.education.R
@@ -94,6 +95,7 @@ private fun MultipleChoiceInput(
                     .selectable(
                         selected = selected == i,
                         enabled = enabled,
+                        role = Role.RadioButton,
                         onClick = { selected = i; onAnswer(ChoiceAnswer(i)) },
                     )
                     .padding(vertical = 4.dp),
@@ -122,6 +124,7 @@ private fun MultipleSelectInput(
                     .toggleable(
                         value = isChecked,
                         enabled = enabled,
+                        role = Role.Checkbox,
                         onValueChange = {
                             if (it) selected.add(i) else selected.remove(i)
                             onAnswer(if (selected.isEmpty()) null else MultiChoiceAnswer(selected.toSet()))
