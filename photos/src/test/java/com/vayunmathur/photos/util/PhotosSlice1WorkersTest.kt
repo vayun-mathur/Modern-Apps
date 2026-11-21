@@ -25,6 +25,7 @@ import com.vayunmathur.photos.data.MIGRATION_18_19
 import com.vayunmathur.photos.data.MIGRATION_19_20
 import com.vayunmathur.photos.data.MIGRATION_20_21
 import com.vayunmathur.photos.data.MIGRATION_21_22
+import com.vayunmathur.photos.data.MIGRATION_22_23
 import com.vayunmathur.photos.data.MIGRATION_1_2
 import com.vayunmathur.photos.data.MIGRATION_2_3
 import com.vayunmathur.photos.data.MIGRATION_3_4
@@ -96,9 +97,9 @@ class PhotosSlice1WorkersTest {
                 MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11,
                 MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16,
                 MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21,
-                MIGRATION_21_22,
+                MIGRATION_21_22, MIGRATION_22_23,
             )
-            assertEquals(21, PhotoDatabase.migrations.size)
+            assertEquals(22, PhotoDatabase.migrations.size)
             for (migration in migrations) migration.migrate(connection)
 
             fun queryStrings(sql: String): List<String> = connection.prepare(sql).use { statement ->
@@ -131,6 +132,13 @@ class PhotosSlice1WorkersTest {
             )) {
                 assertTrue(column in columnNames, "missing $column in $columnNames")
             }
+            // v23 adds the person hidden flag.
+            val personColumns = connection.prepare("PRAGMA table_info(Person)").use { statement ->
+                val names = mutableSetOf<String>()
+                while (statement.step()) names += statement.getText(1) ?: ""
+                names
+            }
+            assertTrue("hidden" in personColumns, "missing hidden in $personColumns")
             // Rows survived the whole chain (drop/recreate only touched face tables).
             assertEquals(2L, queryLong("SELECT COUNT(*) FROM Photo"))
             // The face reset left both photos unscanned for the new indexer.
@@ -141,9 +149,9 @@ class PhotosSlice1WorkersTest {
     }
 
     @Test
-    fun migrationListIsContiguousFrom1To22() {
+    fun migrationListIsContiguousFrom1To23() {
         val versions = PhotoDatabase.migrations.map { it.startVersion to it.endVersion }
-        assertEquals((1..21).map { it to it + 1 }, versions)
+        assertEquals((1..22).map { it to it + 1 }, versions)
     }
 
     // ---- Worker scheduling ----

@@ -104,9 +104,9 @@ class PhotosFavoritesDataTest {
     }
 
     @Test
-    fun migrationListEndsAtVersion22() {
+    fun migrationListEndsAtVersion23() {
         val last = PhotoDatabase.migrations.last()
-        assertEquals(21 to 22, last.startVersion to last.endVersion)
+        assertEquals(22 to 23, last.startVersion to last.endVersion)
     }
 
     @Test

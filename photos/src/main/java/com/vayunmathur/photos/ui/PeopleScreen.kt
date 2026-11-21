@@ -75,6 +75,10 @@ fun PeopleScreen(
      * labels fine with the no-op default.
      */
     onNameClick: (PersonCluster) -> Unit = {},
+    /** Hide a cluster from this grid (data retained). Binder persists it. */
+    onHideClick: (PersonCluster) -> Unit = {},
+    /** Delete a cluster and its face assignments (photos untouched). */
+    onDeleteClick: (PersonCluster) -> Unit = {},
 ) {
     // Show progress while there are still photos left to scan (or the worker is
     // actively running); it disappears on its own once everything is scanned.
@@ -104,6 +108,8 @@ fun PeopleScreen(
                             modifier = Modifier.weight(1f),
                             faceThumbnail = faceThumbnail,
                             onNameClick = onNameClick,
+                            onHideClick = onHideClick,
+                            onDeleteClick = onDeleteClick,
                         ) { person ->
                             backStack.pushPhoto(Route.PhotoPage(person.coverPhoto.id, com.vayunmathur.photos.PhotoSource.Person(person.id)))
                         }

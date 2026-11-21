@@ -170,6 +170,9 @@ class GalleryViewModel(
                 val byId = allPhotos.filter { !it.isTrashed }.associateBy { it.id }
                 val facesByCluster = faces.groupBy { it.clusterId }
                 persons.mapNotNull { person ->
+                    // Hidden clusters are the user's opt-out: excluded from
+                    // the grid, but their rows and faces are retained.
+                    if (person.hidden) return@mapNotNull null
                     val clusterFaces = facesByCluster[person.id].orEmpty()
                         .mapNotNull { face -> byId[face.photoId]?.let { face to it } }
                     if (clusterFaces.isEmpty()) return@mapNotNull null
@@ -475,6 +478,24 @@ class GalleryViewModel(
         }
     }
 
+    /** Hide a person-cluster from the People grid; its faces and name are retained. */
+    fun hidePerson(id: Long) {
+        viewModelScope.launch {
+            faceRepository.setPersonHidden(id, true)
+        }
+    }
+
+    /**
+     * Delete a person-cluster and its face assignments. The photos (and the
+     * face embeddings, which a later grouping pass may re-cluster) are
+     * untouched; only the grouping the user rejected is removed.
+     */
+    fun deletePerson(id: Long) {
+        viewModelScope.launch {
+            faceRepository.deletePersonCluster(id)
+        }
+    }
+
     // ------------------------------------------------------------------
     // Albums (MediaStore folder moves)
     // ------------------------------------------------------------------
@@ -594,6 +615,9 @@ interface FaceStore {
     fun faceGeometryFlow(): Flow<List<com.vayunmathur.photos.data.FaceGeometry>>
     suspend fun photoIdsForCluster(clusterId: Long): List<Long>
     suspend fun setPersonName(id: Long, name: String?)
+    /** Default no-ops keep existing test fakes source-compatible. */
+    suspend fun setPersonHidden(id: Long, hidden: Boolean) {}
+    suspend fun deletePersonCluster(id: Long) {}
 }
 
 private class PhotoStoreRepository(
@@ -634,6 +658,8 @@ private class FaceStoreRepository(
         faceRepository.faceGeometryFlow()
     override suspend fun photoIdsForCluster(clusterId: Long): List<Long> = faceRepository.photoIdsForCluster(clusterId)
     override suspend fun setPersonName(id: Long, name: String?) = faceRepository.setPersonName(id, name)
+    override suspend fun setPersonHidden(id: Long, hidden: Boolean) = faceRepository.setPersonHidden(id, hidden)
+    override suspend fun deletePersonCluster(id: Long) = faceRepository.deletePersonCluster(id)
 }
 
 /**

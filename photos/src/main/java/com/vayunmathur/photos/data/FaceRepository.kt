@@ -22,6 +22,21 @@ class FaceRepository private constructor(context: Context) :
     suspend fun getPersons(): List<Person> = faceDao.getPersons()
     suspend fun clearPersons() = faceDao.clearPersons()
     suspend fun setPersonName(id: Long, name: String?) = faceDao.setPersonName(id, name)
+    suspend fun setPersonHidden(id: Long, hidden: Boolean) = faceDao.setPersonHidden(id, hidden)
+
+    /**
+     * Remove one cluster and its face assignments, in one transaction so the
+     * People view never sees a person whose faces are half-unassigned. The
+     * [PhotoFace] rows keep their embeddings (a later grouping pass may form
+     * a new cluster from them) and the photos themselves are untouched.
+     */
+    suspend fun deletePersonCluster(id: Long) = db.withWriteTransaction {
+        faceDao.clearAssignmentsForCluster(id)
+        faceDao.deletePerson(id)
+    }
+
+    /** Delete every face row belonging to [photoIds] (their photos are gone). */
+    suspend fun deletePhotoFaces(photoIds: List<Long>) = faceDao.deletePhotoFacesByPhotoIds(photoIds)
     suspend fun clearPhotoFaces() = faceDao.clearPhotoFaces()
     suspend fun getClusterRows(): List<FaceClusterRow> = faceDao.getClusterRows()
     suspend fun photoIdsForCluster(clusterId: Long): List<Long> = faceDao.photoIdsForCluster(clusterId)

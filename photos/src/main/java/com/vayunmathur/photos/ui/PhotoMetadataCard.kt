@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -32,6 +33,8 @@ import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.photos.R
 import com.vayunmathur.photos.data.Photo
+import com.vayunmathur.photos.platform.SharePhotoCopy
+import kotlinx.coroutines.launch
 import kotlin.time.Instant
 
 /**
@@ -54,6 +57,7 @@ internal fun PhotoMetadataCard(
     isFavorite: Boolean = false,
     onToggleFavorite: (Photo) -> Unit = {},
 ) {
+    val shareScope = rememberCoroutineScope()
     Column(
         modifier =
             Modifier.fillMaxWidth()
@@ -134,15 +138,24 @@ internal fun PhotoMetadataCard(
             IconButton(onClick = onEditPhoto) { IconEdit(tint = Color.White) }
             IconButton(
                 onClick = {
-                    val intent =
-                        Intent(Intent.ACTION_SEND).apply {
-                            type =
-                                if (photo.videoData != null) "video/*"
-                                else "image/*"
-                            putExtra(Intent.EXTRA_STREAM, photo.uri.toUri())
-                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                        }
-                    ExternalIntents.launch(context, Intent.createChooser(intent, context.getString(UiR.string.share)))
+                    // Share a GPS-stripped cache copy for stills, never the
+                    // original MediaStore URI with its EXIF location intact.
+                    // Copying is IO, so the chooser launches once it is ready;
+                    // a failed copy falls back to the original so share works.
+                    shareScope.launch {
+                        val shareUri = SharePhotoCopy.shareUri(
+                            context, photo.uri.toUri(), photo.name, photo.mimeType,
+                        ) ?: photo.uri.toUri()
+                        val intent =
+                            Intent(Intent.ACTION_SEND).apply {
+                                type =
+                                    if (photo.videoData != null) "video/*"
+                                    else "image/*"
+                                putExtra(Intent.EXTRA_STREAM, shareUri)
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            }
+                        ExternalIntents.launch(context, Intent.createChooser(intent, context.getString(UiR.string.share)))
+                    }
                 }
             ) { IconShare(tint = Color.White) }
             IconButton(onClick = { onDelete(photo) }) {

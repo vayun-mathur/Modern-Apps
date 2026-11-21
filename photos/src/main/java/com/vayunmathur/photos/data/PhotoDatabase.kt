@@ -364,7 +364,7 @@ data class ExifResult(
 )
 
 /** Photo Database: a room database implementation for photo database. */
-@Database(entities = [Photo::class, Person::class, PhotoFace::class, PhotoFts::class], version = 22, exportSchema = true)
+@Database(entities = [Photo::class, Person::class, PhotoFace::class, PhotoFts::class], version = 23, exportSchema = true)
 abstract class PhotoDatabase : RoomDatabase() {
     abstract fun photoDao(): PhotoDao
     abstract fun photoScanDao(): PhotoScanDao
@@ -377,9 +377,15 @@ abstract class PhotoDatabase : RoomDatabase() {
             MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11,
             MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16,
             MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21,
-            MIGRATION_21_22,
+            MIGRATION_21_22, MIGRATION_22_23,
         )
     }
+}
+
+val MIGRATION_22_23 = Migration(22, 23) {
+    // User control over face grouping: a hidden flag on each person cluster.
+    // Existing clusters start visible. SQL mirrors Room's generated schema.
+    it.execSQL("ALTER TABLE Person ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0")
 }
 
 val MIGRATION_21_22 = Migration(21, 22) {

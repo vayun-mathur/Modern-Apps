@@ -17,7 +17,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
+import com.vayunmathur.library.ui.AlertDialog
+import com.vayunmathur.library.ui.DropdownMenu
+import com.vayunmathur.library.ui.DropdownMenuItem
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
+import com.vayunmathur.library.ui.IconButton
+import com.vayunmathur.library.ui.IconDelete
+import com.vayunmathur.library.ui.IconEdit
+import com.vayunmathur.library.ui.IconMoreVert
+import com.vayunmathur.library.ui.IconVisibilityOff
+import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.library.ui.adaptiveGridCells
 import com.vayunmathur.library.ui.LinearProgressIndicator
 import com.vayunmathur.library.ui.MaterialTheme
@@ -109,6 +118,8 @@ fun PeoplePage(
             pendingClusterId = person.id
             pickContact.launch(null)
         },
+        onHideClick = { person -> galleryViewModel.hidePerson(person.id) },
+        onDeleteClick = { person -> galleryViewModel.deletePerson(person.id) },
     )
 }
 
@@ -158,8 +169,14 @@ internal fun PeopleGrid(
     modifier: Modifier = Modifier,
     faceThumbnail: @Composable (PersonCluster, Modifier) -> Unit,
     onNameClick: (PersonCluster) -> Unit,
+    onHideClick: (PersonCluster) -> Unit = {},
+    onDeleteClick: (PersonCluster) -> Unit = {},
     onClick: (PersonCluster) -> Unit,
 ) {
+    // Cluster whose overflow menu is open, and cluster awaiting the delete
+    // confirmation — the same pending-state shape as the album delete flow.
+    var menuPersonId by remember { mutableStateOf<Long?>(null) }
+    var pendingDelete by remember { mutableStateOf<PersonCluster?>(null) }
     LazyVerticalGrid(
         columns = adaptiveGridCells(100.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -170,14 +187,50 @@ internal fun PeopleGrid(
         // instead of recreating (and re-loading) them during indexing.
         items(people, key = { it.id }) { person ->
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                faceThumbnail(
-                    person,
-                    Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(1f)
-                        .clip(CircleShape)
-                        .invisibleClickable { onClick(person) },
-                )
+                Box {
+                    faceThumbnail(
+                        person,
+                        Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(1f)
+                            .clip(CircleShape)
+                            .invisibleClickable { onClick(person) },
+                    )
+                    Box(Modifier.align(Alignment.TopEnd)) {
+                        IconButton(onClick = { menuPersonId = person.id }) {
+                            IconMoreVert()
+                        }
+                        DropdownMenu(
+                            expanded = menuPersonId == person.id,
+                            onDismissRequest = { menuPersonId = null },
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.people_name)) },
+                                leadingIcon = { IconEdit() },
+                                onClick = {
+                                    menuPersonId = null
+                                    onNameClick(person)
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.people_hide)) },
+                                leadingIcon = { IconVisibilityOff() },
+                                onClick = {
+                                    menuPersonId = null
+                                    onHideClick(person)
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.people_delete)) },
+                                leadingIcon = { IconDelete() },
+                                onClick = {
+                                    menuPersonId = null
+                                    pendingDelete = person
+                                },
+                            )
+                        }
+                    }
+                }
                 // The name is its own tap target: the avatar keeps opening the
                 // person's photos, and tapping an existing name is how renaming
                 // works (it just reopens the picker).
@@ -198,6 +251,33 @@ internal fun PeopleGrid(
                 )
             }
         }
+    }
+    pendingDelete?.let { person ->
+        AlertDialog(
+            onDismissRequest = { pendingDelete = null },
+            title = { Text(stringResource(R.string.people_delete)) },
+            text = {
+                Text(
+                    stringResource(
+                        R.string.people_delete_confirm,
+                        person.name ?: stringResource(R.string.people_unnamed),
+                    )
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    pendingDelete = null
+                    onDeleteClick(person)
+                }) {
+                    Text(stringResource(R.string.people_delete))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDelete = null }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
     }
 }
 

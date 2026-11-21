@@ -245,6 +245,9 @@ suspend fun syncPhotos(
     }
 
     if (toDelete.isNotEmpty()) {
+        // deleteByIds also removes these photos' face/embedding rows (and any
+        // person left faceless), so a deleted photo leaves nothing behind for
+        // the clustering pass to keep reading.
         toDelete.chunked(DELETE_ID_CHUNK_SIZE).forEach { chunk ->
             repository.deleteByIds(chunk)
         }

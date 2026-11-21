@@ -101,6 +101,14 @@
     <string name="people_model_missing">Face grouping needs a face model that is not installed.</string>
     <!-- Label under a person grid cell with no name yet; tapping it opens the contact picker. Adjective -->
     <string name="people_unnamed">Unnamed</string>
+    <!-- Overflow action on a person cluster: name it via the contact picker. Verb -->
+    <string name="people_name">Name person</string>
+    <!-- Overflow action on a person cluster: hide it from the People grid, keeping its data. Verb -->
+    <string name="people_hide">Hide person</string>
+    <!-- Overflow action / confirmation title: delete a person cluster and its face assignments. Verb -->
+    <string name="people_delete">Delete person</string>
+    <!-- Confirmation body for deleting a person cluster. %1$s = person name -->
+    <string name="people_delete_confirm">Remove the person \"<xliff:g id="name" example="Ada">%1$s</xliff:g>\"? Your photos will be kept; only this grouping is removed.</string>
     <!-- Photo detail badge: number of people in this photo. Plural handling. %1$d = count -->
     <plurals name="people_in_photo">
         <!-- Singular: one person in photo -->
