@@ -1,6 +1,7 @@
 package com.vayunmathur.travel.network
 
 import com.vayunmathur.library.network.NetworkClient
+import com.vayunmathur.library.network.performRequestWithRetry
 import java.net.URLEncoder
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
@@ -107,7 +108,16 @@ internal var travelTransport: (suspend (method: String, url: String, body: Strin
 
 internal suspend fun travelPerform(method: String, url: String, body: String? = null): TravelRaw {
     travelTransport?.let { return it(method, url, body) }
-    val res = if (body == null) {
+    // GETs go through the central retry (library:network NetworkRetry): the
+    // pollers below (trip status, ancillaries-pricing, cancellation/change
+    // status) used to spend a whole poll round on a transient 503/IOException;
+    // that tolerance now lives in one place with backoff + Retry-After.
+    // POSTs stay single-attempt — no idempotency keys in this protocol, so
+    // checkout/confirm are never replayed. Business polling (waiting for
+    // pricing/status to change) remains in the ViewModel ops, unchanged.
+    val res = if (method == "GET" && body == null) {
+        NetworkClient.performRequestWithRetry(url = url, method = method)
+    } else if (body == null) {
         NetworkClient.performRequest(url = url, method = method)
     } else {
         NetworkClient.performRequest(

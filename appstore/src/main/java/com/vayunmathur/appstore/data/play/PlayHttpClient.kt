@@ -5,13 +5,10 @@ import com.aurora.gplayapi.network.IHttpClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import com.vayunmathur.library.network.RetryAfter
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
-import java.time.DateTimeException
-import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.random.Random
 
@@ -43,7 +40,6 @@ class PlayHttpClient : IHttpClient {
 
         private const val TOO_MANY_REQUESTS = 429
         private const val SERVICE_UNAVAILABLE = 503
-        private const val MILLIS_PER_SECOND = 1_000L
         private const val NETWORK_FAILURE_CODE = -1
 
         /** Smallest gap between two requests starting, before anything has been refused. */
@@ -78,50 +74,14 @@ class PlayHttpClient : IHttpClient {
             _throttled.value = false
         }
 
-        /** RFC 850 (obsolete) HTTP-date, e.g. `Sunday, 06-Nov-94 08:49:37 GMT`. */
-        private val RFC_850_FORMAT: DateTimeFormatter =
-            DateTimeFormatter.ofPattern("EEEE, dd-MMM-yy HH:mm:ss z", Locale.US)
-
-        /** ANSI C asctime (obsolete) HTTP-date, e.g. `Sun Nov  6 08:49:37 1994` (GMT assumed). */
-        private val ASCTIME_FORMAT: DateTimeFormatter =
-            DateTimeFormatter.ofPattern("EEE MMM d HH:mm:ss yyyy", Locale.US)
-
         /**
          * Parses a `Retry-After` header value (RFC 9110 §10.2.3) to milliseconds
-         * from [nowMs]: either delay-seconds (`120`) or an HTTP-date
-         * (`Sun, 06 Nov 1994 08:49:37 GMT`, in any of the three formats a
-         * recipient must accept). A date in the past, an absent header and an
-         * unparseable value all yield 0, which the caller reads as "no server
-         * delay named" and falls back to exponential backoff for.
+         * from [nowMs]. Delegates to [RetryAfter], the repo's one parser in
+         * `:library:network`; kept under this name for the pacing call site
+         * and its tests. See [RetryAfter.parseMs] for the exact contract.
          */
-        internal fun parseRetryAfterMs(header: String?, nowMs: Long = System.currentTimeMillis()): Long {
-            val value = header?.trim()?.takeIf { it.isNotEmpty() } ?: return 0L
-            value.toLongOrNull()?.let { seconds ->
-                return if (seconds >= 0) seconds * MILLIS_PER_SECOND else 0L
-            }
-            val dateMs = parseHttpDateMs(value) ?: return 0L
-            return (dateMs - nowMs).coerceAtLeast(0L)
-        }
-
-        private fun parseHttpDateMs(value: String): Long? {
-            // Collapse runs of spaces: asctime pads a single-digit day with one.
-            val normalized = value.replace(Regex(" +"), " ")
-            val formatters = listOf(DateTimeFormatter.RFC_1123_DATE_TIME, RFC_850_FORMAT, ASCTIME_FORMAT)
-            for (formatter in formatters) {
-                try {
-                    return ZonedDateTime.parse(normalized, formatter).toInstant().toEpochMilli()
-                } catch (_: DateTimeException) {
-                    // Try the next sanctioned format.
-                }
-            }
-            // asctime carries no zone; RFC 9110 dates are GMT, so retry it as UTC.
-            return try {
-                java.time.LocalDateTime.parse(normalized, ASCTIME_FORMAT)
-                    .toInstant(java.time.ZoneOffset.UTC).toEpochMilli()
-            } catch (_: DateTimeException) {
-                null
-            }
-        }
+        internal fun parseRetryAfterMs(header: String?, nowMs: Long = System.currentTimeMillis()): Long =
+            RetryAfter.parseMs(header, nowMs)
     }
 
     /**
