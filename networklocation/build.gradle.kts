@@ -25,6 +25,30 @@ androidComponents {
 // search over geocoder.db. Both live in networklocation/src/main/rust/.
 rustNativeLib("networklocation")
 
+// Only the classes below actually load libnetworklocation: they call
+// the *Native bridges directly, or drive OfflineBeaconStore /
+// GeocodeService / LocationReportingTask, which open and query through
+// WpsStoreNative / GeocoderNative / NetworkLocationNative (touching a
+// bridge's `available` already loads the library). Pure key/position
+// math, feed, provider-contract and compose tests never touch a bridge
+// and stay in the main task. Quarantine the loaders into
+// testDevUnitTestNative (forkEvery = 1); the remaining classes batch
+// 20-per-JVM in testDevUnitTest, which depends on the quarantine task so
+// the usual invocation still runs everything. No isolatedClasses: this
+// module has no ViewModel and no DataStore owner (OfflineDatabases is
+// plain files, and every test installs/clears them itself), so no
+// shared-JVM polluters exist here.
+rustNativeTests {
+    nativeClasses.addAll(
+        listOf(
+            "com.vayunmathur.networklocation.GeocodeServiceTest",
+            "com.vayunmathur.networklocation.NativeBridgesTest",
+            "com.vayunmathur.networklocation.provider.LocationReportingTaskTest",
+            "com.vayunmathur.networklocation.provider.OfflineBeaconStoreTest",
+        )
+    )
+}
+
 // The offline databases (geocoder.db, wifi.wpsdb up to ~2 GB, cells.wpsdb far
 // smaller) are NOT bundled. Shipping them as assets put a 3.5 GB APK in the MAOS system image,
 // which pushed the factory install zip past fastboot's 4 GiB zip limit. They are downloaded to
