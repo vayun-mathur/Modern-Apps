@@ -94,7 +94,18 @@ fun CameraViewModel.takePhoto() {
 }
 
 internal fun CameraViewModel.capturePhoto() {
-    if (imageCapture == null || isCapturingMutable.value || burstActiveMutable.value) return
+    if (isCapturingMutable.value || burstActiveMutable.value) return
+    // Phase 4a: a gated Camera2 session takes plain PHOTO stills itself
+    // (StillEnginePolicy excludes night/processed/Motion/burst/result
+    // shots, which fall through to the CameraX routing below unchanged).
+    // This runs before the imageCapture check: with the gate on, CameraX
+    // may not be bound at all.
+    if (activeCamera2Session != null) {
+        isCapturingMutable.value = true
+        if (tryCaptureCamera2Still()) return
+        isCapturingMutable.value = false
+    }
+    if (imageCapture == null) return
     // Claim in-flight synchronously so a second shutter tap (or a stacked timer firing)
     // can't start a concurrent capture. Every path clears it once its frame is captured
     // (Motion Photo) or saved (the other paths) — never later.

@@ -8,6 +8,10 @@ import android.view.Surface
  * output is the [PreviewSurfaceBridge] surface, and streams a
  * TEMPLATE_PREVIEW repeating request carrying the resolved controls.
  *
+ * Phase 4a adds a JPEG `ImageReader` as a second output (when the lens
+ * reports JPEG sizes) and [capture] for plain single stills; see
+ * [StillCapturePlanner] and [StillEnginePolicy].
+ *
  * Threading: every public method posts onto the executor; every driver
  * callback arrives on the executor and is generation-checked through
  * [SessionStateMachine] before it may touch session state, so a callback
@@ -36,6 +40,12 @@ class Camera2Session(
         fun onStreaming(previewSize: FrameSize) {}
     }
 
+    /** One-shot still outcome; fires on the executor thread. */
+    interface StillCallback {
+        fun onStillCaptured(still: CapturedStill)
+        fun onStillFailed(message: String)
+    }
+
     val state: SessionState get() = stateMachine.state
     val generation: Long get() = stateMachine.generation
 
@@ -43,7 +53,21 @@ class Camera2Session(
     private var captureSession: CaptureSessionHandle? = null
     private var previewSurface: Surface? = null
     private var previewSize: FrameSize? = null
+    private var stillOutput: StillOutput? = null
+    private var stillSize: FrameSize? = null
+    private var pendingStill: PendingStill? = null
+    private var displayRotationDegrees: Int = 0
     private var controls: Camera2ControlState = Camera2ControlState.DEFAULT
+
+    /** In-flight still: JPEG bytes and result metadata pair up by arrival. */
+    private class PendingStill(
+        val params: ResolvedStillParams,
+        val callback: StillCallback,
+        var rawMetadata: RawStillMetadata? = null,
+        var jpegBytes: ByteArray? = null,
+        var jpegWidth: Int = 0,
+        var jpegHeight: Int = 0,
+    )
 
     /** Current control state (user intent, unresolved). */
     val controlState: Camera2ControlState get() = controls
@@ -89,13 +113,30 @@ class Camera2Session(
     }
 
     /** Applies a zoom ratio (control-bar / pinch), keeping other controls. */
-    fun setZoomRatio(ratio: Float) = updateControls(controls.copy(zoomRatio = ratio))
+    fun setZoomRatio(ratio: Float) {
+        // Mutate on the executor: copying the (executor-owned) state on the
+        // caller thread would race with other queued control updates.
+        executor.execute {
+            controls = controls.copy(zoomRatio = ratio)
+            issueRepeatingRequest()
+        }
+    }
 
     /** Applies torch on/off, keeping other controls. */
-    fun setTorch(on: Boolean) = updateControls(controls.copy(torchOn = on))
+    fun setTorch(on: Boolean) {
+        executor.execute {
+            controls = controls.copy(torchOn = on)
+            issueRepeatingRequest()
+        }
+    }
 
     /** Applies exposure compensation in EV stops, keeping other controls. */
-    fun setExposureCompEv(ev: Float) = updateControls(controls.copy(exposureCompEv = ev))
+    fun setExposureCompEv(ev: Float) {
+        executor.execute {
+            controls = controls.copy(exposureCompEv = ev)
+            issueRepeatingRequest()
+        }
+    }
 
     /**
      * Tap-to-focus: transforms a normalised viewfinder tap into AF + AE
@@ -128,7 +169,134 @@ class Camera2Session(
     }
 
     /** Clears tap metering, returning AF/AE to continuous full-frame. */
-    fun clearMetering() = updateControls(controls.copy(afRegion = null, aeRegion = null))
+    fun clearMetering() {
+        executor.execute {
+            controls = controls.copy(afRegion = null, aeRegion = null)
+            issueRepeatingRequest()
+        }
+    }
+
+    /** Applies the user's still-flash setting, keeping other controls. */
+    fun setFlashSetting(setting: com.vayunmathur.camera.domain.FlashSetting) {
+        executor.execute {
+            controls = controls.copy(flashSetting = setting)
+            issueRepeatingRequest()
+        }
+    }
+
+    /** Records the display rotation still orientations are computed from. */
+    fun setDisplayRotationDegrees(degrees: Int) {
+        executor.execute { displayRotationDegrees = degrees }
+    }
+
+    /** The JPEG still size configured at [open], or null when unavailable. */
+    fun currentStillSize(): FrameSize? = stillSize
+
+    /** True when a JPEG output exists (see [StillEnginePolicy]). */
+    val hasJpegOutput: Boolean get() = stillOutput != null
+
+    /**
+     * Takes one plain still: issues `TEMPLATE_STILL_CAPTURE` carrying the
+     * session's current control state plus flash resolution, and delivers
+     * the JPEG bytes with mapped `CaptureResult` metadata to [callback]
+     * once both halves arrive. Only one still may be in flight; a second
+     * call, a non-streaming session, or a session without a JPEG output
+     * fails via [StillCallback.onStillFailed] without touching the HAL.
+     */
+    fun capture(
+        callback: StillCallback,
+        displayRotationDegrees: Int? = null,
+        mirrored: Boolean = false,
+    ) {
+        executor.execute {
+            val session = captureSession
+            val output = stillOutput
+            when {
+                stateMachine.state != SessionState.STREAMING || session == null ->
+                    callback.onStillFailed("still capture requires a streaming session")
+                output == null ->
+                    callback.onStillFailed("no JPEG output on this session")
+                pendingStill != null ->
+                    callback.onStillFailed("a still capture is already in flight")
+                else -> {
+                    val params = StillCapturePlanner.resolve(
+                        state = controls,
+                        snapshot = snapshot,
+                        displayRotationDegrees = displayRotationDegrees
+                            ?: this@Camera2Session.displayRotationDegrees,
+                        mirrored = mirrored,
+                    )
+                    val pending = PendingStill(params, callback)
+                    pendingStill = pending
+                    runCatching {
+                        session.captureStill(params, output.surface, object : StillResultCallback {
+                            override fun onCompleted(metadata: RawStillMetadata) {
+                                onStillResult(pending, metadata)
+                            }
+
+                            override fun onFailed(message: String) {
+                                failPending(pending, message)
+                            }
+                        })
+                    }.onFailure { failPending(pending, "captureStill failed: ${it.message}") }
+                }
+            }
+        }
+    }
+
+    private fun onStillResult(pending: PendingStill, metadata: RawStillMetadata) {
+        // Real driver callbacks already land on the executor; fakes may
+        // call synchronously. State is only touched on the executor.
+        try {
+            executor.execute {
+                if (pendingStill !== pending) return@execute
+                pending.rawMetadata = metadata
+                deliverPendingIfReady(pending)
+            }
+        } catch (e: java.util.concurrent.RejectedExecutionException) {
+            // Session is gone; the capture outcome no longer matters.
+        }
+    }
+
+    private fun onJpegAvailable(bytes: ByteArray, width: Int, height: Int) {
+        try {
+            executor.execute {
+                val pending = pendingStill ?: return@execute
+                pending.jpegBytes = bytes
+                pending.jpegWidth = width
+                pending.jpegHeight = height
+                deliverPendingIfReady(pending)
+            }
+        } catch (e: java.util.concurrent.RejectedExecutionException) {
+        }
+    }
+
+    private fun deliverPendingIfReady(pending: PendingStill) {
+        val raw = pending.rawMetadata ?: return
+        val bytes = pending.jpegBytes ?: return
+        pendingStill = null
+        pending.callback.onStillCaptured(
+            CapturedStill(
+                jpegBytes = bytes,
+                jpegWidth = pending.jpegWidth,
+                jpegHeight = pending.jpegHeight,
+                metadata = StillMetadataMapper.map(
+                    raw, pending.params.jpegOrientationDegrees, pending.params.mirrored,
+                ),
+            ),
+        )
+    }
+
+    private fun failPending(pending: PendingStill, message: String) {
+        try {
+            executor.execute {
+                if (pendingStill !== pending) return@execute
+                pendingStill = null
+                pending.callback.onStillFailed(message)
+            }
+        } catch (e: java.util.concurrent.RejectedExecutionException) {
+        }
+    }
 
     /** The preview size chosen at [open], or null before a successful open. */
     fun currentPreviewSize(): FrameSize? = previewSize
@@ -142,8 +310,15 @@ class Camera2Session(
         executor.execute {
             if (stateMachine.state == SessionState.CLOSED) return@execute
             val gen = stateMachine.beginTeardown()
+            pendingStill?.let { pending ->
+                pendingStill = null
+                runCatching { pending.callback.onStillFailed("session closed during capture") }
+            }
             runCatching { captureSession?.close() }
             captureSession = null
+            runCatching { stillOutput?.close() }
+            stillOutput = null
+            stillSize = null
             runCatching { device?.close() }
             device = null
             previewSurface = null
@@ -169,9 +344,23 @@ class Camera2Session(
     private fun configureSession(opened: DeviceHandle, gen: Long) {
         val surface = previewSurface ?: return
         if (transition(SessionEvent.CONFIGURE_REQUESTED) !is TransitionResult.Applied) return
+        // Second output: the JPEG still reader, when the lens reports JPEG
+        // sizes and the driver can create it. Failure degrades to
+        // preview-only (capture() then fails cleanly, policy excludes it).
+        val jpegSize = StreamSelection.selectJpegSize(snapshot)
+        val output = jpegSize?.let { size ->
+            runCatching { driver.createStillOutput(size) }.getOrNull()?.also { created ->
+                created.setListener(JpegImageListener { bytes, width, height, _ ->
+                    onJpegAvailable(bytes, width, height)
+                })
+            }
+        }
+        stillOutput = output
+        stillSize = if (output != null) jpegSize else null
+        val surfaces = listOfNotNull(surface, output?.surface)
         runCatching {
             opened.createCaptureSession(
-                listOf(surface),
+                surfaces,
                 SessionCallbackImpl(gen),
             )
         }.onFailure {

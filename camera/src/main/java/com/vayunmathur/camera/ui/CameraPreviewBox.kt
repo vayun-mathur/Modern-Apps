@@ -48,6 +48,7 @@ import com.vayunmathur.camera.data.setExposureCompensation
 import com.vayunmathur.camera.platform.setExposureTimeIndex
 import com.vayunmathur.camera.platform.setManualIsoIndex
 import com.vayunmathur.camera.platform.setQrResult
+import com.vayunmathur.camera.platform.registerCamera2Session
 import com.vayunmathur.camera.platform.setScreenFlash
 import com.vayunmathur.camera.data.setShadows
 import com.vayunmathur.camera.data.setWarmth
@@ -209,6 +210,17 @@ internal fun BoxWithConstraintsScope.CameraPreviewBox(
                 zoomRatio = state.zoomRatio,
                 torchOn = state.torchEnabled,
                 exposureCompEv = state.exposureComp,
+                flashSetting = when (state.flashMode) {
+                    com.vayunmathur.camera.platform.FlashMode.ON ->
+                        com.vayunmathur.camera.domain.FlashSetting.ON
+                    com.vayunmathur.camera.platform.FlashMode.AUTO ->
+                        com.vayunmathur.camera.domain.FlashSetting.AUTO
+                    com.vayunmathur.camera.platform.FlashMode.OFF ->
+                        com.vayunmathur.camera.domain.FlashSetting.OFF
+                },
+                onSessionChanged = { session ->
+                    viewModel.registerCamera2Session(session)
+                },
                 modifier = previewModifier,
             )
         } else {

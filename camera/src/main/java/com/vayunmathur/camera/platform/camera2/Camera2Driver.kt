@@ -7,6 +7,8 @@ import android.hardware.camera2.CameraCaptureSession
 import android.hardware.camera2.CameraDevice
 import android.hardware.camera2.CameraManager
 import android.hardware.camera2.CaptureRequest
+import android.hardware.camera2.CaptureResult
+import android.hardware.camera2.TotalCaptureResult
 import android.hardware.camera2.params.MeteringRectangle
 import android.hardware.camera2.params.OutputConfiguration
 import android.hardware.camera2.params.SessionConfiguration
@@ -53,16 +55,33 @@ interface DeviceHandle {
     fun close()
 }
 
+/** Callbacks for one [CaptureSessionHandle.captureStill] call. */
+interface StillResultCallback {
+    fun onCompleted(metadata: RawStillMetadata)
+    fun onFailed(message: String)
+}
+
 /** Testable handle over a `CameraCaptureSession`. */
 interface CaptureSessionHandle {
     /** Issues [params] as the TEMPLATE_PREVIEW repeating request on [target]. */
     fun setRepeatingPreview(params: ResolvedRequestParams, target: Surface)
+
+    /**
+     * Issues [params] as one TEMPLATE_STILL_CAPTURE request on [stillTarget]
+     * (preview target stays in the session, not in this request). The JPEG
+     * bytes arrive separately via the [StillOutput] listener; [callback]
+     * carries the `CaptureResult` metadata for the same frame.
+     */
+    fun captureStill(params: ResolvedStillParams, stillTarget: Surface, callback: StillResultCallback)
     fun close()
 }
 
 /** Opens cameras; the session owns the returned handles' lifecycle. */
 interface Camera2Driver {
     fun openCamera(cameraId: String, callback: DeviceCallback)
+
+    /** Creates the JPEG still output for [size], or null when unavailable. */
+    fun createStillOutput(size: FrameSize): StillOutput?
 }
 
 /** Converts a pure [SensorRect] into the HAL's `Rect`. */
@@ -110,6 +129,56 @@ internal fun CaptureRequest.Builder.applyPreviewParams(
     }
 }
 
+/** Applies resolved still controls onto a TEMPLATE_STILL_CAPTURE builder. */
+internal fun CaptureRequest.Builder.applyStillParams(
+    params: ResolvedStillParams,
+    target: Surface,
+) {
+    addTarget(target)
+    set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_AUTO)
+    set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE)
+    set(CaptureRequest.CONTROL_AE_MODE, params.aeMode)
+    if (params.zoomRatio != null) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            set(CaptureRequest.CONTROL_ZOOM_RATIO, params.zoomRatio)
+        } else if (params.cropRegion != null) {
+            set(CaptureRequest.SCALER_CROP_REGION, params.cropRegion.toRect())
+        }
+    } else if (params.cropRegion != null) {
+        set(CaptureRequest.SCALER_CROP_REGION, params.cropRegion.toRect())
+    }
+    set(CaptureRequest.FLASH_MODE, params.flashMode)
+    set(
+        CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION,
+        params.aeExposureCompensationSteps,
+    )
+    set(CaptureRequest.JPEG_ORIENTATION, params.jpegOrientationDegrees)
+    if (params.afRegions.isNotEmpty()) {
+        set(
+            CaptureRequest.CONTROL_AF_REGIONS,
+            params.afRegions.map { it.toMeteringRectangle() }.toTypedArray(),
+        )
+    }
+    if (params.aeRegions.isNotEmpty()) {
+        set(
+            CaptureRequest.CONTROL_AE_REGIONS,
+            params.aeRegions.map { it.toMeteringRectangle() }.toTypedArray(),
+        )
+    }
+}
+
+/** Extracts the pure metadata shape from a completed capture result. */
+internal fun TotalCaptureResult.toRawStillMetadata(): RawStillMetadata = RawStillMetadata(
+    sensorTimestampNs = get(CaptureResult.SENSOR_TIMESTAMP),
+    exposureTimeNs = get(CaptureResult.SENSOR_EXPOSURE_TIME),
+    iso = get(CaptureResult.SENSOR_SENSITIVITY),
+    focalLengthMm = get(CaptureResult.LENS_FOCAL_LENGTH),
+    frameNumber = frameNumber,
+    aeState = get(CaptureResult.CONTROL_AE_STATE),
+    afState = get(CaptureResult.CONTROL_AF_STATE),
+    flashState = get(CaptureResult.FLASH_STATE),
+)
+
 /**
  * Real driver over [CameraManager]. Constructed with the session executor's
  * handler so every HAL callback lands on the camera thread.
@@ -123,6 +192,9 @@ class AndroidCamera2Driver(
         context.getSystemService(CameraManager::class.java),
         handler,
     )
+
+    override fun createStillOutput(size: FrameSize): StillOutput? =
+        runCatching { JpegStillOutput(size.width, size.height, handler = handler) }.getOrNull()
 
     @SuppressLint("MissingPermission")
     override fun openCamera(cameraId: String, callback: DeviceCallback) {
@@ -162,7 +234,7 @@ private class AndroidDeviceHandle(
     ) {
         val stateCallback = object : CameraCaptureSession.StateCallback() {
             override fun onConfigured(session: CameraCaptureSession) =
-                callback.onConfigured(AndroidCaptureSessionHandle(device, session))
+                callback.onConfigured(AndroidCaptureSessionHandle(device, session, handler))
 
             override fun onConfigureFailed(session: CameraCaptureSession) =
                 callback.onConfigureFailed()
@@ -190,12 +262,43 @@ private class AndroidDeviceHandle(
 private class AndroidCaptureSessionHandle(
     private val device: CameraDevice,
     private val session: CameraCaptureSession,
+    private val handler: Handler,
 ) : CaptureSessionHandle {
 
     override fun setRepeatingPreview(params: ResolvedRequestParams, target: Surface) {
         val builder = device.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
         builder.applyPreviewParams(params, target)
-        session.setRepeatingRequest(builder.build(), null, null)
+        session.setRepeatingRequest(builder.build(), null, handler)
+    }
+
+    override fun captureStill(
+        params: ResolvedStillParams,
+        stillTarget: Surface,
+        callback: StillResultCallback,
+    ) {
+        val builder = device.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE)
+        builder.applyStillParams(params, stillTarget)
+        session.capture(
+            builder.build(),
+            object : CameraCaptureSession.CaptureCallback() {
+                override fun onCaptureCompleted(
+                    session: CameraCaptureSession,
+                    request: CaptureRequest,
+                    result: TotalCaptureResult,
+                ) {
+                    callback.onCompleted(result.toRawStillMetadata())
+                }
+
+                override fun onCaptureFailed(
+                    session: CameraCaptureSession,
+                    request: CaptureRequest,
+                    failure: android.hardware.camera2.CaptureFailure,
+                ) {
+                    callback.onFailed("capture failed (reason ${failure.reason})")
+                }
+            },
+            handler,
+        )
     }
 
     override fun close() = session.close()

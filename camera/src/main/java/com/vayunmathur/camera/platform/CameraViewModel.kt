@@ -170,6 +170,15 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
         camera2PreviewEnabledMutable.value = enabled
     }
 
+    /**
+     * The live Camera2 session while the gated preview is composed
+     * (Phase 4a stills), registered by `Camera2Preview`; null otherwise.
+     * The shutter glue reads it synchronously — it is only ever set/cleared
+     * on the main thread from composition effects.
+     */
+    internal var activeCamera2Session:
+        com.vayunmathur.camera.platform.camera2.Camera2Session? = null
+
     internal val cameraModeMutable = MutableStateFlow(CameraMode.PHOTO)
     val cameraMode = cameraModeMutable.asStateFlow()
 

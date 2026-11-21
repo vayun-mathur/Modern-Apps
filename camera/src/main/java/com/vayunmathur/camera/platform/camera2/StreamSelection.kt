@@ -112,6 +112,21 @@ object StreamSelection {
         return Result.success(selected)
     }
 
+    /** Supported JPEG still sizes in facade order (empty = no still output). */
+    fun supportedJpegSizes(snapshot: LensCharacteristicsSnapshot): List<FrameSize> =
+        snapshot.streamConfig.sizesFor(ImageFormat.JPEG)
+            .map { FrameSize.from(it) }.distinct()
+
+    /**
+     * The JPEG still size to configure: the largest the HAL offers (ties on
+     * width, then height), matching CameraX's default highest-resolution
+     * still. Null when the lens reports no JPEG sizes — preview still
+     * works, still capture is unavailable ([StillEnginePolicy] excludes it).
+     */
+    fun selectJpegSize(snapshot: LensCharacteristicsSnapshot): FrameSize? =
+        supportedJpegSizes(snapshot)
+            .maxWithOrNull(compareBy({ it.area }, { it.width }, { it.height }))
+
     /** The rejection for [requested], or null when a size can be selected. */
     fun rejectionFor(
         requested: FrameSize,

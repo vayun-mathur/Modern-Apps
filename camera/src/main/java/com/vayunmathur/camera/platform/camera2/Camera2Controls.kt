@@ -1,6 +1,7 @@
 package com.vayunmathur.camera.platform.camera2
 
 import android.hardware.camera2.CameraMetadata
+import com.vayunmathur.camera.domain.FlashSetting
 import kotlin.math.roundToInt
 
 /**
@@ -21,6 +22,8 @@ data class Camera2ControlState(
     val exposureCompEv: Float = 0f,
     val afRegion: MeteringRegion? = null,
     val aeRegion: MeteringRegion? = null,
+    /** User still-flash setting; preview ignores it, stills resolve it. */
+    val flashSetting: FlashSetting = FlashSetting.OFF,
 ) {
     companion object {
         val DEFAULT = Camera2ControlState()

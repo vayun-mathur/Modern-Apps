@@ -32,6 +32,13 @@ class Camera2SessionTest {
         override fun setRepeatingPreview(params: ResolvedRequestParams, target: Surface) {
             repeating += params
         }
+        override fun captureStill(
+            params: ResolvedStillParams,
+            stillTarget: Surface,
+            callback: StillResultCallback,
+        ) {
+            callback.onCompleted(RawStillMetadata())
+        }
         override fun close() { closed = true }
     }
 
@@ -67,6 +74,7 @@ class Camera2SessionTest {
                 if (failConfigure) FakeDeviceHandle(cameraId, failConfigure = true) else device,
             )
         }
+        override fun createStillOutput(size: FrameSize): StillOutput? = null
     }
 
     private fun snapshot(
@@ -220,6 +228,7 @@ class Camera2SessionTest {
                 override fun openCamera(cameraId: String, callback: DeviceCallback) {
                     pendingCallback = callback
                 }
+                override fun createStillOutput(size: FrameSize): StillOutput? = null
             }
             val listener = RecordingListener()
             val session = newSession(driver, executor, listener)

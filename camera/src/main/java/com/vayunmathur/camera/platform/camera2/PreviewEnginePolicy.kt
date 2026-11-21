@@ -21,9 +21,10 @@ data class PreviewEngineInput(
  * Explicit selection rule for the two preview engines, mirroring
  * `RecordingPathPolicy` for recording: the Camera2 path is selected only
  * when the gate is explicitly on *and* the mode is one the Camera2 session
- * honestly supports. Phase 2 supports PHOTO only (preview + controls, no
- * still capture yet), so every other mode stays on CameraX even with the
- * gate on.
+ * honestly supports. Phase 2 supports PHOTO only; Phase 4a adds plain
+ * PHOTO stills on that preview (see `StillEnginePolicy` for which shots
+ * still stay on CameraX), so every other mode stays on CameraX even with
+ * the gate on.
  */
 object PreviewEnginePolicy {
 

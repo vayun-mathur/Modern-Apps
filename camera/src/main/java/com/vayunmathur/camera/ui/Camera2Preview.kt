@@ -40,23 +40,38 @@ internal fun Camera2Preview(
     zoomRatio: Float,
     torchOn: Boolean,
     exposureCompEv: Float,
+    flashSetting: com.vayunmathur.camera.domain.FlashSetting =
+        com.vayunmathur.camera.domain.FlashSetting.OFF,
+    onSessionChanged: (Camera2Session?) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val sessionHolder = remember(cameraId) { Camera2PreviewSession(context, cameraId) }
 
     DisposableEffect(sessionHolder) {
-        onDispose { sessionHolder.close() }
+        onSessionChanged(sessionHolder.session)
+        onDispose {
+            onSessionChanged(null)
+            sessionHolder.close()
+        }
     }
     LaunchedEffect(sessionHolder, zoomRatio) { sessionHolder.session.setZoomRatio(zoomRatio) }
     LaunchedEffect(sessionHolder, torchOn) { sessionHolder.session.setTorch(torchOn) }
     LaunchedEffect(sessionHolder, exposureCompEv) {
         sessionHolder.session.setExposureCompEv(exposureCompEv)
     }
+    LaunchedEffect(sessionHolder, flashSetting) {
+        sessionHolder.session.setFlashSetting(flashSetting)
+    }
 
     AndroidView(
         factory = { ctx ->
-            TextureView(ctx).also { view -> sessionHolder.bridge.attachTo(view) }
+            TextureView(ctx).also { view ->
+                sessionHolder.session.setDisplayRotationDegrees(
+                    (view.display?.rotation ?: 0) * 90,
+                )
+                sessionHolder.bridge.attachTo(view)
+            }
         },
         modifier = modifier.pointerInput(sessionHolder) {
             detectTapGestures { offset ->
