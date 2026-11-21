@@ -10,6 +10,7 @@ import com.vayunmathur.cast.domain.ClientFailure
 import com.vayunmathur.cast.domain.ClientPhase
 import com.vayunmathur.cast.domain.ClientState
 import com.vayunmathur.cast.platform.mirror.MirrorDegradation
+import com.vayunmathur.testsupport.awaitWithMainIdle
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
@@ -44,14 +45,13 @@ class CastViewModelTest {
     private fun awaitState(vm: CastViewModel, condition: (CastUiState) -> Boolean): CastUiState {
         collectors += kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO)
             .launch { vm.uiState.collect { } }
-        val deadline = System.currentTimeMillis() + 8_000
-        while (System.currentTimeMillis() < deadline) {
-            Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
-            val state = vm.uiState.value
-            if (condition(state)) return state
-            Thread.sleep(20)
+        // Producers run on IO (the collector above, CastController's
+        // scope), so the step bound must leave them wall time to land:
+        // the clock precedent uses 100k steps for background waits.
+        awaitWithMainIdle("uiState matching condition", maxSteps = 200_000) {
+            condition(vm.uiState.value)
         }
-        throw AssertionError("uiState never matched; last=${vm.uiState.value}")
+        return vm.uiState.value
     }
 
     @Test

@@ -29,6 +29,57 @@ android {
     }
 }
 
+// This module has no Rust of its own, but :library:e2ee-p2p (below)
+// registers libe2ee_pqc (rustNativeLib), so every unit test here has
+// kept forkEvery = 1. Only the classes below actually load that
+// library: they call ReceiverController.start (whose listen() runs
+// PqcIdentity.loadOrCreate over PairingStore -> Pqc.generateKem /
+// generateDsa -> PqcNative, NativeLoader.load("e2ee_pqc")), seal a
+// session secret directly via SecretSealing.seal -> Pqc.encryptTo, or
+// drive ReceiverService.onStartCommand / MainActivity, which start
+// the controller the same way. Tests that merely call the pure
+// pairing/session helpers, compose TV surfaces, or drive decoders
+// with fake codecs never load the library and stay in the main task.
+// Quarantine the loaders and the shared-JVM polluters below into
+// testDevUnitTestNative (forkEvery = 1); the remaining classes batch
+// 20-per-JVM in testDevUnitTest, which depends on the quarantine task
+// so the usual invocation still runs everything.
+rustNativeTests {
+    nativeClasses.addAll(
+        listOf(
+            "com.vayunmathur.cast.tv.ReceiverShellTest",
+            "com.vayunmathur.cast.tv.ServiceNotificationsTest",
+            "com.vayunmathur.cast.tv.platform.ContentSessionSuccessTest",
+            "com.vayunmathur.cast.tv.platform.ControlChannelDeepTest",
+            "com.vayunmathur.cast.tv.platform.FullSessionTest",
+            "com.vayunmathur.cast.tv.service.ServiceCollectTest",
+        )
+    )
+    // Shared-JVM polluters keep forkEvery = 1 in the same companion task:
+    // ReceiverController is a process-wide object (state StateFlow,
+    // serverSocket, session/media jobs, surface/contentPlayer fields)
+    // whose session state one class leaves behind is the next class's
+    // starting phase, and PairingStore persists through the
+    // DataStoreUtils process-wide singleton (its init eagerly collects
+    // the preferences DataStore), so remembered-device keys and the
+    // friendly name leak into classes expecting defaults. Audit rule:
+    // any test calling ReceiverController.authenticate / serveContent /
+    // startStreaming / pump, mutating its state or fields, or using
+    // PairingStore / DataStoreUtils directly belongs here, unless it
+    // already loads the native library above. All other classes batch.
+    isolatedClasses.addAll(
+        listOf(
+            "com.vayunmathur.cast.tv.platform.AuthenticateDeepTest",
+            "com.vayunmathur.cast.tv.platform.AuthenticateTest",
+            "com.vayunmathur.cast.tv.platform.FinalSmallTest",
+            "com.vayunmathur.cast.tv.platform.PlatformTvTest",
+            "com.vayunmathur.cast.tv.platform.ServeContentDeepTest",
+            "com.vayunmathur.cast.tv.platform.StartStreamingDeepTest",
+            "com.vayunmathur.cast.tv.platform.StreamingPumpDeepTest",
+        )
+    )
+}
+
 dependencies {
     // The wire format, shared verbatim with the phone. Nothing in this app re-implements it.
     implementation(project(":cast:protocol"))
