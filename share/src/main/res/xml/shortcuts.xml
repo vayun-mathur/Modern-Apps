@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Direct Share (system share sheet's direct-share row). The category must
+         match ShareShortcuts.CATEGORY: the dynamic shortcut published with that
+         category becomes a chooser target, and tapping it launches
+         SharePopupActivity (already the ACTION_SEND / SEND_MULTIPLE target)
+         with the shared content, ready to pick a nearby device. -->
+    <share-target android:targetClass="com.vayunmathur.share.ui.SharePopupActivity">
+        <data android:mimeType="*/*" />
+        <category android:name="com.vayunmathur.share.category.DIRECT_SHARE" />
+    </share-target>
+</shortcuts>

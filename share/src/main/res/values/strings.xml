@@ -1,5 +1,6 @@
 <resources>
     <string name="app_name">Share</string>
+    <string name="share_direct_shortcut_label">Nearby device</string>
 
     <!-- Foreground service -->
     <string name="share_notification_channel_name">Receiving</string>

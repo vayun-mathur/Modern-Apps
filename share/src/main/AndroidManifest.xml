@@ -107,6 +107,12 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="*/*" />
             </intent-filter>
+            <!-- Direct Share: @xml/shortcuts names this activity as the share
+                 target for ShareShortcuts.CATEGORY, so the dynamic shortcut
+                 ShareShortcuts.publish() puts it in the direct-share row. -->
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
         </activity>
 
         <activity

@@ -9,6 +9,7 @@ import com.vayunmathur.library.ui.AppPermissionsSpec
 import com.vayunmathur.library.ui.MaActivity
 import com.vayunmathur.library.ui.PermissionRequirement
 import com.vayunmathur.share.platform.SharePermissions
+import com.vayunmathur.share.platform.ShareShortcuts
 import com.vayunmathur.share.platform.ShareViewModel
 import com.vayunmathur.share.platform.ShareViewModelFactory
 
@@ -20,6 +21,11 @@ import com.vayunmathur.share.platform.ShareViewModelFactory
  */
 class MainActivity : MaActivity() {
     private val shareViewModel: ShareViewModel by viewModels { ShareViewModelFactory(application) }
+
+    override fun onCreateBeforeContent() {
+        // Direct Share row entry; refreshed on every app open (boot republishes too).
+        ShareShortcuts.publish(this)
+    }
 
     @Composable
     override fun Content() {

@@ -20,6 +20,8 @@ class ShareBootReceiver : BroadcastReceiver() {
         ) {
             return
         }
+        // Keep the Direct Share row present without waiting for the app to be opened.
+        com.vayunmathur.share.platform.ShareShortcuts.publish(context)
         val pending = goAsync()
         val appContext = context.applicationContext
         CoroutineScope(Dispatchers.IO).launch {

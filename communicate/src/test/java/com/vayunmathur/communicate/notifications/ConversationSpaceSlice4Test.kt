@@ -162,6 +162,45 @@ class ConversationSpaceSlice4Test {
     }
 
     @Test
+    fun `publishShareTargets caps at four and demotes conversations that fall out`() {
+        val targets = (1..6).map { i ->
+            target(address = "+155$i", threadId = 100L + i, name = "P$i")
+        }
+        ConversationSpace.publishShareTargets(context, targets)
+        fun shareTargetIds() = androidx.core.content.pm.ShortcutManagerCompat
+            .getDynamicShortcuts(context)
+            .filter { it.categories?.contains(ConversationSpace.SHARE_TARGET_CATEGORY) == true }
+            .map { it.id }
+        assertEquals(
+            targets.take(4).map { ConversationSpace.shortcutId(it) },
+            shareTargetIds().sortedBy { targets.map { t -> ConversationSpace.shortcutId(t) }.indexOf(it) },
+        )
+        // The newest conversation jumps the queue: it joins the row, P4 drops out
+        // (demoted to a plain conversation shortcut, not deleted).
+        val newer = target(address = "+1999", threadId = 999L, name = "New")
+        ConversationSpace.publishShareTargets(context, listOf(newer) + targets)
+        assertEquals(4, shareTargetIds().size)
+        assertTrue(ConversationSpace.shortcutId(newer) in shareTargetIds())
+        assertTrue(ConversationSpace.shortcutId(targets[3]) !in shareTargetIds())
+        targets.forEach { ConversationSpace.removeShortcut(context, it) }
+        ConversationSpace.removeShortcut(context, newer)
+    }
+
+    @Test
+    fun `direct share intent resolves its conversation from the shortcut id`() {
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, "hi there")
+            putExtra(Intent.EXTRA_SHORTCUT_ID, "WhatsApp:12345@g.us")
+        }
+        val link = com.vayunmathur.communicate.intents.DeepLinks.parse(intent)
+            as com.vayunmathur.communicate.intents.DeepLink.Conversation
+        assertEquals(CommunicateLine.WhatsApp, link.line)
+        assertEquals("12345@g.us", link.address)
+        assertEquals("hi there", link.body)
+    }
+
+    @Test
     fun `pushShortcut prefers the group title and falls back to app name`() {
         val titled = target().copy(title = "Family", personName = "Pat")
         assertEquals(ConversationSpace.shortcutId(target()), ConversationSpace.pushShortcut(context, titled))
