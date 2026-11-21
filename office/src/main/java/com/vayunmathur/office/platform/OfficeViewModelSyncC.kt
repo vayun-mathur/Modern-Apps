@@ -98,7 +98,11 @@ internal suspend fun OfficeViewModel.fetchMembers(
     key: ByteArray,
     ownerKey: ByteArray?): List<OfficeMember> {
     if (ownerKey == null) return emptyList()
+    // Pull failure (null) degrades to an empty roster here: this is a
+    // tolerant read, and callers re-fetch on the next sync. It must not be
+    // confused with the doc-channel path, which propagates failure.
     val res = OfficeSync.pullDocActions("members:$docId", key, 0)
+        ?: run { currentMembers.clear(); return emptyList() }
     val byId = LinkedHashMap<String, OfficeMember>()
     for (item in res.items) {
         val sm = runCatching { syncJson.decodeFromString<SignedMember>(item) }.getOrNull()
@@ -272,7 +276,8 @@ fun OfficeViewModel.transferOwnership(memberId: String, onResult: (Boolean) -> U
 /** Reads the latest owner-signed document title, if the owner ever renamed it. */
 internal suspend fun OfficeViewModel.fetchTitle(docId: String, key: ByteArray, ownerKey: ByteArray?): String? {
     if (ownerKey == null) return null
-    val res = OfficeSync.pullDocActions("title:$docId", key, 0)
+    // Pull failure (null) means "unknown", same as no signed title here.
+    val res = OfficeSync.pullDocActions("title:$docId", key, 0) ?: return null
     var latest: String? = null
     for (item in res.items) {
         val st = runCatching { syncJson.decodeFromString<SignedTitle>(item) }.getOrNull() ?: continue

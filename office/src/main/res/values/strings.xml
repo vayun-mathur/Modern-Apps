@@ -223,6 +223,10 @@
     <string name="join_request_sent">Request sent — you\'ll get access once the owner approves.</string>
     <!-- MainActivity: Toast when a join request could not be delivered. Sentence -->
     <string name="join_request_failed">Couldn\'t send request — check your connection and try again.</string>
+    <!-- Sync: Message when pushing local edits failed; they are kept and retried. Sentence -->
+    <string name="sync_push_failed_retrying">Couldn\'t send your changes — they\'re saved on this device and will be retried.</string>
+    <!-- Sync: Message when pulling collaborators' edits failed; will retry. Sentence -->
+    <string name="sync_pull_failed_retrying">Couldn\'t check for collaborators\' changes — will retry.</string>
     <!-- MainActivity: Menu image with ellipsis -->
     <string name="image_1">Image…</string>
     <!-- MainActivity: Menu insert time field -->

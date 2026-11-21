@@ -100,16 +100,24 @@ class LocationTrackingInboundTest {
     fun processIncomingFixesAuthGates() = runBlocking {
         val alice = repo.upsertUser(user("Alice", inbound = "expected-pair"))
         val pending = repo.upsertUser(user("Pending", status = RequestStatus.AWAITING_REQUEST))
-        // Future-dated fix from Alice: dropped by time clamp.
-        val future = Instant.fromEpochSeconds(Clock.System.now().epochSeconds + 48 * 3600)
+        // Future-dated fix from Alice (fast clock, +48h): NOT dropped, but its
+        // reportedAt is clamped at ingest to receiver-now + 5 min slack, so it
+        // cannot pin MAX(reportedAt) forever. Stored exactly once, clamped.
+        val before = Clock.System.now().epochSeconds
+        val future = Instant.fromEpochSeconds(before + 48 * 3600)
         service.processIncomingFixes(listOf(InboundFix(fix(alice, at = future), "expected-pair")))
-        assertTrue(repo.locationHistory(alice).first().isEmpty())
+        val clamped = repo.locationHistory(alice).first()
+        assertEquals(1, clamped.size)
+        assertTrue(
+            clamped[0].reportedAt.epochSeconds in (before + 4 * 60)..(before + 6 * 60 + 5),
+            "reportedAt clamped to ~now+5min, was ${clamped[0].reportedAt}",
+        )
         // Wrong pair id: dropped.
         service.processIncomingFixes(listOf(InboundFix(fix(alice), "wrong-pair")))
-        assertTrue(repo.locationHistory(alice).first().isEmpty())
+        assertEquals(1, repo.locationHistory(alice).first().size)
         // Correct pair id: stored.
         service.processIncomingFixes(listOf(InboundFix(fix(alice), "expected-pair")))
-        assertEquals(1, repo.locationHistory(alice).first().size)
+        assertEquals(2, repo.locationHistory(alice).first().size)
         // Ineligible sender (awaiting request): coordinates never stored.
         service.processIncomingFixes(listOf(InboundFix(fix(pending), null)))
         assertTrue(repo.locationHistory(pending).first().isEmpty())

@@ -81,6 +81,41 @@ class LocationSourceDecodeTest {
     }
 
     @Test
+    fun futureStampedReportIsClampedToReceiverNowPlusSlackAtIngest() {
+        // A peer with a fast clock stamps reportedAt 2h ahead. Without the
+        // ingest clamp that row would win MAX(reportedAt) until real time
+        // caught up — effectively forever. Clamped, it ranks as "just sent"
+        // (receiver-now + 5 min slack) and the next on-time report supersedes it.
+        val receiverNow = Instant.fromEpochMilliseconds(2_000_000_000L)
+        val futureMs = receiverNow.toEpochMilliseconds() + 2 * 60 * 60 * 1000L
+        val decoded = payload(source = "LIVE", reportedAt = futureMs)
+            .toLocationValue(receiverNow = receiverNow)
+        assertEquals(
+            Instant.fromEpochMilliseconds(receiverNow.toEpochMilliseconds() + 5 * 60 * 1000L),
+            decoded.reportedAt,
+        )
+        // The measurement time is not rewritten — only the ranking stamp is.
+        assertEquals(Instant.fromEpochMilliseconds(1_000_000L), decoded.timestamp)
+    }
+
+    @Test
+    fun inWindowAndPastReportsKeepTheirStampAtIngest() {
+        val receiverNow = Instant.fromEpochMilliseconds(2_000_000_000L)
+        val inWindowMs = receiverNow.toEpochMilliseconds() + 60_000L
+        assertEquals(
+            Instant.fromEpochMilliseconds(inWindowMs),
+            payload(source = "LIVE", reportedAt = inWindowMs)
+                .toLocationValue(receiverNow = receiverNow).reportedAt,
+        )
+        val pastMs = receiverNow.toEpochMilliseconds() - 60_000L
+        assertEquals(
+            Instant.fromEpochMilliseconds(pastMs),
+            payload(source = "LIVE", reportedAt = pastMs)
+                .toLocationValue(receiverNow = receiverNow).reportedAt,
+        )
+    }
+
+    @Test
     fun encodeThenDecodePreservesSourceAndBothTimes() {
         val original = LocationValue(
             userid = 7L,

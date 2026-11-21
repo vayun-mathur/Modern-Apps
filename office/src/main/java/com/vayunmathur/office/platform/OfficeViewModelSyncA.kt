@@ -194,10 +194,16 @@ internal suspend fun OfficeViewModel.applyLiveActions(msg: OfficeSync.LiveMsg, d
 internal suspend fun OfficeViewModel.pushLiveOps(docId: String, key: ByteArray, opsJson: String) {
     val sig = Base64.encode(OfficeSync.sign(opsJson.encodeToByteArray()))
     val signed = syncJson.encodeToString(SignedOp(OfficeSync.deviceId, sig, opsJson))
-    if (!OfficeSync.liveAppend(docId, key, listOf(signed))) OfficeSync.appendDocActions(
-        docId,
-        key,
-        listOf(signed))
+    val pushed = OfficeSync.liveAppend(docId, key, listOf(signed)) ||
+        OfficeSync.appendDocActions(docId, key, listOf(signed)) != null
+    if (!pushed) {
+        // Same lost-ops guard as syncDoc: the tree has already absorbed
+        // these ops, so stash the signed batch in the persisted pending
+        // list for the next syncDoc cycle to retry verbatim.
+        val ds = DataStoreUtils.getInstance(getApplication())
+        val pending = loadPendingOps(ds, docId)
+        if (signed !in pending) savePendingOps(ds, docId, pending + signed)
+    }
 }
 
 /** Persists the merged tree and re-renders it into the editor when it changed. */

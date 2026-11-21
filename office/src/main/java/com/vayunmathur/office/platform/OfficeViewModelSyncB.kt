@@ -218,6 +218,23 @@ internal suspend fun OfficeViewModel.saveTree(ds: DataStoreUtils, docId: String,
     ds.setString("crdt:$docId", tree.serialize())
 }
 
+/**
+ * Signed ops that have been diffed into the local CRDT but not yet acked by
+ * the relay. Persisted because `updateJson` advances the tree immediately:
+ * once local edits are folded in, the next diff returns "[]" for them, so
+ * without this list a failed append would lose them forever. The list is
+ * retried verbatim on the next sync (CRDT op application is idempotent, so
+ * an echo re-apply is harmless) and cleared only on a successful push.
+ */
+internal suspend fun OfficeViewModel.loadPendingOps(ds: DataStoreUtils, docId: String): List<String> =
+    ds.getString("crdtPending:$docId")
+        ?.let { runCatching { syncJson.decodeFromString<List<String>>(it) }.getOrNull() }
+        ?: emptyList()
+
+internal suspend fun OfficeViewModel.savePendingOps(ds: DataStoreUtils, docId: String, ops: List<String>) {
+    ds.setString("crdtPending:$docId", syncJson.encodeToString(ops))
+}
+
 /** Parses flat-ODF text back into a document via a temp file (tolerant; null on failure). */
 internal fun OfficeViewModel.parseFlat(flat: String): OdfDocument? {
     val ctx: Context = getApplication()
@@ -238,16 +255,48 @@ internal suspend fun OfficeViewModel.syncDoc(docId: String, key: ByteArray) = sy
     val startVersion = editVersion
     val opsJson = tree.updateJson(localXml)
     // Only push signed ops if we're allowed to edit; viewers never push.
+    // Push = previously-pending (un-acked) ops + any newly diffed ops, so a
+    // failed cycle is retried verbatim next time instead of depending on the
+    // diff regenerating ops the tree has already absorbed.
+    var pending = loadPendingOps(ds, docId)
     if (opsJson != "[]" && OfficeRoles.canEdit(currentRole)) {
         val sig = Base64.encode(OfficeSync.sign(opsJson.encodeToByteArray()))
         val signed = syncJson.encodeToString(SignedOp(OfficeSync.deviceId, sig, opsJson))
+        if (signed !in pending) pending = pending + signed
+    }
+    if (pending.isNotEmpty() && OfficeRoles.canEdit(currentRole)) {
         // Prefer the live WebSocket (peers get it instantly, like presence); HTTP is the fallback.
-        if (!OfficeSync.liveAppend(docId, key, listOf(signed))) {
-            OfficeSync.appendDocActions(docId, key, listOf(signed))
+        // Failure semantics: a failed append is NOT success. Keep the ops in
+        // the persisted pending list, persist the tree for local consistency
+        // (the editor/CRDT already contain the edits), surface the failure,
+        // and return WITHOUT advancing the cursor or pulling — the next
+        // cycle retries the same ops and pulls from the same cursor, so no
+        // remote op is skipped either.
+        val pushed = OfficeSync.liveAppend(docId, key, pending) ||
+            OfficeSync.appendDocActions(docId, key, pending) != null
+        if (!pushed) {
+            savePendingOps(ds, docId, pending)
+            saveTree(ds, docId, tree)
+            withContext(Dispatchers.Main) {
+                AppMessages.show(getApplication<Application>().getString(R.string.sync_push_failed_retrying))
+            }
+            return@withLock
         }
+        // Acked (live send or HTTP seq): clear the pending list.
+        if (pending.isNotEmpty()) savePendingOps(ds, docId, emptyList())
     }
     // Pull from the OLD cursor so remote ops (and our just-pushed, idempotent ops) are merged.
+    // Failure semantics: null = relay failure, distinct from "no new ops".
+    // Do not advance the cursor and do not persist-as-synced; the tree is
+    // saved for local consistency and the same cursor is retried next cycle.
     val pulled = OfficeSync.pullDocActions(docId, key, cursor)
+    if (pulled == null) {
+        saveTree(ds, docId, tree)
+        withContext(Dispatchers.Main) {
+            AppMessages.show(getApplication<Application>().getString(R.string.sync_pull_failed_retrying))
+        }
+        return@withLock
+    }
     for (item in pulled.items) {
         applySignedOp(tree, item)
     }
@@ -427,11 +476,16 @@ fun OfficeViewModel.openOnlineDocument(meta: OfficeDocMeta) {
                     index.values.toList()) }
             }
             val cursor = ds.getLong("crdtCursor:${meta.docId}")?.toInt() ?: 0
+            // Pull failure (null): open from the locally stored tree and do
+            // NOT advance the cursor — the same ops are pulled again next
+            // sync instead of being silently skipped as if confirmed empty.
             val pulled = OfficeSync.pullDocActions(meta.docId, key, cursor)
-            for (item in pulled.items) {
-                applySignedOp(crdt, item)
+            if (pulled != null) {
+                for (item in pulled.items) {
+                    applySignedOp(crdt, item)
+                }
+                ds.setLong("crdtCursor:${meta.docId}", pulled.seq.toLong())
             }
-            ds.setLong("crdtCursor:${meta.docId}", pulled.seq.toLong())
             saveTree(ds, meta.docId, crdt)
             val mergedXml = crdt.render()
             if (mergedXml.isBlank()) {

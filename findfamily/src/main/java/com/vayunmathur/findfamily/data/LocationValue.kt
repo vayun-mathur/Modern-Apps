@@ -6,7 +6,9 @@ import androidx.room3.Entity
 import androidx.room3.Index
 import androidx.room3.PrimaryKey
 import com.vayunmathur.library.util.DatabaseItem
+import com.vayunmathur.findfamily.domain.PairAuth
 import kotlinx.serialization.Serializable
+import kotlin.time.Clock
 import kotlin.time.Instant
 
 /**
@@ -153,7 +155,15 @@ data class LocationValueCompatible(
      */
     val source: String? = null
 ) {
-    fun toLocationValue(): LocationValue {
+    /**
+     * Decodes a wire report into a stored row. This is an ingest point for
+     * *incoming* reports only (this device's own reports are constructed as
+     * [LocationValue] directly and keep their true stamp), so [reportedAt] is
+     * clamped against the receiver's clock here: a sender with a fast clock
+     * must not pin its fix as newest forever under `MAX(reportedAt)` ranking.
+     * [receiverNow] is injectable for tests.
+     */
+    fun toLocationValue(receiverNow: Instant = Clock.System.now()): LocationValue {
         return LocationValue(
             userid = userid.toLong(),
             coord = coord,
@@ -161,7 +171,8 @@ data class LocationValueCompatible(
             acc = acc,
             timestamp = Instant.fromEpochMilliseconds(timestamp),
             battery = battery,
-            reportedAt = Instant.fromEpochMilliseconds(reportedAt ?: timestamp),
+            reportedAt = PairAuth.clampReportedAt(
+                Instant.fromEpochMilliseconds(reportedAt ?: timestamp), receiverNow),
             // Absent means a peer older than the field, which only ever sent live reports.
             // Present but unrecognised means a peer NEWER than this build, whose category we
             // cannot interpret — guessing LIVE there would be unsafe, see LocationSource.UNKNOWN.

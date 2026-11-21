@@ -56,8 +56,11 @@ internal typealias UwbEnvelopeSender =
  *
  * Three gates, in order — time-clamp, sender-auth, storage-eligibility — so a forgery
  * dies at the cheapest check that catches it:
- *  1. **Time clamp.** A far-future `reportedAt`/`timestamp` lets one forgery pin
- *     `getLatest()` forever (it ranks on MAX(reportedAt)). Dropped before any DB work.
+ *  1. **Time clamp.** A far-future `reportedAt` lets one report pin
+ *     `getLatest()` forever (it ranks on MAX(reportedAt)). It is clamped to
+ *     receiver-now + [PairAuth.MAX_FUTURE_SKEW_SECONDS] at ingest (in
+ *     [processIncomingLocations] / `toLocationValue()`), not dropped: the fix
+ *     stays usable, it just cannot outrank reports received after it.
  *  2. **Sender auth (GHSA-x94x-v6f7-wwpp).** Ciphertext proves who the packet is FOR,
  *     not who it is FROM, and `userid` is self-declared. Each *person* peer pins the
  *     first pair ID it sees; anything else claiming to be them is dropped before it can
@@ -74,7 +77,6 @@ internal typealias UwbEnvelopeSender =
  */
 internal suspend fun LocationTrackingService.processIncomingFixes(incoming: List<InboundFix>) {
     if (incoming.isEmpty()) return
-    val now = Clock.System.now()
     val usersById = repository.getAllUsers().associateBy { it.id }
     // Eligible senders: mutual/response PERSON contacts known when this batch arrived.
     // Trackers excluded (crowd reports, not relay packets). AWAITING_REQUEST excluded:
@@ -89,7 +91,7 @@ internal suspend fun LocationTrackingService.processIncomingFixes(incoming: List
     val authenticated = ArrayList<LocationValue>(incoming.size)
     val strangerIds = LinkedHashSet<Long>()
     for (fix in incoming) {
-        collectAuthenticatedFix(fix, usersById, eligibleIds, now, authenticated, strangerIds)
+        collectAuthenticatedFix(fix, usersById, eligibleIds, authenticated, strangerIds)
     }
     if (strangerIds.isNotEmpty()) {
         Log.dev("FF-Heartbeat", "newUsers to insert=${strangerIds.map { it.toULong() }}")
@@ -104,21 +106,15 @@ private suspend fun LocationTrackingService.collectAuthenticatedFix(
     fix: InboundFix,
     usersById: Map<Long, User>,
     eligibleIds: Set<Long>,
-    now: kotlin.time.Instant,
     authenticated: MutableList<LocationValue>,
     strangerIds: MutableSet<Long>,
 ) {
     val loc = fix.location
     val senderId = loc.userid
     if (senderId == Networking.userid) return
-    if (PairAuth.isFromTheFuture(loc.reportedAt, loc.timestamp, now)) {
-        Log.status(
-            "FF-Heartbeat",
-            "dropped future-dated fix from ${senderId.toULong()} " +
-                "reportedAt=${loc.reportedAt} timestamp=${loc.timestamp}"
-        )
-        return
-    }
+    // Future-stamped reports are NOT dropped here: processIncomingLocations
+    // clamps reportedAt to receiver-now + slack at persist time, which
+    // neutralises the MAX(reportedAt) pin without losing the fix.
     val peer = usersById[senderId]
     if (peer == null || peer.kind != UserKind.PERSON || senderId !in eligibleIds) {
         // Stranger, tracker claim, or not-yet-mutual: request row at most, never a pin,
@@ -167,8 +163,13 @@ private suspend fun LocationTrackingService.collectAuthenticatedFix(
  * [LocationTrackingService.pollPoweredOffSightings]) call this DIRECTLY, bypassing
  * [processIncomingFixes] on purpose: their fixes are anonymous finder reports restamped
  * to a tracker/owner ID locally — there is no relay sender to authenticate and no pair
- * ID to check. They MUST time-clamp before calling: those reports carry finder-set
- * timestamps through the same `getLatest()` ranking.
+ * ID to check. Their finder-set timestamps flow through the same `getLatest()`
+ * ranking, so the clamp below is what protects them too.
+ *
+ * Clock-skew clamp (the persist point for every incoming report): each fix's
+ * `reportedAt` is clamped to receiver-now + [PairAuth.MAX_FUTURE_SKEW_SECONDS]
+ * before it is stored. This device's own reports never pass through here —
+ * they are stored via the heartbeat's single-row upsert with their true stamp.
  */
 internal suspend fun LocationTrackingService.processIncomingLocations(incoming: List<LocationValue>) {
     // A category this build cannot interpret is dropped rather than stored. Marking it is not
@@ -192,8 +193,15 @@ internal suspend fun LocationTrackingService.processIncomingLocations(incoming: 
     }
     // Low-accuracy fixes are never used: anything worse than the intake gate never
     // reaches Room, the map, or latestLocations.
-    val locList = knownSource.filter {
+    val filtered = knownSource.filter {
         it.acc.isFinite() && it.acc >= 0f && it.acc <= MAX_FIX_ACCURACY_METERS
+    }
+    // Clamp at ingest, once, here — not in every query: effective reportedAt is
+    // min(reportedAt, receiverNow + slack). A fast-clock peer's fix is kept but
+    // can no longer outrank every later report forever.
+    val receiverNow = Clock.System.now()
+    val locList = filtered.map {
+        it.copy(reportedAt = PairAuth.clampReportedAt(it.reportedAt, receiverNow))
     }
     if (locList.size != knownSource.size) {
         Log.status(

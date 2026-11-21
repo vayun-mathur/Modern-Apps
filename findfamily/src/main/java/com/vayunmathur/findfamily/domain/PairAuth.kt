@@ -2,6 +2,7 @@ package com.vayunmathur.findfamily.domain
 
 import java.security.SecureRandom
 import kotlin.io.encoding.Base64
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
 /**
@@ -70,6 +71,19 @@ object PairAuth {
         val skew = MAX_FUTURE_SKEW_SECONDS
         return reportedAt.epochSeconds - now.epochSeconds > skew ||
             timestamp.epochSeconds - now.epochSeconds > skew
+    }
+
+    /**
+     * Clamps a sender-stamped [reportedAt] to at most [MAX_FUTURE_SKEW_SECONDS]
+     * ahead of the receiver's [now]. Applied at ingest (only to incoming peer
+     * reports, never to this device's own reports) so a peer with a fast clock
+     * cannot pin a stale fix as newest forever via `MAX(reportedAt)`: the fix
+     * is kept, but ranked no newer than the receiver allows. The slack absorbs
+     * ordinary in-flight delay and small genuine clock differences.
+     */
+    fun clampReportedAt(reportedAt: Instant, now: Instant): Instant {
+        val latestAllowed = now + MAX_FUTURE_SKEW_SECONDS.seconds
+        return if (reportedAt > latestAllowed) latestAllowed else reportedAt
     }
 
     /** Truncated pair ID for logs — the full value must never be logged. */

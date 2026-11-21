@@ -11,6 +11,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -51,8 +52,9 @@ class Slice4Pass2SyncNetworkTest {
         installFake { _, _ -> null }
         val key = OfficeSync.newDocumentKey()
         assertNull(OfficeSync.getKey("device-x"))
-        assertEquals(emptyList(), OfficeSync.pullDocActions("doc1", key, 7).items)
-        assertEquals(7, OfficeSync.pullDocActions("doc1", key, 7).seq)
+        // Pull failure is null (propagated), NOT an empty result at the old
+        // seq — callers must not advance cursors or persist-as-synced on it.
+        assertNull(OfficeSync.pullDocActions("doc1", key, 7))
         assertNull(OfficeSync.appendDocActions("doc1", key, listOf("op")))
         assertNull(OfficeSync.append("chan", listOf("blob")))
         assertNull(OfficeSync.pull("chan", 3))
@@ -87,6 +89,7 @@ class Slice4Pass2SyncNetworkTest {
 
         // Garbage action in the batch is skipped, the valid one decrypts.
         val pulled = OfficeSync.pullDocActions("doc1", key, 0)
+        assertNotNull(pulled)
         assertEquals(listOf("hello op"), pulled.items)
         assertEquals(9, pulled.seq)
 

@@ -104,6 +104,21 @@ class PairAuthTest {
         assertFalse(PairAuth.isFromTheFuture(now - 30.days, now, now))
     }
 
+    // --- clampReportedAt ---
+
+    @Test
+    fun clampCapsFutureReportedAtAtNowPlusSlack() {
+        assertEquals(now + 5.minutes, PairAuth.clampReportedAt(now + 2.days, now))
+        assertEquals(now + 5.minutes, PairAuth.clampReportedAt(now + 5.minutes, now))
+    }
+
+    @Test
+    fun clampLeavesInWindowAndPastStampsUntouched() {
+        assertEquals(now, PairAuth.clampReportedAt(now, now))
+        assertEquals(now + 1.minutes, PairAuth.clampReportedAt(now + 1.minutes, now))
+        assertEquals(now - 30.days, PairAuth.clampReportedAt(now - 30.days, now))
+    }
+
     // --- logPreview ---
 
     @Test

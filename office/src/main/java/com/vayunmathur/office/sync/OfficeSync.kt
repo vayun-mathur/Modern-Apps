@@ -88,8 +88,16 @@ object OfficeSync {
         return append(docId, blobs)
     }
 
-    suspend fun pullDocActions(docId: String, key: ByteArray, since: Int): DocActionsResult {
-        val p = pull(docId, since) ?: return DocActionsResult(emptyList(), since)
+    /**
+     * Pulls doc actions since [since], or returns null on transport/HTTP
+     * failure. Null is deliberately distinct from an empty success: callers
+     * must not advance their cursor, persist-as-synced, or treat "no news"
+     * as confirmed when the relay never answered. Individual undecryptable
+     * items in a successful batch are still skipped (one bad blob must not
+     * drop the batch).
+     */
+    suspend fun pullDocActions(docId: String, key: ByteArray, since: Int): DocActionsResult? {
+        val p = pull(docId, since) ?: return null
         val items = p.actions.mapNotNull { b ->
             runCatching { E2ee.aesDecrypt(key, Base64.decode(b)).decodeToString() }
                 .getOrNull()

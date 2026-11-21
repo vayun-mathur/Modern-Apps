@@ -7,7 +7,6 @@ import com.vayunmathur.library.log.Log
 import com.vayunmathur.findfamily.data.Coord
 import com.vayunmathur.findfamily.data.LocationValue
 import com.vayunmathur.findfamily.data.UserKind
-import com.vayunmathur.findfamily.domain.PairAuth
 import com.vayunmathur.findfamily.sync.PoweredOffReporting
 import com.vayunmathur.findfamily.platform.PoweredOffScanner
 import com.vayunmathur.findfamily.platform.TrackerBeaconScanner
@@ -82,15 +81,10 @@ internal suspend fun LocationTrackingService.pollTrackerReports() {
     }
     if (locs.isNotEmpty()) {
         // Tracker crowd reports are anonymous finder sightings restamped locally — no relay
-        // sender, no pair ID. Time-clamp before storing: finder-set timestamps flow through
-        // the same getLatest() MAX(reportedAt) ranking.
-        val now = Clock.System.now()
-        val timely = locs.filterNot { loc ->
-            val future = PairAuth.isFromTheFuture(loc.reportedAt, loc.timestamp, now)
-            if (future) Log.status("FF-Tracker", "dropped future-dated tracker report")
-            future
-        }
-        if (timely.isNotEmpty()) processIncomingLocations(timely)
+        // sender, no pair ID. processIncomingLocations clamps reportedAt at
+        // persist time: finder-set timestamps flow through the same
+        // getLatest() MAX(reportedAt) ranking, so no pre-filter is needed here.
+        processIncomingLocations(locs)
     }
 }
 
@@ -173,15 +167,8 @@ internal suspend fun LocationTrackingService.pollPoweredOffSightings() {
     if (locs.isNotEmpty()) {
         Log.status(LocationTrackingService.TAG_POWERED_OFF, "retrieved ${locs.size} network sighting(s)")
         // Powered-off sightings are anonymous finder reports restamped locally — no relay
-        // sender, no pair ID. Time-clamp before storing (same getLatest() ranking).
-        val now = Clock.System.now()
-        val timely = locs.filterNot { loc ->
-            val future = PairAuth.isFromTheFuture(loc.reportedAt, loc.timestamp, now)
-            if (future) {
-                Log.status(LocationTrackingService.TAG_POWERED_OFF, "dropped future-dated sighting")
-            }
-            future
-        }
-        if (timely.isNotEmpty()) processIncomingLocations(timely)
+        // sender, no pair ID. processIncomingLocations clamps reportedAt at
+        // persist time (same getLatest() ranking).
+        processIncomingLocations(locs)
     }
 }

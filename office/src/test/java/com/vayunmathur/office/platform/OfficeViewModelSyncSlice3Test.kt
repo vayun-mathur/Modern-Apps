@@ -235,11 +235,34 @@ class OfficeViewModelSyncSlice3Test {
         val tree = DocumentTreeCrdt("dev-sync")
         v.currentTree = tree
         v.syncDoc("doc-sync-1", key)
-        // Tree was persisted under the doc id and renders the local text.
+        // Offline: the append fails, so the tree is still persisted for local
+        // consistency and renders the local text, but the ops are kept in the
+        // persisted pending list for the next cycle and the cursor is NOT
+        // advanced/persisted-as-synced (no crdtCursor write at all).
         val stored = realDs().getString("crdt:doc-sync-1")
         assertNotNull(stored)
         assertTrue(tree.render().contains("synced text"), tree.render())
-        assertEquals(0L, realDs().getLong("crdtCursor:doc-sync-1") ?: -1L)
+        assertNull(realDs().getLong("crdtCursor:doc-sync-1"))
+        val pending = v.loadPendingOps(realDs(), "doc-sync-1")
+        assertEquals(1, pending.size, "un-acked ops must stay pending: $pending")
+        assertTrue(pending[0].contains("synced text") || pending[0].isNotBlank(), pending[0])
+    }
+
+    @Test
+    fun `syncDoc retries pending ops verbatim on next cycle`() = runTest {
+        val v = loadedVm("retry text")
+        val key = ByteArray(32) { it.toByte() }
+        v.currentRole = OfficeRoles.EDITOR
+        val tree = DocumentTreeCrdt("dev-retry")
+        v.currentTree = tree
+        // Two offline cycles: the diff is absorbed by the tree after cycle 1
+        // (updateJson would return "[]" for the same text), yet cycle 2 must
+        // still attempt the pending batch — exactly one entry, not duplicated.
+        v.syncDoc("doc-sync-retry", key)
+        v.syncDoc("doc-sync-retry", key)
+        val pending = v.loadPendingOps(realDs(), "doc-sync-retry")
+        assertEquals(1, pending.size, "pending must not duplicate or vanish: $pending")
+        assertNull(realDs().getLong("crdtCursor:doc-sync-retry"))
     }
 
     @Test
