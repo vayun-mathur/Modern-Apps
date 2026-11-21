@@ -43,9 +43,11 @@ class Restore3AExtraTest {
             Boolean::class.javaPrimitiveType,
             NightExposure::class.java,
             Function1::class.java,
+            Function1::class.java,
         ).apply { isAccessible = true }
+        val onFrameCaptured: (Int) -> Unit = { }
         val onDone: (List<Bitmap>) -> Unit = { frames -> done = frames }
-        val driver = ctor.newInstance(viewModel, control, false, NightExposure(2_000_000L, 1600), onDone)
+        val driver = ctor.newInstance(viewModel, control, false, NightExposure(2_000_000L, 1600), onFrameCaptured, onDone)
         cls.getDeclaredMethod("start").apply { isAccessible = true }.invoke(driver)
         // The lock listener is posted to the main executor: idle it loose.
         org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()

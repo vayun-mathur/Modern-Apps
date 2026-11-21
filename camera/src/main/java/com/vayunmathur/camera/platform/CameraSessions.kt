@@ -30,6 +30,7 @@ internal fun CameraViewModel.bindSession(
 
 /** Tears down whatever session is currently bound and clears the shared preview surface. */
 fun CameraViewModel.teardownSession() {
+    sessionTeardownCount++
     Log.dev(
         "NightPreview",
         "teardownSession() START thread=${Thread.currentThread().name} " +

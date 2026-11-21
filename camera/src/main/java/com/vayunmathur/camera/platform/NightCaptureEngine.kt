@@ -13,9 +13,11 @@ import kotlin.math.roundToInt
  * noise (~√N read/shot-noise reduction), then brightens the result with a
  * highlight-preserving curve so it reads as a bright night shot without clipping.
  *
- * This is currently the *primary* night path — the app does not depend on
- * camera-extensions / ExtensionMode.NIGHT, so vendor Night extension (Pixel/Samsung ISP)
- * is unavailable. This custom path is used when auto low-light detection fires.
+ * Routing (see `captureNightPhoto` in CameraPhotoCapture.kt) prefers the vendor
+ * camera-extensions / ExtensionMode.NIGHT path when `nightExtensionUsable` is true;
+ * this custom engine is the fallback used on extension-less devices (most) and when
+ * the extension is unusable, when auto low-light detection fires. The extension
+ * path does its own vendor merge and does not go through this engine.
  *
  * Improvements vs old path:
  * - Burst is still collected from ImageAnalysis but at HIGHEST_AVAILABLE resolution,
@@ -49,45 +51,84 @@ object NightCaptureEngine {
     private const val RGBA_BYTES_PER_PIXEL = 4
     private const val MAX_FRAME_SIDE_PX = 20000
 
+    /** Merge input cap: frames are downscaled so merge/brighten runs at ≤8 MP. */
+    internal const val MAX_MERGE_PIXELS = 8_000_000
+
+    /**
+     * Dimensions for a [width]×[height] frame capped at [maxPixels], preserving aspect
+     * ratio. Unchanged when already within the cap (or degenerate); floored to ≥1px/side.
+     */
+    internal fun mergeScaledDimensions(width: Int, height: Int, maxPixels: Int = MAX_MERGE_PIXELS): Pair<Int, Int> {
+        if (width <= 0 || height <= 0 || maxPixels <= 0) return width to height
+        val pixels = width.toLong() * height.toLong()
+        if (pixels <= maxPixels) return width to height
+        val scale = kotlin.math.sqrt(maxPixels.toDouble() / pixels.toDouble())
+        val w = (width * scale).toInt().coerceAtLeast(1)
+        val h = (height * scale).toInt().coerceAtLeast(1)
+        return w to h
+    }
+
+    /** Downscaled copy of [frame] for merging, or [frame] itself when within the cap. */
+    private fun downscaleForMerge(frame: Bitmap): Bitmap {
+        val (w, h) = mergeScaledDimensions(frame.width, frame.height)
+        if (w == frame.width && h == frame.height) return frame
+        return Bitmap.createScaledBitmap(frame, w, h, true)
+    }
+
     /**
      * Aligns and merges [burst] into a single brightened bitmap. Falls back to the
      * middle frame if native align/merge is unavailable. Runs off the main thread.
      */
     suspend fun merge(burst: List<Bitmap>): Bitmap? = withContext(Dispatchers.Default) {
         if (burst.isEmpty()) return@withContext null
-        val sized = burst.filter { it.width > 0 && it.height > 0 }.let { list ->
-            if (list.isEmpty()) return@withContext null
-            val w = list[0].width
-            val h = list[0].height
-            val same = list.filter { it.width == w && it.height == h }
-            if (same.size >= 2) same else list.take(1)
-        }
+        // Downscaled copies owned by this call (identity-distinct from caller frames).
+        val owned = mutableListOf<Bitmap>()
+        try {
+            val sized = burst.filter { it.width > 0 && it.height > 0 }.let { list ->
+                if (list.isEmpty()) return@withContext null
+                val w = list[0].width
+                val h = list[0].height
+                val same = list.filter { it.width == w && it.height == h }
+                if (same.size >= 2) same else list.take(1)
+            }.map { frame ->
+                downscaleForMerge(frame).also { if (it !== frame) owned.add(it) }
+            }
 
-        val merged = alignAndMergeNative(sized)
-        val source = merged ?: sized[sized.size / 2]
+            val merged = alignAndMergeNative(sized)
+            val source = merged ?: sized[sized.size / 2]
 
-        val w = source.width
-        val h = source.height
-        val n = w * h
-        val px = IntArray(n)
-        source.getPixels(px, 0, w, 0, 0, w, h)
-        for (i in 0 until n) {
-            val p = px[i]
-            val a = (p ushr ALPHA_SHIFT) and CHANNEL_MASK
-            val r = (p shr RED_SHIFT) and CHANNEL_MASK
-            val g = (p shr GREEN_SHIFT) and CHANNEL_MASK
-            val b = p and CHANNEL_MASK
-            // Alpha preserved from source, RGB via highlight-preserving curve
-            val rr = brightenChannel(r.toFloat())
-            val gg = brightenChannel(g.toFloat())
-            val bb = brightenChannel(b.toFloat())
-            px[i] = (a shl ALPHA_SHIFT) or (rr shl RED_SHIFT) or (gg shl GREEN_SHIFT) or bb
-        }
-        if (merged != null && merged !== source) {
-            merged.recycle()
-        }
-        createBitmap(w, h).apply {
-            setPixels(px, 0, w, 0, 0, w, h)
+            val w = source.width
+            val h = source.height
+            val n = w * h
+            val px = IntArray(n)
+            source.getPixels(px, 0, w, 0, 0, w, h)
+            for (i in 0 until n) {
+                val p = px[i]
+                val a = (p ushr ALPHA_SHIFT) and CHANNEL_MASK
+                val r = (p shr RED_SHIFT) and CHANNEL_MASK
+                val g = (p shr GREEN_SHIFT) and CHANNEL_MASK
+                val b = p and CHANNEL_MASK
+                // Alpha preserved from source, RGB via highlight-preserving curve
+                val rr = brightenChannel(r.toFloat())
+                val gg = brightenChannel(g.toFloat())
+                val bb = brightenChannel(b.toFloat())
+                px[i] = (a shl ALPHA_SHIFT) or (rr shl RED_SHIFT) or (gg shl GREEN_SHIFT) or bb
+            }
+            if (merged != null && merged !== source) {
+                merged.recycle()
+            }
+            createBitmap(w, h).apply {
+                setPixels(px, 0, w, 0, 0, w, h)
+            }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: OutOfMemoryError) {
+            // Caller (mergeNightFrames) falls back to the middle original frame.
+            null
+        } catch (e: Throwable) {
+            null
+        } finally {
+            owned.forEach { it.recycle() }
         }
     }
 

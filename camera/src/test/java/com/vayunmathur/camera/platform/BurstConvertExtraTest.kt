@@ -78,9 +78,11 @@ class BurstConvertExtraTest {
             Boolean::class.javaPrimitiveType,
             NightExposure::class.java,
             Function1::class.java,
+            Function1::class.java,
         ).apply { isAccessible = true }
+        val onFrameCaptured: (Int) -> Unit = { }
         val onDone: (List<Bitmap>) -> Unit = { frames -> done = frames }
-        val driver = ctor.newInstance(viewModel, null, false, NightExposure(1_000L, null), onDone)
+        val driver = ctor.newInstance(viewModel, null, false, NightExposure(1_000L, null), onFrameCaptured, onDone)
         cls.getDeclaredMethod("start").apply { isAccessible = true }.invoke(driver)
         var guard = 0
         while (done == null && guard < 20) {

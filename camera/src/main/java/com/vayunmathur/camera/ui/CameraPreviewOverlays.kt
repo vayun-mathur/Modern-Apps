@@ -16,6 +16,16 @@ import androidx.compose.ui.unit.sp
 import com.vayunmathur.camera.R
 import com.vayunmathur.library.ui.Text
 
+/**
+ * Whether the moon affordance is shown. Visible whenever a dark scene is detected or
+ * night is already active, regardless of vendor NIGHT-extension availability: the
+ * custom burst path ([com.vayunmathur.camera.platform.CameraViewModel.captureNightPhotoCustom])
+ * works without an extension, and the tap toggles the per-scene override for both paths.
+ * Extension-only UI (strength slider) stays gated on the extension separately.
+ */
+internal fun nightAffordanceVisible(lowLightDetected: Boolean, nightModeActive: Boolean): Boolean =
+    lowLightDetected || nightModeActive
+
 @Composable
 internal fun BoxScope.CameraPreviewOverlays(
     gridEnabled: Boolean,
@@ -57,16 +67,17 @@ internal fun BoxScope.CameraPreviewOverlays(
         )
     }
 
-    if (longExposureProgress > 0f) {
+    if (longExposureProgress > 0f || longExposureRemaining.isNotEmpty()) {
         LongExposureOverlay(
             progress = longExposureProgress,
             remainingText = longExposureRemaining
         )
     }
 
-    // Auto night: shown when a dark scene is detected (getNightModeIndicator /
-    // luminance) and the extension is usable; tap toggles night off for this scene.
-    if (lowLightDetected && nightExtAvailable) {
+    // Auto night: shown whenever a dark scene is detected / night is active, even without
+    // a vendor extension (the custom burst path still applies); tap toggles night off/on
+    // for this scene on both the extension and custom paths.
+    if (nightAffordanceVisible(lowLightDetected, nightModeActive)) {
         NightModeButton(
             active = nightModeActive,
             onClick = onToggleNightOverride,

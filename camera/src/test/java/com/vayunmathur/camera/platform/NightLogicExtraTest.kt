@@ -97,9 +97,11 @@ class NightLogicExtraTest {
             Boolean::class.javaPrimitiveType,
             NightExposure::class.java,
             Function1::class.java,
+            Function1::class.java,
         ).apply { isAccessible = true }
+        val onFrameCaptured: (Int) -> Unit = { }
         val onDone: (List<Bitmap>) -> Unit = { frames -> done = frames }
-        val driver = ctor.newInstance(viewModel, null, false, NightExposure(1_000L, null), onDone)
+        val driver = ctor.newInstance(viewModel, null, false, NightExposure(1_000L, null), onFrameCaptured, onDone)
         cls.getDeclaredMethod("start").apply { isAccessible = true }.invoke(driver)
         // No ImageCapture bound: finishes at once with an empty burst, once only.
         assertEquals(emptyList(), done)
@@ -125,9 +127,11 @@ class NightLogicExtraTest {
             Boolean::class.javaPrimitiveType,
             NightExposure::class.java,
             Function1::class.java,
+            Function1::class.java,
         ).apply { isAccessible = true }
+        val onFrameCaptured: (Int) -> Unit = { }
         val onDone: (List<Bitmap>) -> Unit = { frames -> done = frames }
-        val driver = ctor.newInstance(viewModel, null, true, NightExposure(1_000L, 400), onDone)
+        val driver = ctor.newInstance(viewModel, null, true, NightExposure(1_000L, 400), onFrameCaptured, onDone)
         cls.getDeclaredMethod("start").apply { isAccessible = true }.invoke(driver)
         // Every error re-queues the next frame; the driver never gives up early
         // and finishes (empty) after the burst count is exhausted by errors.

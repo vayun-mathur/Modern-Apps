@@ -42,6 +42,12 @@ import com.vayunmathur.camera.data.setFlashMode
  */
 @Suppress("DEPRECATION")
 internal suspend fun CameraViewModel.captureNightPhotoExtension() {
+    // Ownership snapshot for the finally-restore: this capture borrows the session from
+    // the UI session effect. If the effect tore down / rebound while the shot was in
+    // flight (mode switch, lens flip, backgrounding), it owns the current session and
+    // restoring here would strand the new mode on a photo session.
+    val startMode = cameraModeMutable.value
+    val startTeardownCount = sessionTeardownCount
     isCapturingMutable.value = true
     // Drop the photo session so the UI's analyzer effect re-attaches PhotoAnalyzer once we restore.
     photoSessionActiveMutable.value = false
@@ -108,12 +114,39 @@ internal suspend fun CameraViewModel.captureNightPhotoExtension() {
     } catch (e: IllegalArgumentException) {
         Log.error("CameraViewModel", "Night extension capture path failed", e)
     } finally {
-        // Rebind the normal 3-stream session; sets photoSessionActiveMutable=true so the UI re-attaches
-        // PhotoAnalyzer. If teardown interrupted us, this is superseded by the lifecycle rebind.
-        setupPhotoSession()
+        // Rebind the normal 3-stream session only when this capture still owns the
+        // session (same PHOTO mode, no intervening teardown); otherwise the UI session
+        // effect's fresh bind owns it and a blind setupPhotoSession() here would unbind
+        // that session and leave the new mode with a dead photo preview.
+        if (nightCaptureRestoreApplies(startMode, cameraModeMutable.value, startTeardownCount, sessionTeardownCount)) {
+            setupPhotoSession()
+        }
         isCapturingMutable.value = false
     }
 }
+
+/**
+ * Whether [captureNightPhotoExtension]'s finally may restore the normal photo session:
+ * only when the capture still owns the session — it started in PHOTO, the mode never
+ * changed, and no teardown (mode switch / lens flip / lifecycle rebind) intervened.
+ */
+internal fun nightCaptureRestoreApplies(
+    startMode: CameraMode,
+    currentMode: CameraMode,
+    startTeardownCount: Int,
+    currentTeardownCount: Int
+): Boolean =
+    startMode == CameraMode.PHOTO && currentMode == startMode && currentTeardownCount == startTeardownCount
+
+/** Frame-count progress label for the night burst (no fabricated duration estimate). */
+internal fun nightCaptureProgressLabel(captured: Int, total: Int): String =
+    if (total <= 0) "Capturing" else "Capturing ${captured.coerceIn(0, total)}/$total"
+
+/** Progress-ring fraction for [captured] of [total] night frames. */
+internal fun nightCaptureProgressFraction(captured: Int, total: Int): Float =
+    if (total <= 0) 0f else captured.coerceIn(0, total).toFloat() / total.toFloat()
+
+internal const val NIGHT_MERGING_LABEL = "Merging…"
 
 /**
  * Multi-frame night capture: locks the sensor to a per-frame night exposure/ISO, collects a
@@ -124,10 +157,29 @@ internal suspend fun CameraViewModel.captureNightPhotoExtension() {
 internal fun CameraViewModel.captureNightPhotoCustom() {
     isCapturingMutable.value = true
     val perFrame = computeNightExposure(CameraViewModel.NIGHT_BURST_PER_FRAME_NANOS)
-    // The countdown overlay shows the total burst duration.
-    startLongExposureCountdown(perFrame.nanos * NightCaptureEngine.NIGHT_BURST_COUNT)
+    // Honest progress: frames are sequential full stills of unknown duration, so the
+    // overlay tracks frames actually captured (then merging), not perFrame * count.
+    showNightCaptureProgress(0)
 
-    captureNightBurst(perFrame, ::onNightBurstDone)
+    captureNightBurst(perFrame, { captured -> showNightCaptureProgress(captured) }, ::onNightBurstDone)
+}
+
+/** Publishes frame-count progress to the existing long-exposure overlay flows. */
+internal fun CameraViewModel.showNightCaptureProgress(captured: Int) {
+    longExposureTimerJob?.cancel()
+    longExposureTimerJob = null
+    longExposureProgressMutable.value =
+        nightCaptureProgressFraction(captured, NightCaptureEngine.NIGHT_BURST_COUNT)
+    longExposureRemainingMutable.value =
+        nightCaptureProgressLabel(captured, NightCaptureEngine.NIGHT_BURST_COUNT)
+}
+
+/** Publishes the merging state to the existing long-exposure overlay flows. */
+internal fun CameraViewModel.showNightMerging() {
+    longExposureTimerJob?.cancel()
+    longExposureTimerJob = null
+    longExposureProgressMutable.value = 1f
+    longExposureRemainingMutable.value = NIGHT_MERGING_LABEL
 }
 
 /** Handles the finished night burst: merges + saves, or falls back to single capture. */
@@ -139,6 +191,7 @@ internal fun CameraViewModel.onNightBurstDone(frames: List<Bitmap>) {
         return
     }
     viewModelScope.launch {
+        showNightMerging()
         val uri = withContext(Dispatchers.Default) {
             mergeNightFrames(frames)
         }
@@ -161,14 +214,40 @@ internal suspend fun CameraViewModel.finishNightMerge(uri: Uri) {
     setLastCaptureUri(uri)
 }
 
-/** Merges the burst via the native engine and saves the bitmap; null on failure. */
+/**
+ * Merges the burst via the native engine and saves the bitmap; null on failure.
+ * Hard failure path: OOM / native / allocation failure (any [Throwable] except
+ * cancellation) falls back to saving the middle burst frame, so the user still
+ * gets a shot instead of losing the whole burst.
+ */
 internal suspend fun CameraViewModel.mergeNightFrames(frames: List<Bitmap>): Uri? {
-    val merged = NightCaptureEngine.merge(frames)
-    frames.forEach { it.recycle() }
-    return merged?.let { bmp ->
-        saveStillBitmap("IMG_${MediaStoreSaver.timestamp()}.jpg", bmp)
-            .also { bmp.recycle() }
+    val merged = try {
+        NightCaptureEngine.merge(frames)
+    } catch (e: kotlinx.coroutines.CancellationException) {
+        throw e
+    } catch (e: Throwable) {
+        Log.status("CameraViewModel", "Night merge threw; using middle-frame fallback", e)
+        null
     }
+    if (merged != null) {
+        frames.forEach { it.recycle() }
+        return saveStillBitmap("IMG_${MediaStoreSaver.timestamp()}.jpg", merged)
+            .also { merged.recycle() }
+    }
+    // Middle-frame fallback (frames are still owned here; save before recycling).
+    val middle = frames.getOrNull(frames.size / 2)
+    val fallbackUri = middle?.let {
+        try {
+            saveStillBitmap("IMG_${MediaStoreSaver.timestamp()}.jpg", it)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            Log.status("CameraViewModel", "Night middle-frame fallback save failed", e)
+            null
+        }
+    }
+    frames.forEach { it.recycle() }
+    return fallbackUri
 }
 
 /**
@@ -183,7 +262,11 @@ internal suspend fun CameraViewModel.mergeNightFrames(frames: List<Bitmap>): Uri
  */
 @Suppress("DEPRECATION")
 @OptIn(ExperimentalCamera2Interop::class)
-internal fun CameraViewModel.captureNightBurst(exposure: NightExposure, onDone: (List<Bitmap>) -> Unit) {
+internal fun CameraViewModel.captureNightBurst(
+    exposure: NightExposure,
+    onFrameCaptured: (Int) -> Unit = {},
+    onDone: (List<Bitmap>) -> Unit
+) {
     if (imageCapture == null) {
         onDone(emptyList())
         return
@@ -194,6 +277,7 @@ internal fun CameraViewModel.captureNightBurst(exposure: NightExposure, onDone: 
         cam2Control = cam2Control,
         mirror = mirrorCaptures,
         exposure = exposure,
+        onFrameCaptured = onFrameCaptured,
         onDone = onDone
     )
     driver.start()
@@ -229,6 +313,7 @@ private class NightBurstDriver(
     private val cam2Control: androidx.camera.camera2.interop.Camera2CameraControl?,
     private val mirror: Boolean,
     private val exposure: NightExposure,
+    private val onFrameCaptured: (Int) -> Unit = {},
     private val onDone: (List<Bitmap>) -> Unit
 ) {
     private val collected = mutableListOf<Bitmap>()
@@ -290,7 +375,7 @@ private class NightBurstDriver(
             ContextCompat.getMainExecutor(viewModel.app),
             object : ImageCapture.OnImageCapturedCallback() {
                 override fun onCaptureSuccess(image: ImageProxy) {
-                    convertFrame(image)
+                    if (convertFrame(image)) onFrameCaptured(collected.size)
                     takeNext()
                 }
 
@@ -302,9 +387,9 @@ private class NightBurstDriver(
         )
     }
 
-    /** Converts one burst frame to an upright bitmap and collects it. */
-    private fun convertFrame(image: ImageProxy) {
-        try {
+    /** Converts one burst frame to an upright bitmap and collects it; true if collected. */
+    private fun convertFrame(image: ImageProxy): Boolean {
+        return try {
             // toBitmap() is provided by CameraX (used also in BokehAnalyzer).
             // Apply the session's cropRect (setCropAspectRatio): the raw frame is
             // always full-frame, so without this the burst ignores the non-4:3 crop.
@@ -317,12 +402,20 @@ private class NightBurstDriver(
             val upright = Bitmap.createBitmap(raw, 0, 0, raw.width, raw.height, matrix, true)
             if (upright !== raw) raw.recycle()
             collected.add(upright)
+            true
         } catch (e: IllegalStateException) {
             Log.status("CameraViewModel", "Failed to convert night frame", e)
+            false
         } catch (e: IllegalArgumentException) {
             Log.status("CameraViewModel", "Failed to convert night frame", e)
+            false
         } catch (e: NullPointerException) {
             Log.status("CameraViewModel", "Failed to convert night frame", e)
+            false
+        } catch (e: OutOfMemoryError) {
+            // Skip this frame under memory pressure; the burst can still merge fewer frames.
+            Log.status("CameraViewModel", "Night frame conversion OOM; skipping frame", e)
+            false
         } finally {
             image.close()
         }

@@ -458,6 +458,13 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
     internal val surfaceRequestMutable = MutableStateFlow<SurfaceRequest?>(null)
     val surfaceRequest = surfaceRequestMutable.asStateFlow()
 
+    // Monotonic count of teardownSession() calls. The UI session effect owns binding; a
+    // capture-time rebind (captureNightPhotoExtension) snapshots this so its finally-restore
+    // can tell whether the effect already tore down / rebound meanwhile (mode switch, lens
+    // flip, backgrounding) — restoring then would unbind the effect's fresh session and
+    // strand the UI on a photo session in e.g. VIDEO mode (frozen/black preview).
+    internal var sessionTeardownCount: Int = 0
+
     internal var cameraProvider: ProcessCameraProvider? = null
     // Cached per ProcessCameraProvider instance; ExtensionsManager must be tied to the same provider.
     internal var extensionsManager: ExtensionsManager? = null
