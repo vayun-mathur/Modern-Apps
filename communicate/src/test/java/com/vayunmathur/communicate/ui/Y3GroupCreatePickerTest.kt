@@ -11,7 +11,7 @@ import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isToggleable
-import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -373,10 +373,47 @@ class Y3GroupCreatePickerTest {
      * unreliable here: the picker rows report zero-size bounds under
      * Robolectric, so injected clicks land at (0,0) instead of on the row.
      */
-    private fun pickToggle(name: String, target: Int) {
+    /**
+     * Scroll the contact LazyColumn until [name]'s row is composed. The column
+     * only composes visible rows, and under Robolectric's small window the
+     * second contact sits below the fold (zero-size semantics node), so the
+     * row must be scrolled into view before it can be clicked — on a real
+     * device this is the user's scroll; here it is done deterministically.
+     */
+    private fun scrollPickerTo(name: String) {
+        // Index-based scroll of the lazy contact list (bounded, deterministic):
+        // the generic performScrollToNode loops forever under Robolectric when
+        // the item can never appear in the scrolled container.
+        val scrollables = rule.onAllNodes(hasScrollAction())
+        for (i in 0 until scrollables.fetchSemanticsNodes().size) {
+            for (index in 0..3) {
+                runCatching { scrollables[i].performScrollToIndex(index) }
+                runCatching { rule.waitForIdle() }
+                if (rule.onAllNodesWithText(name).fetchSemanticsNodes().isNotEmpty()) return
+            }
+        }
+    }
+
+    /** True once [name]'s selected-contact chip is shown above the list. */
+    private fun chipSelected(name: String): Boolean =
+        // The chip's merged node carries exactly one text entry (the label);
+        // the contact row carries two (name + number), so this tells them apart.
+        rule.onAllNodesWithText(name).fetchSemanticsNodes().any { node ->
+            runCatching {
+                val entries = node.config[androidx.compose.ui.semantics.SemanticsProperties.Text]
+                entries.size == 1 && entries[0].text == name
+            }.getOrDefault(false)
+        }
+
+    private fun pickToggle(name: String) {
         val deadline = System.currentTimeMillis() + 15_000
         while (System.currentTimeMillis() < deadline) {
-            if (checkedToggleCount() >= target) return
+            // Probe the chip, not the checkbox count: the lazy list only
+            // composes visible rows, so a checked-count over composed
+            // toggleables drops as rows scroll out and the retry loop would
+            // click an already-selected contact back off.
+            if (chipSelected(name)) return
+            if (rule.onAllNodesWithText(name).fetchSemanticsNodes().isEmpty()) scrollPickerTo(name)
             val nodes = rule.onAllNodesWithText(name).fetchSemanticsNodes()
             // The contact row is the node whose merged text also carries the number.
             val row = nodes.firstOrNull { node ->
@@ -390,14 +427,13 @@ class Y3GroupCreatePickerTest {
             Thread.sleep(100)
         }
         dumpState("pickToggle-$name")
-        assertTrue(checkedToggleCount() >= target,
+        assertTrue(chipSelected(name),
             "contact $name never selected; checked=${checkedToggleCount()}")
     }
 
     private fun pickBothContactsAndName() {
-        // Group switch is already On, so Alice -> 2 checked, Bob -> 3 checked.
-        pickToggle("Alice Y3", target = 2)
-        pickToggle("Bob Y3", target = 3)
+        pickToggle("Alice Y3")
+        pickToggle("Bob Y3")
         rule.onAllNodes(hasSetTextAction())[0].performTextInput("Y3 Crew")
         rule.waitForIdle()
     }

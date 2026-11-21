@@ -238,6 +238,13 @@ class Y2SignalSocketRegTest {
         error("timeout $label")
     }
 
+    /**
+     * Snapshot of a synchronized list for safe iteration: iterating a
+     * `Collections.synchronizedList` without holding its monitor races the
+     * socket/server threads appending to it (ConcurrentModificationException).
+     */
+    private fun <T> List<T>.snapshot(): List<T> = synchronized(this) { toList() }
+
     private fun socketFor(port: Int, authenticated: Boolean = true, aciValue: String = aci, password: String = "pw-secret", passwordOverride: String? = null) =
         SignalSocket(
             context = ctx, authData = auth(aciValue, password, authenticated),
@@ -253,11 +260,11 @@ class Y2SignalSocketRegTest {
             val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
             val stateJob = scope.async { socket.connectionState.collect { states.add(it) } }
             socket.connect()
-            await("connected") { states.any { it is SignalSocket.ConnectionState.Connected } }
+            await("connected") { states.snapshot().any { it is SignalSocket.ConnectionState.Connected } }
 
             // Handshake carried Basic aci.deviceId auth.
-            await("handshake") { server.handshakes.isNotEmpty() }
-            val hs = server.handshakes.first()
+            await("handshake") { server.handshakes.snapshot().isNotEmpty() }
+            val hs = server.handshakes.snapshot().first()
             assertTrue(hs.contains("GET /v1/websocket/"), hs)
             val authLine = hs.lines().first { it.startsWith("Authorization:") }
             val decoded = String(
@@ -275,8 +282,8 @@ class Y2SignalSocketRegTest {
             assertTrue(socket.send(byteArrayOf(9, 8, 7)))
             assertTrue(socket.sendText("plain-text"))
             await("raw frames") {
-                server.frames.any { it.second.contentEquals(byteArrayOf(9, 8, 7)) } &&
-                    server.frames.any { it.second.decodeToString() == "plain-text" }
+                server.frames.snapshot().any { it.second.contentEquals(byteArrayOf(9, 8, 7)) } &&
+                    server.frames.snapshot().any { it.second.decodeToString() == "plain-text" }
             }
             socket.disconnect()
             stateJob.cancel()
@@ -293,7 +300,7 @@ class Y2SignalSocketRegTest {
             val stateJob = scope.async { socket.connectionState.collect { states.add(it) } }
             val msgJob = scope.async { socket.messages.collect { inbox.add(it) } }
             socket.connect()
-            await("connected") { states.any { it is SignalSocket.ConnectionState.Connected } }
+            await("connected") { states.snapshot().any { it is SignalSocket.ConnectionState.Connected } }
 
             // Request/response correlation: generated id and explicit id.
             val req = WebSocketRequestMessage.newBuilder()
@@ -325,11 +332,11 @@ class Y2SignalSocketRegTest {
                     .setId(999L).setVerb("GET").setPath("/v1/messages").build())
                 .build().toByteArray()
             server.pushToClient(push)
-            await("push") { inbox.any { it.contentEquals(push) } }
+            await("push") { inbox.snapshot().any { it.contentEquals(push) } }
 
             socket.disconnect()
             await("disconnected state") {
-                states.any { it is SignalSocket.ConnectionState.Disconnected && it.reason == "client disconnect" }
+                states.snapshot().any { it is SignalSocket.ConnectionState.Disconnected && it.reason == "client disconnect" }
             }
             assertFalse(socket.send(byteArrayOf(1)))
             stateJob.cancel(); msgJob.cancel()
@@ -344,7 +351,7 @@ class Y2SignalSocketRegTest {
             val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
             val job = scope.async { socket.connectionState.collect { states.add(it) } }
             socket.connect()
-            await("connected") { states.any { it is SignalSocket.ConnectionState.Connected } }
+            await("connected") { states.snapshot().any { it is SignalSocket.ConnectionState.Connected } }
             val start = System.currentTimeMillis()
             val result = socket.sendRequestAwaitingResponse(
                 WebSocketRequestMessage.newBuilder().setVerb("GET").setPath("/noreply").build(),
@@ -367,7 +374,7 @@ class Y2SignalSocketRegTest {
             val job = scope.async { socket.connectionState.collect { states.add(it) } }
             socket.connect()
             await("4401 disconnected") {
-                states.any { it is SignalSocket.ConnectionState.Disconnected && it.reason.contains("4401") }
+                states.snapshot().any { it is SignalSocket.ConnectionState.Disconnected && it.reason.contains("4401") }
             }
             val accepts = server.acceptCount
             Thread.sleep(1_500)
@@ -384,9 +391,9 @@ class Y2SignalSocketRegTest {
             val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
             val job = scope.async { socket.connectionState.collect { states.add(it) } }
             socket.connect()
-            await("connected") { states.any { it is SignalSocket.ConnectionState.Connected } }
-            await("handshake") { server.handshakes.isNotEmpty() }
-            assertFalse(server.handshakes.first().contains("Authorization:"), server.handshakes.first())
+            await("connected") { states.snapshot().any { it is SignalSocket.ConnectionState.Connected } }
+            await("handshake") { server.handshakes.snapshot().isNotEmpty() }
+            assertFalse(server.handshakes.snapshot().first().contains("Authorization:"), server.handshakes.snapshot().first())
             socket.disconnect(); job.cancel()
         }
     }
@@ -597,8 +604,8 @@ class Y2SignalSocketRegTest {
             val afterReuse = SignalAuthData.load(ctx)!!
             assertEquals("keep-me", afterReuse.password)
             assertEquals("sess-alias", afterReuse.verificationSessionId)
-            assertTrue(server.requests.any { it.path == "/v1/verification/session/sess-alias/code" },
-                "${server.requests}")
+            assertTrue(server.requests.snapshot().any { it.path == "/v1/verification/session/sess-alias/code" },
+                "${server.requests.snapshot()}")
 
             // Stale 32-byte UAK scaffold is regenerated for the same number.
             val stale = SignalRegistrationKeys.generate("+15550102030").authScaffold.copy(
@@ -641,9 +648,9 @@ class Y2SignalSocketRegTest {
             }
             val ok = client.verifyCode("12-34 56")
             assertTrue(ok.ok, "$ok"); assertEquals("aci-only-1", ok.aci); assertNull(ok.pni)
-            val codeReq = server.requests.first { it.method == "PUT" }
+            val codeReq = server.requests.snapshot().first { it.method == "PUT" }
             assertTrue(codeReq.body.contains("\"code\":\"123456\""), codeReq.body)
-            val regReq = server.requests.first { it.path == "/v1/registration" }
+            val regReq = server.requests.snapshot().first { it.path == "/v1/registration" }
             assertNotNull(regReq.auth); assertTrue(regReq.auth!!.startsWith("Basic "))
             val regBody = org.json.JSONObject(regReq.body)
             assertEquals("sessV", regBody.getString("sessionId"))
@@ -691,7 +698,7 @@ class Y2SignalSocketRegTest {
             }
             val noPw = client.verifyCode("654321")
             assertEquals("missing_password", noPw.reason)
-            assertTrue(server.requests.none { it.path == "/v1/registration" })
+            assertTrue(server.requests.snapshot().none { it.path == "/v1/registration" })
 
             // Unverified code submission HTTP error propagates as an error result.
             SignalAuthData.save(ctx, scaffold)

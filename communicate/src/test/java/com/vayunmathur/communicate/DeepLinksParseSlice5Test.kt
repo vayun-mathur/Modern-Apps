@@ -44,8 +44,21 @@ class DeepLinksParseSlice5Test {
     }
 
     @Test
-    fun unsupportedActionIsIgnored() {
-        assertNull(DeepLinks.parse(intent(Intent.ACTION_SEND, "smsto:+15551234567")))
+    fun plainSendOpensTheSharePicker() {
+        // Direct Share round (dacc87514): a plain ACTION_SEND with no chosen
+        // conversation is no longer dropped — it is held as a picker share
+        // (PendingShare) and seeds the first thread the user opens. The data
+        // URI is not a destination for SEND, so it must not leak through.
+        val result = DeepLinks.parse(intent(Intent.ACTION_SEND, "smsto:+15551234567"))
+        assertTrue(result is DeepLink.SharePicker, "was $result")
+        assertNull((result as DeepLink.SharePicker).body)
+    }
+
+    @Test
+    fun plainSendCarriesTheSharedTextToThePicker() {
+        val result = DeepLinks.parse(intent(Intent.ACTION_SEND, "smsto:+15551234567", text = "hi"))
+            as DeepLink.SharePicker
+        assertEquals("hi", result.body)
     }
 
     @Test

@@ -28,6 +28,9 @@ class RouteSlice6Test {
         assertFalse(route.isGroup)
         assertEquals(emptyList(), route.participants)
         assertNull(route.groupTitle)
+        // Direct Share seeds stay empty for a plain open (dacc87514).
+        assertNull(route.sharedText)
+        assertEquals(emptyList(), route.sharedAttachmentUris)
     }
 
     @Test
@@ -40,6 +43,8 @@ class RouteSlice6Test {
         assertNotEquals(base, base.copy(isGroup = true))
         assertNotEquals(base, base.copy(participants = listOf("+15550001111")))
         assertNotEquals(base, base.copy(groupTitle = "Crew"))
+        assertNotEquals(base, base.copy(sharedText = "hi"))
+        assertNotEquals(base, base.copy(sharedAttachmentUris = listOf("content://x/1")))
     }
 
     @Test
@@ -106,11 +111,13 @@ class RouteSlice6Test {
     }
 
     @Test
-    fun conversationExposesEightStablePropertiesInOrder() {
+    fun conversationExposesTenStablePropertiesInOrder() {
         // Guards the "older back-stack entries stay valid" contract structurally: adding,
         // removing or reordering properties here breaks persisted navigation state.
         // Java parameter names are unavailable (no -java-parameters); declared-field
         // order carries the stable declaration order instead.
+        // Direct Share round (dacc87514) appended sharedText/sharedAttachmentUris
+        // at the end with defaults, so older entries (missing both) still decode.
         assertEquals(
             listOf(
                 "threadId",
@@ -121,6 +128,8 @@ class RouteSlice6Test {
                 "isGroup",
                 "participants",
                 "groupTitle",
+                "sharedText",
+                "sharedAttachmentUris",
             ),
             Route.Conversation::class.java.declaredFields
                 .map { it.name }
