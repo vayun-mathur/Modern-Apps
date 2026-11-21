@@ -132,6 +132,31 @@ object NightCaptureEngine {
         }
     }
 
+    /**
+     * Applies the night brightening curve to an already-merged bitmap
+     * (the RAW linear merge's tone-mapped output). Returns a new bitmap;
+     * the caller owns both. This is the existing tone pipeline the RAW
+     * path hands off to before `StillEncoder`.
+     */
+    fun applyNightTone(source: Bitmap): Bitmap {
+        val w = source.width
+        val h = source.height
+        val px = IntArray(w * h)
+        source.getPixels(px, 0, w, 0, 0, w, h)
+        for (i in px.indices) {
+            val p = px[i]
+            val a = (p ushr ALPHA_SHIFT) and CHANNEL_MASK
+            val r = (p shr RED_SHIFT) and CHANNEL_MASK
+            val g = (p shr GREEN_SHIFT) and CHANNEL_MASK
+            val b = p and CHANNEL_MASK
+            px[i] = (a shl ALPHA_SHIFT) or
+                (brightenChannel(r.toFloat()) shl RED_SHIFT) or
+                (brightenChannel(g.toFloat()) shl GREEN_SHIFT) or
+                brightenChannel(b.toFloat())
+        }
+        return createBitmap(w, h).apply { setPixels(px, 0, w, 0, 0, w, h) }
+    }
+
     /** Lossless RGBA path -> Rust (no double JPEG), fallback to old JPEG path. */
     private fun alignAndMergeNative(burst: List<Bitmap>): Bitmap? {
         if (!StitchNative.isAvailable) return null

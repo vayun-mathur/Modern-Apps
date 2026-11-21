@@ -179,6 +179,9 @@ interface Camera2Driver {
 
     /** Creates the YUV ring output for [size]; null when unavailable. */
     fun createRingOutput(size: FrameSize): RingOutput? = null
+
+    /** Creates the RAW ring output for [size]/[format]; null when unavailable. */
+    fun createRawRingOutput(size: FrameSize, format: RingFormat): RawRingOutput? = null
 }
 
 /** Converts a pure [SensorRect] into the HAL's `Rect`. */
@@ -288,6 +291,11 @@ internal fun TotalCaptureResult.toRawStillMetadata(): RawStillMetadata = RawStil
     aeState = get(CaptureResult.CONTROL_AE_STATE),
     afState = get(CaptureResult.CONTROL_AF_STATE),
     flashState = get(CaptureResult.FLASH_STATE),
+    colorCorrectionGains = runCatching {
+        get(CaptureResult.COLOR_CORRECTION_GAINS)?.let { gains ->
+            listOf(gains.red, gains.greenEven, gains.greenOdd, gains.blue)
+        }
+    }.getOrNull(),
 )
 
 /**
@@ -309,6 +317,11 @@ class AndroidCamera2Driver(
 
     override fun createRingOutput(size: FrameSize): RingOutput? =
         runCatching { YuvRingOutput(size.width, size.height, handler = handler) }.getOrNull()
+
+    override fun createRawRingOutput(size: FrameSize, format: RingFormat): RawRingOutput? =
+        runCatching {
+            RawImageReaderOutput(size.width, size.height, format, handler = handler)
+        }.getOrNull()
 
     @SuppressLint("MissingPermission")
     override fun openCamera(cameraId: String, callback: DeviceCallback) {

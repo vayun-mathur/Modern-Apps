@@ -53,6 +53,28 @@ object StitchNative {
     /** Releases a night session (also cleans pano registry if mixed). */
     external fun freeNight(handle: Long)
 
+    // --- RAW night path: packed Bayer frames, linear-light merge ---
+
+    /** Opens a RAW night session holding packed Bayer frames. */
+    external fun newRawNightSession(): Long
+
+    /**
+     * Adds one packed RAW frame. [format] is 10 for RAW10 (4 photosites per
+     * 5 bytes) or 16 for RAW_SENSOR little-endian u16 samples. [cfa] mirrors
+     * `SENSOR_INFO_COLOR_FILTER_ARRANGEMENT` (RGGB=0, GRBG=1, GBRG=2, BGGR=3).
+     */
+    external fun addRawFrame(
+        handle: Long, bytes: ByteArray, width: Int, height: Int, format: Int,
+        blackLevel: Float, whiteLevel: Float, cfa: Int,
+        rGain: Float, gGain: Float, bGain: Float, exposureScale: Float,
+    )
+
+    /** Linear-merges the RAW session and returns tone-mapped JPEG bytes, or null. Consumes the session. */
+    external fun mergeRawNight(handle: Long, exposureGain: Float): ByteArray?
+
+    /** Releases a RAW night session. */
+    external fun freeRawNight(handle: Long)
+
     /**
      * Encodes one RGBA frame (len = width*height*4) to AVIF bytes, or null on
      * failure. [quality] is 1..100, [speed] is rav1e's 1..10 (10 = fastest).

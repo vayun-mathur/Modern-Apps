@@ -165,6 +165,22 @@ data class LensCharacteristicsSnapshot(
      * omit it — reprocess support then falls back to the capability bit).
      */
     val reprocessInputSizesByFormat: Map<Int, List<Size>> = emptyMap(),
+    /** `SENSOR_BLACK_LEVEL_PATTERN` (4 values, 2x2 cell order); empty when unread. */
+    val rawBlackLevelPattern: List<Int> = emptyList(),
+    /** `SENSOR_INFO_WHITE_LEVEL`; null when unread (RAW linearisation impossible). */
+    val rawWhiteLevel: Int? = null,
+    /** `SENSOR_COLOR_TRANSFORM1/2` as row-major 3x3 floats; empty when unread. */
+    val rawColorTransform1: List<Float> = emptyList(),
+    val rawColorTransform2: List<Float> = emptyList(),
+    /** `SENSOR_CALIBRATION_TRANSFORM1/2` as row-major 3x3 floats. */
+    val rawCalibrationTransform1: List<Float> = emptyList(),
+    val rawCalibrationTransform2: List<Float> = emptyList(),
+    /** `SENSOR_FORWARD_MATRIX1/2` as row-major 3x3 floats. */
+    val rawForwardMatrix1: List<Float> = emptyList(),
+    val rawForwardMatrix2: List<Float> = emptyList(),
+    /** `SENSOR_REFERENCE_ILLUMINANT1/2` (`CameraMetadata` illuminant codes). */
+    val rawReferenceIlluminant1: Int? = null,
+    val rawReferenceIlluminant2: Int? = null,
 ) {
     val lensFacing: LensFacing? = when (lensFacingRaw) {
         CameraMetadata.LENS_FACING_BACK -> LensFacing.BACK
@@ -209,6 +225,20 @@ data class LensCharacteristicsSnapshot(
     /** True when the YUV ring can honestly reprocess on this lens. */
     val supportsYuvRingReprocess: Boolean
         get() = reprocessInputFormat == ImageFormat.YUV_420_888
+    /**
+     * The RAW stream format this lens can feed a RAW ring with, or null:
+     * RAW_SENSOR (unpacked u16) is preferred over RAW10 (packed) because
+     * its layout is stride-trivial; both require the RAW capability —
+     * a stream size alone never proves RAW support.
+     */
+    val rawRingFormat: RingFormat?
+        get() = when {
+            !supportsRaw -> null
+            streamConfig.sizesFor(ImageFormat.RAW_SENSOR).isNotEmpty() -> RingFormat.RAW_SENSOR
+            streamConfig.sizesFor(ImageFormat.RAW10).isNotEmpty() -> RingFormat.RAW10
+            else -> null
+        }
+    val supportsRawRing: Boolean get() = rawRingFormat != null
     val supportsManualSensor: Boolean
         get() = CameraMetadata.REQUEST_AVAILABLE_CAPABILITIES_MANUAL_SENSOR in availableCapabilities
     /** True when the HAL offers `CONSTRAINED_HIGH_SPEED_VIDEO` (Phase 5). */
@@ -269,6 +299,16 @@ class CharacteristicsFacade private constructor(
             highSpeedFpsRangesBySize: Map<Size, List<Range<Int>>> = emptyMap(),
             extensionSupport: Map<Int, ExtensionModeSupport> = emptyMap(),
             reprocessInputSizesByFormat: Map<Int, List<Size>> = emptyMap(),
+            rawBlackLevelPattern: List<Int> = emptyList(),
+            rawWhiteLevel: Int? = null,
+            rawColorTransform1: List<Float> = emptyList(),
+            rawColorTransform2: List<Float> = emptyList(),
+            rawCalibrationTransform1: List<Float> = emptyList(),
+            rawCalibrationTransform2: List<Float> = emptyList(),
+            rawForwardMatrix1: List<Float> = emptyList(),
+            rawForwardMatrix2: List<Float> = emptyList(),
+            rawReferenceIlluminant1: Int? = null,
+            rawReferenceIlluminant2: Int? = null,
         ): CharacteristicsFacade = fromSnapshot(
             LensCharacteristicsSnapshot(
                 cameraId = cameraId,
@@ -301,6 +341,16 @@ class CharacteristicsFacade private constructor(
                 highSpeedFpsRangesBySize = highSpeedFpsRangesBySize,
                 extensionSupport = extensionSupport,
                 reprocessInputSizesByFormat = reprocessInputSizesByFormat,
+                rawBlackLevelPattern = rawBlackLevelPattern,
+                rawWhiteLevel = rawWhiteLevel,
+                rawColorTransform1 = rawColorTransform1,
+                rawColorTransform2 = rawColorTransform2,
+                rawCalibrationTransform1 = rawCalibrationTransform1,
+                rawCalibrationTransform2 = rawCalibrationTransform2,
+                rawForwardMatrix1 = rawForwardMatrix1,
+                rawForwardMatrix2 = rawForwardMatrix2,
+                rawReferenceIlluminant1 = rawReferenceIlluminant1,
+                rawReferenceIlluminant2 = rawReferenceIlluminant2,
             ),
         )
 
@@ -394,8 +444,42 @@ class CharacteristicsFacade private constructor(
                     highSpeedFpsRangesBySize = highSpeedRanges,
                     extensionSupport = extensionSupport,
                     reprocessInputSizesByFormat = reprocessInputSizes,
+                    rawBlackLevelPattern =
+                        get(CameraCharacteristics.SENSOR_BLACK_LEVEL_PATTERN)?.let { pattern ->
+                            runCatching {
+                                IntArray(4).also { pattern.copyTo(it, 0) }.toList()
+                            }.getOrDefault(emptyList())
+                        }.orEmpty(),
+                    rawWhiteLevel = get(CameraCharacteristics.SENSOR_INFO_WHITE_LEVEL),
+                    rawColorTransform1 =
+                        get(CameraCharacteristics.SENSOR_COLOR_TRANSFORM1).toFloatList(),
+                    rawColorTransform2 =
+                        get(CameraCharacteristics.SENSOR_COLOR_TRANSFORM2).toFloatList(),
+                    rawCalibrationTransform1 =
+                        get(CameraCharacteristics.SENSOR_CALIBRATION_TRANSFORM1).toFloatList(),
+                    rawCalibrationTransform2 =
+                        get(CameraCharacteristics.SENSOR_CALIBRATION_TRANSFORM2).toFloatList(),
+                    rawForwardMatrix1 =
+                        get(CameraCharacteristics.SENSOR_FORWARD_MATRIX1).toFloatList(),
+                    rawForwardMatrix2 =
+                        get(CameraCharacteristics.SENSOR_FORWARD_MATRIX2).toFloatList(),
+                    rawReferenceIlluminant1 =
+                        get(CameraCharacteristics.SENSOR_REFERENCE_ILLUMINANT1)?.let { it.toInt() },
+                    rawReferenceIlluminant2 =
+                        get(CameraCharacteristics.SENSOR_REFERENCE_ILLUMINANT2)?.let { it.toInt() },
                 ),
             )
+        }
+
+        /** Row-major 3x3 floats from a `ColorSpaceTransform`, empty when unread. */
+        private fun android.hardware.camera2.params.ColorSpaceTransform?.toFloatList():
+            List<Float> {
+            val transform = this ?: return emptyList()
+            return runCatching {
+                (0 until 3).flatMap { row ->
+                    (0 until 3).map { col -> transform.getElement(col, row).toFloat() }
+                }
+            }.getOrDefault(emptyList())
         }
 
         /**

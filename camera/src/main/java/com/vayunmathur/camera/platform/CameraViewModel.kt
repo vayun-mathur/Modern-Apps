@@ -201,6 +201,20 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
     }
 
     /**
+     * Explicit RAW-night selection (depth Phase 2). Default OFF — this is
+     * the user explicitly choosing the RAW burst; it is never inferred
+     * from darkness. In-memory only; [com.vayunmathur.camera.platform.camera2.RawNightPolicy]
+     * additionally requires the RAW gate, RAW support and a live RAW ring.
+     */
+    internal val camera2RawNightEnabledMutable = MutableStateFlow(false)
+    val camera2RawNightEnabled = camera2RawNightEnabledMutable.asStateFlow()
+
+    /** Turns the explicit RAW-night selection on/off (see RawNightPolicy). */
+    fun setCamera2RawNightEnabled(enabled: Boolean) {
+        camera2RawNightEnabledMutable.value = enabled
+    }
+
+    /**
      * The live Camera2 NIGHT extension session while one is bound
      * (Phase 6), registered by its owner; null otherwise. The night glue
      * reads it synchronously — it is only ever set/cleared on the main

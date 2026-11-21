@@ -13,9 +13,9 @@ import android.hardware.camera2.CameraMetadata
  * The Android holder (`YuvRingSource.kt`) and the session glue
  * (`Camera2Session.captureFromRing`) own the `Image` lifetimes.
  *
- * RAW is out of this phase: [RingFormat] and the generic payload type are
- * the slot a future RAW10/YUV dual ring uses — one `ReprocessRing` per
- * format, selected by a future RAW policy, with no change here.
+ * A second [ReprocessRing] of RAW frames (depth Phase 2, `RawRingSource.kt`)
+ * now sits beside this one: the rings share this eviction/selection math
+ * unchanged, one instance per format, selected by `RawNightPolicy`.
  */
 
 /** Gate for the ring path. Default OFF, mirroring [NightCamera2Gate]. */
@@ -196,6 +196,20 @@ class ReprocessRing<T>(
             meta = best.meta,
             ageAtShutterNs = shutterTimestampNs - best.meta.sensorTimestampNs,
         )
+    }
+
+    /**
+     * The newest [count] exposure-complete frames ending at or before
+     * [atNs], oldest first (burst order for the RAW night merge, whose
+     * first frame is the alignment reference). Fewer than [count] when
+     * the ring holds fewer complete frames; never a still-exposing one.
+     */
+    fun latestCompleteBurst(count: Int, atNs: Long): List<Pair<T, RingFrameMeta>> {
+        if (count <= 0) return emptyList()
+        return entries.filter { it.meta.isExposureComplete(atNs) }
+            .sortedBy { it.meta.sensorTimestampNs }
+            .takeLast(count)
+            .map { it.payload to it.meta }
     }
 
     /** Latest fully-exposed frame at [atNs], or null (the select fallback). */

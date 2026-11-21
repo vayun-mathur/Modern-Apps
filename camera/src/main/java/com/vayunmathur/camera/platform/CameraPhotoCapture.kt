@@ -469,6 +469,10 @@ internal fun CameraViewModel.captureNightPhoto() {
     // the shot first (ExtensionsEnginePolicy). With the gate off (default)
     // this is one null/policy check and routing below is unchanged.
     if (tryCaptureCamera2NightExtension()) return
+    // Depth Phase 2: explicitly-selected RAW night on the dual ring.
+    // Gate-default-off; a policy miss returns false and routing below
+    // (extension, then YUV burst) runs exactly as before.
+    if (tryCaptureCamera2RawNight()) return
     viewModelScope.launch {
         if (nightExtensionUsableMutable.value) {
             captureNightPhotoExtension()

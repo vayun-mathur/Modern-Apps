@@ -40,6 +40,7 @@ class Camera2Session(
     private val stateMachine: SessionStateMachine = SessionStateMachine(),
     private val listener: Listener? = null,
     private val ringConfig: ReprocessRingConfig = ReprocessRingConfig.DISABLED,
+    private val rawRingConfig: RawRingConfig = RawRingConfig.DISABLED,
 ) {
 
     /** Session lifecycle notifications; all fire on the executor thread. */
@@ -55,8 +56,20 @@ class Camera2Session(
         fun onStillFailed(message: String)
     }
 
+    /** RAW burst outcome; fires on the executor thread. Caller closes frames. */
+    interface RawBurstCallback {
+        fun onRawBurst(frames: List<RawHeldFrame>, metas: List<RingFrameMeta>)
+        fun onRawBurstFailed(message: String)
+    }
+
     val state: SessionState get() = stateMachine.state
     val generation: Long get() = stateMachine.generation
+
+    /** The facade snapshot this session was built with (RAW metadata source). */
+    val characteristics: LensCharacteristicsSnapshot get() = snapshot
+
+    /** Retained preview `CaptureResult` metadata for [timestampNs], or null. */
+    fun previewMetadataFor(timestampNs: Long): RawStillMetadata? = previewMetas[timestampNs]
 
     private var device: DeviceHandle? = null
     private var captureSession: CaptureSessionHandle? = null
@@ -67,6 +80,10 @@ class Camera2Session(
     private var ringOutput: RingOutput? = null
     private var ringSize: FrameSize? = null
     private val ring = ReprocessRing<RingHeldFrame>(ringConfig.capacity)
+    private var rawRingOutput: RawRingOutput? = null
+    private var rawRingSize: FrameSize? = null
+    private var rawRingFormat: RingFormat? = null
+    private val rawRing = ReprocessRing<RawHeldFrame>(rawRingConfig.capacity)
     private var latestPreviewTimestampNs: Long? = null
     private val previewMetas = LinkedHashMap<Long, RawStillMetadata>()
     private var pendingStill: PendingStill? = null
@@ -224,6 +241,21 @@ class Camera2Session(
     /** Facade-reported YUV reprocess support for this lens. */
     val reprocessSupported: Boolean get() = snapshot.supportsYuvRingReprocess
 
+    /** True when the RAW ring output is configured (see [RawNightPolicy]). */
+    val hasRawRingOutput: Boolean get() = rawRingOutput != null
+
+    /** The RAW ring size configured at [open], or null when unavailable. */
+    fun currentRawRingSize(): FrameSize? = rawRingSize
+
+    /** The RAW ring format configured at [open], or null when unavailable. */
+    fun currentRawRingFormat(): RingFormat? = rawRingFormat
+
+    /** Frames currently held in the RAW ring. */
+    val rawRingFrameCount: Int get() = rawRing.size
+
+    /** Facade-reported RAW ring support for this lens. */
+    val rawSupported: Boolean get() = snapshot.supportsRawRing
+
     /**
      * Takes one still from the ring: picks the exposure-complete frame
      * nearest [shutterTimestampNs] (or the latest preview timestamp when
@@ -324,6 +356,50 @@ class Camera2Session(
     }
 
     /**
+     * Hands the newest [count] exposure-complete RAW ring frames (oldest
+     * first, so frame 0 is the merge reference) to [callback]. The frames
+     * are removed from the ring; the caller owns closing them. Fewer than
+     * two frames is a failure — a one-frame "merge" would silently be a
+     * single RAW shot, and the caller falls back to the YUV night path.
+     */
+    fun captureRawBurst(
+        count: Int,
+        callback: RawBurstCallback,
+        shutterTimestampNs: Long? = null,
+    ) {
+        executor.execute {
+            when {
+                stateMachine.state != SessionState.STREAMING ->
+                    callback.onRawBurstFailed("RAW burst requires a streaming session")
+                rawRingOutput == null ->
+                    callback.onRawBurstFailed("no RAW ring output on this session")
+                else -> {
+                    val shutter = shutterTimestampNs
+                        ?: latestPreviewTimestampNs
+                        ?: rawRing.metas().maxOfOrNull { it.sensorTimestampNs }
+                    val burst = shutter?.let { rawRing.latestCompleteBurst(count, it) }
+                        .orEmpty()
+                    if (burst.size < 2) {
+                        callback.onRawBurstFailed(
+                            "RAW ring holds ${burst.size} complete frames, need 2+",
+                        )
+                        return@execute
+                    }
+                    val frames = burst.mapNotNull { (frame, meta) ->
+                        rawRing.remove(meta.sensorTimestampNs)?.let { frame }
+                    }
+                    if (frames.size < 2) {
+                        frames.forEach { runCatching { it.close() } }
+                        callback.onRawBurstFailed("RAW ring frames vanished during burst selection")
+                        return@execute
+                    }
+                    callback.onRawBurst(frames, burst.map { it.second })
+                }
+            }
+        }
+    }
+
+    /**
      * Takes one plain still: issues `TEMPLATE_STILL_CAPTURE` carrying the
      * session's current control state plus flash resolution, and delivers
      * the JPEG bytes with mapped `CaptureResult` metadata to [callback]
@@ -409,6 +485,23 @@ class Camera2Session(
         }
     }
 
+    private fun onRawRingFrame(frame: RawHeldFrame) {
+        try {
+            executor.execute {
+                val evicted = rawRing.offer(frame.meta, frame)
+                evicted?.close()
+                previewMetas[frame.meta.sensorTimestampNs]?.let { raw ->
+                    rawRing.attachMetadata(
+                        frame.meta.sensorTimestampNs, raw.exposureTimeNs,
+                        raw.frameNumber, raw.aeState, raw.iso,
+                    )
+                }
+            }
+        } catch (e: java.util.concurrent.RejectedExecutionException) {
+            frame.close()
+        }
+    }
+
     private fun onPreviewResult(raw: RawStillMetadata) {
         val timestamp = raw.sensorTimestampNs ?: return
         latestPreviewTimestampNs = timestamp
@@ -417,6 +510,7 @@ class Camera2Session(
             previewMetas.remove(previewMetas.keys.first())
         }
         ring.attachMetadata(timestamp, raw.exposureTimeNs, raw.frameNumber, raw.aeState, raw.iso)
+        rawRing.attachMetadata(timestamp, raw.exposureTimeNs, raw.frameNumber, raw.aeState, raw.iso)
     }
 
     private fun onStillResult(pending: PendingStill, metadata: RawStillMetadata) {
@@ -498,6 +592,11 @@ class Camera2Session(
             ringOutput = null
             ringSize = null
             ring.drainAll().forEach { runCatching { it.close() } }
+            runCatching { rawRingOutput?.close() }
+            rawRingOutput = null
+            rawRingSize = null
+            rawRingFormat = null
+            rawRing.drainAll().forEach { runCatching { it.close() } }
             previewMetas.clear()
             runCatching { device?.close() }
             device = null
@@ -517,7 +616,7 @@ class Camera2Session(
         val surface = previewSurface ?: return
         if (stateMachine.state != SessionState.STREAMING) return
         val params = Camera2Controls.resolve(controls, snapshot)
-        val targets = listOfNotNull(surface, ringOutput?.surface)
+        val targets = listOfNotNull(surface, ringOutput?.surface, rawRingOutput?.surface)
         runCatching {
             session.setRepeatingStreaming(params, targets, PreviewResultCallback { raw ->
                 try {
@@ -560,7 +659,30 @@ class Camera2Session(
         }
         ringOutput = createdRing
         ringSize = if (createdRing != null) selectedRingSize else null
-        val surfaces = listOfNotNull(surface, output?.surface, createdRing?.surface)
+        // Fourth output: the RAW ring, only when built with it enabled and
+        // the facade proves RAW. RAW stream combos vary wildly per HAL, so
+        // failure degrades to no RAW ring (policy excludes the RAW path).
+        val selectedRawSize = if (rawRingConfig.enabled) {
+            StreamSelection.selectRawRingSize(snapshot)
+        } else {
+            null
+        }
+        val selectedRawFormat = snapshot.rawRingFormat
+        val createdRawRing = if (selectedRawSize != null && selectedRawFormat != null) {
+            runCatching {
+                driver.createRawRingOutput(selectedRawSize, selectedRawFormat)
+            }.getOrNull()?.also { created ->
+                created.setListener(RawRingFrameListener { frame -> onRawRingFrame(frame) })
+            }
+        } else {
+            null
+        }
+        rawRingOutput = createdRawRing
+        rawRingSize = if (createdRawRing != null) selectedRawSize else null
+        rawRingFormat = if (createdRawRing != null) selectedRawFormat else null
+        val surfaces = listOfNotNull(
+            surface, output?.surface, createdRing?.surface, createdRawRing?.surface,
+        )
         val callback = SessionCallbackImpl(gen)
         runCatching {
             if (createdRing != null && snapshot.supportsYuvRingReprocess) {

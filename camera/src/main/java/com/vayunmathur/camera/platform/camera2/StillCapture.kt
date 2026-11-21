@@ -31,6 +31,8 @@ data class RawStillMetadata(
     val aeState: Int? = null,
     val afState: Int? = null,
     val flashState: Int? = null,
+    /** `COLOR_CORRECTION_GAINS` (R, G-even, G-odd, B) for RAW linearisation. */
+    val colorCorrectionGains: List<Float>? = null,
 )
 
 /**

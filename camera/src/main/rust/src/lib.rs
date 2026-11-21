@@ -19,6 +19,9 @@ mod seam;
 mod blend;
 mod stitch;
 mod night;
+mod raw_night;
+#[allow(dead_code)]
+mod raw_jni;
 mod avif;
 mod luma;
 
@@ -41,6 +44,11 @@ fn registry() -> &'static Mutex<HashMap<i64, Session>> {
 fn night_registry() -> &'static Mutex<HashMap<i64, Vec<Rgba>>> {
     static NREG: OnceLock<Mutex<HashMap<i64, Vec<Rgba>>>> = OnceLock::new();
     NREG.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn raw_night_registry() -> &'static Mutex<HashMap<i64, Vec<raw_night::RawFrame>>> {
+    static RREG: OnceLock<Mutex<HashMap<i64, Vec<raw_night::RawFrame>>>> = OnceLock::new();
+    RREG.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
 fn next_handle() -> i64 {

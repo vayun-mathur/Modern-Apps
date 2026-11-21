@@ -43,6 +43,9 @@ object StreamSelection {
     /** Aspect ratios within this absolute tolerance count as the same shape. */
     const val ASPECT_TOLERANCE = 0.02f
 
+    /** Pixel cap for the RAW ring stream (see [selectRawRingSize]). */
+    const val MAX_RAW_RING_PIXELS: Long = 12_000_000L
+
     /**
      * Supported preview sizes for a TextureView surface, in facade order:
      * the explicit `SurfaceTexture` list when the HAL reported one, else the
@@ -145,6 +148,30 @@ object StreamSelection {
         val reprocessable = yuv.filter { it in inputSizes }
         val pool = if (reprocessable.isNotEmpty()) reprocessable else yuv
         return pool.maxWithOrNull(compareBy({ it.area }, { it.width }, { it.height }))
+    }
+
+    /** Supported RAW sizes for the facade's RAW ring format (empty = no RAW ring). */
+    fun supportedRawSizes(snapshot: LensCharacteristicsSnapshot): List<FrameSize> {
+        val format = snapshot.rawRingFormat?.toImageFormat() ?: return emptyList()
+        return snapshot.streamConfig.sizesFor(format).map { FrameSize.from(it) }.distinct()
+    }
+
+    /**
+     * The RAW ring size: the largest advertised RAW size, capped at
+     * [MAX_RAW_RING_PIXELS] — a full-sensor RAW ring at 8+ frames is a
+     * memory and HAL-bandwidth liability the night burst does not need,
+     * so the largest size at or under the cap wins, else the smallest
+     * over it. Null when the lens reports no RAW sizes.
+     */
+    fun selectRawRingSize(snapshot: LensCharacteristicsSnapshot): FrameSize? {
+        val raw = supportedRawSizes(snapshot)
+        if (raw.isEmpty()) return null
+        val underCap = raw.filter { it.area.toLong() <= MAX_RAW_RING_PIXELS }
+        return if (underCap.isNotEmpty()) {
+            underCap.maxWithOrNull(compareBy({ it.area }, { it.width }, { it.height }))
+        } else {
+            raw.minWithOrNull(compareBy({ it.area }, { it.width }, { it.height }))
+        }
     }
 
     /** The rejection for [requested], or null when a size can be selected. */
