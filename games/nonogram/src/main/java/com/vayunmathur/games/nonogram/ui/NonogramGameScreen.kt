@@ -2,6 +2,7 @@ package com.vayunmathur.games.nonogram.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -95,11 +96,6 @@ fun NonogramGameScreen(
     onOpenGameCenter: () -> Unit,
 ) {
     val daily = state.mode == GameMode.DAILY
-    // Wide windows put the hearts and controls beside the board instead of
-    // stretching the grid across the window; the board itself never splits.
-    // Short windows (a landscape phone) split too: stacking board over controls
-    // cannot fit in ~360dp of height, and pushed Next level off-screen.
-    val sidePanel = isExpandedWidth() || isCompactHeight()
     AppScaffold(
         title = {
             GameModeChooser(
@@ -131,48 +127,104 @@ fun NonogramGameScreen(
             )
         },
     ) { padding ->
-        Column(
+        BoxWithConstraints(
             Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = Spacing.md),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(Spacing.md),
+                .padding(padding),
         ) {
-            if (daily) {
-                DailyStreakText(state.dailyStreak)
-            }
-
-            val game = state.game
-            when {
-                state.generationFailed -> Column(
-                    Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(Spacing.md),
-                ) {
-                    Text(
-                        stringResource(R.string.generation_failed),
-                        color = MaterialTheme.colorScheme.error,
-                        textAlign = TextAlign.Center,
-                    )
-                    Button(onClick = { actions.retryGeneration() }) {
-                        Text(stringResource(R.string.try_again))
-                    }
+            // Wide windows put the hearts and controls beside the board instead of
+            // stretching the grid across the window; the board itself never splits.
+            // Short landscape windows split too: stacking board over controls cannot
+            // fit in ~360dp of height, and pushed Next level off-screen. Compact
+            // height alone must not trigger the split — a short portrait window
+            // (portrait split-screen, the 320x470dp test window) would halve an
+            // already narrow width and squeeze the board into a sliver, so the
+            // compact-height branch also requires landscape aspect (the wordmaker
+            // gate: isCompactHeight() && maxWidth > maxHeight). Portrait phones
+            // keep the stacked layout below, unchanged.
+            val sidePanel = isExpandedWidth() || (isCompactHeight() && maxWidth > maxHeight)
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = Spacing.md),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(Spacing.md),
+            ) {
+                if (daily) {
+                    DailyStreakText(state.dailyStreak)
                 }
 
-                game == null -> Box(
-                    Modifier.fillMaxWidth().padding(Spacing.xxl),
-                    contentAlignment = Alignment.Center,
-                ) { CircularProgressIndicator() }
-
-                sidePanel -> {
-                    Row(
-                        Modifier.weight(1f).fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(Spacing.lg),
-                        verticalAlignment = Alignment.CenterVertically,
+                val game = state.game
+                when {
+                    state.generationFailed -> Column(
+                        Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(Spacing.md),
                     ) {
+                        Text(
+                            stringResource(R.string.generation_failed),
+                            color = MaterialTheme.colorScheme.error,
+                            textAlign = TextAlign.Center,
+                        )
+                        Button(onClick = { actions.retryGeneration() }) {
+                            Text(stringResource(R.string.try_again))
+                        }
+                    }
+
+                    game == null -> Box(
+                        Modifier.fillMaxWidth().padding(Spacing.xxl),
+                        contentAlignment = Alignment.Center,
+                    ) { CircularProgressIndicator() }
+
+                    sidePanel -> {
+                        Row(
+                            Modifier.weight(1f).fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(Spacing.lg),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Box(
+                                Modifier.weight(1f).fillMaxHeight(),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                NonogramBoard(
+                                    game = game,
+                                    actions = actions,
+                                    markMode = state.markMode,
+                                    modifier = Modifier
+                                        .widthIn(max = BoardMaxWidth)
+                                        .fillMaxWidth(),
+                                )
+                            }
+                            Column(
+                                Modifier
+                                    .width(NonogramSidePanelWidth)
+                                    .fillMaxHeight()
+                                    // A last resort for very short windows or huge fonts:
+                                    // the controls scroll rather than clip.
+                                    .verticalScroll(rememberScrollState()),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(
+                                    Spacing.md,
+                                    Alignment.CenterVertically,
+                                ),
+                            ) {
+                                HeartsRow(remaining = game.hearts, total = STARTING_HEARTS)
+                                NonogramControls(
+                                    game = game,
+                                    state = state,
+                                    actions = actions,
+                                )
+                            }
+                        }
+                    }
+
+                    else -> {
+                        HeartsRow(remaining = game.hearts, total = STARTING_HEARTS)
+
+                        // The board takes whatever height the hearts and controls leave and
+                        // sizes itself to fit it, so the controls are never pushed off-screen.
                         Box(
-                            Modifier.weight(1f).fillMaxHeight(),
+                            Modifier.weight(1f).fillMaxWidth(),
                             contentAlignment = Alignment.Center,
                         ) {
                             NonogramBoard(
@@ -184,53 +236,13 @@ fun NonogramGameScreen(
                                     .fillMaxWidth(),
                             )
                         }
-                        Column(
-                            Modifier
-                                .width(NonogramSidePanelWidth)
-                                .fillMaxHeight()
-                                // A last resort for very short windows or huge fonts:
-                                // the controls scroll rather than clip.
-                                .verticalScroll(rememberScrollState()),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(
-                                Spacing.md,
-                                Alignment.CenterVertically,
-                            ),
-                        ) {
-                            HeartsRow(remaining = game.hearts, total = STARTING_HEARTS)
-                            NonogramControls(
-                                game = game,
-                                state = state,
-                                actions = actions,
-                            )
-                        }
-                    }
-                }
 
-                else -> {
-                    HeartsRow(remaining = game.hearts, total = STARTING_HEARTS)
-
-                    // The board takes whatever height the hearts and controls leave and
-                    // sizes itself to fit it, so the controls are never pushed off-screen.
-                    Box(
-                        Modifier.weight(1f).fillMaxWidth(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        NonogramBoard(
+                        NonogramControls(
                             game = game,
+                            state = state,
                             actions = actions,
-                            markMode = state.markMode,
-                            modifier = Modifier
-                                .widthIn(max = BoardMaxWidth)
-                                .fillMaxWidth(),
                         )
                     }
-
-                    NonogramControls(
-                        game = game,
-                        state = state,
-                        actions = actions,
-                    )
                 }
             }
         }

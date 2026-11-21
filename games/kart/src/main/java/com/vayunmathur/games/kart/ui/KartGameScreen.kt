@@ -3,9 +3,10 @@ package com.vayunmathur.games.kart.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -15,7 +16,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.vayunmathur.games.kart.R
 import com.vayunmathur.games.kart.platform.KartGameActions
@@ -45,11 +45,17 @@ fun KartGameScreen(
             ?: stringResource(R.string.app_name),
         alignment = AppBarAlignment.Center,
     ) { padding ->
+        // Only the garage and the results scroll. Countdown and the race itself
+        // are the live race surface: a scrollable column there is a hazard while
+        // racing (a stray swipe drags the viewport and HUD away mid-race), so
+        // those phases get a fixed layout sized to the window instead.
+        val scrollState = rememberScrollState()
+        val scrollable = phase is RacePhase.Lobby || phase is RacePhase.Results
         Column(
             Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .verticalScroll(rememberScrollState())
+                .then(if (scrollable) Modifier.verticalScroll(scrollState) else Modifier)
                 .padding(horizontal = Spacing.md),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(Spacing.md),
@@ -135,11 +141,14 @@ private fun CountdownBody(phase: RacePhase.Countdown) {
 }
 
 @Composable
-private fun RacingBody(phase: RacePhase.Racing) {
+private fun ColumnScope.RacingBody(phase: RacePhase.Racing) {
     // The native 3D viewport sits behind the standings HUD. With no
     // libkart_engine it is never composed and the HUD is the whole screen;
     // in a @Preview (Layoutlib) a SurfaceView is a blank rect, so listing
     // images keep rendering the HUD exactly as before.
+    // The viewport takes whatever height the HUD leaves (weight, not a fixed
+    // height): the race layout never scrolls, so on a short landscape window
+    // the 3D view shrinks instead of pushing the standings off-screen.
     if (com.vayunmathur.games.kart.util.KartNative.isAvailable) {
         AndroidView(
             factory = { ctx ->
@@ -147,7 +156,7 @@ private fun RacingBody(phase: RacePhase.Racing) {
                 // through a transparent hole in the window.
                 KartSurfaceView(ctx)
             },
-            modifier = Modifier.fillMaxWidth().height(240.dp),
+            modifier = Modifier.fillMaxWidth().weight(1f),
         )
     }
     Text(
@@ -171,15 +180,23 @@ private fun RacingBody(phase: RacePhase.Racing) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
+    // One line per kart (name beside its progress bar, not above it): the race
+    // layout never scrolls, so the whole HUD has to fit the window height —
+    // on a ~360dp landscape phone the stacked two-line rows pushed the last
+    // places off-screen.
     phase.order.forEachIndexed { place, id ->
-        Column(Modifier.fillMaxWidth()) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Text(
                 stringResource(R.string.race_place, place + 1, displayName(id)),
                 style = MaterialTheme.typography.bodyMedium,
             )
             LinearProgressIndicator(
                 progress = { phase.lapProgress[id] ?: 0f },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.weight(1f),
             )
         }
     }
