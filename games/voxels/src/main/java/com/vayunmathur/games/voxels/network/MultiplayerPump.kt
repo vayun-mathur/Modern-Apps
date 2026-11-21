@@ -16,7 +16,6 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import org.json.JSONArray
 import org.json.JSONObject
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
@@ -189,16 +188,23 @@ class MultiplayerPump private constructor(
     // drops them — the next tick (e.g. after reconnect) replays them in order. Presence stays
     // ephemeral/best-effort: a dropped transform is superseded by the next one.
     private suspend fun flushOutbound() {
-        val out = try { VoxelsNative.netDrainOutbound() } catch (_: Exception) { "[]" }
+        // Binary local drain (OutboundFrame): chunk payloads arrive as raw
+        // bytes, no JSONArray of numbers. Signed-op strings are reconstructed
+        // byte-identically before signing, so persistence/relay are unchanged.
+        val raw = try { VoxelsNative.netDrainOutboundBin() } catch (_: Exception) { ByteArray(0) }
         try {
-            val arr = JSONArray(out)
             val ops = ArrayList<String>()
-            for (i in 0 until arr.length()) {
-                val o = arr.getJSONObject(i)
-                if (o.optString("type") == "PlayerTransform") {
-                    VoxelsSync.sendPresence(channel, key, JSONObject().put("from", myId).put("m", o).toString())
-                } else {
-                    ops.add(signed(o.toString()))
+            for (msg in OutboundFrame.decode(raw)) {
+                when (msg) {
+                    is OutboundFrame.Msg.TransformJson ->
+                        VoxelsSync.sendPresence(
+                            channel, key,
+                            JSONObject().put("from", myId).put("m", JSONObject(msg.text)).toString()
+                        )
+                    is OutboundFrame.Msg.Chunk -> ops.add(signed(msg.toOpsJson()))
+                    // Non-chunk ops keep the old JSONObject re-serialisation,
+                    // so their signed strings are exactly as before.
+                    is OutboundFrame.Msg.SignedJson -> ops.add(signed(JSONObject(msg.text).toString()))
                 }
             }
             // Always flush (even with no new ops) so persisted ops replay on reconnect.

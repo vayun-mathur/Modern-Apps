@@ -77,6 +77,25 @@ pub extern "system" fn Java_com_vayunmathur_games_voxels_util_VoxelsNative_netDr
     .resolve::<jni::errors::LogErrorAndDefault>()
 }
 
+/// JNI bridge for `VoxelsNative#netDrainOutboundBin`: drains queued outbound
+/// multiplayer messages as a binary frame (see net_bin.rs) — chunk payloads
+/// cross as raw bytes instead of JSON numbers. Local representation only;
+/// Kotlin reconstructs the legacy signed-op JSON before signing/persisting.
+/// Returns null on failure, mirroring the byte-array-out pattern used by the
+/// e2ee-p2p JNI bridge (`byte_array_from_slice`).
+#[no_mangle]
+pub extern "system" fn Java_com_vayunmathur_games_voxels_util_VoxelsNative_netDrainOutboundBin<'l>(
+    mut env: EnvUnowned<'l>, _class: JClass<'l>,
+) -> jni::sys::jbyteArray {
+    env.with_env(|env| -> jni::errors::Result<jni::sys::jbyteArray> {
+        match env.byte_array_from_slice(&crate::net::drain_outbound_bin()) {
+            Ok(a) => Ok(a.into_raw()),
+            Err(_) => Ok(std::ptr::null_mut()),
+        }
+    })
+    .resolve::<jni::errors::LogErrorAndDefault>()
+}
+
 /// JNI bridge for `VoxelsNative#getPeersJson`: returns the known multiplayer
 /// peers as a JSON string.
 #[no_mangle]

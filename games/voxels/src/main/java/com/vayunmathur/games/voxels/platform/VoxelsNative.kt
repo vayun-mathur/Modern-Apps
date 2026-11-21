@@ -87,6 +87,10 @@ object VoxelsNative {
     external fun netPushInbound(json: String): Boolean
     // Rust -> Kotlin: pull queued outbound NetMsgs as a JSON array to encrypt + relay.
     external fun netDrainOutbound(): String
+    // Rust -> Kotlin (preferred): same queue as a binary frame (see OutboundFrame) —
+    // ChunkData payloads cross as raw bytes, not JSON number arrays. Local leg only:
+    // the signed/relay format reconstructed from it is byte-identical to the JSON leg.
+    external fun netDrainOutboundBin(): ByteArray
     // Remote players for the HUD/avatars: [{device,x,y,z,yaw}].
     external fun getPeersJson(): String
     // Client → host: ask for the currently-open chest's contents (host replies with ContainerSync).
