@@ -46,7 +46,7 @@ configure<com.android.build.api.dsl.LibraryExtension> {
 
     namespace = "com.vayunmathur${path.replace(":", ".").replace("-", "")}"
     compileSdk {
-        // compose 1.13.0-beta01 (BOM 2026.09.00) needs platform 37.1+.
+        // Platform 37.1+ for the current Compose train (BOM 2026.09.00).
         version = release(37) {
             minorApiLevel = 1
         }
