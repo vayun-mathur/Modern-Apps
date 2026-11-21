@@ -17,8 +17,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -40,6 +38,7 @@ import com.vayunmathur.library.ui.IconFlag
 import com.vayunmathur.library.ui.IconMine
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
+import com.vayunmathur.library.ui.rememberHaptics
 
 /**
  * The mine field.
@@ -99,7 +98,7 @@ private fun MineCell(
 ) {
     val scheme = MaterialTheme.colorScheme
     val density = LocalDensity.current
-    val haptics = LocalHapticFeedback.current
+    val haptics = rememberHaptics()
 
     val revealed = game.revealed[index]
     val flagged = game.flagged[index]
@@ -147,7 +146,7 @@ private fun MineCell(
                         // Confirms the flag without the player having to look away from the field.
                         // Only for a real change: buzzing for a press that did nothing (an open
                         // cell, an unstarted field) told the player a flag went in when none did.
-                        if (onLongPress()) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        if (onLongPress()) haptics.longPress()
                     },
                 )
             }
@@ -158,7 +157,7 @@ private fun MineCell(
                 // tap/long-press split that detectTapGestures above preserves.
                 onClick { onTap(); true }
                 onLongClick {
-                    if (onLongPress()) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    if (onLongPress()) haptics.longPress()
                     true
                 }
             },

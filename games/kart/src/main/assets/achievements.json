@@ -1,0 +1,17 @@
+[
+  {
+    "id": "first_race",
+    "name": "Off The Line",
+    "description": "Finish your first race!"
+  },
+  {
+    "id": "first_win",
+    "name": "First Win",
+    "description": "Win your first race!"
+  },
+  {
+    "id": "cup_complete",
+    "name": "Cup Complete",
+    "description": "Complete a cup!"
+  }
+]

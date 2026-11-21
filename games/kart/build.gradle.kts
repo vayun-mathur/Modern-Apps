@@ -47,6 +47,7 @@ rustNativeLib(
 )
 
 dependencies {
+    implementation(project(":sdk:games"))
     implementation(project(":sdk:controller"))
     implementation(project(":library:e2ee-p2p"))
     implementation(libs.androidx.datastore.preferences)

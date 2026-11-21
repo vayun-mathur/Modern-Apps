@@ -16,7 +16,7 @@ import com.vayunmathur.games.wordmaker.ui.WordMakerGameLoader
 import com.vayunmathur.library.ui.GameCenterScreen
 import com.vayunmathur.library.util.AchievementsManager
 import com.vayunmathur.library.util.FullscreenPage
-import com.vayunmathur.library.util.GameHubSessionHook
+import com.vayunmathur.library.util.GameHubComposeHook
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.OpenSettingsIfRequested
@@ -29,7 +29,8 @@ fun Navigation(viewModel: WordMakerViewModel) {
     val backStack = rememberNavBackStack<Route>(Route.Game)
     backStack.OpenSettingsIfRequested(Route.Settings)
     WordMakerRouteEffect(backStack, viewModel)
-    GameHubSessionHook("wordmaker", "Wordmaker")
+    val achievementsManager = rememberAchievementsManager(viewModel.levelDataStore)
+    GameHubComposeHook("wordmaker", achievementsManager)
     MainNavigation(backStack) {
         entry<Route.Game>(metadata = FullscreenPage()) {
             WordMakerGameLoader(backStack, viewModel)
@@ -42,7 +43,6 @@ fun Navigation(viewModel: WordMakerViewModel) {
             )
         }
         entry<Route.GameCenter> {
-            val achievementsManager = rememberAchievementsManager(viewModel.levelDataStore)
             if (achievementsManager != null) {
                 GameCenterScreen(
                     manager = achievementsManager,

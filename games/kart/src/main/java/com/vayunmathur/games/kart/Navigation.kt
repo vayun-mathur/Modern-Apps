@@ -8,6 +8,7 @@ import com.vayunmathur.games.kart.platform.KartViewModel
 import com.vayunmathur.games.kart.platform.RacePhase
 import com.vayunmathur.games.kart.ui.KartGamePage
 import com.vayunmathur.library.util.FullscreenPage
+import com.vayunmathur.library.util.GameHubComposeHook
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.rememberNavBackStack
@@ -15,6 +16,7 @@ import com.vayunmathur.library.util.rememberNavBackStack
 @Composable
 fun Navigation(viewModel: KartViewModel) {
     val backStack = rememberNavBackStack<Route>(Route.Lobby)
+    GameHubComposeHook("kart", viewModel.achievementsManager)
     KartRouteEffect(backStack, viewModel)
     MainNavigation(backStack) {
         entry<Route.Lobby>(metadata = FullscreenPage()) { KartGamePage(viewModel) }

@@ -11,6 +11,7 @@ import com.vayunmathur.games.kart.domain.LapTracker
 import com.vayunmathur.games.kart.domain.PlaceholderRace
 import com.vayunmathur.games.kart.domain.RumbleDecider
 import com.vayunmathur.games.kart.util.KartNative
+import com.vayunmathur.library.util.AchievementsManager
 import com.vayunmathur.sdk.controller.RumbleFeedback
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -32,6 +33,11 @@ class KartViewModel(application: Application) : AndroidViewModel(application),
     KartGameActions {
 
     val dataStore = KartDataStore(application)
+
+    val achievementsManager: AchievementsManager = run {
+        val json = application.assets.open("achievements.json").bufferedReader().readText()
+        KartAchievementsManager(application, json, dataStore)
+    }
 
     private val _uiState = MutableStateFlow(KartUiState())
     val uiState: StateFlow<KartUiState> = _uiState.asStateFlow()
@@ -75,6 +81,8 @@ class KartViewModel(application: Application) : AndroidViewModel(application),
         private set
 
     init {
+        achievementsManager.checkExistingAchievements()
+
         // Load (or mint) the PQC identity off the main thread, then open the
         // lobby. First run pays keygen; every later start reads persisted keys.
         viewModelScope.launch {
@@ -304,6 +312,10 @@ class KartViewModel(application: Application) : AndroidViewModel(application),
         // Celebration buzz for every remote phone still on the grid.
         celebrate(order)
         kartHost.host?.endRace()
+        achievementsManager.onAchievementUnlocked("first_race")
+        if (winner == localPlayerId) achievementsManager.onAchievementUnlocked("first_win")
+        // Finishing banks the next cup below, so a finish is a cup completion.
+        achievementsManager.onAchievementUnlocked("cup_complete")
         _racePhase.value = RacePhase.Results(winner = winner, order = order)
         val state = _uiState.value
         viewModelScope.launch {
