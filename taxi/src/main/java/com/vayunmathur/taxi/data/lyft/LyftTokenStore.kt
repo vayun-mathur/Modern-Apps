@@ -97,6 +97,28 @@ class LyftTokenStore(private val context: Context) {
 
     suspend fun isSignedIn(): Boolean = accessToken() != null
 
+    // --- Pending ride offer -------------------------------------------------
+    // Persisted before createRide so process death mid-booking loses nothing:
+    // on the next launch the offer is reconciled against activeRide() before any
+    // new booking is attempted (see PendingRideOffer / pendingRideAction).
+
+    private val pendingRideKey = stringPreferencesKey("pending_ride_offer")
+
+    suspend fun savePendingRide(pending: PendingRideOffer) {
+        val json = pendingJson.encodeToString(PendingRideOffer.serializer(), pending)
+        context.lyftDataStore.edit { it[pendingRideKey] = json }
+    }
+
+    /** The persisted pending offer, or null when none/corrupt — corrupt reads as no pending ride. */
+    suspend fun pendingRide(): PendingRideOffer? {
+        val raw = prefs()?.get(pendingRideKey)?.takeIf { it.isNotBlank() } ?: return null
+        return runCatching { pendingJson.decodeFromString(PendingRideOffer.serializer(), raw) }.getOrNull()
+    }
+
+    suspend fun clearPendingRide() {
+        context.lyftDataStore.edit { it.remove(pendingRideKey) }
+    }
+
     suspend fun clear() {
         context.lyftDataStore.edit { it.clear() }
     }
@@ -107,6 +129,8 @@ class LyftTokenStore(private val context: Context) {
 
         /** Test seam: Robolectric has no AndroidKeyStore; tests install a fake sealer here. */
         internal var sealerForTest: TokenSealer? = null
+
+        private val pendingJson = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
 
         private const val MILLIS_PER_SECOND = 1000L
         /** How early before real expiry the token counts as expired, so a call never races it. */

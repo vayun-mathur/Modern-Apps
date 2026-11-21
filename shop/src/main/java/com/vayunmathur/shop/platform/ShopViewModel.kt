@@ -14,6 +14,7 @@ import com.vayunmathur.shop.data.NativeCheckoutState
 import com.vayunmathur.shop.domain.NativeCheckoutCoordinator
 import com.vayunmathur.shop.domain.PendingCheckoutSink
 import com.vayunmathur.shop.data.CartLine
+import com.vayunmathur.shop.data.CheckoutIntentStore
 import com.vayunmathur.shop.data.OrderStore
 import com.vayunmathur.shop.data.EmbeddedCheckoutRequest
 import com.vayunmathur.shop.data.Money
@@ -81,7 +82,16 @@ class ShopViewModel(
         private set
     val profileComplete: Boolean get() = profile?.validationError() == null && profile != null
     private var profileRepository: ProfileRepository? = null
-    private val nativeCheckout = NativeCheckoutCoordinator()
+    /** App context for the coordinator's intent persistence; set by every entry point that has one. */
+    private var intentContext: Context? = null
+    private val nativeCheckout = NativeCheckoutCoordinator(
+        intentSink = { record ->
+            intentContext?.let { CheckoutIntentStore.save(it, record) }
+        },
+        intentDone = { platformId, shopDomain ->
+            intentContext?.let { CheckoutIntentStore.clear(it, platformId, shopDomain) }
+        },
+    )
 
     fun observeProfile(context: Context) {
         if (profileRepository != null) return
@@ -114,10 +124,37 @@ class ShopViewModel(
         val lines = cart.filter { it.platformId == platformId && it.shopDomain == shop }.toList()
         if (lines.isEmpty()) return
         startingCheckout = platformId to shop
+        intentContext = context.applicationContext
         val sink = PendingCheckoutSink { OrderStore.add(context, it) }
         viewModelScope.launch {
             try {
                 AppInit.awaitReady()
+                // A persisted in-flight checkout for this store wins over a fresh
+                // session: death mid-create must not mint a second intent/session.
+                val inFlight = CheckoutIntentStore.get(context)
+                    ?.takeIf { it.platformId == platformId && it.shopDomain == shop }
+                if (inFlight != null) {
+                    nativeCheckout.restore(inFlight)
+                    if (inFlight.checkoutId.isNullOrBlank()) {
+                        onError(
+                            "A checkout may have been started for this store. " +
+                                "Check your orders or the merchant website before trying again.",
+                        )
+                        return@launch
+                    }
+                    nativeCheckout.reconcile(platformId, shop)
+                    val restored = nativeCheckout.snapshot
+                        .firstOrNull { it.platformId == platformId && it.shopDomain == shop }
+                    val restoredUrl = restored?.checkout?.continueUrl?.let(MerchantUrls::httpsUrl)
+                        ?: restored?.handoffUrl
+                    if (restoredUrl != null && openEmbeddedCheckout(platformId, shop, restoredUrl, dark)) {
+                        onReady()
+                    } else {
+                        onError(restored?.message ?: "This store didn't return a checkout. Please try again.")
+                    }
+                    orders = OrderStore.getAll(context)
+                    return@launch
+                }
                 // A handoff URL may be single-use, so every tap starts a new session.
                 nativeCheckout.forget(platformId, shop)
                 submitFromProfile(platformId, shop, lines, sink)
@@ -211,9 +248,25 @@ class ShopViewModel(
     }
 
     fun loadOrders(context: Context) {
+        intentContext = context.applicationContext
         viewModelScope.launch {
             orders = OrderStore.getAll(context)
             OrderTrackingSync.schedule(context, orders)
+            reconcileInFlight(context)
+        }
+    }
+
+    /**
+     * Launch reconciliation: seed the coordinator from a persisted in-flight
+     * record and, when it names a session, refresh that session with a GET —
+     * never a new create. A record without a session id stays Uncertain.
+     */
+    private suspend fun reconcileInFlight(context: Context) {
+        val record = CheckoutIntentStore.get(context) ?: return
+        nativeCheckout.restore(record)
+        if (!record.checkoutId.isNullOrBlank()) {
+            AppInit.awaitReady()
+            nativeCheckout.reconcile(record.platformId, record.shopDomain)
         }
     }
 
@@ -319,6 +372,10 @@ class ShopViewModel(
         )
         cart = cart - lines.toSet()
         ShopCartStore.save(context, cart)
+        intentContext = context.applicationContext
+        viewModelScope.launch {
+            CheckoutIntentStore.clear(context, request.platformId, request.shopDomain)
+        }
         nativeCheckout.forget(request.platformId, request.shopDomain)
         nativeCheckout.cartChanged(cart)
         embeddedCheckout = null

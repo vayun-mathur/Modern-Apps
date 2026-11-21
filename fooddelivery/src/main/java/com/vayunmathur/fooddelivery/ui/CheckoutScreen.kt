@@ -24,6 +24,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -41,6 +42,11 @@ import com.vayunmathur.fooddelivery.network.BitesDeals
 import com.vayunmathur.fooddelivery.network.BitesOrders
 import com.vayunmathur.fooddelivery.data.AddressStore
 import com.vayunmathur.fooddelivery.data.CartItem
+import com.vayunmathur.fooddelivery.data.CheckoutDraft
+import com.vayunmathur.fooddelivery.data.CheckoutDraftAction
+import com.vayunmathur.fooddelivery.data.CheckoutDraftStore
+import com.vayunmathur.fooddelivery.data.checkoutDraftAction
+import com.vayunmathur.fooddelivery.data.paymentIntentId
 import com.vayunmathur.fooddelivery.data.CheckoutAddress
 import com.vayunmathur.fooddelivery.data.CheckoutCartItem
 import com.vayunmathur.fooddelivery.data.CheckoutRequest
@@ -59,6 +65,7 @@ import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
@@ -72,6 +79,7 @@ fun CheckoutScreen(
     onOrderCompleted: () -> Unit = onOrderPlaced,
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     var isPickup by remember { mutableStateOf(false) }
     var tipCents by remember { mutableIntStateOf(300) }
@@ -115,10 +123,12 @@ fun CheckoutScreen(
     var addresses by remember { mutableStateOf<List<SavedAddress>>(emptyList()) }
     var addressesLoaded by remember { mutableStateOf(false) }
     var selectedAddress by remember { mutableStateOf<SavedAddress?>(null) }
+    /** Address id restored from a persisted checkout draft, applied once addresses load. */
+    var restoredAddressId by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         val all = AddressStore.getAll(context)
-        val default = all.firstOrNull { it.isDefault } ?: all.firstOrNull()
+        val default = all.firstOrNull { it.id == restoredAddressId } ?: all.firstOrNull { it.isDefault } ?: all.firstOrNull()
         addresses = all
         selectedAddress = default
         // Don't overwrite anything typed while the read was in flight.
@@ -126,6 +136,47 @@ fun CheckoutScreen(
             deliveryInstructions = default?.deliveryInstructions ?: ""
         }
         addressesLoaded = true
+    }
+
+    // Entry reconciliation for a checkout interrupted by process death. The draft
+    // (order uuid + PaymentIntent id) was persisted before PaymentSheet presented,
+    // so poll the placed-order list for that uuid before any new checkout is
+    // created: found means the payment already placed the order (restore the
+    // success/tracking path, never pay again); presented-but-not-found means the
+    // payment outcome is unknown (check Orders, don't re-create or re-present);
+    // otherwise resume the same draft uuid so re-pricing UPDATEs it in place.
+    LaunchedEffect(Unit) {
+        val draft = CheckoutDraftStore.get(context) ?: return@LaunchedEffect
+        AppInit.awaitReady()
+        val existing = draft.orderUuid?.takeIf { it.isNotBlank() }?.let { uuid ->
+            BitesOrders.getOrders().firstOrNull { it.uuid == uuid }
+        }
+        when (checkoutDraftAction(draft, existing != null)) {
+            CheckoutDraftAction.RestorePlaced -> {
+                CheckoutDraftStore.clear(context)
+                if (existing != null) {
+                    OrderTrackingService.start(context, existing.id)
+                    orderSuccess = true
+                    onOrderCompleted()
+                }
+            }
+            CheckoutDraftAction.CheckOrders, CheckoutDraftAction.ResumeDraft -> {
+                isPickup = draft.isPickup
+                tipCents = draft.tipCents
+                promoCode = draft.promoCode
+                selectedDealId = draft.dealId
+                deliveryInstructions = draft.deliveryInstructions
+                restoredAddressId = draft.addressId
+                if (addressesLoaded) {
+                    selectedAddress = addresses.firstOrNull { it.id == draft.addressId } ?: selectedAddress
+                }
+                lastOrderUuid = draft.orderUuid
+                if (checkoutDraftAction(draft, existing != null) == CheckoutDraftAction.CheckOrders) {
+                    error = "Your last payment may have completed. Check Orders before paying again."
+                }
+            }
+            CheckoutDraftAction.None -> Unit
+        }
     }
 
     // The reference sends the customer's identity with every checkout.
@@ -153,7 +204,7 @@ fun CheckoutScreen(
     }
 
     LaunchedEffect(isPickup, tipCents, selectedAddress?.id, promoCode, customer?.uuid, selectedDealId) {
-        if (!canFetch) return@LaunchedEffect
+        if (!canFetch || orderSuccess) return@LaunchedEffect
         AppInit.awaitReady()
         checkoutResponse = null
         error = null
@@ -195,6 +246,9 @@ fun CheckoutScreen(
             email = customer?.email?.ifBlank { null },
             phone = customer?.phone?.ifBlank { null },
         )
+        // Entry reconciliation may have restored a placed order meanwhile; never
+        // create a fresh draft for an order that already went through.
+        if (orderSuccess) { fetchingPrices = false; return@LaunchedEffect }
         val response = BitesOrders.checkout(merchantId, request)
         if (BuildConfig.DEV_BUILD) {
             Log.dev("Checkout", "response.order=${response?.order}")
@@ -215,6 +269,30 @@ fun CheckoutScreen(
             checkoutResponse = response
         }
         fetchingPrices = false
+    }
+
+    // Persist the draft as soon as a priced checkout exists, long before payment:
+    // process death at any later point resumes this same order uuid / PaymentIntent.
+    LaunchedEffect(checkoutResponse?.order?.uuid, checkoutResponse?.clientSecret) {
+        val response = checkoutResponse ?: return@LaunchedEffect
+        val uuid = response.order?.uuid?.takeIf { it.isNotBlank() } ?: return@LaunchedEffect
+        CheckoutDraftStore.save(
+            context,
+            CheckoutDraft(
+                merchantId = merchantId,
+                orderUuid = uuid,
+                paymentIntentId = paymentIntentId(response.clientSecret),
+                clientSecret = response.clientSecret.takeIf { it.isNotBlank() },
+                isPickup = isPickup,
+                tipCents = tipCents,
+                promoCode = promoCode,
+                dealId = selectedDealId,
+                addressId = selectedAddress?.id,
+                deliveryInstructions = deliveryInstructions,
+                paymentPresented = false,
+                savedAtMs = System.currentTimeMillis(),
+            ),
+        )
     }
 
     // The screen showed foodTotal+fees+taxes+deliveryFee+tips, which is the total *before*
@@ -252,6 +330,7 @@ fun CheckoutScreen(
     val paymentSheet = rememberPaymentSheet { result ->
         when (result) {
             is PaymentSheetResult.Completed -> {
+                scope.launch { CheckoutDraftStore.clear(context) }
                 orderSuccess = true
                 OrderTrackingService.start(context, checkoutResponse?.order?.id)
                 // Clear the cart now (a paid cart must not be payable again from
@@ -260,9 +339,21 @@ fun CheckoutScreen(
                 onOrderCompleted()
             }
             is PaymentSheetResult.Canceled -> {
+                // A live cancel is a known outcome: the draft stays resumable and
+                // is no longer "presented with unknown outcome".
+                scope.launch {
+                    CheckoutDraftStore.get(context)?.let {
+                        CheckoutDraftStore.save(context, it.copy(paymentPresented = false))
+                    }
+                }
                 paying = false
             }
             is PaymentSheetResult.Failed -> {
+                scope.launch {
+                    CheckoutDraftStore.get(context)?.let {
+                        CheckoutDraftStore.save(context, it.copy(paymentPresented = false))
+                    }
+                }
                 error = result.error.localizedMessage ?: "Payment failed"
                 paying = false
             }
@@ -344,13 +435,36 @@ fun CheckoutScreen(
                 Column(Modifier.padding(16.dp)) {
                     Button(
                         onClick = {
+                            val response = checkoutResponse ?: return@Button
                             paying = true
-                            paymentSheet.presentWithPaymentIntent(
-                                checkoutResponse!!.clientSecret,
-                                PaymentSheet.Configuration(
-                                    merchantDisplayName = items.firstOrNull()?.merchantName ?: "Food Delivery",
+                            scope.launch {
+                                // Persist presented=true BEFORE the sheet shows: death
+                                // while it is up is then an unknown payment outcome,
+                                // reconciled on entry — never a fresh checkout.
+                                CheckoutDraftStore.save(
+                                    context,
+                                    CheckoutDraft(
+                                        merchantId = merchantId,
+                                        orderUuid = response.order?.uuid,
+                                        paymentIntentId = paymentIntentId(response.clientSecret),
+                                        clientSecret = response.clientSecret.takeIf { it.isNotBlank() },
+                                        isPickup = isPickup,
+                                        tipCents = tipCents,
+                                        promoCode = promoCode,
+                                        dealId = selectedDealId,
+                                        addressId = selectedAddress?.id,
+                                        deliveryInstructions = deliveryInstructions,
+                                        paymentPresented = true,
+                                        savedAtMs = System.currentTimeMillis(),
+                                    ),
                                 )
-                            )
+                                paymentSheet.presentWithPaymentIntent(
+                                    response.clientSecret,
+                                    PaymentSheet.Configuration(
+                                        merchantDisplayName = items.firstOrNull()?.merchantName ?: "Food Delivery",
+                                    ),
+                                )
+                            }
                         },
                         enabled = checkoutResponse != null && !paying && !fetchingPrices,
                         modifier = Modifier.fillMaxWidth()

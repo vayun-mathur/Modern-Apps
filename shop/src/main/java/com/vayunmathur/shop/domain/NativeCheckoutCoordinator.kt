@@ -334,6 +334,24 @@ internal class NativeCheckoutCoordinator(
                 version = checkout.version,
             ),
         )
+        // The write resolved: the in-flight record now names the session, so a
+        // death inside the embedded checkout reconciles via getCheckout instead
+        // of creating a second session.
+        if (intent.isNotBlank()) {
+            intentSink(
+                InFlightCheckout(
+                    intent = intent,
+                    platformId = key.first,
+                    shopDomain = key.second,
+                    storeName = lines.firstNotNullOfOrNull { it.storeName.ifBlank { null } }.orEmpty(),
+                    lines = lines.map { it.copy(imageUrl = "") },
+                    checkoutId = checkout.checkoutId,
+                    trackingToken = checkout.trackingToken,
+                    status = InFlightCheckout.STATUS_PENDING,
+                    createdAtMs = createdAt[key] ?: now(),
+                ),
+            )
+        }
     }
     suspend fun submit(platform: String, shop: String, lines: List<CartLine>, sink: PendingCheckoutSink) {
         val key = platform to shop
@@ -352,8 +370,8 @@ internal class NativeCheckoutCoordinator(
                 ),
             )
             mutationStarted = true
-            val checkout = executeWrite(key, state, previous, shop, lines) ?: return
-            publishResult(key, state, previous, checkout, lines, sink)
+            val (checkout, intent) = executeWrite(key, state, previous, shop, lines) ?: return
+            publishResult(key, state, previous, checkout, lines, sink, intent)
         } catch (cancelled: CancellationException) {
             if (mutationStarted) {
                 states[key]?.let {
@@ -384,6 +402,41 @@ internal class NativeCheckoutCoordinator(
         } finally {
             lock.unlock()
         }
+    }
+
+    /**
+     * Seeds state from a persisted in-flight record after process death. A record
+     * with a session id can be refreshed via [reconcile]'s GET; one without (death
+     * during the create, unknown outcome) restores as Uncertain so it can never be
+     * replayed — there is no query-by-intent to prove what the server did.
+     */
+    fun restore(record: InFlightCheckout) {
+        val key = record.platformId to record.shopDomain
+        if (states[key]?.busy == true) return
+        val checkout = record.checkoutId?.takeIf { it.isNotBlank() }?.let {
+            UcpCheckout(checkoutId = it, trackingToken = record.trackingToken)
+        }
+        if (checkout != null) createdAt.putIfAbsent(key, record.createdAtMs)
+        publish(
+            key,
+            NativeCheckoutState(
+                platformId = record.platformId,
+                shopDomain = record.shopDomain,
+                phase = if (checkout != null && record.status == InFlightCheckout.STATUS_PENDING) {
+                    CheckoutPhase.Reviewing
+                } else {
+                    CheckoutPhase.Uncertain
+                },
+                checkout = checkout,
+                message = if (checkout == null) {
+                    "A checkout may have been started for this store. " +
+                        "Do not retry; check your orders or the merchant website."
+                } else {
+                    null
+                },
+                submittedLines = record.lines,
+            ),
+        )
     }
 
     suspend fun reconcile(platform: String, shop: String) {

@@ -25,6 +25,12 @@ import com.vayunmathur.library.ui.isExpandedWidth
 import com.vayunmathur.taxi.R
 import com.vayunmathur.taxi.data.BookingTrip
 import com.vayunmathur.taxi.data.Place
+import com.vayunmathur.taxi.data.RideStatusResult
+import com.vayunmathur.taxi.data.lyft.LyftTokenStore
+import com.vayunmathur.taxi.data.lyft.PendingRideAction
+import com.vayunmathur.taxi.data.lyft.pendingRideAction
+import com.vayunmathur.taxi.network.lyft.LyftProvider
+import com.vayunmathur.taxi.notifications.RideTrackingService
 import com.vayunmathur.taxi.data.Provider
 import com.vayunmathur.taxi.data.QuoteResult
 import com.vayunmathur.taxi.intents.DirectionsClient
@@ -92,6 +98,36 @@ fun RideScreen(bookingTrip: MutableState<BookingTrip?>? = null) {
             pickupQuery = place.name
         }
         camera.animateTo(CameraPosition(GeoPoint(here.longitude, here.latitude), 14.0))
+    }
+
+    // Launch reconciliation for a booking interrupted by process death: the offer
+    // was persisted before createRide, so check for a ride the server already
+    // created before the user can book again. An active ride restores tracking
+    // (and the trip inputs) instead of a duplicate booking; an expired offer is
+    // discarded; a still-valid offer with no ride yet stays pending for the next
+    // launch (activeRide can lag a just-booked ride) and is never auto-re-booked.
+    LaunchedEffect(Unit) {
+        val store = LyftTokenStore(context.applicationContext)
+        val pending = store.pendingRide() ?: return@LaunchedEffect
+        val provider = LyftProvider(context.applicationContext)
+        val active = provider.activeRide() as? RideStatusResult.Active
+        when (pendingRideAction(pending, active != null, System.currentTimeMillis())) {
+            PendingRideAction.RestoreTracking -> {
+                store.clearPendingRide()
+                pickup = pending.pickup()
+                pickupQuery = pending.pickupName
+                destination = pending.dropoff()
+                destinationQuery = pending.dropoffName
+                RideTrackingService.start(context, active?.ride?.rideId)
+            }
+            PendingRideAction.Discard -> store.clearPendingRide()
+            PendingRideAction.KeepPending -> {
+                pickup = pending.pickup()
+                pickupQuery = pending.pickupName
+                destination = pending.dropoff()
+                destinationQuery = pending.dropoffName
+            }
+        }
     }
 
     // Debounced lookup for whichever field is currently being edited.

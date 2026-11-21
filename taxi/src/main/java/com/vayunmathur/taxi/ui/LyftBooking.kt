@@ -45,6 +45,8 @@ import com.vayunmathur.taxi.data.ChargeAccount
 import com.vayunmathur.taxi.data.PaymentMethodsResult
 import com.vayunmathur.taxi.data.Place
 import com.vayunmathur.taxi.data.RideQuote
+import com.vayunmathur.taxi.data.lyft.LyftTokenStore
+import com.vayunmathur.taxi.data.lyft.PendingRideOffer
 import com.vayunmathur.taxi.network.lyft.LyftProvider
 import com.vayunmathur.taxi.notifications.RideTrackingService
 import kotlinx.coroutines.launch
@@ -129,6 +131,22 @@ fun LyftBookingFlow(
     fun book(account: ChargeAccount?) {
         step = Step.Booking
         scope.launch {
+            // Persist the confirmed offer BEFORE the create call: if the process
+            // dies while the request is in flight, the next launch reconciles this
+            // against activeRide() instead of booking (and charging) a second time.
+            val tokenStore = LyftTokenStore(context.applicationContext)
+            if (request.quote.offerId != null) {
+                tokenStore.savePendingRide(
+                    PendingRideOffer.from(
+                        quote = request.quote,
+                        pickup = request.pickup,
+                        dropoff = request.dropoff,
+                        chargeAccountId = account?.id,
+                        purchaseSessionId = request.purchaseSessionId,
+                        savedAtMs = System.currentTimeMillis(),
+                    ),
+                )
+            }
             step = when (
                 val result = provider.createRide(
                     quote = request.quote,
@@ -139,12 +157,22 @@ fun LyftBookingFlow(
                     dryRun = false, // createRide enforces dry-run while BOOKING_LIVE is false
                 )
             ) {
-                is BookingResult.DryRun -> Step.DryRun(result.requestJson)
+                is BookingResult.DryRun -> {
+                    // Nothing was sent, so nothing is in flight.
+                    tokenStore.clearPendingRide()
+                    Step.DryRun(result.requestJson)
+                }
                 is BookingResult.Created -> {
+                    // The ride now exists server-side and is tracked by id; the
+                    // pending offer has served its purpose.
+                    tokenStore.clearPendingRide()
                     // Kick off the background Live Update tracker for the new ride.
                     RideTrackingService.start(context, result.rideId)
                     Step.Created(result.rideId, result.status, result.raw)
                 }
+                // Failed keeps the pending offer: a transport failure may still have
+                // created the ride server-side, so launch reconciliation (activeRide)
+                // decides — never an automatic re-book.
                 is BookingResult.Failed -> Step.Failed(result.message)
                 BookingResult.Unsupported ->
                     Step.Failed(noPaymentMessage)
