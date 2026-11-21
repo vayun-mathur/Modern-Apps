@@ -65,7 +65,7 @@ fun ProductScreen(
     platformId: String,
     shopDomain: String,
     onBack: () -> Unit,
-    onPayInApp: () -> Unit,
+    onPayInApp: (platformId: String, shopDomain: String) -> Unit,
 ) {
     val backend: ShopBackend = ShopHttpBackend
     val dark = isSystemInDarkTheme()
@@ -193,7 +193,11 @@ fun ProductScreen(
                 onAddToCart = { if (canAdd) { addToCart(); messenger.show(addedToCartMessage) } },
                 onBuyNow = {
                     addToCart()?.let { (store, shop) ->
-                        viewModel.checkoutStore(store, shop, context, dark, onReady = onPayInApp, onError = messenger::show)
+                        viewModel.checkoutStore(
+                            store, shop, context, dark,
+                            onReady = { onPayInApp(store, shop) },
+                            onError = messenger::show,
+                        )
                     }
                 },
                 onOpenUrl = { url -> MerchantUrls.httpsUrl(url)?.let { openContinueUrl(context, it) } },

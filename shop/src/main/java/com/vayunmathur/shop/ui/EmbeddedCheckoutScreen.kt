@@ -38,6 +38,7 @@ import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.rememberMessenger
 import com.vayunmathur.shop.R
+import com.vayunmathur.shop.Route
 import com.vayunmathur.shop.data.EmbeddedCheckoutRequest
 import com.vayunmathur.shop.domain.EcAction
 import com.vayunmathur.shop.domain.EmbeddedCheckout
@@ -52,10 +53,21 @@ private const val BRIDGE = "EmbeddedCheckoutProtocolConsumer"
  * completion. The bridge is injected only into the merchant's origins.
  */
 @Composable
-fun EmbeddedCheckoutScreen(viewModel: ShopViewModel, onClose: () -> Unit) {
+fun EmbeddedCheckoutScreen(
+    viewModel: ShopViewModel,
+    route: Route.EmbeddedCheckout,
+    onClose: () -> Unit,
+) {
     // Snapshot the request: the screen keeps composing through its exit animation after the
     // ViewModel clears it, and navigation must never be triggered from composition.
-    val request = remember { viewModel.embeddedCheckout }
+    // The route names the store this checkout is for: a restored entry whose
+    // in-memory (secret-bearing) request is gone, or is for another store,
+    // closes instead of showing the wrong merchant's checkout.
+    val request = remember {
+        viewModel.embeddedCheckout?.takeIf {
+            it.platformId == route.platformId && it.shopDomain == route.shopDomain
+        }
+    }
     var closed by remember { mutableStateOf(false) }
     val close = {
         if (!closed) {

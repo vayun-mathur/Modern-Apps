@@ -39,7 +39,15 @@ sealed interface Route : NavKey {
     @Serializable
     data object Profile : Route
 
-    /** Request (with its secret-bearing URL) lives in ShopViewModel, never in saved state. */
+    /**
+     * Merchant checkout for one store. The request (with its secret-bearing
+     * URL) lives in ShopViewModel, never in saved state; the route carries
+     * only the store identity so a restored entry can validate that the
+     * in-memory request is the checkout it names.
+     */
     @Serializable
-    data object EmbeddedCheckout : Route
+    data class EmbeddedCheckout(
+        val platformId: String,
+        val shopDomain: String,
+    ) : Route
 }

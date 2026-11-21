@@ -161,7 +161,7 @@ class ShopScreensCoverage2Test {
             checkoutEligible=true, storeName="Cool Store", priceRange=Money(12000,"USD"),
             variants=listOf(ProductVariant("v1","Size 9",Money(12000,"USD"),true,storeName="Cool Store",shopDomain="cool.example")))
         setVmField(vm, "results", listOf(snapshot))
-        composeRule.setContent { ProductScreen(vm, "v1", "shopify", "cool.example", onBack={}, onPayInApp={}) }
+        composeRule.setContent { ProductScreen(vm, "v1", "shopify", "cool.example", onBack={}, onPayInApp={ _, _ -> }) }
         composeRule.waitUntil(10_000) { composeRule.onAllNodesWithText(str(R.string.add_to_cart)).fetchSemanticsNodes().isNotEmpty() }
         scrollTo(4)
         composeRule.onNodeWithText(str(R.string.add_to_cart)).performClick()
@@ -176,7 +176,7 @@ class ShopScreensCoverage2Test {
             checkoutEligible=true, storeName="Cool Store", priceRange=Money(12000,"USD"),
             variants=listOf(ProductVariant("v1","Size 9",Money(12000,"USD"),true,storeName="Cool Store",shopDomain="cool.example")))
         setVmField(vm, "results", listOf(snapshot))
-        composeRule.setContent { ProductScreen(vm, "v1", "shopify", "cool.example", onBack={}, onPayInApp={}) }
+        composeRule.setContent { ProductScreen(vm, "v1", "shopify", "cool.example", onBack={}, onPayInApp={ _, _ -> }) }
         composeRule.waitUntil(10_000) {
             composeRule.onAllNodesWithText("The store no longer lists this exact variant. Cart actions are disabled.").fetchSemanticsNodes().isNotEmpty()
         }

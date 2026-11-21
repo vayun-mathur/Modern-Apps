@@ -7,7 +7,6 @@ import com.vayunmathur.travel.data.FrequentFlyer
 import com.vayunmathur.travel.data.RecentSearch
 import com.vayunmathur.travel.data.TravelRepository
 import com.vayunmathur.travel.network.StayGuestInputDto
-import com.vayunmathur.travel.network.StayRateDto
 import com.vayunmathur.travel.network.TravelRaw
 import com.vayunmathur.travel.network.travelTransport
 import kotlin.test.AfterTest
@@ -115,7 +114,7 @@ class TravelSuccessOpsTest {
         assertEquals(1, v.stayResults.value.results.size)
         v.loadStayRates("sr_1", "Grand Hotel"); idle()
         assertEquals("Grand Hotel", v.stayRates.value.rates?.name)
-        v.selectStayRate(StayRateDto(id = "r1", totalAmount = "180.00")); idle()
+        v.selectStayRate("r1"); idle()
         assertEquals("180.00" to "USD", v.stayTotal())
         v.bookStay(StayGuestInputDto(givenName = "Jane", familyName = "Doe"), "jane@example.com", "555"); idle()
         assertTrue(v.stayBooking.value is StayBookingState.Success, "stay=${v.stayBooking.value}")

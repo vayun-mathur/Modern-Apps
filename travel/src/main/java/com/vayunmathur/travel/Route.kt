@@ -93,9 +93,9 @@ sealed interface Route : NavKey {
     @Serializable
     data class StayDetail(val searchResultId: String, val name: String) : Route
 
-    /** Singleton holding stay guests state and operations. */
+    /** Immutable value describing stay guests; carries rateId. */
     @Serializable
-    data object StayGuests : Route
+    data class StayGuests(val rateId: String) : Route
 
     /** Immutable value describing stay confirmation; carries bookingId. */
     @Serializable

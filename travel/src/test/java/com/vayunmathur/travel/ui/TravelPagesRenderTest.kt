@@ -118,7 +118,7 @@ class TravelPagesRenderTest {
     }
 
     @Test fun stayGuests_showsTitle() {
-        rule.setContent { StayGuestsPage(stack(), vm()) }
+        rule.setContent { StayGuestsPage(stack(), vm(), Route.StayGuests("rate-1")) }
         rule.onNodeWithText("Guest details").assertIsDisplayed()
     }
 

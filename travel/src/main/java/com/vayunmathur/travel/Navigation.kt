@@ -57,7 +57,7 @@ fun Navigation(viewModel: TravelViewModel) {
             entry<Route.Change> { ChangePage(backStack, viewModel, it) }
             entry<Route.StayResults> { StayResultsPage(backStack, viewModel, it) }
             entry<Route.StayDetail>(metadata = MorphPage()) { StayDetailPage(backStack, viewModel, it) }
-            entry<Route.StayGuests> { StayGuestsPage(backStack, viewModel) }
+            entry<Route.StayGuests> { StayGuestsPage(backStack, viewModel, it) }
             entry<Route.StayConfirmation> { StayConfirmationPage(backStack, viewModel, it) }
             entry<Route.Trips>(metadata = ListPage()) { TripsPage(backStack, viewModel) }
             entry<Route.Settings> { SettingsPage(backStack, viewModel) }

@@ -118,7 +118,7 @@ class TravelDeep2Test {
     }
 
     @Test fun stayGuests_formFields() {
-        rule.setContent { StayGuestsPage(stack(), vm()) }
+        rule.setContent { StayGuestsPage(stack(), vm(), Route.StayGuests("rate-1")) }
         rule.onNodeWithText("Guest details").assertIsDisplayed()
         rule.onNodeWithText("Given name").performTextInput("Jane")
         rule.onNodeWithText("Family name").assertExists()

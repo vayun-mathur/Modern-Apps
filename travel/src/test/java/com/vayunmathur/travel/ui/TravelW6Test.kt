@@ -214,7 +214,7 @@ class TravelW6Test {
     @Test
     fun stayGuests_typingGuestDetails() {
         val v = vm()
-        rule.setContent { StayGuestsPage(stack(), v) }
+        rule.setContent { StayGuestsPage(stack(), v, Route.StayGuests("rate-1")) }
         rule.waitForIdle()
         val fields = rule.onAllNodes(hasSetTextAction()).fetchSemanticsNodes()
         assertTrue(fields.size >= 4, "guest fields: ${fields.size}")

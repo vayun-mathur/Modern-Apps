@@ -84,7 +84,7 @@ class TravelClicksTest {
     }
 
     @Test fun stayGuests_rendersForm() {
-        rule.setContent { StayGuestsPage(stack(), vm()) }
+        rule.setContent { StayGuestsPage(stack(), vm(), Route.StayGuests("rate-1")) }
         rule.onNodeWithText("Guest details").assertIsDisplayed()
         rule.onNodeWithText("Given name").assertExists()
     }

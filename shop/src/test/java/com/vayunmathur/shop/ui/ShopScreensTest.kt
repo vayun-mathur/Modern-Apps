@@ -12,6 +12,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.work.Configuration
 import androidx.work.WorkManager
 import com.vayunmathur.shop.R
+import com.vayunmathur.shop.Route
 import com.vayunmathur.shop.data.Money
 import com.vayunmathur.shop.data.OrderShipment
 import com.vayunmathur.shop.data.OrderTracking
@@ -282,7 +283,7 @@ class ShopScreensTest {
     fun embeddedCheckout_withoutRequestClosesImmediately() {
         var closed = 0
         val vm = ShopViewModel()
-        composeRule.setContent { EmbeddedCheckoutScreen(vm, onClose = { closed++ }) }
+        composeRule.setContent { EmbeddedCheckoutScreen(vm, Route.EmbeddedCheckout("shopify", "cool.example"), onClose = { closed++ }) }
         composeRule.waitForIdle()
         await { closed == 1 }
         assertEquals(1, closed)
@@ -292,7 +293,7 @@ class ShopScreensTest {
     fun cartScreenWrapper_showsVmCartAndRemoveEmptiesIt() {
         val vm = ShopViewModel()
         vm.addToCart(product(), "v1", 2, context)
-        composeRule.setContent { CartScreen(vm, onPayInApp = {}) }
+        composeRule.setContent { CartScreen(vm, onPayInApp = { _, _ -> }) }
         composeRule.onNodeWithText("Trail Shoes").assertIsDisplayed()
         composeRule.onNodeWithText("Remove").performClick()
         assertTrue(vm.cart.isEmpty())
@@ -303,7 +304,7 @@ class ShopScreensTest {
     fun productScreen_blankDomainShowsMissingDomainFailureWithoutNetwork() {
         val vm = ShopViewModel()
         composeRule.setContent {
-            ProductScreen(vm, variantId = "v1", platformId = "shopify", shopDomain = "", onBack = {}, onPayInApp = {})
+            ProductScreen(vm, variantId = "v1", platformId = "shopify", shopDomain = "", onBack = {}, onPayInApp = { _, _ -> })
         }
         composeRule.waitUntil(timeoutMillis = 10_000) {
             composeRule.onAllNodesWithText("The publishing store domain is missing. Cart actions are disabled.").fetchSemanticsNodes().isNotEmpty()

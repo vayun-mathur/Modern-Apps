@@ -48,7 +48,7 @@ import com.vayunmathur.shop.platform.ShopViewModel
 @Composable
 fun CartScreen(
     viewModel: ShopViewModel,
-    onPayInApp: () -> Unit,
+    onPayInApp: (platformId: String, shopDomain: String) -> Unit,
 ) {
     val messenger = rememberMessenger()
     // Persistence context hoisted once: rows stay stateless and context-free.
@@ -60,7 +60,11 @@ fun CartScreen(
             startingStore = viewModel.startingCheckout,
             onRemove = { viewModel.removeLine(it, context) },
             onCheckoutStore = { platformId, shop ->
-                viewModel.checkoutStore(platformId, shop, context, dark, onReady = onPayInApp, onError = messenger::show)
+                viewModel.checkoutStore(
+                    platformId, shop, context, dark,
+                    onReady = { onPayInApp(platformId, shop) },
+                    onError = messenger::show,
+                )
             },
             modifier = Modifier.fillMaxSize().padding(padding),
         )

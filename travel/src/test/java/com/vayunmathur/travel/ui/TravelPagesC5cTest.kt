@@ -26,7 +26,6 @@ import com.vayunmathur.travel.network.StayRoomDto
 import com.vayunmathur.travel.platform.OfferReviewState
 import com.vayunmathur.travel.platform.StayRatesState
 import com.vayunmathur.travel.platform.TravelViewModel
-import com.vayunmathur.travel.platform.selectedStayRate
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -141,8 +140,10 @@ class TravelPagesC5cTest {
         rule.waitForIdle()
         rule.onAllNodesWithText("$150")[0].performClick()
         rule.waitForIdle()
-        assertEquals("rate-2", v.selectedStayRate()?.id)
-        assertEquals(Route.StayGuests, s.last())
+        // The choice lives in the route, not the ViewModel: tapping the
+        // $150 rate pushes StayGuests carrying its ID (the guests entry
+        // resolves + quotes it on entry).
+        assertEquals(Route.StayGuests("rate-2"), s.last())
     }
 
     @Test

@@ -46,6 +46,7 @@ import com.vayunmathur.travel.platform.TravelViewModel
 import com.vayunmathur.travel.platform.bookStay
 import com.vayunmathur.travel.platform.confirmPaidTrip
 import com.vayunmathur.travel.platform.resetStayBooking
+import com.vayunmathur.travel.platform.selectStayRate
 import com.vayunmathur.travel.platform.stayTotal
 import androidx.compose.ui.res.stringResource
 
@@ -54,7 +55,12 @@ import androidx.compose.ui.res.stringResource
 fun StayGuestsPage(
     backStack: NavBackStack<Route>,
     viewModel: TravelViewModel,
+    route: Route.StayGuests,
 ) {
+    // The route carries the chosen rate: resolve + quote it on entry, so a
+    // restored StayGuests entry books the rate it names with no selection
+    // having to survive in the ViewModel from the detail screen.
+    LaunchedEffect(route.rateId) { viewModel.selectStayRate(route.rateId) }
     val booking by viewModel.stayBooking.collectAsStateWithLifecycle()
     var paying by remember { mutableStateOf(false) }
     var paidTripId by remember { mutableStateOf<String?>(null) }

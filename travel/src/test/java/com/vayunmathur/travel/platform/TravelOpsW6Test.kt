@@ -41,7 +41,7 @@ class TravelOpsW6Test {
     @Test
     fun everyRoute_serializesAndRoundTrips() {
         val routes: List<Route> = listOf(
-            Route.FlightsHome, Route.StaysHome, Route.Trips, Route.Settings, Route.StayGuests,
+            Route.FlightsHome, Route.StaysHome, Route.Trips, Route.Settings, Route.StayGuests("rate_1"),
             Route.OfferReview("off_1"), Route.Ancillaries("off_1"), Route.SeatMap("off_1", "seg_1"),
             Route.Passengers("off_1"), Route.Payment("off_1"), Route.Confirmation("ord_1"),
             Route.OrderDetail("ord_1"), Route.Cancel("ord_1"), Route.Change("ord_1"),

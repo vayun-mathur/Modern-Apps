@@ -32,7 +32,6 @@ import com.vayunmathur.travel.Route
 import com.vayunmathur.travel.network.StayRateDto
 import com.vayunmathur.travel.platform.TravelViewModel
 import com.vayunmathur.travel.platform.loadStayRates
-import com.vayunmathur.travel.platform.selectStayRate
 import androidx.compose.ui.res.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -117,8 +116,7 @@ fun StayDetailPage(
                 )
                 room.rates.forEach { rate ->
                     RateRow(rate) {
-                        viewModel.selectStayRate(rate)
-                        backStack.add(Route.StayGuests)
+                        backStack.add(Route.StayGuests(rate.id))
                     }
                 }
             }

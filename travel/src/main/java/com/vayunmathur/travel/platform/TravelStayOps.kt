@@ -73,13 +73,21 @@ fun TravelViewModel.loadStayRates(searchResultId: String, accommodationName: Str
     }
 }
 
-/** Choose a rate and quote it (confirming price) before collecting guests. */
-fun TravelViewModel.selectStayRate(rate: StayRateDto) {
-    selectedRate = rate
+/**
+ * Resolve the rate named by [Route.StayGuests.rateId][com.vayunmathur.travel.Route.StayGuests]
+ * and quote it (confirming price) before collecting guests. The rate is
+ * looked up in the rates already loaded for the stay detail beneath this
+ * entry; on a restored stack where those rates are gone the ID alone is
+ * enough to quote, and the quote supplies the total.
+ */
+fun TravelViewModel.selectStayRate(rateId: String) {
+    selectedRate = stayRatesMutable.value.rates?.rooms
+        ?.flatMap { it.rates }?.firstOrNull { it.id == rateId }
+        ?: StayRateDto(id = rateId)
     stayQuote = null
     stayBookingMutable.value = StayBookingState.Idle
     viewModelScope.launch {
-        runCatching { StaysApi.quote(rate.id) }
+        runCatching { StaysApi.quote(rateId) }
             .onSuccess { stayQuote = it }
             .onFailure { /* fall back to the rate price at book time */ }
     }

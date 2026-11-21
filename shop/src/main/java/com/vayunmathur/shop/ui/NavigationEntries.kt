@@ -72,7 +72,12 @@ internal fun EntryProviderScope<Route>.shopEntries(
         )
     }
     entry<Route.Cart>(metadata = SiblingPage()) {
-        CartScreen(viewModel, onPayInApp = { backStack.add(Route.EmbeddedCheckout) })
+        CartScreen(
+            viewModel,
+            onPayInApp = { platformId, shopDomain ->
+                backStack.add(Route.EmbeddedCheckout(platformId, shopDomain))
+            },
+        )
     }
     entry<Route.Orders>(metadata = SiblingPage()) {
         LaunchedEffect(Unit) { viewModel.refreshTracking(context) }
@@ -88,12 +93,14 @@ internal fun EntryProviderScope<Route>.shopEntries(
             platformId = route.platformId,
             shopDomain = route.shopDomain,
             onBack = { backStack.pop() },
-            onPayInApp = { backStack.add(Route.EmbeddedCheckout) },
+            onPayInApp = { platformId, shopDomain ->
+                backStack.add(Route.EmbeddedCheckout(platformId, shopDomain))
+            },
         )
     }
-    entry<Route.EmbeddedCheckout> {
-        EmbeddedCheckoutScreen(viewModel = viewModel, onClose = {
-            if (backStack.backStack.lastOrNull() == Route.EmbeddedCheckout) backStack.pop()
+    entry<Route.EmbeddedCheckout> { route ->
+        EmbeddedCheckoutScreen(viewModel = viewModel, route = route, onClose = {
+            if (backStack.backStack.lastOrNull() is Route.EmbeddedCheckout) backStack.pop()
         })
     }
 }

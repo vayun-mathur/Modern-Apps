@@ -56,7 +56,7 @@ class ShopDataCoverageTest {
     @Test fun routeEqualityAndSerialization() {
         assertEquals(Route.ProfileSetup, Route.ProfileSetup)
         assertEquals(Route.Search, Route.Search); assertEquals(Route.Cart, Route.Cart)
-        assertEquals(Route.Orders, Route.Orders); assertEquals(Route.EmbeddedCheckout, Route.EmbeddedCheckout)
+        assertEquals(Route.Orders, Route.Orders); assertEquals(Route.EmbeddedCheckout("shopify","s.example"), Route.EmbeddedCheckout("shopify","s.example"))
         val detail = Route.ProductDetail("v1","shopify","s.example")
         assertEquals(detail, Route.ProductDetail("v1","shopify","s.example"))
         assertNotEquals(detail, Route.ProductDetail("v2","shopify","s.example"))
