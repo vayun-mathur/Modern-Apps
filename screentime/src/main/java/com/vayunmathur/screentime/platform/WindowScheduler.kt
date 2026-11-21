@@ -30,6 +30,22 @@ class WindowScheduler(private val context: Context) {
 
     fun armAll(windDown: WindDownSchedule) {
         armWindow(windDown.enabled, windDown::activeAt, REQUEST_WINDDOWN)
+        armMidnight()
+    }
+
+    /**
+     * Daily reconcile at next local midnight, regardless of wind-down.
+     *
+     * Timers/spent marks/day totals only reset when [Coordinator.reconcile]
+     * runs (it prunes [SpentState] to today and re-arms observers). Without
+     * this, a device with wind-down off would keep yesterday's spent pauses
+     * until some unrelated reconcile happened.
+     */
+    private fun armMidnight() {
+        val alarms = alarms ?: return
+        val pending = pendingIntent(REQUEST_MIDNIGHT)
+        alarms.cancel(pending)
+        armAlarm(alarms, nextMidnight(ZonedDateTime.now(ZoneId.systemDefault())).toInstant().toEpochMilli(), pending)
     }
 
     private fun armWindow(
@@ -43,7 +59,10 @@ class WindowScheduler(private val context: Context) {
         if (!enabled) return
 
         val next = nextBoundary(activeAt) ?: return
-        val at = next.toInstant().toEpochMilli()
+        armAlarm(alarms, next.toInstant().toEpochMilli(), pending)
+    }
+
+    private fun armAlarm(alarms: AlarmManager, at: Long, pending: PendingIntent) {
         val canExact = alarms.canScheduleExactAlarms()
         runCatching {
             if (canExact) {
@@ -85,9 +104,14 @@ class WindowScheduler(private val context: Context) {
 
     private companion object {
         const val REQUEST_WINDDOWN = 12
+        const val REQUEST_MIDNIGHT = 13
         const val MINUTES_IN_WEEK = 7 * 24 * 60
     }
 }
+
+/** Next local midnight strictly after [from] (start of the next calendar day in its zone). */
+internal fun nextMidnight(from: ZonedDateTime): ZonedDateTime =
+    from.toLocalDate().plusDays(1).atStartOfDay(from.zone)
 
 /** Whether wind-down is active at [at], in the device's current timezone. */
 fun WindDownSchedule.activeAt(at: LocalDateTime): Boolean {

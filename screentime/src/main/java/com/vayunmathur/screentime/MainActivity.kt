@@ -49,7 +49,7 @@ class MainActivity : MaActivity() {
 
     override fun onResume() {
         super.onResume()
-        viewModel.refresh()
+        viewModel.onDashboardResume()
     }
 
     /** Intent actions and extras for launching [MainActivity] screens. */

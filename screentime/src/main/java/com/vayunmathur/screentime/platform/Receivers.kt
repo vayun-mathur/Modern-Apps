@@ -84,6 +84,41 @@ class ScheduleReceiver : BroadcastReceiver() {
 }
 
 /**
+ * Reconciles when wall-clock time or timezone changes.
+ *
+ * A timezone/time change moves midnight and every wind-down boundary, and
+ * invalidates alarms armed against the old zone. Following [BootReceiver]'s
+ * pattern: funnel through [Coordinator.reconcile], which re-prunes spent
+ * state, re-arms observers and re-arms alarms (including next-midnight).
+ */
+class TimeChangedReceiver : BroadcastReceiver() {
+
+    @Suppress("TooGenericExceptionCaught")
+    override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action !in TIME_CHANGE_ACTIONS) return
+        val app = context.applicationContext
+        val pending = goAsync()
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            try {
+                Coordinator(app).reconcile()
+            } catch (e: Exception) {
+                Log.error(TAG, "time-change reconcile failed", e)
+            } finally {
+                pending.finish()
+            }
+        }
+    }
+
+    private companion object {
+        val TIME_CHANGE_ACTIONS = setOf(
+            Intent.ACTION_TIME_CHANGED,
+            Intent.ACTION_TIMEZONE_CHANGED,
+            Intent.ACTION_DATE_CHANGED,
+        )
+    }
+}
+
+/**
  * Re-establishes enforcement after a reboot.
  *
  * Alarms and usage observers are both process- and boot-scoped, so without this a restart

@@ -106,7 +106,11 @@ class UsageHistory(private val context: Context) {
 
         val hours = LongArray(HOURS_PER_DAY)
         if (end > dayStart) {
-            for ((pkg, from, to) in foregroundIntervals(usage, dayStart, end)) {
+            // Query one day back so a session that crossed midnight (resumed
+            // yesterday, paused today) is seen; buildIntervals clips it to
+            // [dayStart, end).
+            val queryStart = anchor.minusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
+            for ((pkg, from, to) in foregroundIntervals(usage, queryStart, dayStart, end)) {
                 if (forPackage != null && pkg != forPackage) continue
                 HourBuckets.addInterval(hours, dayStart, dayEnd, from, to)
             }
@@ -143,67 +147,30 @@ class UsageHistory(private val context: Context) {
     @Suppress("DEPRECATION") // MOVE_TO_* still fires on some builds; handled alongside ACTIVITY_*.
     private fun foregroundIntervals(
         usage: UsageStatsManager,
+        queryStart: Long,
         start: Long,
         end: Long,
     ): List<Triple<String, Long, Long>> {
-        val events = runCatching { usage.queryEvents(start, end) }.getOrElse {
+        val events = runCatching { usage.queryEvents(queryStart, end) }.getOrElse {
             Log.status(TAG, "no usage events; is PACKAGE_USAGE_STATS granted?", it)
             return emptyList()
         }
-        val open = HashMap<String, Long>()
-        val intervals = ArrayList<Triple<String, Long, Long>>()
+        val raw = ArrayList<FgEvent>()
         val event = UsageEvents.Event()
         while (events.hasNextEvent()) {
             events.getNextEvent(event)
-            applyEvent(event, open, intervals, start, end)
-        }
-        // Anything still foreground at the window edge is closed there.
-        open.forEach { (pkg, from) -> intervals.add(Triple(pkg, from, end)) }
-        return intervals
-    }
-
-    @Suppress("DEPRECATION")
-    private fun applyEvent(
-        event: UsageEvents.Event,
-        open: HashMap<String, Long>,
-        intervals: ArrayList<Triple<String, Long, Long>>,
-        start: Long,
-        end: Long,
-    ) {
-        val pkg = event.packageName ?: return
-        val stamp = event.timeStamp
-        // queryEvents may return events outside the requested window on some builds.
-        // A foreground that began before [start] means the app was already in front at
-        // midnight, so open it there (e.g. overnight sessions count from midnight, not
-        // from yesterday); anything else out of window is dropped so another day's
-        // usage can never land in this day's buckets.
-        if (stamp > end) return
-        val atEdge = stamp < start
-        when (event.eventType) {
-            UsageEvents.Event.MOVE_TO_FOREGROUND, UsageEvents.Event.ACTIVITY_RESUMED -> {
-                if (atEdge) open.putIfAbsent(pkg, start) else open.putIfAbsent(pkg, stamp)
+            val pkg = event.packageName ?: continue
+            val isResume = when (event.eventType) {
+                UsageEvents.Event.MOVE_TO_FOREGROUND, UsageEvents.Event.ACTIVITY_RESUMED -> true
+                UsageEvents.Event.MOVE_TO_BACKGROUND,
+                UsageEvents.Event.ACTIVITY_PAUSED,
+                UsageEvents.Event.ACTIVITY_STOPPED,
+                -> false
+                else -> continue
             }
-            UsageEvents.Event.MOVE_TO_BACKGROUND,
-            UsageEvents.Event.ACTIVITY_PAUSED,
-            UsageEvents.Event.ACTIVITY_STOPPED,
-            -> closeInterval(open, intervals, pkg, stamp, atEdge)
+            raw.add(FgEvent(pkg, event.className.orEmpty(), isResume, event.timeStamp))
         }
-    }
-
-    private fun closeInterval(
-        open: HashMap<String, Long>,
-        intervals: ArrayList<Triple<String, Long, Long>>,
-        pkg: String,
-        stamp: Long,
-        atEdge: Boolean,
-    ) {
-        if (atEdge) {
-            open.remove(pkg)
-            return
-        }
-        open.remove(pkg)?.let { from ->
-            if (stamp > from) intervals.add(Triple(pkg, from, stamp))
-        }
+        return buildIntervals(raw, start, end)
     }
 
     private fun hourLabel(hour: Int): String = when {
@@ -219,4 +186,49 @@ class UsageHistory(private val context: Context) {
         const val MIDNIGHT_HOUR = 0
         const val NOON_HOUR = 12
     }
+}
+
+/** One foreground/background transition, decoupled from [UsageEvents.Event] for testing. */
+internal data class FgEvent(
+    val packageName: String,
+    val className: String,
+    val isResume: Boolean,
+    val timeStamp: Long,
+)
+
+/**
+ * Reconstructs (package, startMs, endMs) intervals in [start, end) from [events].
+ *
+ * Open intervals are keyed by (package, class): keying by package alone merges
+ * a multi-activity app's overlapping activities — the first activity's pause
+ * would close the second's session and its later pause would be dropped.
+ * Events before [start] (the caller queries one day back) open at [start] if
+ * still foreground then, so cross-midnight sessions count from midnight; a
+ * pause before [start] cancels such a provisional open.
+ */
+internal fun buildIntervals(
+    events: List<FgEvent>,
+    start: Long,
+    end: Long,
+): List<Triple<String, Long, Long>> {
+    val open = HashMap<Pair<String, String>, Long>()
+    val intervals = ArrayList<Triple<String, Long, Long>>()
+    for (event in events.sortedBy { it.timeStamp }) {
+        if (event.timeStamp > end) continue
+        val key = event.packageName to event.className
+        val atEdge = event.timeStamp < start
+        if (event.isResume) {
+            open.putIfAbsent(key, if (atEdge) start else event.timeStamp)
+        } else if (atEdge) {
+            open.remove(key)
+        } else {
+            open.remove(key)?.let { from ->
+                if (event.timeStamp > from) {
+                    intervals.add(Triple(event.packageName, from, event.timeStamp))
+                }
+            }
+        }
+    }
+    open.forEach { (key, from) -> intervals.add(Triple(key.first, from, end)) }
+    return intervals
 }

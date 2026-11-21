@@ -153,6 +153,17 @@
             android:name=".platform.ScheduleReceiver"
             android:exported="false" />
 
+        <!-- Time/timezone changes move midnight and wind-down boundaries. -->
+        <receiver
+            android:name=".platform.TimeChangedReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.DATE_CHANGED" />
+            </intent-filter>
+        </receiver>
+
         <receiver
             android:name=".platform.BootReceiver"
             android:exported="true">

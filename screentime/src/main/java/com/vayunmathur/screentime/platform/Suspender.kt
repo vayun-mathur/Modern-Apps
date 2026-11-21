@@ -53,8 +53,16 @@ class Suspender(private val context: Context) {
             // 5-arg overload: (String[], boolean, PersistableBundle, PersistableBundle,
             // SuspendDialogInfo). Null extras and null dialog: the platform shows its default
             // paused treatment, whose details button resolves to our AppDetails route.
-            method.invoke(pm, packages, suspended, null, null, null)
-            if (suspended) rememberPaused(packages.toSet()) else forgetPaused(packages.toSet())
+            // It returns the packages it could NOT change; honour that — remembering
+            // a failed suspend as paused (or forgetting a failed resume) would lie
+            // to the next sync about what the platform actually holds.
+            val result = method.invoke(pm, packages, suspended, null, null, null)
+            val failed = (result as? Array<*>)?.mapNotNull { it as? String }?.toSet().orEmpty()
+            if (failed.isNotEmpty()) {
+                Log.status(TAG, "setPackagesSuspended failed for $failed (suspended=$suspended)")
+            }
+            val succeeded = packages.toSet() - failed
+            if (suspended) rememberPaused(succeeded) else forgetPaused(succeeded)
         }.onFailure { Log.status(TAG, "could not set suspended=$suspended for ${packages.toList()}", it) }
     }
 

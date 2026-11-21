@@ -113,6 +113,18 @@ class UsageHistoryDeepTest {
         assertEquals(1_800_000L / 24, forA.averageMillis)
     }
 
+    @Test fun dayCountsSessionCrossingMidnightFromPreviousDay() {
+        val day = LocalDate.now().minusDays(1)
+        val start = dayStart(day)
+        // Resumed 23:00 the previous day, paused 00:30 on `day`: only the
+        // post-midnight half (30 min in hour 0) belongs to `day`.
+        shadow.addEvent("com.cross.app", start - 3_600_000, UsageEvents.Event.ACTIVITY_RESUMED)
+        shadow.addEvent("com.cross.app", start + 1_800_000, UsageEvents.Event.ACTIVITY_PAUSED)
+        val data = UsageHistory(ctx).forPackage(UsagePeriod.Day, day, "com.cross.app")
+        assertEquals(1_800_000L, data.bars[0].millis, "bars=${data.bars}")
+        assertEquals(1_800_000L, data.totalMillis)
+    }
+
     @Test fun dayForYesterdayWithNoEventsIsZeroed() {
         val data = UsageHistory(ctx).aggregate(UsagePeriod.Day, LocalDate.now().minusDays(1))
         assertEquals(24, data.bars.size)

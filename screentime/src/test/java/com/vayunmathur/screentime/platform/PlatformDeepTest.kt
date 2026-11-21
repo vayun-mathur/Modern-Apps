@@ -114,37 +114,38 @@ class PlatformDeepTest {
             "0",
             Settings.Secure.getString(ctx.contentResolver, "accessibility_display_daltonizer_mode"),
         )
-        applier.exit(grayscale = true, doNotDisturb = false)
+        applier.exit()
         assertEquals(
             0,
             Settings.Secure.getInt(ctx.contentResolver, "accessibility_display_daltonizer_enabled", 1),
         )
         // Without policy access, DND calls are a no-op rather than a crash.
         applier.enter(grayscale = false, doNotDisturb = true)
-        applier.exit(grayscale = false, doNotDisturb = true)
+        applier.exit()
 
         val nm = ctx.getSystemService(NotificationManager::class.java)
         Shadows.shadowOf(nm).setNotificationPolicyAccessGranted(true)
         applier.enter(grayscale = false, doNotDisturb = true)
         assertEquals(NotificationManager.INTERRUPTION_FILTER_PRIORITY, nm.currentInterruptionFilter)
-        applier.exit(grayscale = false, doNotDisturb = true)
+        applier.exit()
         assertEquals(NotificationManager.INTERRUPTION_FILTER_ALL, nm.currentInterruptionFilter)
         Shadows.shadowOf(nm).setNotificationPolicyAccessGranted(false)
     }
 
-    @Test fun windowSchedulerArmsOnlyWhenEnabled() {
+    @Test fun windowSchedulerArmsMidnightEvenWhenWindDownDisabled() {
         val alarms = ctx.getSystemService(AlarmManager::class.java)
         val shadow = Shadows.shadowOf(alarms)
         val scheduler = WindowScheduler(ctx)
+        // Daily reconcile is armed regardless of wind-down.
         scheduler.armAll(WindDownSchedule(enabled = false))
-        assertEquals(null, shadow.nextScheduledAlarm)
+        assertNotNull(shadow.nextScheduledAlarm)
         scheduler.armAll(
             WindDownSchedule(enabled = true, startMinute = 22 * 60, endMinute = 7 * 60),
         )
         assertNotNull(shadow.nextScheduledAlarm)
-        // Re-arming replaces rather than stacks; disabling cancels outright.
+        // Disabling wind-down cancels its boundary but keeps the midnight alarm.
         scheduler.armAll(WindDownSchedule(enabled = false))
-        assertEquals(null, shadow.nextScheduledAlarm)
+        assertNotNull(shadow.nextScheduledAlarm)
     }
 
     @Test fun rulesFlowGettersAreColdAndSingletonIsStable() {

@@ -60,7 +60,7 @@ class Coordinator(private val context: Context) {
         // toggles flipped) takes effect without waiting for the next boundary.
         val winding = windDownSchedule.activeAt(now)
         if (winding) windDown.enter(windDownSchedule.grayscale, windDownSchedule.doNotDisturb)
-        else windDown.exit(windDownSchedule.grayscale, windDownSchedule.doNotDisturb)
+        else windDown.exit()
 
         scheduler.armAll(windDownSchedule)
 

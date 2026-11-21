@@ -176,6 +176,22 @@ class ScreenTimeViewModel(app: Application) : AndroidViewModel(app) {
         refresh()
     }
 
+    @Volatile private var lastReconcileMs: Long = 0L
+
+    /**
+     * Dashboard resume: always refresh reads, but reconcile (spent-prune,
+     * timer/suspender/wind-down/alarm re-arm) at most once per
+     * [RECONCILE_THROTTLE_MS] so a midnight/time change crossed while the
+     * dashboard was backgrounded is picked up without re-running the full
+     * enforcement pass on every resume.
+     */
+    fun onDashboardResume(nowMs: Long = System.currentTimeMillis()) {
+        refresh()
+        if (!shouldReconcile(lastReconcileMs, nowMs, RECONCILE_THROTTLE_MS)) return
+        lastReconcileMs = nowMs
+        viewModelScope.launch { reconcile() }
+    }
+
     /** Re-reads permission state and usage history; called on resume and after mutations. */
     fun refresh() {
         viewModelScope.launch(Dispatchers.IO) {
@@ -277,8 +293,9 @@ class ScreenTimeViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    private suspend fun reconcile() = withContext(Dispatchers.IO) {
-        Coordinator(getApplication()).reconcile()
+    private suspend fun reconcile() {
+        lastReconcileMs = System.currentTimeMillis()
+        withContext(Dispatchers.IO) { Coordinator(getApplication()).reconcile() }
     }
 
     private suspend fun loadLaunchableApps(): List<Pair<String, String>> =
@@ -311,5 +328,10 @@ class ScreenTimeViewModel(app: Application) : AndroidViewModel(app) {
 
     private companion object {
         const val STOP_TIMEOUT_MS = 5_000L
+        const val RECONCILE_THROTTLE_MS = 30_000L
     }
 }
+
+/** Whether a throttled reconcile is due; a backwards clock (time change) is always due. */
+internal fun shouldReconcile(lastMs: Long, nowMs: Long, throttleMs: Long): Boolean =
+    lastMs == 0L || nowMs < lastMs || nowMs - lastMs >= throttleMs

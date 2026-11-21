@@ -73,8 +73,8 @@ class PlatformServicesTest {
     @Test fun windDownApplier_enterExit() {
         val applier = WindDownApplier(ctx())
         applier.enter(grayscale = true, doNotDisturb = true)
-        applier.exit(grayscale = true, doNotDisturb = true)
+        applier.exit()
         applier.enter(grayscale = false, doNotDisturb = false)
-        applier.exit(grayscale = false, doNotDisturb = false)
+        applier.exit()
     }
 }

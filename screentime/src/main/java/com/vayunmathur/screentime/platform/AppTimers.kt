@@ -50,7 +50,8 @@ class AppTimers(private val context: Context) {
     private fun register(usage: UsageStatsManager, packageName: String, minutes: Int) {
         val method = registerMethod ?: return
         val usedMs = timeUsedToday(packageName).toMillis()
-        if (usedMs >= Duration.ofMinutes(minutes.toLong()).toMillis()) {
+        val remainingMs = remainingMillis(minutes, usedMs)
+        if (remainingMs <= 0L) {
             // Already over budget - enforce now rather than arming an observer that would
             // fire immediately with no useful callback context.
             TimerReachedReceiver.enforceNow(context, packageName)
@@ -63,12 +64,14 @@ class AppTimers(private val context: Context) {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         runCatching {
+            // Remaining budget only, at millis precision: registering the full
+            // minutes would hand a partially-used app a fresh full budget.
             method.invoke(
                 usage,
                 observerId(packageName),
                 arrayOf(packageName),
-                minutes.toLong(),
-                java.util.concurrent.TimeUnit.MINUTES,
+                remainingMs,
+                java.util.concurrent.TimeUnit.MILLISECONDS,
                 pending,
             )
         }.onFailure { Log.status(TAG, "could not register an observer for $packageName", it) }
@@ -170,3 +173,10 @@ class AppTimers(private val context: Context) {
 
 /** The package a [TimerReachedReceiver] broadcast refers to. Ours, not the platform's. */
 const val EXTRA_PACKAGE_NAME = "com.vayunmathur.screentime.extra.PACKAGE_NAME"
+
+/**
+ * Budget left today: `limitMinutes * 60_000 - usedMs`, floored at 0.
+ * Millis precision so a partially-used app does not regain whole minutes.
+ */
+internal fun remainingMillis(limitMinutes: Int, usedMs: Long): Long =
+    (limitMinutes.toLong() * 60_000L - usedMs).coerceAtLeast(0L)
