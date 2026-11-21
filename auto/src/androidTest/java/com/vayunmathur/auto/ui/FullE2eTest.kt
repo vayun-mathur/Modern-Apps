@@ -90,15 +90,6 @@ class FullE2eTest {
                 // content assertions below report it.
             }
         }
-        for (command in SPECIAL_ACCESS_COMMANDS) {
-            try {
-                uiAutomation.executeShellCommand(command.format(packageName)).close()
-            } catch (ignored: SecurityException) {
-                // Appop missing on this release: the gate assertion reports it.
-            } catch (ignored: IOException) {
-                // Shell pipe failed: the gate assertion below reports it.
-            }
-        }
     }
 
     private companion object {
@@ -107,14 +98,5 @@ class FullE2eTest {
         private const val CONNECTION_LABEL = "Connection"
         private const val PERMISSION_GATE_TITLE = "Grant Required Permissions"
 
-        /**
-         * Special access this app declares: drawing over other apps (the
-         * car-mode overlays) has no pm-grantable permission, but the shell
-         * can flip its appop. Ignored where the appop does not exist; the
-         * content assertion reports it.
-         */
-        private val SPECIAL_ACCESS_COMMANDS = arrayOf(
-            "appops set %s SYSTEM_ALERT_WINDOW allow",
-        )
     }
 }

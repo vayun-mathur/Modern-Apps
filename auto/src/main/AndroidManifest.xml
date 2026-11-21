@@ -135,7 +135,6 @@
          app is foreground. -->
     <uses-permission android:name="android.permission.START_ACTIVITIES_FROM_BACKGROUND" tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.ENTER_CAR_MODE_PRIORITIZED" tools:ignore="ProtectedPermissions" />
-    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.INTERACT_ACROSS_PROFILES" tools:ignore="ProtectedPermissions" />
     <!-- Do-not-disturb state for the rail status cluster (DND icon): reading
          the interruption filter needs the policy grant; without it the icon
