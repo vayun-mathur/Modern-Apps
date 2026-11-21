@@ -55,12 +55,16 @@
     <string name="duration_ms_format"><xliff:g id="seconds" example="12">%1$d</xliff:g>.<xliff:g id="centiseconds" example="34">%2$02d</xliff:g></string>
     <!-- Time format: minutes:seconds.centiseconds, e.g. 1:23.45. %1$d = minutes, %2$d = seconds, %3$d = centiseconds -->
     <string name="duration_m_s_ms_format"><xliff:g id="minutes" example="1">%1$d</xliff:g>:<xliff:g id="seconds" example="23">%2$02d</xliff:g>.<xliff:g id="centiseconds" example="45">%3$02d</xliff:g></string>
+    <!-- Time format: hours:minutes:seconds.centiseconds, e.g. 2:05:09.34. %1$d = hours, %2$d = minutes, %3$d = seconds, %4$d = centiseconds -->
+    <string name="duration_h_m_s_ms_format"><xliff:g id="hours" example="2">%1$d</xliff:g>:<xliff:g id="minutes" example="05">%2$02d</xliff:g>:<xliff:g id="seconds" example="09">%3$02d</xliff:g>.<xliff:g id="centiseconds" example="34">%4$02d</xliff:g></string>
     <!-- Lap table column header: split/lap time -->
     <string name="header_split">Split</string>
     <!-- Lap table column header: total/elapsed time -->
     <string name="header_total">Total</string>
     <!-- Main stopwatch display format M:SS. %1$d = minutes, %2$d = seconds zero-padded -->
     <string name="stopwatch_time_format"><xliff:g id="minutes" example="1">%1$d</xliff:g>:<xliff:g id="seconds" example="05">%2$02d</xliff:g></string>
+    <!-- Main stopwatch display format past one hour, H:MM:SS (same shape as the timer card). %1$d = hours, %2$d = minutes, %3$d = seconds zero-padded -->
+    <string name="stopwatch_time_format_hms"><xliff:g id="hours" example="2">%1$d</xliff:g>:<xliff:g id="minutes" example="05">%2$02d</xliff:g>:<xliff:g id="seconds" example="09">%3$02d</xliff:g></string>
 
     <!-- TimerPage: keypad and timer cards -->
     <!-- TimerCard: button to add 1 minute to running timer. Keep format + 1:00 -->

@@ -95,29 +95,41 @@ object ICalendar {
         return try {
             when {
                 allDay -> {
-                    val fmt = SimpleDateFormat("yyyyMMdd", Locale.US).apply {
-                        timeZone = TimeZone.getTimeZone("UTC")
-                    }
+                    val fmt = strictFormat("yyyyMMdd", TimeZone.getTimeZone("UTC"))
                     Triple(fmt.parse(value)?.time, true, "UTC")
                 }
                 value.endsWith("Z") -> {
-                    val fmt = SimpleDateFormat("yyyyMMdd'T'HHmmss'Z'", Locale.US).apply {
-                        timeZone = TimeZone.getTimeZone("UTC")
-                    }
+                    val fmt = strictFormat("yyyyMMdd'T'HHmmss'Z'", TimeZone.getTimeZone("UTC"))
                     Triple(fmt.parse(value)?.time, false, "UTC")
                 }
                 else -> {
+                    // No Z and no TZID is a floating local time (RFC 5545
+                    // section 3.3.5): it means wall time where the event
+                    // lives, not UTC. Read it in the system default zone;
+                    // stamping it UTC shifted every floating event by the
+                    // device offset. An explicit TZID still wins.
                     val tzid = extractTzid(params)
-                    val fmt = SimpleDateFormat("yyyyMMdd'T'HHmmss", Locale.US).apply {
-                        timeZone = tzid?.let { TimeZone.getTimeZone(it) } ?: TimeZone.getTimeZone("UTC")
-                    }
-                    Triple(fmt.parse(value)?.time, false, tzid ?: "UTC")
+                    val zone = tzid?.let { TimeZone.getTimeZone(it) } ?: TimeZone.getDefault()
+                    val fmt = strictFormat("yyyyMMdd'T'HHmmss", zone)
+                    Triple(fmt.parse(value)?.time, false, tzid ?: zone.id)
                 }
             }
         } catch (_: Exception) {
             Triple(null, allDay, null)
         }
     }
+
+    /**
+     * A non-lenient parser: SimpleDateFormat defaults to lenient, which rolls
+     * impossible dates (Feb 30, month 13) into neighbouring valid ones and so
+     * silently moves the event. Strict parsing rejects them, and the caller's
+     * fallback (epoch + default duration) applies instead.
+     */
+    private fun strictFormat(pattern: String, zone: TimeZone): SimpleDateFormat =
+        SimpleDateFormat(pattern, Locale.US).apply {
+            timeZone = zone
+            isLenient = false
+        }
 
     private fun extractTzid(params: String): String? =
         params.split(";").map { it.split("=", limit = 2) }

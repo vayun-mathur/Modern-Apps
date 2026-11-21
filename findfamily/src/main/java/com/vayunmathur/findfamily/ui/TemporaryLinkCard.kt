@@ -15,6 +15,7 @@ import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.ListItem
 import com.vayunmathur.library.ui.ListItemDefaults
 import com.vayunmathur.library.ui.Text
+import kotlin.time.Clock
 
 @Composable
 fun TemporaryLinkCard(temporaryLink: TemporaryLink, onCopy: () -> Unit, onDelete: () -> Unit) {
@@ -24,7 +25,11 @@ fun TemporaryLinkCard(temporaryLink: TemporaryLink, onCopy: () -> Unit, onDelete
             { Text(temporaryLink.name, fontWeight = FontWeight.Bold) },
             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
             supportingContent = {
-                Text(stringResource(R.string.expires, timestring(temporaryLink.deleteAt, true, context)))
+                // The label follows the timestamp, not the card's assumption:
+                // once deleteAt passes the link is expired, and timestring
+                // itself now renders the past direction ("3 days ago").
+                val label = if (temporaryLink.deleteAt > Clock.System.now()) R.string.expires else R.string.expired
+                Text(stringResource(label, timestring(temporaryLink.deleteAt, context)))
             },
             trailingContent = {
                 Row {

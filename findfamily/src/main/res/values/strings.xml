@@ -91,6 +91,8 @@
     <string name="request_from">Request from <xliff:g id="sender_id" example="ABC123">%1$s</xliff:g></string>
     <!-- MainPage: TemporaryLinkCard expiry label. %1$s = relative future time string, e.g. in 5 minutes / very soon -->
     <string name="expires">Expires <xliff:g id="relative_time" example="in 5 minutes">%1$s</xliff:g></string>
+    <!-- MainPage: TemporaryLinkCard label once the expiry has passed. %1$s = relative past time string, e.g. 5 minutes ago -->
+    <string name="expired">Expired <xliff:g id="relative_time" example="5 minutes ago">%1$s</xliff:g></string>
     <!-- MainPage: WaypointCard empty state when no one is inside waypoint. Noun phrase, sentence fragment -->
     <string name="nobody_here">nobody is currently here</string>
     <!-- MainPage: WaypointCard when single user inside. %1$s = person name, e.g. Alice. Sentence -->

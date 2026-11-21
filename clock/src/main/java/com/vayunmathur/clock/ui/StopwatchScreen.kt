@@ -145,10 +145,17 @@ private fun StopwatchDial(countingTime: kotlin.time.Duration) {
             )
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            countingTime.toComponents { minutes, seconds, nanoseconds ->
+            // Hours component included: the minutes-only decomposition let
+            // the dial run past the hour as total minutes ("125:34"). Past
+            // one hour it rolls over to H:MM:SS, the timer card's shape.
+            countingTime.toComponents { hours, minutes, seconds, nanoseconds ->
                 val centiseconds = nanoseconds / 10_000_000
                 Text(
-                    text = stringResource(R.string.stopwatch_time_format, minutes, seconds),
+                    text = if (hours > 0) {
+                        stringResource(R.string.stopwatch_time_format_hms, hours, minutes, seconds)
+                    } else {
+                        stringResource(R.string.stopwatch_time_format, minutes, seconds)
+                    },
                     style = MaterialTheme.typography.displayLarge.copy(fontSize = 84.sp, fontWeight = FontWeight.Normal)
                 )
                 Text(

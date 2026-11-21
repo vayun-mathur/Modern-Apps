@@ -6,8 +6,10 @@ import android.content.Context
 import com.vayunmathur.library.log.Log
 import androidx.core.content.getSystemService
 import com.vayunmathur.screentime.data.WindDownSchedule
+import java.time.Duration
 import java.time.LocalDateTime
 import java.time.ZoneId
+import java.time.ZonedDateTime
 
 private const val TAG = "ScreenTimeScheduler"
 
@@ -32,7 +34,7 @@ class WindowScheduler(private val context: Context) {
 
     private fun armWindow(
         enabled: Boolean,
-        activeAt: (LocalDateTime) -> Boolean,
+        activeAt: (ZonedDateTime) -> Boolean,
         requestCode: Int,
     ) {
         val alarms = alarms ?: return
@@ -41,7 +43,7 @@ class WindowScheduler(private val context: Context) {
         if (!enabled) return
 
         val next = nextBoundary(activeAt) ?: return
-        val at = next.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val at = next.toInstant().toEpochMilli()
         val canExact = alarms.canScheduleExactAlarms()
         runCatching {
             if (canExact) {
@@ -53,11 +55,20 @@ class WindowScheduler(private val context: Context) {
         }.onFailure { Log.status(TAG, "could not arm the window alarm", it) }
     }
 
-    private fun nextBoundary(activeAt: (LocalDateTime) -> Boolean): LocalDateTime? {
-        val now = LocalDateTime.now().withSecond(0).withNano(0)
+    /**
+     * The next minute at which wind-down's state changes, searched forward a week.
+     *
+     * The scan runs in instant space ([ZonedDateTime] stepped by [Duration]), not over
+     * naive [LocalDateTime]: wall-clock stepping plus a final `atZone` shifts a boundary
+     * inside the spring-forward DST gap by the gap length (~1h) and can only name one
+     * occurrence inside the fall-back overlap. Stepping real minutes evaluates exactly
+     * the instants that will occur, so the armed instant is the true boundary.
+     */
+    private fun nextBoundary(activeAt: (ZonedDateTime) -> Boolean): ZonedDateTime? {
+        val now = ZonedDateTime.now(ZoneId.systemDefault()).withSecond(0).withNano(0)
         var state = activeAt(now)
         for (step in 1..MINUTES_IN_WEEK) {
-            val at = now.plusMinutes(step.toLong())
+            val at = now.plus(Duration.ofMinutes(step.toLong()))
             val next = activeAt(at)
             if (next != state) return at
             state = next
@@ -93,6 +104,9 @@ fun WindDownSchedule.activeAt(at: LocalDateTime): Boolean {
         (set && minute >= startMinute) || (minute < endMinute && isYesterdaySet(day))
     }
 }
+
+/** Whether wind-down is active at [at]. */
+fun WindDownSchedule.activeAt(at: ZonedDateTime): Boolean = activeAt(at.toLocalDateTime())
 
 private fun WindDownSchedule.isYesterdaySet(day: Int): Boolean {
     val yesterday = (day + DAYS_PER_WEEK - 1) % DAYS_PER_WEEK

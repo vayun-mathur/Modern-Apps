@@ -40,9 +40,16 @@ object StopwatchNotificationHelper {
         } else {
             totalMs
         }
-        val minutes = elapsedMs / MILLIS_PER_MINUTE
+        // Past one hour, roll over to H:MM:SS (the timer card's shape)
+        // instead of letting minutes accumulate without bound ("125:34").
+        val hours = elapsedMs / MILLIS_PER_HOUR
+        val minutes = (elapsedMs % MILLIS_PER_HOUR) / MILLIS_PER_MINUTE
         val seconds = (elapsedMs % MILLIS_PER_MINUTE) / MILLIS_PER_SECOND
-        return String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
+        return if (hours > 0) {
+            String.format(Locale.getDefault(), "%d:%02d:%02d", hours, minutes, seconds)
+        } else {
+            String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
+        }
     }
 
     private fun baseBuilder(
@@ -124,6 +131,7 @@ object StopwatchNotificationHelper {
         )
     }
 
+    private const val MILLIS_PER_HOUR = 3600000L
     private const val MILLIS_PER_MINUTE = 60000L
     private const val MILLIS_PER_SECOND = 1000L
 }

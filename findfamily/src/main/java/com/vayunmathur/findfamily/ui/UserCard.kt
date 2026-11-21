@@ -45,7 +45,7 @@ import kotlinx.datetime.toLocalDateTime
 @Composable
 fun UserCard(user: User, locationValue: LocationValue?, showSupportingContent: Boolean, onClick: () -> Unit) {
     val context = LocalContext.current
-    val lastUpdatedTime = locationValue?.let { timestring(it.timestamp, false, context) } ?: stringResource(R.string.auto_toggle_never)
+    val lastUpdatedTime = locationValue?.let { timestring(it.timestamp, context) } ?: stringResource(R.string.auto_toggle_never)
     val speedString = (locationValue?.speed ?: 0f).formatSpeed()
     val sinceTime = user.lastLocationChangeTime.toLocalDateTime(TimeZone.currentSystemDefault())
     val timeSinceEntry = Clock.System.now() - user.lastLocationChangeTime
@@ -101,14 +101,14 @@ fun UserCard(user: User, locationValue: LocationValue?, showSupportingContent: B
                             // getLatest() again.
                             LocationSource.SHUTDOWN -> stringResource(
                                 R.string.user_card_shutdown,
-                                timestring(locationValue.reportedAt, false, context),
+                                timestring(locationValue.reportedAt, context),
                                 lastUpdatedTime,
                                 user.locationName,
                                 sinceString
                             )
                             LocationSource.BATTERY_LOW -> stringResource(
                                 R.string.user_card_battery_low,
-                                timestring(locationValue.reportedAt, false, context),
+                                timestring(locationValue.reportedAt, context),
                                 lastUpdatedTime,
                                 user.locationName,
                                 sinceString

@@ -9,8 +9,10 @@ import com.vayunmathur.parentalcontrols.data.BedtimeSchedule
 import com.vayunmathur.parentalcontrols.data.DowntimeSchedule
 import com.vayunmathur.parentalcontrols.data.SchoolTimeSchedule
 import com.vayunmathur.parentalcontrols.platform.BedtimeReceiver
+import java.time.Duration
 import java.time.LocalDateTime
 import java.time.ZoneId
+import java.time.ZonedDateTime
 
 private const val TAG = "ParentalControlsBedtime"
 
@@ -54,7 +56,7 @@ class BedtimeScheduler(private val context: Context) {
 
     private fun armWindow(
         enabled: Boolean,
-        activeAt: (LocalDateTime) -> Boolean,
+        activeAt: (ZonedDateTime) -> Boolean,
         requestCode: Int,
     ) {
         val alarms = alarms ?: return
@@ -63,7 +65,7 @@ class BedtimeScheduler(private val context: Context) {
         if (!enabled) return
 
         val next = nextBoundary(activeAt) ?: return
-        val at = next.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val at = next.toInstant().toEpochMilli()
         val canExact = alarms.canScheduleExactAlarms()
         runCatching {
             if (canExact) {
@@ -83,12 +85,20 @@ class BedtimeScheduler(private val context: Context) {
      * today, morning to yesterday" rule interact, and one predicate that the enforcer also uses
      * cannot disagree with itself. A week of minutes is 10,080 cheap comparisons, run at most
      * a few times a day.
+     *
+     * The scan runs in instant space ([ZonedDateTime] stepped by [Duration]), not over naive
+     * [LocalDateTime]. Stepping wall-clock minutes and only converting with `atZone` at the
+     * end breaks across DST: a boundary inside the spring-forward gap names a local time that
+     * never occurs and `atZone` shifts it by the gap (~1h), and a boundary in the fall-back
+     * overlap resolves to only one of its two occurrences. Stepping real minutes evaluates
+     * exactly the instants that will occur - the gap contributes no phantom minutes and the
+     * overlap contributes both passes - so the armed instant is the true boundary.
      */
-    private fun nextBoundary(activeAt: (LocalDateTime) -> Boolean): LocalDateTime? {
-        val now = LocalDateTime.now().withSecond(0).withNano(0)
+    private fun nextBoundary(activeAt: (ZonedDateTime) -> Boolean): ZonedDateTime? {
+        val now = ZonedDateTime.now(ZoneId.systemDefault()).withSecond(0).withNano(0)
         var state = activeAt(now)
         for (step in 1..MINUTES_IN_WEEK) {
-            val at = now.plusMinutes(step.toLong())
+            val at = now.plus(Duration.ofMinutes(step.toLong()))
             val next = activeAt(at)
             if (next != state) return at
             state = next
@@ -122,3 +132,17 @@ fun DowntimeSchedule.activeAt(at: LocalDateTime): Boolean =
 /** Whether the window is open at [at], in the device's current timezone. */
 fun SchoolTimeSchedule.activeAt(at: LocalDateTime): Boolean =
     contains(at.dayOfWeek.value - 1, at.hour * MINUTES_PER_HOUR + at.minute)
+
+// ZonedDateTime overloads for the boundary scan: the predicate is defined on
+// local wall fields, and a ZonedDateTime carries the offset that disambiguates
+// them, so each instant in the scan (including both passes through a fall-back
+// overlap) is judged by the wall time it actually displays.
+
+/** Whether the window is open at [at]. */
+fun BedtimeSchedule.activeAt(at: ZonedDateTime): Boolean = activeAt(at.toLocalDateTime())
+
+/** Whether the window is open at [at]. */
+fun DowntimeSchedule.activeAt(at: ZonedDateTime): Boolean = activeAt(at.toLocalDateTime())
+
+/** Whether the window is open at [at]. */
+fun SchoolTimeSchedule.activeAt(at: ZonedDateTime): Boolean = activeAt(at.toLocalDateTime())

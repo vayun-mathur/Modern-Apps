@@ -100,7 +100,13 @@ fun BoxScope.HistoryScrubber(
 internal fun Modifier.fillMaxWidthFraction(percent: Float): Modifier =
     this.fillMaxWidth((percent / 100f).coerceIn(0f, 1f))
 
-fun timestring(timestamp: Instant, future: Boolean, context: Context): String {
+fun timestring(timestamp: Instant, context: Context): String {
+    // Direction is derived here, never passed in: a caller asserting
+    // "future" about a timestamp that has since passed (an expiry that
+    // lapsed while the card sat on screen) rendered "in 3 days" for
+    // something already gone. Comparing against now at render time keeps
+    // the wording truthful however stale the caller's assumption is.
+    val future = timestamp > Clock.System.now()
     val duration = (Clock.System.now() - timestamp).absoluteValue
     return when {
         duration.inWholeSeconds < 60 -> context.getString(if (future) R.string.time_very_soon else R.string.time_just_now)

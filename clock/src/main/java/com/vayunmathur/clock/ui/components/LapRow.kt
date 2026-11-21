@@ -29,8 +29,14 @@ fun LapRow(number: Int, color: Color, split: Duration, total: Duration) {
 }
 
 fun formatDuration(context: android.content.Context, d: Duration): String =
-    d.toComponents { minutes, seconds, nanoseconds ->
+    // Hours component included so a lap past one hour rolls over to
+    // H:MM:SS.cs instead of accumulating total minutes, matching the
+    // timer card's formatTimerDuration shape.
+    d.toComponents { hours, minutes, seconds, nanoseconds ->
         val ms = nanoseconds / 10_000_000
-        if (minutes == 0L) context.getString(R.string.duration_ms_format, seconds, ms)
-        else context.getString(R.string.duration_m_s_ms_format, minutes, seconds, ms)
+        when {
+            hours > 0L -> context.getString(R.string.duration_h_m_s_ms_format, hours, minutes, seconds, ms)
+            minutes == 0 -> context.getString(R.string.duration_ms_format, seconds, ms)
+            else -> context.getString(R.string.duration_m_s_ms_format, minutes, seconds, ms)
+        }
     }

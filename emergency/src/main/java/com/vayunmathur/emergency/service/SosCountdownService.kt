@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.IBinder
+import android.os.SystemClock
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.telecom.TelecomManager
@@ -65,7 +66,11 @@ class SosCountdownService : Service() {
             .policeNumber(GestureProvider.numberOverrideStatic(this))
         // NotificationCompat's setWhen is a wall-clock (epoch) timestamp, and the
         // chronometer counts down to it; an elapsedRealtime value lands in 1970 and
-        // the countdown row shows a meaningless time. Same clock as scheduleCall.
+        // the countdown row shows a meaningless time. The alarm in scheduleCall
+        // deliberately uses the elapsed base instead (see there): the two clocks
+        // diverge exactly when the device clock changes mid-countdown, in which
+        // case the call still fires on time and only the row's displayed target
+        // shifts with the new wall time.
         val targetWallClock = System.currentTimeMillis() + remainingMs
         val contentIntent = PendingIntent.getActivity(
             this, 0, SosActivity.intentForDeadline(this, targetWallClock),
@@ -93,7 +98,12 @@ class SosCountdownService : Service() {
 
     private fun scheduleCall(remainingMs: Long) {
         val alarms = getSystemService<AlarmManager>() ?: return
-        val at = System.currentTimeMillis() + remainingMs
+        // Elapsed-realtime base, not wall clock: an RTC alarm set from
+        // currentTimeMillis moves (or fires at once) when the device clock is
+        // changed, NTP-corrected or re-zoned mid-countdown, which would place
+        // the emergency call early or late. elapsedRealtime advances uniformly
+        // through all of that, so the call fires exactly remainingMs from now.
+        val at = SystemClock.elapsedRealtime() + remainingMs
         val pending = SosActionReceiver.makeCallPendingIntent(this)
         // SCHEDULE_EXACT_ALARM is revocable on modern Android. Dropping the call
         // when the exact grant is gone would fail the SOS silently - the user
@@ -103,13 +113,13 @@ class SosCountdownService : Service() {
         val exact = runCatching { alarms.canScheduleExactAlarms() }.getOrDefault(false)
         if (exact) {
             runCatching {
-                alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pending)
+                alarms.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, at, pending)
             }.onSuccess { return }
                 .onFailure { Log.status(TAG, "exact SOS alarm refused; using inexact", it) }
         } else {
             Log.status(TAG, "no exact-alarm permission; SOS call will be approximate")
         }
-        runCatching { alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pending) }
+        runCatching { alarms.setAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, at, pending) }
             .onFailure { Log.status(TAG, "could not schedule the SOS call alarm", it) }
     }
 

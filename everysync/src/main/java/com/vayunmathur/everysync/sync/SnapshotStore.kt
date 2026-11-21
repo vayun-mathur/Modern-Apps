@@ -18,6 +18,9 @@ import com.vayunmathur.library.log.Log
 import com.vayunmathur.library.util.DataStoreUtils
 import java.io.File
 import java.security.SecureRandom
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import javax.crypto.Cipher
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
@@ -53,7 +56,6 @@ object SnapshotStore {
 
     /** Snapshots older than this are pruned on every write. */
     const val RETENTION_DAYS = 30L
-    private const val MILLIS_PER_DAY = 24L * 60 * 60 * 1000
 
     private const val DIR_SNAPSHOTS = "snapshots"
     private const val DIR_BLOBS = "blobs"
@@ -64,7 +66,7 @@ object SnapshotStore {
 
     private val json = Json { ignoreUnknownKeys = true }
 
-    /** One restorable snapshot: day (epoch millis at midnight UTC) + envelope payloads. */
+    /** One restorable snapshot: day (epoch millis at local midnight) + envelope payloads. */
     @Serializable
     data class SnapshotMeta(
         val vaultId: String,
@@ -94,7 +96,23 @@ object SnapshotStore {
     private fun blobDir(context: Context, vaultId: String): File =
         File(File(vaultDir(context, vaultId), DIR_BLOBS), "").apply { mkdirs() }
 
-    private fun dayOf(timestampMs: Long): Long = (timestampMs / MILLIS_PER_DAY) * MILLIS_PER_DAY
+    /**
+     * Start (epoch millis) of the local day containing [timestampMs].
+     *
+     * Daily snapshots and the 30-day retention window are user-facing
+     * calendar concepts ("one per day", "keep a month"), so the day boundary
+     * is local midnight in the system default zone. Flooring to the UTC day
+     * instead rolled the snapshot day over in the middle of the local
+     * afternoon/evening (offset-dependent) and pruned against a day the user
+     * never sees.
+     */
+    private fun dayOf(timestampMs: Long): Long = dayStart(localDateOf(timestampMs))
+
+    private fun localDateOf(timestampMs: Long): LocalDate =
+        Instant.ofEpochMilli(timestampMs).atZone(ZoneId.systemDefault()).toLocalDate()
+
+    private fun dayStart(date: LocalDate): Long =
+        date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
 
     private fun loadIndex(context: Context): StoredIndex {
         val raw = DataStoreUtils.getInstance(context).getString(KEY_INDEX)
@@ -205,7 +223,9 @@ object SnapshotStore {
     /** Drops snapshots (files + index rows) older than [RETENTION_DAYS]. */
     suspend fun pruneExpired(context: Context, nowMs: Long = System.currentTimeMillis()) =
         withContext(Dispatchers.IO) {
-            val cutoff = dayOf(nowMs) - RETENTION_DAYS * MILLIS_PER_DAY
+            // Local-calendar retention: exactly RETENTION_DAYS local days
+            // back, not 30 fixed 24h spans (which drift an hour across DST).
+            val cutoff = dayStart(localDateOf(nowMs).minusDays(RETENTION_DAYS))
             val index = loadIndex(context)
             val (expired, kept) = index.snapshots.partition { it.dayEpochMs < cutoff }
             if (expired.isEmpty()) return@withContext
