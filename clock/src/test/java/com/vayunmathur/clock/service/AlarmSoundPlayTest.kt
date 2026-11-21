@@ -4,11 +4,11 @@ import android.content.Intent
 import android.media.MediaPlayer
 import android.media.RingtoneManager
 import android.os.Looper
-import java.util.concurrent.TimeUnit
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
+import com.vayunmathur.testsupport.awaitWithMainIdle
 import org.robolectric.shadows.ShadowMediaPlayer
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -37,17 +37,12 @@ class AlarmSoundPlayTest {
         val controller = Robolectric.buildService(AlarmSoundService::class.java).create()
         val service = controller.get()
         service.onStartCommand(Intent().putExtra("ALARM_ID", 99L), 0, 1)
-        // The ring setup runs on the service's IO scope; give it time, pumping main.
-        val deadline = System.currentTimeMillis() + 8_000
-        while (System.currentTimeMillis() < deadline) {
-            shadowOf(Looper.getMainLooper()).idle()
-            shadowOf(Looper.getMainLooper()).idleFor(50, TimeUnit.MILLISECONDS)
-            Thread.sleep(40)
-            // A second, overlapping alarm retires the first ring and re-rings.
-            break
-        }
+        // The ring setup runs on the service's IO scope; pump the main looper
+        // (step-bounded, no wall sleep) so it can attempt the ring, then a
+        // second, overlapping alarm retires the first ring and re-rings.
+        run { var pumped = 0; awaitWithMainIdle("pump background work", maxSteps = 5_000) { ++pumped >= 400 } }
         service.onStartCommand(Intent().putExtra("ALARM_ID", 100L), 0, 2)
-        Thread.sleep(300)
+        run { var pumped = 0; awaitWithMainIdle("pump background work", maxSteps = 5_000) { ++pumped >= 400 } }
         shadowOf(Looper.getMainLooper()).idle()
         service.onDestroy()
         shadowOf(Looper.getMainLooper()).idle()

@@ -2,7 +2,6 @@ package com.vayunmathur.clock.platform
 
 import android.app.Application
 import android.content.Intent
-import android.os.Looper
 import android.provider.AlarmClock
 import androidx.test.core.app.ApplicationProvider
 import android.content.Context
@@ -11,7 +10,6 @@ import com.vayunmathur.clock.data.Alarm
 import com.vayunmathur.clock.data.ClockRepository
 import com.vayunmathur.clock.data.Timer
 import com.vayunmathur.library.util.DataStoreUtils
-import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.LocalTime
@@ -19,7 +17,9 @@ import org.junit.runner.RunWith
 import com.vayunmathur.clock.FakeAndroidKeyStore
 import org.junit.Before
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.Shadows.shadowOf
+import com.vayunmathur.testsupport.awaitWithMainIdle
+import com.vayunmathur.testsupport.awaitValueBlocking
+import kotlinx.coroutines.flow.combine
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -41,17 +41,6 @@ class ClockViewModelTest {
         get() = ApplicationProvider.getApplicationContext<Context>() as Application
 
     private fun vm() = ClockViewModel(app, ClockRepository.get(app))
-
-    private fun await(desc: String, cond: () -> Boolean) {
-        val deadline = System.currentTimeMillis() + 10_000
-        while (System.currentTimeMillis() < deadline) {
-            shadowOf(Looper.getMainLooper()).idle()
-            shadowOf(Looper.getMainLooper()).idleFor(50, TimeUnit.MILLISECONDS)
-            if (cond()) return
-            Thread.sleep(25)
-        }
-        throw AssertionError("timed out: $desc")
-    }
 
     private fun timer(name: String) = Timer(
         isRunning = false, name = name, remainingStartTime = Clock.System.now(),
@@ -147,12 +136,15 @@ class ClockViewModelTest {
         // (not just the in-memory state) so the external writes below cannot
         // interleave with the reset's still-landing edits.
         val ds = DataStoreUtils.getInstance(app)
-        await("store settled after reset") {
-            !ds.getBoolean(StopwatchActionReceiver.KEY_STOPWATCH_RUNNING, true) &&
-                (ds.getLong(StopwatchActionReceiver.KEY_STOPWATCH_TOTAL) ?: -1L) == 0L &&
-                (ds.getString(StopwatchActionReceiver.KEY_STOPWATCH_LAPS) ?: "x").isEmpty()
-        }
-        await("vm settled after reset") { !vm.stopwatchRunning.value && vm.lapTimes.value.isEmpty() }
+        // Terminal persisted tuple after reset (separate DataStore edits).
+        awaitValueBlocking(
+            combine(
+                ds.booleanFlow(StopwatchActionReceiver.KEY_STOPWATCH_RUNNING, true),
+                ds.longFlow(StopwatchActionReceiver.KEY_STOPWATCH_TOTAL, -1L),
+                ds.stringFlow(StopwatchActionReceiver.KEY_STOPWATCH_LAPS),
+            ) { running, total, laps -> !running && total == 0L && laps.isEmpty() },
+        ) { it }
+        awaitWithMainIdle("vm settled after reset") { !vm.stopwatchRunning.value && vm.lapTimes.value.isEmpty() }
         // Simulate StopwatchActionReceiver acting on the notification while
         // this ViewModel (and its activity) stays alive.
         runBlocking {
@@ -161,19 +153,19 @@ class ClockViewModelTest {
             ds.setString(StopwatchActionReceiver.KEY_STOPWATCH_LAPS, "1000,2000")
             ds.setBoolean(StopwatchActionReceiver.KEY_STOPWATCH_RUNNING, true)
         }
-        await("vm observes external start") { vm.stopwatchRunning.value && vm.lapTimes.value.size == 2 }
+        awaitWithMainIdle("vm observes external start") { vm.stopwatchRunning.value && vm.lapTimes.value.size == 2 }
         runBlocking {
             ds.setBoolean(StopwatchActionReceiver.KEY_STOPWATCH_RUNNING, false)
             ds.setLong(StopwatchActionReceiver.KEY_STOPWATCH_TOTAL, 0L)
             ds.setString(StopwatchActionReceiver.KEY_STOPWATCH_LAPS, "")
         }
-        await("vm observes external stop") { !vm.stopwatchRunning.value && vm.lapTimes.value.isEmpty() }
+        awaitWithMainIdle("vm observes external stop") { !vm.stopwatchRunning.value && vm.lapTimes.value.isEmpty() }
     }
 
     @Test
     fun citiesLoadFromAssets() {
         val vm = vm()
-        await("cities loaded") { vm.cities.value != null }
+        awaitValueBlocking(vm.cities) { it != null }
         assertTrue(vm.cities.value!!.isNotEmpty())
     }
 

@@ -13,6 +13,7 @@ import kotlinx.datetime.LocalTime
 import org.junit.Before
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import com.vayunmathur.testsupport.awaitWithMainIdle
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -40,16 +41,17 @@ class ClockViewModelWriteTest {
      * error is expected, so it cannot fail an unrelated later test.
      */
     private fun drainUncaughtDbErrors() {
-        Thread.sleep(400)
         // Background DB coroutines can take a while to reach the failing open;
         // drain repeatedly so a late one cannot leak into the next compose test.
+        // Between attempts, pump the main looper (step-bounded, no wall sleep)
+        // so IO producers get scheduled and their error can land in the store.
         repeat(8) {
+            run { var pumped = 0; awaitWithMainIdle("pump background work", maxSteps = 25_000) { ++pumped >= 25_000 } }
             try {
                 kotlinx.coroutines.test.runTest { }
             } catch (e: IllegalStateException) {
                 if (e.javaClass.simpleName != "UncaughtExceptionsBeforeTest") throw e
             }
-            Thread.sleep(400)
         }
     }
 
@@ -66,7 +68,7 @@ class ClockViewModelWriteTest {
         vm.delete(alarm)
         // Give the IO coroutines a chance to run into the (host-unavailable) database;
         // the calls above must already have returned normally.
-        Thread.sleep(300)
+        run { var pumped = 0; awaitWithMainIdle("pump background work", maxSteps = 5_000) { ++pumped >= 400 } }
         drainUncaughtDbErrors()
         assertEquals("gym", alarm.name)
         assertEquals(LocalTime(7, 0), alarm.time)

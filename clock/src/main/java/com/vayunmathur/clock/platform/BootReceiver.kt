@@ -54,7 +54,7 @@ class BootReceiver : BroadcastReceiver() {
                         // alarm survives the reboot.
                         Log.error(TAG, "${intent.action}: could not reschedule alarms", e)
                     } finally {
-                        pendingResult.finish()
+                        pendingResult?.finish()
                     }
                 }
             }

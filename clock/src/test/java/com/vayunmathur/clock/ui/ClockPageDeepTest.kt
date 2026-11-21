@@ -18,6 +18,7 @@ import com.vayunmathur.clock.platform.WorldClockCities
 import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.library.util.NavBackStack
 import kotlinx.coroutines.runBlocking
+import com.vayunmathur.testsupport.awaitValueBlocking
 import org.junit.Before
 import org.junit.Rule
 import org.junit.runner.RunWith
@@ -38,11 +39,8 @@ class ClockPageDeepTest {
 
     @Test fun clockPageShowsSelectedWorldClocksAndAddNavigates() {
         val vm = vm()
-        val deadline = System.currentTimeMillis() + 10_000
-        while (vm.cities.value == null && System.currentTimeMillis() < deadline) {
-            Thread.sleep(50)
-            rule.waitForIdle()
-        }
+        // Terminal signal: the cities StateFlow emits its asset-parsed map.
+        awaitValueBlocking(vm.cities) { it != null }
         val cities = vm.cities.value.orEmpty()
         assertTrue(cities.isNotEmpty())
         val picked = cities.keys.take(2)

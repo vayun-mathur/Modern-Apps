@@ -21,6 +21,7 @@ import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.library.util.NavBackStack
 import org.junit.Before
 import kotlinx.coroutines.flow.first
+import com.vayunmathur.testsupport.awaitValueBlocking
 import org.junit.Rule
 import org.junit.runner.RunWith
 import kotlin.test.Test
@@ -43,14 +44,6 @@ class DialogsWithVmUiTest {
             .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
     }
 
-    private fun awaitCities(vm: ClockViewModel) {
-        val deadline = System.currentTimeMillis() + 10_000
-        while (vm.cities.value == null && System.currentTimeMillis() < deadline) {
-            Thread.sleep(50)
-            rule.waitForIdle()
-        }
-        assertTrue(vm.cities.value?.isNotEmpty() == true, "cities did not load")
-    }
 
     @Test
     fun newAlarmDialogShowsPickerAndCancels() {
@@ -76,7 +69,7 @@ class DialogsWithVmUiTest {
     @Test
     fun selectTimeZonesListsCitiesAndSearchFilters() {
         val v = vm()
-        awaitCities(v)
+        awaitValueBlocking(v.cities) { it?.isNotEmpty() == true }
         val ds = DataStoreUtils.getInstance(ctx)
         val stack = NavBackStack(arrayOf<Route>(Route.Alarm, Route.SelectTimeZonesDialog))
         rule.setContent { SelectTimeZonesDialog(stack, ds, v) }
@@ -92,23 +85,15 @@ class DialogsWithVmUiTest {
     @Test
     fun selectTimeZonesToggleSelectsCity() {
         val v = vm()
-        awaitCities(v)
+        awaitValueBlocking(v.cities) { it?.isNotEmpty() == true }
         val ds = DataStoreUtils.getInstance(ctx)
         val stack = NavBackStack(arrayOf<Route>(Route.Alarm, Route.SelectTimeZonesDialog))
         rule.setContent { SelectTimeZonesDialog(stack, ds, v) }
         rule.waitForIdle()
         val city = v.cities.value!!.keys.first()
         clickRow(city)
-        // Selection persists through WorldClockCities; give the DataStore write a moment.
-        val deadline = System.currentTimeMillis() + 5000
-        var selected: List<String> = emptyList()
-        while (System.currentTimeMillis() < deadline) {
-            kotlinx.coroutines.runBlocking {
-                selected = com.vayunmathur.clock.platform.WorldClockCities.flow(ds).first()
-            }
-            if (city in selected) break
-            Thread.sleep(50)
-        }
+        // Terminal signal: the persisted selection flow emits the chosen city.
+        val selected = awaitValueBlocking(com.vayunmathur.clock.platform.WorldClockCities.flow(ds)) { city in it }
         assertTrue(city in selected, "selected=$selected city=$city")
         // Clean up so other tests start unselected.
         kotlinx.coroutines.runBlocking { com.vayunmathur.clock.platform.WorldClockCities.set(ds, emptyList()) }

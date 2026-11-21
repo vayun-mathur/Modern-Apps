@@ -1,6 +1,7 @@
 package com.vayunmathur.clock.ui
 
 import android.app.Application
+import com.vayunmathur.testsupport.awaitWithMainIdle
 import android.content.Context
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -37,12 +38,12 @@ class ClockDialogsDeepTest {
          */
         @org.junit.BeforeClass @JvmStatic fun drainStoredDbErrors() {
             repeat(8) {
+                run { var pumped = 0; awaitWithMainIdle("pump background work", maxSteps = 25_000) { ++pumped >= 25_000 } }
                 try {
                     kotlinx.coroutines.test.runTest { }
                 } catch (e: IllegalStateException) {
                     if (e.javaClass.simpleName != "UncaughtExceptionsBeforeTest") throw e
                 }
-                Thread.sleep(400)
             }
         }
     }

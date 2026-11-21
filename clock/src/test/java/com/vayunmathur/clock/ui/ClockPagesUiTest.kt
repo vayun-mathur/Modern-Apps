@@ -26,6 +26,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
+import com.vayunmathur.testsupport.awaitWithMainIdle
 
 /** Tests for the page binders, [Navigation], [Route] serialization, MainActivity and AlarmActivity. */
 @RunWith(AndroidJUnit4::class)
@@ -119,12 +120,9 @@ class ClockPagesUiTest {
     fun alarmActivityWithUnknownIdFinishesAfterLoadFails() {
         val intent = Intent(ctx, AlarmActivity::class.java).apply { putExtra("ALARM_ID", 987654L) }
         val controller = Robolectric.buildActivity(AlarmActivity::class.java, intent).create().start()
-        // DB lookup fails under Robolectric, which finishes the activity.
-        val deadline = System.currentTimeMillis() + 5000
-        while (!controller.get().isFinishing && System.currentTimeMillis() < deadline) {
-            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
-            Thread.sleep(50)
-        }
+        // DB lookup fails under Robolectric, which finishes the activity:
+        // wait on that terminal activity state, pumping the main looper.
+        awaitWithMainIdle("alarm activity finishes after load fails", maxSteps = 100_000) { controller.get().isFinishing }
         assertTrue(controller.get().isFinishing)
         controller.destroy()
     }

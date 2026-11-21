@@ -30,23 +30,12 @@ class StopwatchViewModelTest {
     private val ctx get() = ApplicationProvider.getApplicationContext<Application>()
     private fun vm() = ClockViewModel(ctx, ClockRepository.get(ctx))
 
-    /**
-     * Pumps Robolectric's paused main looper (where viewModelScope and
-     * the stopwatch's DataStore collector resume) until [cond] — a
-     * terminal StateFlow state — holds. Step-bounded and sleep-free:
-     * each step is a looper idle, not a wall-clock bet. Replaces a fixed
-     * `repeat(6) { idle; idleFor(30ms); Thread.sleep(30) }` pump that
-     * both wasted real time and still raced the persisted reload.
-     */
-    private fun pumpUntil(desc: String, cond: () -> Boolean) =
-        awaitWithMainIdle(desc) { cond() }
-
     @Test fun toggleLapResetAndReload() {
         val vm = vm()
         vm.resetStopwatch()
         // Reset applies in memory at once; idle the looper so the
         // persisted-state collector cannot replay a stale snapshot over it.
-        pumpUntil("reset settled") { !vm.stopwatchRunning.value && vm.lapTimes.value.isEmpty() }
+        awaitWithMainIdle("reset settled") { !vm.stopwatchRunning.value && vm.lapTimes.value.isEmpty() }
         assertFalse(vm.stopwatchRunning.value)
 
         vm.toggleStopwatch()
@@ -57,18 +46,18 @@ class StopwatchViewModelTest {
             DataStoreUtils.getInstance(ctx)
                 .booleanFlow(StopwatchActionReceiver.KEY_STOPWATCH_RUNNING, false),
         ) { it }
-        pumpUntil("running settled") { vm.stopwatchRunning.value }
+        awaitWithMainIdle("running settled") { vm.stopwatchRunning.value }
         assertTrue(vm.stopwatchRunning.value)
         assertTrue(vm.stopwatchCountingTime.value >= Duration.ZERO)
 
         vm.addLap()
-        pumpUntil("lap recorded") { vm.lapTimes.value.size == 1 }
+        awaitWithMainIdle("lap recorded") { vm.lapTimes.value.size == 1 }
         vm.toggleStopwatch() // pause: banks the elapsed time
         awaitValueBlocking(
             DataStoreUtils.getInstance(ctx)
                 .booleanFlow(StopwatchActionReceiver.KEY_STOPWATCH_RUNNING, false),
         ) { !it }
-        pumpUntil("paused settled") { !vm.stopwatchRunning.value }
+        awaitWithMainIdle("paused settled") { !vm.stopwatchRunning.value }
         assertFalse(vm.stopwatchRunning.value)
 
         // Persisted terminal state first, as a terminal signal: the
@@ -102,13 +91,13 @@ class StopwatchViewModelTest {
         // The persisted value is already in DataStore (awaited above),
         // so this pump only replays it through the main looper.
         val reloaded = vm()
-        pumpUntil("reloaded persisted state") {
+        awaitWithMainIdle("reloaded persisted state") {
             !reloaded.stopwatchRunning.value && reloaded.lapTimes.value.size == 1
         }
         assertFalse(reloaded.stopwatchRunning.value)
 
         vm.resetStopwatch()
-        pumpUntil("reset after reload") {
+        awaitWithMainIdle("reset after reload") {
             vm.stopwatchCountingTime.value == Duration.ZERO && vm.lapTimes.value.isEmpty()
         }
         assertEquals(Duration.ZERO, vm.stopwatchCountingTime.value)

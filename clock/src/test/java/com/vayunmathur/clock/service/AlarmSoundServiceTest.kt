@@ -8,6 +8,7 @@ import org.junit.Before
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
+import com.vayunmathur.testsupport.awaitWithMainIdle
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -40,8 +41,8 @@ class AlarmSoundServiceTest {
             putExtra("ALARM_ID", 4242L)
         }
         val controller = Robolectric.buildService(AlarmSoundService::class.java, intent).create().startCommand(0, 1)
-        // Give the IO coroutine a moment to attempt the (failing) DB read and ringtone.
-        Thread.sleep(500)
+        // Pump the main looper so the IO coroutine attempts the (failing) DB read and ringtone.
+        run { var pumped = 0; awaitWithMainIdle("pump background work", maxSteps = 5_000) { ++pumped >= 400 } }
         controller.destroy()
     }
 
@@ -52,7 +53,7 @@ class AlarmSoundServiceTest {
         val service = controller.get()
         service.onStartCommand(Intent(ctx, AlarmSoundService::class.java).apply { putExtra("ALARM_ID", 1L) }, 0, 1)
         service.onStartCommand(Intent(ctx, AlarmSoundService::class.java).apply { putExtra("ALARM_ID", 2L) }, 0, 2)
-        Thread.sleep(300)
+        run { var pumped = 0; awaitWithMainIdle("pump background work", maxSteps = 5_000) { ++pumped >= 400 } }
         controller.destroy()
     }
 

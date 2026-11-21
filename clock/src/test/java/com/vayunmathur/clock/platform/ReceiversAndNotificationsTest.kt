@@ -14,6 +14,9 @@ import org.junit.Before
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
+import com.vayunmathur.testsupport.awaitWithMainIdle
+import com.vayunmathur.testsupport.awaitValueBlocking
+import kotlinx.coroutines.flow.combine
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -36,12 +39,12 @@ class ReceiversAndNotificationsTest {
          */
         @org.junit.AfterClass @JvmStatic fun drainStoredDbErrors() {
             repeat(8) {
+                run { var pumped = 0; awaitWithMainIdle("pump background work", maxSteps = 25_000) { ++pumped >= 25_000 } }
                 try {
                     kotlinx.coroutines.test.runTest { }
                 } catch (e: IllegalStateException) {
                     if (e.javaClass.simpleName != "UncaughtExceptionsBeforeTest") throw e
                 }
-                Thread.sleep(400)
             }
         }
     }
@@ -49,14 +52,6 @@ class ReceiversAndNotificationsTest {
     private val ctx: Context get() = ApplicationProvider.getApplicationContext()
     private val nm: NotificationManager get() = ctx.getSystemService(NotificationManager::class.java)
 
-    private fun await(desc: String, cond: () -> Boolean) {
-        val deadline = System.currentTimeMillis() + 5000
-        while (System.currentTimeMillis() < deadline) {
-            if (cond()) return
-            Thread.sleep(25)
-        }
-        throw AssertionError("timed out: $desc")
-    }
 
     @Test
     fun channelsAreCreated() {
@@ -159,7 +154,7 @@ class ReceiversAndNotificationsTest {
             putExtra("timer_name", "pasta")
         }
         TimerReceiver().onReceive(ctx, intent)
-        await("finished notification") { shadowOf(nm).getNotification(77L.hashCode()) != null }
+        awaitWithMainIdle("finished notification", maxSteps = 100_000) { shadowOf(nm).getNotification(77L.hashCode()) != null }
     }
 
     @Test
@@ -168,7 +163,7 @@ class ReceiversAndNotificationsTest {
         // An action for a timer that cannot be loaded fails soft inside the receiver coroutine.
         val intent = Intent(TimerActionReceiver.ACTION_PAUSE).apply { putExtra("timer_id", 999L) }
         TimerActionReceiver().onReceive(ctx, intent)
-        Thread.sleep(200)
+        run { var pumped = 0; awaitWithMainIdle("pump background work", maxSteps = 5_000) { ++pumped >= 400 } }
     }
 
     @Test
@@ -179,19 +174,24 @@ class ReceiversAndNotificationsTest {
         ds.setString(StopwatchActionReceiver.KEY_STOPWATCH_LAPS, "")
 
         StopwatchActionReceiver().onReceive(ctx, Intent(StopwatchActionReceiver.ACTION_TOGGLE))
-        await("running") { ds.getBoolean(StopwatchActionReceiver.KEY_STOPWATCH_RUNNING, false) }
+        awaitValueBlocking(ds.booleanFlow(StopwatchActionReceiver.KEY_STOPWATCH_RUNNING, false)) { it }
 
         StopwatchActionReceiver().onReceive(ctx, Intent(StopwatchActionReceiver.ACTION_LAP))
-        await("lap recorded") { (ds.getString(StopwatchActionReceiver.KEY_STOPWATCH_LAPS) ?: "").isNotEmpty() }
+        awaitValueBlocking(ds.stringFlow(StopwatchActionReceiver.KEY_STOPWATCH_LAPS)) { it.isNotEmpty() }
 
         StopwatchActionReceiver().onReceive(ctx, Intent(StopwatchActionReceiver.ACTION_STOP))
-        await("stopped") {
-            !ds.getBoolean(StopwatchActionReceiver.KEY_STOPWATCH_RUNNING, true) &&
-                (ds.getLong(StopwatchActionReceiver.KEY_STOPWATCH_TOTAL) ?: -1L) == 0L
-        }
+        // Terminal persisted tuple for STOP: stopped flag, zeroed total and
+        // cleared laps all landed (they are separate DataStore edits).
+        awaitValueBlocking(
+            combine(
+                ds.booleanFlow(StopwatchActionReceiver.KEY_STOPWATCH_RUNNING, true),
+                ds.longFlow(StopwatchActionReceiver.KEY_STOPWATCH_TOTAL, -1L),
+                ds.stringFlow(StopwatchActionReceiver.KEY_STOPWATCH_LAPS),
+            ) { running, total, laps -> !running && total == 0L && laps.isEmpty() },
+        ) { it }
         // Lap while stopped is ignored.
         StopwatchActionReceiver().onReceive(ctx, Intent(StopwatchActionReceiver.ACTION_LAP))
-        Thread.sleep(200)
+        run { var pumped = 0; awaitWithMainIdle("pump background work", maxSteps = 5_000) { ++pumped >= 400 } }
         assertEquals("", ds.getString(StopwatchActionReceiver.KEY_STOPWATCH_LAPS))
     }
 
@@ -203,7 +203,7 @@ class ReceiversAndNotificationsTest {
     @Test
     fun bootReceiverRunsForBootCompleted() {
         BootReceiver().onReceive(ctx, Intent(Intent.ACTION_BOOT_COMPLETED))
-        Thread.sleep(200)
+        run { var pumped = 0; awaitWithMainIdle("pump background work", maxSteps = 5_000) { ++pumped >= 400 } }
     }
 
     @Test
@@ -214,6 +214,6 @@ class ReceiversAndNotificationsTest {
         // path at all instead of falling through the when unmatched.
         BootReceiver().onReceive(ctx, Intent(Intent.ACTION_TIMEZONE_CHANGED))
         BootReceiver().onReceive(ctx, Intent(Intent.ACTION_TIME_CHANGED))
-        Thread.sleep(200)
+        run { var pumped = 0; awaitWithMainIdle("pump background work", maxSteps = 5_000) { ++pumped >= 400 } }
     }
 }

@@ -33,7 +33,7 @@ class TimerActionReceiver : BroadcastReceiver() {
             } catch (e: Exception) {
                 Log.error(TAG, "Timer $timerId: action $action failed", e)
             } finally {
-                pendingResult.finish()
+                pendingResult?.finish()
             }
         }
     }

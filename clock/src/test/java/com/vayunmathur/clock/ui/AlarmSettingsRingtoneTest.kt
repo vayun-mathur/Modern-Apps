@@ -1,6 +1,9 @@
 package com.vayunmathur.clock.ui
 
 import android.app.Activity
+import com.vayunmathur.testsupport.awaitWithMainIdle
+import com.vayunmathur.testsupport.awaitSemantics
+import com.vayunmathur.testsupport.awaitValueBlocking
 import android.content.Context
 import android.content.Intent
 import android.media.RingtoneManager
@@ -36,12 +39,12 @@ class AlarmSettingsRingtoneTest {
         /** Earlier classes' background DB errors surface here otherwise (see ClockDialogsDeepTest). */
         @org.junit.BeforeClass @JvmStatic fun drainStoredDbErrors() {
             repeat(8) {
+                run { var pumped = 0; awaitWithMainIdle("pump background work", maxSteps = 25_000) { ++pumped >= 25_000 } }
                 try {
                     kotlinx.coroutines.test.runTest { }
                 } catch (e: IllegalStateException) {
                     if (e.javaClass.simpleName != "UncaughtExceptionsBeforeTest") throw e
                 }
-                Thread.sleep(400)
             }
         }
     }
@@ -49,16 +52,6 @@ class AlarmSettingsRingtoneTest {
     @get:Rule val rule = createAndroidComposeRule<ComponentActivity>()
 
     private val ctx: Context get() = ApplicationProvider.getApplicationContext()
-
-    private fun awaitValue(deadlineMs: Long = 10_000, read: () -> Boolean): Boolean {
-        val deadline = System.currentTimeMillis() + deadlineMs
-        while (System.currentTimeMillis() < deadline) {
-            if (read()) return true
-            Thread.sleep(50)
-            rule.waitForIdle()
-        }
-        return read()
-    }
 
     @Test fun ringtonePickPersistsAndCancelKeeps() {
         val ds = DataStoreUtils.getInstance(ctx)
@@ -78,10 +71,12 @@ class AlarmSettingsRingtoneTest {
             ActivityResult(Activity.RESULT_OK, Intent().putExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI, picked)),
         )
         rule.waitForIdle()
-        assertEquals(
-            true,
-            awaitValue { ds.getString(ClockViewModel.KEY_DEFAULT_RINGTONE) == picked.toString() },
-        )
+        // Terminal signal: the persisted ringtone reaches the picked URI
+        // (the write is launched on the composition scope, so pump it).
+        rule.awaitSemantics("picked ringtone persisted") {
+            ds.getString(ClockViewModel.KEY_DEFAULT_RINGTONE) == picked.toString()
+        }
+        assertEquals(picked.toString(), ds.getString(ClockViewModel.KEY_DEFAULT_RINGTONE))
 
         // Cancel the next pick: the stored default must not move.
         val titleAfter = ringtoneTitle(ctx, picked.toString(), RingtoneManager.TYPE_ALARM)

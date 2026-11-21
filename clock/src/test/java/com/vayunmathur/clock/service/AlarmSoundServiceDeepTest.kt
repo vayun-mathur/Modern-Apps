@@ -2,15 +2,13 @@ package com.vayunmathur.clock.service
 
 import android.content.Context
 import android.content.Intent
-import android.os.Looper
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.clock.FakeAndroidKeyStore
+import com.vayunmathur.testsupport.awaitWithMainIdle
 import org.junit.Before
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.Shadows.shadowOf
-import java.util.concurrent.TimeUnit
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -25,22 +23,15 @@ class AlarmSoundServiceDeepTest {
 
     private val ctx: Context get() = ApplicationProvider.getApplicationContext()
 
-    private fun pump() {
-        repeat(20) {
-            shadowOf(Looper.getMainLooper()).idle()
-            shadowOf(Looper.getMainLooper()).idleFor(50, TimeUnit.MILLISECONDS)
-            Thread.sleep(25)
-        }
-    }
 
     @Test fun ringAttemptRunsVibrationAndRingtoneFallbackThenDestroys() {
         val intent = Intent(ctx, AlarmSoundService::class.java).apply { putExtra("ALARM_ID", 777L) }
         val controller = Robolectric.buildService(AlarmSoundService::class.java, intent).create()
         val result = controller.get().onStartCommand(intent, 0, 1)
         assertEquals(android.app.Service.START_NOT_STICKY, result)
-        pump()
+        run { var pumped = 0; awaitWithMainIdle("pump background work", maxSteps = 5_000) { ++pumped >= 400 } }
         controller.destroy()
-        pump()
+        run { var pumped = 0; awaitWithMainIdle("pump background work", maxSteps = 5_000) { ++pumped >= 400 } }
     }
 
     @Test fun overlappingAlarmsHandOverAndDestroyIsClean() {
@@ -49,12 +40,12 @@ class AlarmSoundServiceDeepTest {
         service.onStartCommand(
             Intent(ctx, AlarmSoundService::class.java).apply { putExtra("ALARM_ID", 1L) }, 0, 1,
         )
-        pump()
+        run { var pumped = 0; awaitWithMainIdle("pump background work", maxSteps = 5_000) { ++pumped >= 400 } }
         // A second alarm supersedes the first: the old player/vibrator are stopped first.
         service.onStartCommand(
             Intent(ctx, AlarmSoundService::class.java).apply { putExtra("ALARM_ID", 2L) }, 0, 2,
         )
-        pump()
+        run { var pumped = 0; awaitWithMainIdle("pump background work", maxSteps = 5_000) { ++pumped >= 400 } }
         controller.destroy()
     }
 }

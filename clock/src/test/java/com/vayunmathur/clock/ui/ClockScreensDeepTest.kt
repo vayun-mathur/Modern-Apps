@@ -43,6 +43,7 @@ import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Clock
+import com.vayunmathur.testsupport.awaitSemantics
 
 /** Deep interaction coverage for the stateless tab screens and cards. */
 @RunWith(AndroidJUnit4::class)
@@ -163,23 +164,21 @@ class ClockScreensDeepTest {
         rule.waitForIdle()
         rule.onNodeWithText(ctx.getString(com.vayunmathur.clock.R.string.alarm_settings)).assertExists()
         rule.onNode(isToggleable()).performClick()
-        val deadline = System.currentTimeMillis() + 10_000
-        var flipped = false
-        while (System.currentTimeMillis() < deadline) {
-            if (ds.getBoolean(ClockViewModel.KEY_DEFAULT_VIBRATE, !vibrateBefore) == !vibrateBefore) { flipped = true; break }
-            Thread.sleep(50); rule.waitForIdle()
+        // Terminal signals: the persisted defaults reach the new values. The
+        // writes are launched on the composition scope, so the check must run
+        // through the semantics pump (which drives that scope), not a
+        // blocking flow wait that parks the main thread it needs.
+        rule.awaitSemantics("vibrate default persisted") {
+            ds.getBoolean(ClockViewModel.KEY_DEFAULT_VIBRATE, vibrateBefore) == !vibrateBefore
         }
-        assertTrue(flipped, "vibrate default was not persisted")
+        assertTrue(ds.getBoolean(ClockViewModel.KEY_DEFAULT_VIBRATE, !vibrateBefore) == !vibrateBefore, "vibrate default was not persisted")
         rule.onNodeWithText("5 min").performClick()
         rule.waitForIdle()
         rule.onNodeWithText("10 min", useUnmergedTree = true).performClick()
-        var snoozed = false
-        val deadline2 = System.currentTimeMillis() + 10_000
-        while (System.currentTimeMillis() < deadline2) {
-            if ((ds.getLong(ClockViewModel.KEY_DEFAULT_SNOOZE) ?: -1L) == 10L) { snoozed = true; break }
-            Thread.sleep(50); rule.waitForIdle()
+        rule.awaitSemantics("snooze default persisted") {
+            (ds.getLong(ClockViewModel.KEY_DEFAULT_SNOOZE) ?: -1L) == 10L
         }
-        assertTrue(snoozed, "snooze default was not persisted")
+        assertTrue((ds.getLong(ClockViewModel.KEY_DEFAULT_SNOOZE) ?: -1L) == 10L, "snooze default was not persisted")
         kotlinx.coroutines.runBlocking {
             ds.setBoolean(ClockViewModel.KEY_DEFAULT_VIBRATE, vibrateBefore)
             ds.setLong(ClockViewModel.KEY_DEFAULT_SNOOZE, 5L)

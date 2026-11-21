@@ -86,7 +86,7 @@ class TimerReceiver : BroadcastReceiver() {
             } catch (e: Exception) {
                 Log.error(TAG, "could not complete timer $id", e)
             } finally {
-                pendingResult.finish()
+                pendingResult?.finish()
             }
         }
     }

@@ -11,6 +11,9 @@ import org.junit.Before
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
+import com.vayunmathur.testsupport.awaitWithMainIdle
+import com.vayunmathur.testsupport.awaitValueBlocking
+import kotlinx.coroutines.flow.combine
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -25,27 +28,17 @@ class ReceiversDeepTest {
     private val ctx: Context get() = ApplicationProvider.getApplicationContext()
     private val nm: NotificationManager get() = ctx.getSystemService(NotificationManager::class.java)
 
-    private fun await(desc: String, cond: () -> Boolean) {
-        val deadline = System.currentTimeMillis() + 5_000
-        while (System.currentTimeMillis() < deadline) {
-            if (cond()) return
-            Thread.sleep(25)
-        }
-        throw AssertionError("timed out: $desc")
-    }
-
     /** Consume the stored SQLCipher background error so later runTest tests stay clean. */
     private fun drain() {
-        Thread.sleep(1_000)
         // Background DB coroutines can take a while to reach the failing open;
         // drain repeatedly so a late one cannot leak into the next compose test.
         repeat(8) {
+            run { var pumped = 0; awaitWithMainIdle("pump background work", maxSteps = 25_000) { ++pumped >= 25_000 } }
             try {
                 kotlinx.coroutines.test.runTest { }
             } catch (e: IllegalStateException) {
                 if (e.javaClass.simpleName != "UncaughtExceptionsBeforeTest") throw e
             }
-            Thread.sleep(400)
         }
     }
 
@@ -73,7 +66,7 @@ class ReceiversDeepTest {
         createNotificationChannels(ctx)
         val intent = Intent().apply { putExtra("timer_id", 66L) }
         TimerReceiver().onReceive(ctx, intent)
-        await("finished notification") { shadowOf(nm).getNotification(66L.hashCode()) != null }
+        awaitWithMainIdle("finished notification", maxSteps = 100_000) { shadowOf(nm).getNotification(66L.hashCode()) != null }
         val posted = shadowOf(nm).getNotification(66L.hashCode())
         assertNotNull(posted)
         drain()
@@ -110,10 +103,9 @@ class ReceiversDeepTest {
         ds.setString(StopwatchActionReceiver.KEY_STOPWATCH_LAPS, "")
 
         StopwatchActionReceiver().onReceive(ctx, Intent(StopwatchActionReceiver.ACTION_TOGGLE))
-        await("running") { ds.getBoolean(StopwatchActionReceiver.KEY_STOPWATCH_RUNNING, false) }
-        Thread.sleep(150)
+        awaitValueBlocking(ds.booleanFlow(StopwatchActionReceiver.KEY_STOPWATCH_RUNNING, false)) { it }
         // Robolectric's monotonic clock is tied to its paused scheduler and
-        // does not advance over Thread.sleep, so backdate the stored
+        // does not advance on its own, so backdate the stored
         // monotonic anchor to simulate 200ms of real elapsed time.
         ds.setLong(
             StopwatchActionReceiver.KEY_STOPWATCH_START_MONO,
@@ -121,14 +113,16 @@ class ReceiversDeepTest {
         )
         // Toggling again pauses and banks the elapsed total.
         StopwatchActionReceiver().onReceive(ctx, Intent(StopwatchActionReceiver.ACTION_TOGGLE))
-        await("paused with banked total") {
-            !ds.getBoolean(StopwatchActionReceiver.KEY_STOPWATCH_RUNNING, true) &&
-                (ds.getLong(StopwatchActionReceiver.KEY_STOPWATCH_TOTAL) ?: 0L) > 0L
-        }
+        awaitValueBlocking(
+            combine(
+                ds.booleanFlow(StopwatchActionReceiver.KEY_STOPWATCH_RUNNING, true),
+                ds.longFlow(StopwatchActionReceiver.KEY_STOPWATCH_TOTAL, 0L),
+            ) { running, total -> !running && total > 0L },
+        ) { it }
         // Lap while paused is ignored, and an unknown action changes nothing.
         StopwatchActionReceiver().onReceive(ctx, Intent(StopwatchActionReceiver.ACTION_LAP))
         StopwatchActionReceiver().onReceive(ctx, Intent("com.vayunmathur.clock.STOPWATCH_UNKNOWN"))
-        Thread.sleep(200)
+        run { var pumped = 0; awaitWithMainIdle("pump background work", maxSteps = 5_000) { ++pumped >= 400 } }
         assertEquals("", ds.getString(StopwatchActionReceiver.KEY_STOPWATCH_LAPS))
         assertTrue((ds.getLong(StopwatchActionReceiver.KEY_STOPWATCH_TOTAL) ?: 0L) > 0L)
         // Clean up shared stopwatch state.

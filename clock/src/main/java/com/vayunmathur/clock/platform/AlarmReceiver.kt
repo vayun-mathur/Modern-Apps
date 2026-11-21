@@ -164,7 +164,7 @@ class AlarmReceiver : BroadcastReceiver() {
             } catch (e: Exception) {
                 Log.error(TAG, "Alarm $alarmId: could not reschedule", e)
             } finally {
-                pendingResult.finish()
+                pendingResult?.finish()
             }
         }
     }

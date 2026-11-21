@@ -15,6 +15,7 @@ import org.junit.Before
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
+import com.vayunmathur.testsupport.awaitWithMainIdle
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -106,14 +107,13 @@ class SchedulerAndReceiverDeepTest {
 
     /** Consume stored background DB errors so later runTest tests stay clean. */
     private fun drain() {
-        Thread.sleep(1_000)
         repeat(8) {
+            run { var pumped = 0; awaitWithMainIdle("pump background work", maxSteps = 25_000) { ++pumped >= 25_000 } }
             try {
                 kotlinx.coroutines.test.runTest { }
             } catch (e: IllegalStateException) {
                 if (e.javaClass.simpleName != "UncaughtExceptionsBeforeTest") throw e
             }
-            Thread.sleep(400)
         }
     }
 

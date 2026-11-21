@@ -33,7 +33,11 @@ import org.robolectric.Shadows
 
 /** Runs every task currently queued on Robolectric's paused main looper. */
 fun idleMainLooper() {
-    Shadows.shadowOf(Looper.getMainLooper()).idle()
+    // At @BeforeClass time (before the Robolectric sandbox installs its
+    // main looper) there is nothing to idle yet; class-level error drains
+    // call this from there, so a missing looper is a no-op, not a crash.
+    val looper = Looper.getMainLooper() ?: return
+    Shadows.shadowOf(looper).idle()
 }
 
 /**

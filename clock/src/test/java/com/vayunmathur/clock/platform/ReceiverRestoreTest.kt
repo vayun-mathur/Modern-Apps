@@ -16,6 +16,7 @@ import org.junit.After
 import org.junit.Before
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import com.vayunmathur.testsupport.awaitWithMainIdle
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -77,14 +78,6 @@ class ReceiverRestoreTest {
         }
     }
 
-    private fun await(desc: String, cond: () -> Boolean) {
-        val deadline = System.currentTimeMillis() + 8_000
-        while (System.currentTimeMillis() < deadline) {
-            if (runCatching { cond() }.getOrDefault(false)) return
-            Thread.sleep(25)
-        }
-        throw AssertionError("timed out: $desc")
-    }
 
     private fun timer(name: String, running: Boolean, remaining: Duration, startedAgo: Duration = 0.seconds) =
         Timer(
@@ -102,10 +95,7 @@ class ReceiverRestoreTest {
 
         BootReceiver().onReceive(ctx, Intent(Intent.ACTION_BOOT_COMPLETED))
 
-        await("expired timer completed on boot") {
-            val expired = runBlocking { repo.getTimer(expiredId) }
-            !expired.isRunning && expired.remainingLength == Duration.ZERO
-        }
+        awaitWithMainIdle("expired timer completed on boot") { runCatching { val expired = runBlocking { repo.getTimer(expiredId) }; !expired.isRunning && expired.remainingLength == Duration.ZERO }.getOrDefault(false) }
         val future = runBlocking { repo.getTimer(futureId) }
         assertTrue(future.isRunning, "a timer still in the future must stay running after boot")
         val paused = runBlocking { repo.getTimer(pausedId) }
@@ -125,7 +115,7 @@ class ReceiverRestoreTest {
 
         BootReceiver().onReceive(ctx, Intent(Intent.ACTION_TIME_CHANGED))
 
-        await("spent snooze cleared") { runBlocking { repo.getAlarm(spentId) }.snoozedUntil == null }
+        awaitWithMainIdle("spent snooze cleared") { runCatching { runBlocking { repo.getAlarm(spentId) }.snoozedUntil == null }.getOrDefault(false) }
         // (Persisted instants keep second precision, so compare by range.)
         val kept = runBlocking { repo.getAlarm(futureId) }.snoozedUntil
         assertTrue(
@@ -140,7 +130,7 @@ class ReceiverRestoreTest {
             TimerActionReceiver().onReceive(ctx, Intent(action).apply { putExtra("timer_id", id) })
 
         fire(TimerActionReceiver.ACTION_PAUSE)
-        await("pause persisted") { !runBlocking { repo.getTimer(id) }.isRunning }
+        awaitWithMainIdle("pause persisted") { runCatching { !runBlocking { repo.getTimer(id) }.isRunning }.getOrDefault(false) }
         val paused = runBlocking { repo.getTimer(id) }
         assertTrue(
             paused.remainingLength in 3.minutes..5.minutes,
@@ -148,16 +138,13 @@ class ReceiverRestoreTest {
         )
 
         fire(TimerActionReceiver.ACTION_RESUME)
-        await("resume persisted") { runBlocking { repo.getTimer(id) }.isRunning }
+        awaitWithMainIdle("resume persisted") { runCatching { runBlocking { repo.getTimer(id) }.isRunning }.getOrDefault(false) }
 
         fire(TimerActionReceiver.ACTION_RESET)
-        await("reset persisted") {
-            val t = runBlocking { repo.getTimer(id) }
-            !t.isRunning && t.remainingLength == t.totalLength
-        }
+        awaitWithMainIdle("reset persisted") { runCatching { val t = runBlocking { repo.getTimer(id) }; !t.isRunning && t.remainingLength == t.totalLength }.getOrDefault(false) }
 
         fire(TimerActionReceiver.ACTION_CANCEL)
-        await("cancel persisted") { runBlocking { repo.getAllTimers() }.none { it.id == id } }
+        awaitWithMainIdle("cancel persisted") { runCatching { runBlocking { repo.getAllTimers() }.none { it.id == id } }.getOrDefault(false) }
     }
 
     @Test fun timerActionOnPausedTimerKeepsItsBankedRemaining() {
@@ -166,7 +153,7 @@ class ReceiverRestoreTest {
             ctx,
             Intent(TimerActionReceiver.ACTION_PAUSE).apply { putExtra("timer_id", id) },
         )
-        await("banked pause settled") { runBlocking { repo.getTimer(id) }.remainingLength == 90.seconds }
+        awaitWithMainIdle("banked pause settled") { runCatching { runBlocking { repo.getTimer(id) }.remainingLength == 90.seconds }.getOrDefault(false) }
         assertFalse(runBlocking { repo.getTimer(id) }.isRunning)
     }
 }

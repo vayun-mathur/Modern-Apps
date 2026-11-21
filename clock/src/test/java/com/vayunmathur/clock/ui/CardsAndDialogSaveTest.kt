@@ -1,6 +1,7 @@
 package com.vayunmathur.clock.ui
 
 import android.app.Application
+import com.vayunmathur.testsupport.awaitWithMainIdle
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -62,12 +63,12 @@ class CardsAndDialogSaveTest {
             // Drain kotlinx-coroutines-test's stored uncaught errors from
             // earlier classes, as in ClockDialogsDeepTest.
             repeat(8) {
+                run { var pumped = 0; awaitWithMainIdle("pump background work", maxSteps = 25_000) { ++pumped >= 25_000 } }
                 try {
                     kotlinx.coroutines.test.runTest { }
                 } catch (e: IllegalStateException) {
                     if (e.javaClass.simpleName != "UncaughtExceptionsBeforeTest") throw e
                 }
-                Thread.sleep(400)
             }
         }
     }
@@ -87,12 +88,12 @@ class CardsAndDialogSaveTest {
 
     @org.junit.After fun drainAfter() {
         repeat(6) {
+            run { var pumped = 0; awaitWithMainIdle("pump background work", maxSteps = 25_000) { ++pumped >= 25_000 } }
             try {
                 kotlinx.coroutines.test.runTest { }
             } catch (e: IllegalStateException) {
                 if (e.javaClass.simpleName != "UncaughtExceptionsBeforeTest") throw e
             }
-            Thread.sleep(300)
         }
     }
 

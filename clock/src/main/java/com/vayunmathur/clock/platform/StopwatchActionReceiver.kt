@@ -76,7 +76,7 @@ class StopwatchActionReceiver : BroadcastReceiver() {
                 }
             } catch (_: Exception) {
             } finally {
-                pendingResult.finish()
+                pendingResult?.finish()
             }
         }
     }
