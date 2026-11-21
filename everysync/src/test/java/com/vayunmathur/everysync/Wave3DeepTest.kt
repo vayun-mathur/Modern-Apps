@@ -104,13 +104,21 @@ class Wave3DeepTest {
         assertEquals("20240115T170000Z", utc.format(zoned.startMillis))
         assertEquals(3_600_000L, zoned.endMillis - zoned.startMillis)
 
-        // Floating local time is read as UTC and reports UTC.
+        // Floating local time (no Z, no TZID) is read in the device
+        // default zone (RFC 5545 floating time), not UTC, and reports it.
+        val defaultZone = TimeZone.getDefault()
         val floating = ICalendar.parse(
             "BEGIN:VEVENT\r\nUID:f1\r\nDTSTART:20240201T090000\r\nDTEND:20240201T100000\r\nEND:VEVENT\r\n",
             "cal",
         ).single()
-        assertEquals("UTC", floating.timezone)
-        assertEquals("20240201T090000Z", utc.format(floating.startMillis))
+        assertEquals(defaultZone.id, floating.timezone)
+        val expectedFloatingMillis = java.text.SimpleDateFormat(
+            "yyyyMMdd'T'HHmmss", java.util.Locale.US,
+        ).apply { timeZone = defaultZone; isLenient = false }
+            .parse("20240201T090000")!!.time
+        assertEquals(expectedFloatingMillis, floating.startMillis)
+        assertEquals(utc.format(expectedFloatingMillis), utc.format(floating.startMillis))
+        assertEquals(3_600_000L, floating.endMillis - floating.startMillis)
 
         // A lowercase tzid parameter name still resolves.
         val lower = ICalendar.parse(

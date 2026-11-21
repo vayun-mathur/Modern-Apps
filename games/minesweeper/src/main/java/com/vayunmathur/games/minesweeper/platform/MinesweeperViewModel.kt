@@ -104,8 +104,9 @@ class MinesweeperViewModel(application: Application) :
      * field for [config], or deals a new one.
      */
     fun ensureGame(config: GameConfig) {
-        val current = _uiState.value
-        if (current.game != null && current.config == config) return
+        // A live field already in memory wins over whatever the route carries
+        // (existing contract); the route config keys only the disk restore.
+        if (_uiState.value.game != null) return
         val saved = inProgress.load(config)
         if (saved == null) {
             newGame(config)

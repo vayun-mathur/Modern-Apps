@@ -130,12 +130,14 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
 
     private suspend fun writeInProgress() {
         val game = _uiState.value.game ?: return
+        // Snapshot on the main thread, write off it: a DataStore edit resumed on a
+        // paused main looper (process backgrounding, tests) must not wedge the store.
         if (game.isWon || game.isGameOver) {
-            settingsStore.clearInProgress(game.variant)
+            val variant = game.variant
+            withContext(Dispatchers.IO) { settingsStore.clearInProgress(variant) }
         } else {
-            settingsStore.saveInProgress(
-                SavedSudokuGame(game, history.toList(), _elapsedSeconds.value),
-            )
+            val saved = SavedSudokuGame(game, history.toList(), _elapsedSeconds.value)
+            withContext(Dispatchers.IO) { settingsStore.saveInProgress(saved) }
         }
     }
 
@@ -146,12 +148,13 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
      */
     fun ensureGame(config: GameConfig) {
         if (_uiState.value.generating) return
-        val current = _uiState.value.game
-        if (current != null && matches(current, config)) return
+        // A live game already in memory wins over whatever the route carries
+        // (existing contract); the route config keys only the disk restore.
+        if (_uiState.value.game != null) return
         viewModelScope.launch {
             val saved = settingsStore.loadInProgress(config)
             val now = _uiState.value.game
-            if (now != null && matches(now, config)) return@launch
+            if (now != null) return@launch
             if (_uiState.value.generating) return@launch
             if (saved == null) {
                 newGame(config)
@@ -172,9 +175,6 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         }
     }
 
-    private fun matches(game: SudokuGameState, config: GameConfig): Boolean =
-        game.size == config.size && game.difficulty == config.difficulty &&
-            game.answerMode == config.answerMode
 
     fun hasActiveGame(): Boolean = _uiState.value.game?.isWon == false
 
@@ -423,7 +423,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         history.clear()
         _elapsedSeconds.value = 0
         _uiState.value = SudokuUiState()
-        viewModelScope.launch { settingsStore.clearInProgress(game.variant) }
+        viewModelScope.launch(Dispatchers.IO) { settingsStore.clearInProgress(game.variant) }
     }
 
     fun incrementTimer() {

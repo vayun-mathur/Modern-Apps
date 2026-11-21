@@ -178,7 +178,7 @@ class PuzzleViewModel(application: Application) : AndroidViewModel(application),
 
     private fun scheduleSaveInProgress() {
         saveJob?.cancel()
-        saveJob = viewModelScope.launch {
+        saveJob = viewModelScope.launch(Dispatchers.IO) {
             delay(SAVE_DEBOUNCE_MS)
             writeInProgress()
         }
@@ -187,7 +187,7 @@ class PuzzleViewModel(application: Application) : AndroidViewModel(application),
     /** Flushes the in-progress puzzle now (on pause); a finished puzzle clears its slot. */
     fun saveInProgress() {
         saveJob?.cancel()
-        viewModelScope.launch { writeInProgress() }
+        viewModelScope.launch(Dispatchers.IO) { writeInProgress() }
     }
 
     private suspend fun writeInProgress() {

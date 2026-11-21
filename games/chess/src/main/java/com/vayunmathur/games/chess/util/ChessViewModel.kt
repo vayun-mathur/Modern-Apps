@@ -169,7 +169,7 @@ class ChessViewModel(application: Application) : AndroidViewModel(application), 
 
     private fun scheduleSaveInProgress() {
         saveJob?.cancel()
-        saveJob = viewModelScope.launch {
+        saveJob = viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             delay(SAVE_DEBOUNCE_MS)
             writeInProgress()
         }
@@ -178,7 +178,7 @@ class ChessViewModel(application: Application) : AndroidViewModel(application), 
     /** Flushes the in-progress game now (on pause); a finished game clears its slot. */
     fun saveInProgress() {
         saveJob?.cancel()
-        viewModelScope.launch { writeInProgress() }
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) { writeInProgress() }
     }
 
     private suspend fun writeInProgress() {
@@ -235,7 +235,9 @@ class ChessViewModel(application: Application) : AndroidViewModel(application), 
         winScored = false
         promotionUndo = null
         gameGeneration++
-        viewModelScope.launch { store.removeKeys(listOf(IN_PROGRESS_KEY)) }
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            store.removeKeys(listOf(IN_PROGRESS_KEY))
+        }
         val isFlipped = gameMode is GameMode.VsAI && gameMode.playerColor == PieceColor.BLACK
         _uiState.value = ChessUiState(gameMode = gameMode, isBoardFlipped = isFlipped, aiThinking = isFlipped)
         if (isFlipped) makeAiMove(gameGeneration)
