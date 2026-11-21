@@ -34,6 +34,8 @@ class EmailRepository private constructor(context: Context) :
     suspend fun deleteOutboxEntry(entry: OutboxEntry) = outbox.deleteOutboxEntry(entry)
     suspend fun updateOutboxAttempt(id: Long, error: String?, attempts: Int, at: Long) =
         outbox.updateOutboxAttempt(id, error, attempts, at)
+    suspend fun updateOutboxMessageId(id: Long, messageId: String?) =
+        outbox.updateOutboxMessageId(id, messageId)
 
     /** Provides the singleton EmailRepository instance. */
     companion object {

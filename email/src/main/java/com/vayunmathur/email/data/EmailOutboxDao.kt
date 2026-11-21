@@ -33,6 +33,9 @@ interface EmailOutboxDao {
     )
     suspend fun updateOutboxAttempt(id: Long, error: String?, attempts: Int, at: Long)
 
+    @Query("UPDATE OutboxEntry SET messageId = :messageId WHERE id = :id")
+    suspend fun updateOutboxMessageId(id: Long, messageId: String?)
+
     // ---- Drafts ----
 
     @Query("SELECT * FROM DraftEntry ORDER BY updatedAt DESC")

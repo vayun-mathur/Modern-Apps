@@ -13,6 +13,8 @@ class EmailOutboxStore internal constructor(private val db: EmailDatabase) {
     suspend fun deleteOutboxEntry(entry: OutboxEntry) = dao.deleteOutboxEntry(entry)
     suspend fun updateOutboxAttempt(id: Long, error: String?, attempts: Int, at: Long) =
         dao.updateOutboxAttempt(id, error, attempts, at)
+    suspend fun updateOutboxMessageId(id: Long, messageId: String?) =
+        dao.updateOutboxMessageId(id, messageId)
 
     fun getDraftsFlow(): Flow<List<DraftEntry>> = dao.getDraftsFlow()
     suspend fun getDraft(id: Long): DraftEntry? = dao.getDraft(id)

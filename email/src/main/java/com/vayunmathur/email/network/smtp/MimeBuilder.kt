@@ -46,6 +46,20 @@ object MimeBuilder {
         return "${System.currentTimeMillis()}.$random@$domain"
     }
 
+    /**
+     * Mint a new Message-ID for [from] (bare value, no angle brackets).
+     * Callers that may retry a send (direct attempt → outbox → worker)
+     * generate this once and pass the same value to every [buildMessage]
+     * call, so a server that accepted the first copy but whose reply was
+     * lost (e.g. timeout after DATA) sees the retry as the same message.
+     */
+    fun generateMessageId(from: String): String = buildMessageId(from)
+
+    /** Strip brackets/whitespace and reject header-breaking characters. */
+    private fun sanitizeMessageId(messageId: String?): String? =
+        messageId?.trim()?.removeSurrounding("<", ">")?.trim()
+            ?.takeIf { it.isNotBlank() && it.none { c -> c == '\r' || c == '\n' || c == '<' || c == '>' } }
+
     /** The built raw RFC 822 message text ready for SMTP submission. */
     data class BuildResult(val rawMessage: String)
 
@@ -61,9 +75,10 @@ object MimeBuilder {
         inlineImages: List<InlineAttachment> = emptyList(),
         inReplyTo: String? = null,
         references: String? = null,
+        messageId: String? = null,
     ): String {
         val sb = StringBuilder()
-        appendHeaders(sb, from, to, subject, cc, inReplyTo, references)
+        appendHeaders(sb, from, to, subject, cc, inReplyTo, references, messageId)
 
         if (inlineImages.isEmpty() && attachments.isEmpty()) {
             appendSingleTextPart(sb, body, asHtml)
@@ -92,6 +107,7 @@ object MimeBuilder {
         cc: String?,
         inReplyTo: String?,
         references: String?,
+        messageId: String? = null,
     ) {
         // Standard headers
         sb.append("From: $from\r\n")
@@ -110,9 +126,10 @@ object MimeBuilder {
         sb.append("MIME-Version: 1.0\r\n")
         if (!inReplyTo.isNullOrBlank()) sb.append("In-Reply-To: $inReplyTo\r\n")
         if (!references.isNullOrBlank()) sb.append("References: $references\r\n")
-        // Message-ID
-        val messageId = buildMessageId(from)
-        sb.append("Message-ID: <$messageId>\r\n")
+        // Message-ID: reuse the caller-supplied stable ID when present so
+        // retries of the same logical message are de-duplicated downstream.
+        val effectiveMessageId = sanitizeMessageId(messageId) ?: buildMessageId(from)
+        sb.append("Message-ID: <$effectiveMessageId>\r\n")
     }
 
     private fun appendSingleTextPart(sb: StringBuilder, body: String, asHtml: Boolean) {

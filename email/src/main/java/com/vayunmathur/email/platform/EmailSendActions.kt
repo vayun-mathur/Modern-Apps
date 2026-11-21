@@ -6,6 +6,7 @@ import com.vayunmathur.email.data.EmailAccount
 import com.vayunmathur.email.data.OutboxEntry
 import com.vayunmathur.email.data.OutboxManager
 import com.vayunmathur.email.data.OutboxSendWorker
+import com.vayunmathur.email.network.smtp.MimeBuilder
 import com.vayunmathur.email.ui.composer.InlineAttachment
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -32,6 +33,10 @@ class EmailSendActions(
         onError: (String) -> Unit,
     ) {
         scope.launch {
+            // Mint the Message-ID once, before the first attempt: if the
+            // direct send times out after DATA and we fall back to the
+            // outbox, the worker retry must carry this same ID.
+            val messageId = MimeBuilder.generateMessageId(account.email)
             try {
                 emailManager.sendMessage(
                     context = appContext,
@@ -50,6 +55,7 @@ class EmailSendActions(
                         references = references,
                         from = account.email,
                         asHtml = asHtml,
+                        messageId = messageId,
                     ),
                 )
                 onSuccess()
@@ -70,6 +76,7 @@ class EmailSendActions(
                         references = references,
                         initialError = msg,
                         isHtml = asHtml,
+                        messageId = messageId,
                     )
                 } catch (_: Exception) {
                     onError("$msg (and outbox save failed)")

@@ -12,6 +12,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.vayunmathur.email.data.OutboxEntry
+import com.vayunmathur.email.network.smtp.MimeBuilder
 import com.vayunmathur.email.platform.EmailManager
 import com.vayunmathur.email.platform.SendRequest
 import com.vayunmathur.email.platform.imapServer
@@ -78,11 +79,20 @@ class OutboxSendWorker(
             )
             return EntryOutcome(true, Long.MAX_VALUE)
         }
-        val uris = decodePaths(entry.attachmentLocalPaths).map { Uri.fromFile(File(it)) }
-        val inline = decodeInline(entry.inlineImageJson).map {
+        // Legacy (pre-v24) rows carry no ID: mint one now and persist it
+        // before sending, so this and every later retry share it.
+        val effectiveEntry = if (entry.messageId.isNullOrBlank()) {
+            val minted = entry.copy(messageId = MimeBuilder.generateMessageId(entry.accountEmail))
+            repository.updateOutboxMessageId(minted.id, minted.messageId)
+            minted
+        } else {
+            entry
+        }
+        val uris = decodePaths(effectiveEntry.attachmentLocalPaths).map { Uri.fromFile(File(it)) }
+        val inline = decodeInline(effectiveEntry.inlineImageJson).map {
             InlineAttachment(cid = it.cid, uri = Uri.fromFile(File(it.path)), mimeType = it.mime, fileName = it.name)
         }
-        return when (val sendResult = trySend(manager, account, entry, uris, inline)) {
+        return when (val sendResult = trySend(manager, account, effectiveEntry, uris, inline)) {
             is SendResult.Success -> {
                 Log.dev(TAG, "Sent outbox entry #${entry.id} to ${entry.to}")
                 attachmentDirFor(applicationContext, entry.id).deleteRecursively()
@@ -146,6 +156,7 @@ class OutboxSendWorker(
                 references = entry.references,
                 asHtml = entry.isHtml,
                 from = account.email,
+                messageId = entry.messageId,
             ),
         )
     }.fold(
@@ -231,6 +242,7 @@ object OutboxManager {
         initialError: String? = null,
         scheduledAt: Long = 0,
         isHtml: Boolean = false,
+        messageId: String? = null,
     ): OutboxEntry {
         val dao = EmailRepository.get(context).getDatabase().outboxDao()
         val base = OutboxEntry(
@@ -247,6 +259,9 @@ object OutboxManager {
             lastError = initialError,
             scheduledAt = scheduledAt,
             isHtml = isHtml,
+            // Mint once at creation; every worker retry reuses this ID.
+            messageId = messageId?.takeIf { it.isNotBlank() }
+                ?: MimeBuilder.generateMessageId(accountEmail),
         )
         val pendingId = dao.insertOutboxEntry(base)
         val localPaths = copyAttachmentsToOutbox(context, pendingId, attachments)

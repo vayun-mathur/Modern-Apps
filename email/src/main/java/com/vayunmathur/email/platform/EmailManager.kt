@@ -70,6 +70,8 @@ data class SendRequest(
     val references: String? = null,
     val from: String? = null,
     val asHtml: Boolean = false,
+    /** Stable Message-ID (bare, no brackets) reused across every retry. */
+    val messageId: String? = null,
 )
 
 /** Coordinates mail operations across IMAP and SMTP for configured accounts. */

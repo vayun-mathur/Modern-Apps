@@ -6,11 +6,58 @@ import com.vayunmathur.library.ui.odf.OdfDocument
 import com.vayunmathur.library.ui.odf.OdfPageSetup
 import com.vayunmathur.library.ui.odf.OdfSerializer
 import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
 
 import com.vayunmathur.office.platform.save
+
+/**
+ * Replace [targetUri] with [bytes] without truncating the existing file.
+ *
+ * File-backed targets: write `<name>.tmp` in the same directory, fsync it,
+ * then rename it over the original. A failure at any step before the rename
+ * (including a failed rename) leaves the original bytes untouched and
+ * surfaces as an [IOException]; the temp file is removed on failure.
+ *
+ * Content-resolver targets have no sibling path that can be renamed over
+ * the original through the resolver API, so they keep the direct write —
+ * but [bytes] are already fully materialised by the caller, so a
+ * serialisation failure can never reach (and truncate) the target.
+ */
+internal fun writeDocumentBytesAtomically(context: Context, targetUri: Uri, bytes: ByteArray) {
+    val targetPath = targetUri.path?.takeIf { targetUri.scheme == "file" }
+    if (targetPath == null) {
+        context.contentResolver.openOutputStream(targetUri)?.use { it.write(bytes) }
+            ?: throw IOException("Cannot open $targetUri for writing")
+        return
+    }
+    val targetFile = File(targetPath)
+    val dir = targetFile.parentFile
+        ?: throw IOException("No parent directory for $targetUri")
+    val tmpFile = File(dir, targetFile.name + ".tmp")
+    try {
+        FileOutputStream(tmpFile).use { out ->
+            out.write(bytes)
+            out.flush()
+            out.fd.sync()
+        }
+        if (!tmpFile.renameTo(targetFile)) {
+            throw IOException("Could not rename ${tmpFile.name} over ${targetFile.name}")
+        }
+        // Best-effort directory fsync so the rename itself is durable.
+        runCatching {
+            java.io.RandomAccessFile(dir, "r").use { it.channel.force(true) }
+        }
+    } catch (expected: Exception) {
+        tmpFile.delete()
+        throw expected
+    }
+}
+
 /** Singleton holding odf writer state and operations. */
 object OdfWriter {
 
@@ -39,7 +86,7 @@ object OdfWriter {
         }
         // AFTER the ZipOutputStream is closed (close writes the END header).
         val bytes = buffer.toByteArray()
-        context.contentResolver.openOutputStream(targetUri)?.use { it.write(bytes) }
+        writeDocumentBytesAtomically(context, targetUri, bytes)
     }
 
     /** Save accumulation state. */

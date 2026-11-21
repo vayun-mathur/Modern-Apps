@@ -27,7 +27,7 @@ import com.vayunmathur.email.data.Attachment
         DeletedUid::class,
         EmailMessageFts::class,
     ],
-    version = 23,
+    version = 24,
     exportSchema = true,
 )
 /** Room database holding email folders, messages, accounts and outbox state. */
@@ -353,6 +353,16 @@ abstract class EmailDatabase : RoomDatabase() {
         }
 
         /**
+         * v23 → v24: stable Message-ID for outbox entries. Minted once at
+         * enqueue time and reused on every retry, so an SMTP timeout after
+         * DATA cannot deliver a duplicate under a regenerated ID. Existing
+         * rows stay null; the worker mints and persists one on first retry.
+         */
+        private val MIGRATION_23_24 = Migration(23, 24) {
+            it.execSQL("ALTER TABLE OutboxEntry ADD COLUMN messageId TEXT")
+        }
+
+        /**
          * Every migration for this database, registered with the Room builder via the
          * [DatabaseMigrations] reflection hook in `openRoomDatabase`. Order is
          * irrelevant to Room; kept numeric here for readability.
@@ -380,6 +390,7 @@ abstract class EmailDatabase : RoomDatabase() {
             MIGRATION_20_21,
             MIGRATION_21_22,
             MIGRATION_22_23,
+            MIGRATION_23_24,
         )
 
         fun getInstance(context: Context): EmailDatabase =

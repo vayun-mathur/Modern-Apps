@@ -423,7 +423,14 @@ data class OutboxEntry(
     val attemptCount: Int = 0,
     val lastAttemptAt: Long = 0,
     val scheduledAt: Long = 0,
-    val isHtml: Boolean = false
+    val isHtml: Boolean = false,
+    /**
+     * Stable Message-ID (bare value, no angle brackets) minted once when
+     * this entry is created and reused on every retry build, so a send
+     * that timed out after DATA does not deliver a second copy under a
+     * fresh ID. Null only on rows queued before v24.
+     */
+    val messageId: String? = null
 )
 
 @Entity

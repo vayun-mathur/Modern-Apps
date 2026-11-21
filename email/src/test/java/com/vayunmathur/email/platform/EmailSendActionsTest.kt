@@ -135,6 +135,7 @@ class EmailSendActionsTest {
         assertEquals("Will fail", row.subject)
         assertEquals("queued body", row.body)
         assertEquals("cc@y.com", row.cc)
+        assertTrue(!row.messageId.isNullOrBlank(), "outbox row must carry the stable Message-ID minted for the direct attempt")
         assertTrue(!row.lastError.isNullOrBlank(), "outbox row must record the failure")
     }
 

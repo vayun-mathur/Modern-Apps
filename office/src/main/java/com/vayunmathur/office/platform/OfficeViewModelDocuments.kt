@@ -23,6 +23,7 @@ import com.vayunmathur.library.util.AppMessages
 import com.vayunmathur.office.R
 import com.vayunmathur.office.data.odf.DocumentImporter
 import com.vayunmathur.office.data.odf.OdfWriter
+import com.vayunmathur.office.data.odf.writeDocumentBytesAtomically
 import com.vayunmathur.office.platform.MAX_RECENT
 import com.vayunmathur.office.platform.OfficeViewModel.ViewState
 import kotlinx.coroutines.Dispatchers
@@ -214,9 +215,7 @@ fun OfficeViewModel.save(targetUri: Uri? = null) {
         try {
             if (targetIsOoxml) {
                 val bytes = com.vayunmathur.library.ui.odf.OoxmlExporter.export(doc)
-                getApplication<Application>().contentResolver.openOutputStream(target)
-                    ?.use { it.write(bytes) }
-                    ?: throw java.io.IOException("Cannot open $target for writing")
+                writeDocumentBytesAtomically(getApplication(), target, bytes)
             } else {
                 OdfWriter.save(getApplication(), source, doc, target)
             }

@@ -36,6 +36,7 @@ object SmtpClient {
             inlineImages = request.inlineImages,
             inReplyTo = request.inReplyTo,
             references = request.references,
+            messageId = request.messageId,
         )
         val conn = RawSmtpConnection(server, trustAll = server.trustAllCertificates)
         try {

@@ -57,6 +57,26 @@ class MimeBuilderTest {
     }
 
     @Test
+    fun `supplied message id is reused verbatim on every build`() {
+        val first = MimeBuilder.buildMessage(
+            context, "me@example.com", "you@example.com", "s", "b", false,
+            messageId = "stable-123@example.com",
+        )
+        val second = MimeBuilder.buildMessage(
+            context, "me@example.com", "you@example.com", "s", "b", false,
+            messageId = "stable-123@example.com",
+        )
+        assertTrue(first.contains("Message-ID: <stable-123@example.com>\r\n"), first)
+        assertTrue(second.contains("Message-ID: <stable-123@example.com>\r\n"), second)
+        // Bracketed input from a stored row is normalised, not double-wrapped.
+        val bracketed = MimeBuilder.buildMessage(
+            context, "me@example.com", "you@example.com", "s", "b", false,
+            messageId = "<stable-123@example.com>",
+        )
+        assertTrue(bracketed.contains("Message-ID: <stable-123@example.com>\r\n"), bracketed)
+    }
+
+    @Test
     fun `multiple recipients split on comma and semicolon`() {
         val raw = MimeBuilder.buildMessage(
             context, "me@example.com", "a@x.com, b@x.com;c@x.com",

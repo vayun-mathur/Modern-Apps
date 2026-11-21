@@ -32,6 +32,7 @@ class DraftMergeTest {
         override suspend fun insertOutboxEntry(entry: OutboxEntry): Long = 0
         override suspend fun deleteOutboxEntry(entry: OutboxEntry) {}
         override suspend fun updateOutboxAttempt(id: Long, error: String?, attempts: Int, at: Long) {}
+        override suspend fun updateOutboxMessageId(id: Long, messageId: String?) {}
 
         override fun getDraftsFlow(): Flow<List<DraftEntry>> = flowOf(drafts.values.toList())
         override suspend fun getDraft(id: Long): DraftEntry? = drafts[id]

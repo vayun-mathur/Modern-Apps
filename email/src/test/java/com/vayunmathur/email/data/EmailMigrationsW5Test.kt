@@ -78,7 +78,7 @@ class EmailMigrationsW5Test {
     @Test
     fun migrationChainIsCompleteAndOrdered() {
         assertEquals(
-            (1..22).map { it to it + 1 },
+            (1..23).map { it to it + 1 },
             EmailDatabase.migrations.map { it.startVersion to it.endVersion }.sortedBy { it.first },
         )
     }
@@ -109,7 +109,7 @@ class EmailMigrationsW5Test {
     }
 
     @Test
-    fun v1DatabaseUpgradesAllTheWayToV23Shape() {
+    fun v1DatabaseUpgradesAllTheWayToV24Shape() {
         val conn = openV1()
         migrate(conn, 1)
         assertTrue(tableExists(conn, "OutboxEntry"))
@@ -159,7 +159,7 @@ class EmailMigrationsW5Test {
     }
 
     @Test
-    fun v4DatabaseUpgradesToV23Shape() {
+    fun v4DatabaseUpgradesToV24Shape() {
         val conn = openV4()
         migrate(conn, 4)
         assertTrue(tableExists(conn, "OutboxEntry"))
@@ -169,7 +169,7 @@ class EmailMigrationsW5Test {
         assertTrue(tableExists(conn, "EmailMessageFts"))
         assertTrue(columns(conn, "EmailMessage").containsAll(setOf("dateMillis", "snoozedUntil", "listUnsubscribe", "listUnsubscribePost", "peekContent")), columns(conn, "EmailMessage").toString())
         assertTrue(columns(conn, "EmailAccount").containsAll(setOf("provider", "imapHost", "smtpHost", "authType", "username", "signature", "allowInsecureCertificates")), columns(conn, "EmailAccount").toString())
-        assertTrue(columns(conn, "OutboxEntry").containsAll(setOf("scheduledAt", "isHtml", "bcc", "inlineImageJson")), columns(conn, "OutboxEntry").toString())
+        assertTrue(columns(conn, "OutboxEntry").containsAll(setOf("scheduledAt", "isHtml", "bcc", "inlineImageJson", "messageId")), columns(conn, "OutboxEntry").toString())
         assertTrue(columns(conn, "DraftEntry").contains("inlineImageJson"))
         // The 6→7 backfill copies email into the new username column.
         assertEquals(listOf("me@x.com"), strings(conn, "SELECT username FROM EmailAccount"))

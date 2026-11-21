@@ -227,10 +227,12 @@ fun ConversationScreen(
                 },
                 onSend = {
                     val text = draft.trim()
+                    val sentDraft = draft
                     val attachments = selectedAttachments
                     if (text.isEmpty() && attachments.isEmpty()) return@ComposeSmsRow
-                    draft = ""
-                    selectedAttachments = emptyList()
+                    // Keep the draft and attachments in place until the send
+                    // succeeds: clearing them up front lost the composed
+                    // message entirely when the send failed.
                     scope.launch {
                         val ok = CommunicateRepository.sendMessage(
                             context,
@@ -241,7 +243,17 @@ fun ConversationScreen(
                             attachments,
                             participants = if (isGroup) participants else emptyList(),
                         )
-                        if (ok) refresh++ else AppMessages.show(gvSendFailedMessage)
+                        if (ok) {
+                            // Clear only what was sent; anything the user
+                            // typed or attached while sending survives.
+                            if (draft == sentDraft) draft = ""
+                            if (selectedAttachments == attachments) {
+                                selectedAttachments = emptyList()
+                            }
+                            refresh++
+                        } else {
+                            AppMessages.show(gvSendFailedMessage)
+                        }
                     }
                 },
             )

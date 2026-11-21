@@ -92,6 +92,11 @@ class OutboxSendWorkerTest {
         assertEquals(0, db.outboxDao().getOutboxCount())
         assertTrue(smtp.dataBodies.single().contains("Flush me"))
         assertTrue(smtp.dataBodies.single().contains("flushbody"))
+        assertTrue(!entry.messageId.isNullOrBlank(), "enqueue must mint a stable Message-ID")
+        assertTrue(
+            smtp.dataBodies.single().contains("Message-ID: <${entry.messageId}>"),
+            smtp.dataBodies.single(),
+        )
         assertFalse(OutboxSendWorker.attachmentDirFor(context, entry.id).exists())
     }
 
