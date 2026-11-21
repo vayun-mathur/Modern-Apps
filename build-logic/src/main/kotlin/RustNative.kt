@@ -381,6 +381,11 @@ fun Project.rustNativeLib(
     glslcArgs: List<String> = emptyList(),
     hostTests: Boolean = true,
 ) {
+    // Record that this project is a Rust module at all (even with
+    // hostTests = false, where no RustHostLibRef is registered below), so
+    // wireRustHostLibsForUnitTests can leave its Test tasks entirely alone
+    // instead of applying the non-Rust batching defaults.
+    rustNativeLibProjectPaths() += path
     // Serialize cargoBuild across all Rust modules to avoid concurrent rustup installs
     // (unless the build opts into parallel cargo, see cargoParallelism below).
     val parallelCargo = cargoParallelism()
@@ -863,6 +868,21 @@ data class RustHostLibRef(
     val libDir: String,
 )
 
+/**
+ * Project paths of every module that called [rustNativeLib], host-testable
+ * or not. Plain Strings in the root extra properties, mirroring
+ * [rustHostLibRefs], so the configuration cache never sees a Project.
+ */
+private fun Project.rustNativeLibProjectPaths(): MutableSet<String> {
+    val extra = rootProject.extensions.extraProperties
+    @Suppress("UNCHECKED_CAST")
+    return if (extra.has("rustNativeLibProjectPaths")) {
+        extra.get("rustNativeLibProjectPaths") as MutableSet<String>
+    } else {
+        mutableSetOf<String>().also { extra.set("rustNativeLibProjectPaths", it) }
+    }
+}
+
 /** Shared `projectPath -> host crates` registry (see [RustHostLibRef]). */
 private fun Project.rustHostLibRefs(): MutableMap<String, MutableList<RustHostLibRef>> {
     val extra = rootProject.extensions.extraProperties
@@ -971,6 +991,14 @@ val DEFAULT_NATIVE_TEST_PATTERNS: List<String> = listOf(
  * `evaluationDependsOn` pulls transitive deps through evaluation before any
  * state is read, and only plain strings (task paths, dir paths) cross into
  * task configuration — never a Project.
+ *
+ * Dual role: this is also where the app/library conventions get their
+ * non-Rust Test batching. When neither this project nor any project dep
+ * registered a host lib (and none called [rustNativeLib] at all), the
+ * afterEvaluate below configures every Test task with `forkEvery = 20`,
+ * `maxParallelForks = (cores / 2).coerceIn(1, 3)` and `maxHeapSize = "1g"`.
+ * When a Rust module is involved it returns without touching the task —
+ * the `forkEvery = 1` wiring below (and the rustNativeTests split) owns it.
  */
 fun Project.wireRustHostLibsForUnitTests() {
     // Created here, while the convention plugin is being applied, so the
@@ -1006,7 +1034,40 @@ fun Project.wireRustHostLibsForUnitTests() {
             enqueueDepsOf(self.project(depPath))
         }
         val refs = (listOf(self.path) + ordered).flatMap { rustHostLibRefs()[it].orEmpty() }
-        if (refs.isEmpty()) return@afterEvaluate
+        if (refs.isEmpty()) {
+            // Non-Rust modules (neither this project nor any project dep
+            // called rustNativeLib): RustNative does not control these Test
+            // tasks, so give them the safe batching appstore's non-native
+            // classes proved out — 20 classes share one JVM + Robolectric
+            // sandbox instead of the Gradle default (one JVM for the whole
+            // suite, sequentially), with at most 3 such JVMs in parallel at
+            // 1 GB each. The tighter fork cap (1..3, vs 1..6 for the
+            // forkEvery = 1 path below) bounds the memory of several
+            // long-lived Robolectric JVMs sitting side by side.
+            //
+            // WARNING: a shared JVM is shared state. appstore showed that
+            // classes leaking viewModelScope collectors onto a process-wide
+            // DataStore, or persisting DataStore/Room state another class
+            // expects to be fresh, can hang or fail when batched — such
+            // classes must not be enabled for this path without an audit
+            // (Rust modules quarantine them via rustNativeTests
+            // isolatedClasses instead; a non-Rust module that turns out to
+            // pollute must be investigated, not silently kept batched).
+            //
+            // A Rust module with hostTests = false registers no ref but is
+            // in rustNativeLibProjectPaths: leave it entirely alone.
+            val isRustModule = (listOf(self.path) + ordered)
+                .any { it in rustNativeLibProjectPaths() }
+            if (!isRustModule) {
+                self.tasks.withType<Test>().configureEach {
+                    forkEvery = 20
+                    maxParallelForks =
+                        (Runtime.getRuntime().availableProcessors() / 2).coerceIn(1, 3)
+                    maxHeapSize = "1g"
+                }
+            }
+            return@afterEvaluate
+        }
         self.tasks.withType<Test>().configureEach {
             refs.forEach { ref -> dependsOn("${ref.projectPath}:${ref.taskName}") }
             val sep = File.pathSeparator

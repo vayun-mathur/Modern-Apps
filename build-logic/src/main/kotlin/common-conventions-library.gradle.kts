@@ -21,6 +21,10 @@ val libs = the<org.gradle.accessors.dm.LibrariesForLibs>()
 // JVM unit tests load Rust cdylibs from build/rustHostLibs (see RustNative.kt):
 // every Test task builds + links the host libs of this module and each project
 // dep that registers one. Lazy — assemble/install never build them.
+// That same wiring gives modules with NO rustNativeLib anywhere in their
+// project-dep graph the safe non-Rust Test batching (forkEvery = 20,
+// maxParallelForks = (cores / 2).coerceIn(1, 3), maxHeapSize = "1g"); Rust
+// modules keep RustNative's forkEvery = 1 and are left entirely alone.
 wireRustHostLibsForUnitTests()
 wireRoomSchemaLocation()
 includeRobolectricClassesInCoverage()
