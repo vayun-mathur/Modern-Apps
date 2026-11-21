@@ -488,8 +488,12 @@ class ContactViewModel internal constructor(
         val sc = SimContactsDataSource.findBackingSimContact(app, contact)
             ?: fallbackSimContact(contact)
         val subId = sc.subscriptionId ?: contact.accountName?.toIntOrNull()
-        SimContactsDataSource.deleteSimContact(app, sc.copy(subscriptionId = subId))
+        val deleted = SimContactsDataSource.deleteSimContact(app, sc.copy(subscriptionId = subId))
         syncFromSystem()
+        // Same delayed convergence re-read as SIM saves: the immediate read
+        // can still serve the provider's pre-write cache, leaving a deleted
+        // contact visible until a SIM swap (#934).
+        if (deleted) scheduleSimConvergenceSync()
     }
 
     private suspend fun deleteProviderContact(contact: com.vayunmathur.contacts.data.Contact) {

@@ -224,8 +224,8 @@ private suspend fun ContactViewModel.deleteTransferSource(contact: Contact) {
     val app = getApplication<Application>()
     if (isSimAccountType(contact.accountType)) {
         val sc = SimContactsDataSource.findBackingSimContact(app, contact)
-        if (sc != null) {
-            SimContactsDataSource.deleteSimContact(app, sc)
+        if (sc != null && SimContactsDataSource.deleteSimContact(app, sc)) {
+            scheduleSimConvergenceSync()
         }
     } else {
         // Fresh-read details so the delete path sees current rows.

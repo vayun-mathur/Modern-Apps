@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.core.net.toUri
+import android.provider.ContactsContract
 import android.telephony.SubscriptionManager
 import com.vayunmathur.library.log.Log
 import androidx.core.content.ContextCompat
@@ -24,8 +25,25 @@ data class SimContact(
     val name: String,
     val number: String,
     val emails: String? = null,
-    val subscriptionId: Int? = null
+    val subscriptionId: Int? = null,
+    /** Additional numbers (ADN ANRs), `:`-joined without a trailing separator, when the provider exposes them. */
+    val anrs: String? = null
 )
+
+/**
+ * Normalises one delimited ADN field as the ICC provider encodes it on the wire.
+ *
+ * On read the provider joins each value *followed* by the separator
+ * (`IccProvider.loadRecord` appends `,` after every email and `:` after every
+ * ANR), so a single email arrives as `"a@x.com,"`. Taking that verbatim as an
+ * address is #935: it shows in the editor and in other apps, and it breaks
+ * exact-match lookups of the row. Splitting and re-joining without empty
+ * segments strips the trailing separator while preserving any extra values
+ * another app stored, which the update/delete old-record match needs intact.
+ */
+internal fun normalizeSimDelimited(raw: String?, separator: Char): String? =
+    raw?.split(separator)?.map { it.trim() }?.filter { it.isNotEmpty() }
+        ?.joinToString(separator.toString())?.takeIf { it.isNotEmpty() }
 
 const val SIM_ACCOUNT_TYPE = "com.vayunmathur.contacts.sim"
 
@@ -131,7 +149,7 @@ object SimContactsDataSource {
             Log.status(TAG, "listSimContacts failed", e)
         }
         // Deduplicate by (subId, name, number, emails)
-        return result.distinctBy { "${it.subscriptionId}|${it.name}|${it.number}|${it.emails}" }
+        return result.distinctBy { "${it.subscriptionId}|${it.name}|${it.number}|${it.emails}|${it.anrs}" }
     }
 
     // Broad catch is deliberate: OEM ICC providers throw undocumented
@@ -163,6 +181,7 @@ object SimContactsDataSource {
         val nameIdx = pickColumn(cursor, "name", "tag")
         val numberIdx = pickColumn(cursor, "number", "newNumber")
         val emailsIdx = pickColumn(cursor, "emails", "email")
+        val anrsIdx = cursor.getColumnIndex("anrs")
         val idIdx = cursor.getColumnIndex("_id")
 
         private fun pickColumn(
@@ -191,6 +210,8 @@ object SimContactsDataSource {
                 if (indexes.numberIdx != -1) cursor.getString(indexes.numberIdx) else null
             val rawEmails =
                 if (indexes.emailsIdx != -1) cursor.getString(indexes.emailsIdx) else null
+            val rawAnrs =
+                if (indexes.anrsIdx != -1) cursor.getString(indexes.anrsIdx) else null
             val name = rawName?.trim().orEmpty()
             val number = rawNumber?.trim().orEmpty()
             if (name.isEmpty() && number.isEmpty()) return null
@@ -199,8 +220,9 @@ object SimContactsDataSource {
                 id = id,
                 name = name,
                 number = number,
-                emails = rawEmails?.trim()?.takeIf { it.isNotEmpty() },
-                subscriptionId = subId
+                emails = normalizeSimDelimited(rawEmails, ','),
+                subscriptionId = subId,
+                anrs = normalizeSimDelimited(rawAnrs, ':')
             )
         } catch (e: Exception) {
             Log.status(TAG, "Skipping SIM row", e)
@@ -242,15 +264,14 @@ object SimContactsDataSource {
                 BASE_URI.toUri()
             }
             val values = ContentValues().apply {
-                // Most devices accept "tag" for name
+                // The ICC provider's only keys are tag/number/emails/anrs
+                // (IccProvider.STR_*); aliases such as "email" are ignored by
+                // AOSP and, on OEM variants that do read them, risk being
+                // stored as a second address. Write the canonical key only,
+                // with any provider trailing separator stripped first.
                 put("tag", name)
                 put("number", number)
-                // Some accept "name" alias
-                if (!containsKey("tag")) put("name", name)
-                if (!email.isNullOrBlank()) {
-                    put("emails", email)
-                    put("email", email)
-                }
+                normalizeSimDelimited(email, ',')?.let { put("emails", it) }
             }
             val inserted = context.contentResolver.insert(uri, values)
             if (inserted != null) notifySimChanged(context, uri)
@@ -265,8 +286,14 @@ object SimContactsDataSource {
     }
 
     /**
-     * Edits a row in place. The provider identifies the existing row by `tag`/`number` in the
-     * values and replaces it with `newTag`/`newNumber`.
+     * Edits a row in place. The provider identifies the existing row by the *whole*
+     * old record in the values (`tag`/`number`/`emails`/`anrs`) and replaces it with
+     * `newTag`/`newNumber`/`newEmails`/`newAnrs`: telephony's update-by-search
+     * compares every field (`AdnRecord.isEqual`), so omitting the old email leaves
+     * an emailed row unmatched. On the legacy cache that reads as a failed update;
+     * on the Android 16 modem phonebook cache an unmatched search is treated as
+     * an insert, duplicating the contact (#936). ANRs the editor does not model
+     * are carried over unchanged rather than dropped by the edit.
      *
      * Preferred over delete-then-insert, which cannot be made reliable: the ICC provider parses
      * the selection string itself and ignores selectionArgs (see [deleteSingle]).
@@ -291,14 +318,18 @@ object SimContactsDataSource {
             } else {
                 BASE_URI.toUri()
             }
+            val oldAnrs = normalizeSimDelimited(old.anrs, ':').orEmpty()
             val values = ContentValues().apply {
                 put("tag", old.name)
                 put("number", old.number)
+                put("emails", normalizeSimDelimited(old.emails, ',').orEmpty())
+                put("anrs", oldAnrs)
                 put("newTag", name)
                 put("newNumber", number)
                 // Unconditional: an omitted key leaves the old address in place, so clearing an
                 // email would report success without changing anything.
-                put("newEmails", email.orEmpty())
+                put("newEmails", normalizeSimDelimited(email, ',').orEmpty())
+                put("newAnrs", oldAnrs)
             }
             val updated = context.contentResolver.update(uri, values, null, null) > 0
             if (updated) notifySimChanged(context, uri)
@@ -351,7 +382,20 @@ object SimContactsDataSource {
         // literally and matches nothing. The values have to be inlined.
         val tag = simContact.name.asIccLiteral()
         val number = simContact.number.asIccLiteral()
+        // The provider rebuilds the old record from this selection and matches
+        // it whole (see updateSimContact), so the primary variant must carry
+        // the row's emails/ANRs too; tag+number alone cannot match an emailed
+        // row and the delete silently leaves it in place (#934). The looser
+        // variants remain for OEM providers that match on fewer fields.
+        val emails = normalizeSimDelimited(simContact.emails, ',')
+        val anrs = normalizeSimDelimited(simContact.anrs, ':')
+        val full = buildString {
+            append("tag=$tag AND number=$number")
+            if (emails != null) append(" AND emails=${emails.asIccLiteral()}")
+            if (anrs != null) append(" AND anrs=${anrs.asIccLiteral()}")
+        }
         val variants = listOfNotNull(
+            full,
             "tag=$tag AND number=$number",
             "name=$tag AND number=$number",
             // The fallback uses the number alone and is skipped for a contact with no
@@ -392,6 +436,15 @@ object SimContactsDataSource {
             context.contentResolver.notifyChange(uri, null)
             val base = BASE_URI.toUri()
             if (uri != base) context.contentResolver.notifyChange(base, null)
+            // Other contacts apps watch the contacts provider, not the ICC
+            // provider, and re-read (including any SIM aggregation their
+            // provider performs) only when it changes. A SIM write never
+            // touches that provider, so without this hint they keep showing
+            // the pre-write snapshot until a SIM swap forces a reload (#934).
+            // This also re-triggers our own contacts observer, whose debounced
+            // re-sync is a second chance if the immediate post-write ADN read
+            // still serves the provider's pre-write cache.
+            context.contentResolver.notifyChange(ContactsContract.Contacts.CONTENT_URI, null)
         } catch (_: Exception) { }
     }
 
@@ -487,7 +540,7 @@ object SimContactsDataSource {
      * a different row before it in the cursor. Hash is on (subId|name|number|email).
      */
     fun syntheticIdFor(sc: SimContact): Long {
-        val h = "${sc.subscriptionId}|${sc.name}|${sc.number}|${sc.emails}".hashCode()
+        val h = "${sc.subscriptionId}|${sc.name}|${sc.number}|${sc.emails}|${sc.anrs}".hashCode()
         // Map signed int hash into a negative Long away from -1..-N used by AutoIncrement edge.
         return SIM_SYNTHETIC_ID_BASE - (h.toLong() and ID_HASH_MASK)
     }
@@ -517,7 +570,10 @@ object SimContactsDataSource {
         } else {
             emptyList()
         }
-        val emails = sc.emails?.takeIf { it.isNotBlank() }?.let {
+        // ADN can hold several addresses, but the unified model's SIM shape
+        // (and the editor) carries one; extras stay in the row and are matched
+        // on update/delete via SimContact.emails, not shown as one long address.
+        val emails = normalizeSimDelimited(sc.emails, ',')?.substringBefore(',')?.let {
             val homeType = android.provider.ContactsContract.CommonDataKinds.Email.TYPE_HOME
             listOf(com.vayunmathur.contacts.data.Email(0, it, homeType))
         } ?: emptyList()

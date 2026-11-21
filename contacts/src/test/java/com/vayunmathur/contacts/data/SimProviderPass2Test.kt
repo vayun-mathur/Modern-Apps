@@ -177,6 +177,8 @@ class SimProviderPass2Test {
         assertEquals("New Person", FakeIccProvider.lastInsertValues?.getAsString("tag"))
         assertEquals("+14155550199", FakeIccProvider.lastInsertValues?.getAsString("number"))
         assertEquals("new@x.com", FakeIccProvider.lastInsertValues?.getAsString("emails"))
+        // only the provider's canonical key is written, never the "email" alias
+        assertEquals(null, FakeIccProvider.lastInsertValues?.getAsString("email"))
 
         // blank name and number never reach the provider
         val before = FakeIccProvider.lastInsertUri
@@ -195,6 +197,11 @@ class SimProviderPass2Test {
         assertEquals("New Name", FakeIccProvider.lastUpdateValues?.getAsString("newTag"))
         assertEquals("+222", FakeIccProvider.lastUpdateValues?.getAsString("newNumber"))
         assertEquals("", FakeIccProvider.lastUpdateValues?.getAsString("newEmails"))
+        // the whole old record must be supplied for the provider's by-search
+        // match, and ANRs the editor does not model are preserved
+        assertEquals("old@x.com", FakeIccProvider.lastUpdateValues?.getAsString("emails"))
+        assertEquals("", FakeIccProvider.lastUpdateValues?.getAsString("anrs"))
+        assertEquals("", FakeIccProvider.lastUpdateValues?.getAsString("newAnrs"))
 
         assertFalse(SimContactsDataSource.updateSimContact(ctx, old, "", ""))
     }
@@ -205,5 +212,9 @@ class SimProviderPass2Test {
         val contact = SimContact(1, "Aisha Rahman", "+14155550102", "aisha@x.com", 5)
         assertTrue(SimContactsDataSource.deleteSimContact(ctx, contact))
         assertEquals("content://icc/adn/subId/5", FakeIccProvider.lastDeleteUri.toString())
+        assertTrue(
+            FakeIccProvider.lastDeleteSelection.orEmpty().contains("emails='aisha@x.com'"),
+            "delete selection must carry the old email for the whole-record match, was ${FakeIccProvider.lastDeleteSelection}",
+        )
     }
 }

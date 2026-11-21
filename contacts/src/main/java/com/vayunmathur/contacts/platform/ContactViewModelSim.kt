@@ -101,7 +101,15 @@ internal suspend fun ContactViewModel.updateExistingSimContact(
             return true
         }
     }
-    SimContactsDataSource.deleteSimContact(app, oldSc)
+    // Delete-then-insert is only a safe fallback when the old row is actually
+    // gone. Previously the delete result was discarded and the caller inserted
+    // unconditionally, so any failed delete (e.g. an emailed row the old
+    // tag+number-only match could not find) turned an edit into a duplicate:
+    // the original plus the edited copy (#936). Report the failure instead.
+    if (!SimContactsDataSource.deleteSimContact(app, oldSc)) {
+        Log.error("ContactViewModel", "SIM edit aborted: could not remove the old SIM row")
+        return false
+    }
     return null
 }
 
