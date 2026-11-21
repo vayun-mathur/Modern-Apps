@@ -6,11 +6,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
@@ -26,6 +29,7 @@ import com.vayunmathur.health.data.FoodDatabase
 import com.vayunmathur.health.platform.HealthViewModel
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.databases
+import com.vayunmathur.testsupport.awaitSemantics
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -164,10 +168,23 @@ class HealthComposeC5Test {
         val target = rule.onAllNodes(androidx.compose.ui.test.hasSetTextAction())[0]
         target.performTextClearance()
         target.performTextInput(text)
-        // Debounce for non-empty queries is 180ms of compose-clock time.
-        rule.mainClock.advanceTimeBy(500)
-        rule.waitForIdle()
-        rule.onNodeWithText("Use \u201c$text\u201d").performScrollTo().performClick()
+        // Wait for the settled search, not for idle: the 180ms debounce and
+        // the catalogue search (on Dispatchers.IO) must both have applied
+        // before the typed row is looked for. `waitForIdle` alone returns
+        // while that IO coroutine is still suspended, leaving the typed row
+        // after the full unfiltered list (e.g. ~250 vaccines), where the
+        // LazyColumn has not merged it into the visible semantics tree and
+        // `performScrollTo` on it fails under suite load. "Nothing matches"
+        // is the production screen's own terminal signal for that state: it
+        // is shown only once `settledQuery` is non-blank and the settled
+        // results are empty, which these nonsense names guarantee.
+        rule.awaitSemantics("settled search for typed name $text") {
+            rule.onAllNodesWithText("Nothing matches that search").fetchSemanticsNodes().isNotEmpty()
+        }
+        // Scroll via the container, as elsewhere in this module: a lazy row
+        // cannot scroll itself into existence before it is composed.
+        rule.onNode(hasScrollAction()).performScrollToNode(hasText("Use \u201c$text\u201d"))
+        rule.onNodeWithText("Use \u201c$text\u201d").performClick()
         rule.waitForIdle()
     }
 
