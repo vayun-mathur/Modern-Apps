@@ -41,7 +41,14 @@ internal fun peerIds(peersJson: String): Set<String> = runCatching {
  * (Connecting / Reconnecting / why it failed) and short-lived "X joined" / "X left" notices.
  */
 @Composable
-fun OnlineHud(status: NetStatus, peersJson: String, ownerDevice: String, isHost: Boolean, modifier: Modifier = Modifier) {
+fun OnlineHud(
+    status: NetStatus,
+    peersJson: String,
+    ownerDevice: String,
+    isHost: Boolean,
+    unsentCount: Int = 0,
+    modifier: Modifier = Modifier,
+) {
     val peers = remember(peersJson) { peerIds(peersJson) }
     val notices = remember { mutableStateListOf<Notice>() }
     val previous = remember { mutableStateOf<Set<String>?>(null) }
@@ -59,6 +66,9 @@ fun OnlineHud(status: NetStatus, peersJson: String, ownerDevice: String, isHost:
         if (!isHost && status == NetStatus.Connected) {
             val here = ownerDevice in peers
             Chip(stringResource(if (here) R.string.host_here else R.string.host_away), if (here) Color(0x992E7D32) else Color(0x99000000))
+        }
+        if (unsentCount > 0) {
+            Chip(pluralStringResource(R.plurals.unsent_changes, unsentCount, unsentCount), Color(0xCCB26A00))
         }
         when (status) {
             NetStatus.Connected -> Unit

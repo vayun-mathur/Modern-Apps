@@ -8,6 +8,8 @@ import com.vayunmathur.games.voxels.domain.NetFailure
 import com.vayunmathur.games.voxels.domain.NetStatus
 import com.vayunmathur.games.voxels.domain.netStatusOf
 import com.vayunmathur.games.voxels.util.VoxelsNative
+import com.vayunmathur.library.util.DataStoreUtils
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
@@ -54,6 +56,16 @@ class MultiplayerPump private constructor(
     private val roster: MutableSet<String> = Collections.synchronizedSet(HashSet())
     private val bundles = ConcurrentHashMap<String, ByteArray>()
 
+    // Persisted outbound world ops (see PendingOps.kt). run() swaps in the DataStore-backed
+    // store before the loop starts; the in-memory default keeps reflective/unit-constructed
+    // pumps functional. liveSender is a seam so tests can drive ack/failure without a socket.
+    internal var pendingStore: PendingOpsStore = InMemoryPendingOpsStore()
+    internal var onPendingCount: (Int) -> Unit = {}
+    internal var liveSender: suspend (List<String>) -> Boolean = { ops ->
+        VoxelsSync.liveAppend(channel, key, ops)
+    }
+    private val outboundQueue by lazy { PendingOpQueue(pendingStore, liveSender) }
+
     /** Entry point and session setup. */
     companion object {
         private const val ROLE_HOST = 1
@@ -63,7 +75,13 @@ class MultiplayerPump private constructor(
         private const val ROSTER_EVERY = 125
 
         /** Runs the pump until the calling coroutine is cancelled. */
-        suspend fun run(context: Context, params: Params, onStatus: (NetStatus) -> Unit, onPeers: (String) -> Unit) {
+        suspend fun run(
+            context: Context,
+            params: Params,
+            onStatus: (NetStatus) -> Unit,
+            onPeers: (String) -> Unit,
+            onPending: (Int) -> Unit = {},
+        ) {
             onStatus(NetStatus.Connecting)
             if (!runCatching { VoxelsSync.init(context) }.getOrDefault(false)) {
                 onStatus(NetStatus.Failed(NetFailure.SERVER_UNREACHABLE)); return
@@ -76,7 +94,10 @@ class MultiplayerPump private constructor(
             val ownerBundle = if (params.role == ROLE_HOST) VoxelsSync.publicBundle
             else runCatching { VoxelsSync.getKey(params.ownerDevice) }.getOrNull()
             if (ownerBundle == null) { onStatus(NetStatus.Failed(NetFailure.HOST_UNVERIFIED)); return }
-            MultiplayerPump(params, myId, key, ownerBundle).loop(onStatus, onPeers)
+            MultiplayerPump(params, myId, key, ownerBundle).also { pump ->
+                pump.pendingStore = DataStorePendingOpsStore(DataStoreUtils.getInstance(context), params.worldId)
+                pump.onPendingCount = onPending
+            }.loop(onStatus, onPeers)
         }
     }
 
@@ -163,6 +184,10 @@ class MultiplayerPump private constructor(
     }
 
     // Ships everything the engine queued: transforms as presence, the rest as signed world ops.
+    // World ops go through the persisted PendingOpQueue: signed ops are saved before the send
+    // attempt and cleared only when liveAppend succeeds, so a down socket no longer drains-and-
+    // drops them — the next tick (e.g. after reconnect) replays them in order. Presence stays
+    // ephemeral/best-effort: a dropped transform is superseded by the next one.
     private suspend fun flushOutbound() {
         val out = try { VoxelsNative.netDrainOutbound() } catch (_: Exception) { "[]" }
         try {
@@ -176,7 +201,10 @@ class MultiplayerPump private constructor(
                     ops.add(signed(o.toString()))
                 }
             }
-            if (ops.isNotEmpty()) VoxelsSync.liveAppend(channel, key, ops)
+            // Always flush (even with no new ops) so persisted ops replay on reconnect.
+            onPendingCount(outboundQueue.enqueueAndFlush(ops))
+        } catch (e: CancellationException) {
+            throw e
         } catch (_: Exception) {}
     }
 
@@ -185,6 +213,8 @@ class MultiplayerPump private constructor(
         VoxelsSync.publicBundle.let { bundles[myId] = it; bundles[p.ownerDevice] = it }
         if (isHost) refreshRoster()
         val everConnected = AtomicBoolean(false)
+        // Surface ops persisted by a previous pump/process before the first flush replays them.
+        onPendingCount(outboundQueue.pendingCount())
         startLive(this) { everConnected.set(true) }
         var tick = 0
         while (isActive) {

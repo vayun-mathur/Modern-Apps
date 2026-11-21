@@ -206,6 +206,7 @@ class MainActivity : ComponentActivity() {
                 // Online multiplayer HUD state.
                 var netStatus by remember { mutableStateOf<NetStatus>(NetStatus.Connecting) }
                 var peersJson by remember { mutableStateOf("[]") }
+                var unsentCount by remember { mutableStateOf(0) }
                 LaunchedEffect(Unit) { if (VoxelsNative.isAvailable) try { recipesJson = VoxelsNative.getRecipesJson(); smeltingJson = VoxelsNative.getSmeltingJson(); blessingCatalogJson = VoxelsNative.getBlessingCatalogJson(); cutsJson = VoxelsNative.getCutsJson() } catch (_: Exception) {} }
                 // World loading runs on the engine thread; poll it for the loading overlay. The phase
                 // can drop back to meshing if the renderer ever has to be rebuilt.
@@ -385,6 +386,7 @@ class MainActivity : ComponentActivity() {
                         params = MultiplayerPump.Params(sharedWorldId, worldKeyB64, ownerDevice, netRole, worldName),
                         onStatus = { netStatus = it },
                         onPeers = { peersJson = it },
+                        onPending = { unsentCount = it },
                     )
                 }
 
@@ -591,7 +593,7 @@ class MainActivity : ComponentActivity() {
                                 Modifier.align(Alignment.TopEnd).padding(top = 36.dp, end = 12.dp),
                                 horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(6.dp),
                             ) {
-                                OnlineHud(status = netStatus, peersJson = peersJson, ownerDevice = ownerDevice, isHost = netRole == 1)
+                                OnlineHud(status = netStatus, peersJson = peersJson, ownerDevice = ownerDevice, isHost = netRole == 1, unsentCount = unsentCount)
                                 joinRequests.firstOrNull()?.let { req ->
                                     JoinRequestChip(
                                         player = req.name.ifBlank { req.requesterId.take(8) },

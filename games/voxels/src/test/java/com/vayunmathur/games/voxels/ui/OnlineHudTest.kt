@@ -31,6 +31,18 @@ class OnlineHudTest {
         rule.onNodeWithText("2 players online").assertExists()
     }
 
+    @Test fun `unsent changes are visible only when there are any`() {
+        rule.setContent {
+            OnlineHud(NetStatus.Reconnecting, "[]", ownerDevice = "host", isHost = false, unsentCount = 3)
+        }
+        rule.onNodeWithText("3 unsent changes").assertExists()
+    }
+
+    @Test fun `no unsent indicator when everything is sent`() {
+        rule.setContent { OnlineHud(NetStatus.Connected, "[]", ownerDevice = "host", isHost = false) }
+        rule.onNodeWithText("0 unsent changes").assertDoesNotExist()
+    }
+
     @Test fun `failures say why`() {
         rule.setContent { OnlineHud(NetStatus.Failed(NetFailure.BAD_INVITE), "[]", ownerDevice = "h", isHost = false) }
         rule.onNodeWithText("This world's invite is damaged — ask the host to invite you again.").assertExists()

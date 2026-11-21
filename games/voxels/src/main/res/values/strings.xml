@@ -117,6 +117,11 @@
     <string name="online_connecting">Connecting…</string>
     <!-- Online HUD for joiners: the host is (not) connected right now. Sentence fragment -->
     <string name="host_here">Host is here</string>
+    <!-- Online HUD: world changes persisted locally but not yet sent to the relay. -->
+    <plurals name="unsent_changes">
+        <item quantity="one">%1$d unsent change</item>
+        <item quantity="other">%1$d unsent changes</item>
+    </plurals>
     <string name="host_away">Host isn\'t connected</string>
     <!-- Online HUD notices; %1$s = player name. Sentence fragment -->
     <!-- In-game host prompt; %1$s = requesting player. Sentence -->
