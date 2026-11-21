@@ -22,6 +22,7 @@ import com.vayunmathur.library.ui.Card
 import com.vayunmathur.library.ui.OutlinedButton
 import com.vayunmathur.library.ui.OutlinedTextField
 import com.vayunmathur.library.ui.Text
+import com.vayunmathur.library.ui.rememberMessenger
 import com.vayunmathur.library.util.NavBackStack
 
 /**
@@ -45,6 +46,16 @@ fun WaypointSheet(
     val waypointRange by ffViewModel.waypointRange.collectAsState()
     val waypoints by ffViewModel.waypoints.collectAsState()
     val existing = waypoints.firstOrNull { it.id == waypointId }
+
+    // Saving a place is alert-relevant (arrivals/departures are announced
+    // from it), so notifications are requested contextually here — at the
+    // first saved place, not at startup. Denial leaves the place unsaved
+    // and explains, rather than saving an alert that can never announce.
+    val messenger = rememberMessenger()
+    val notificationsDeniedMessage = stringResource(R.string.notifications_denied)
+    val ensureNotifications = rememberNotificationPermissionAction {
+        messenger.show(notificationsDeniedMessage)
+    }
 
     Dialog(onDismissRequest = { backStack.pop() }) {
         Card {
@@ -82,8 +93,10 @@ fun WaypointSheet(
                     ) { Text(stringResource(android.R.string.cancel)) }
                     Button(
                         {
-                            if (ffViewModel.mapState.saveCurrentWaypoint(waypointId)) {
-                                backStack.pop()
+                            ensureNotifications {
+                                if (ffViewModel.mapState.saveCurrentWaypoint(waypointId)) {
+                                    backStack.pop()
+                                }
                             }
                         },
                         Modifier.weight(1f),

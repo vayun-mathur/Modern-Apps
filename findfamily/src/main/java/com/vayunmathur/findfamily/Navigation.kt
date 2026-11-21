@@ -6,6 +6,7 @@ import androidx.compose.runtime.LaunchedEffect
 import com.vayunmathur.findfamily.domain.AddInvite
 import com.vayunmathur.findfamily.platform.FindFamilyViewModel
 import com.vayunmathur.findfamily.platform.Platform
+import com.vayunmathur.findfamily.ui.FirstRunSheet
 import com.vayunmathur.findfamily.ui.MainPage
 import com.vayunmathur.findfamily.ui.PersonSheet
 import com.vayunmathur.findfamily.ui.UwbRangingScreen
@@ -31,8 +32,19 @@ fun Navigation(
     onDeepLinkAddConsumed: () -> Unit = {},
     noShowTarget: Pair<Long, Long?>? = null,
     onNoShowTargetConsumed: () -> Unit = {},
+    showFirstRun: Boolean = false,
+    onFirstRunFinished: () -> Unit = {},
 ) {
     val backStack = rememberNavBackStack<Route>(Route.MainPage)
+
+    // Staged first-run sheet, first-run users only. The effect keys on
+    // showFirstRun only, so dismissing the sheet ("Later") does not re-push
+    // it in the same launch; it returns on the next launch until finished.
+    LaunchedEffect(showFirstRun) {
+        if (showFirstRun && backStack.backStack.lastOrNull() !is Route.FirstRunSheet) {
+            backStack.add(Route.FirstRunSheet)
+        }
+    }
 
     LaunchedEffect(showMissingFeatures) {
         if (showMissingFeatures) {
@@ -95,6 +107,9 @@ fun Navigation(
         }
         entry<Route.MissingFeaturesDialog>(metadata = DialogPage()) {
             MissingFeaturesDialog(backStack)
+        }
+        entry<Route.FirstRunSheet>(metadata = DialogPage()) {
+            FirstRunSheet(backStack, ffViewModel, onFinished = onFirstRunFinished)
         }
         entry<Route.UwbRangingPage> {
             UwbRangingScreen(backStack, ffViewModel, it.userId)

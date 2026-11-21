@@ -12,6 +12,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import com.vayunmathur.findfamily.data.FindFamilyRepository
 import com.vayunmathur.findfamily.domain.AddInvite
+import com.vayunmathur.findfamily.domain.FirstRun
 import com.vayunmathur.findfamily.notifications.EXTRA_NOSHOW_USER_ID
 import com.vayunmathur.findfamily.notifications.EXTRA_NOSHOW_WAYPOINT_ID
 import com.vayunmathur.findfamily.platform.FindFamilyViewModel
@@ -64,6 +65,10 @@ class MainActivity : MaActivity() {
         val platform = Platform(this)
         val hasForeground by ffViewModel.hasForeground.collectAsState()
         val hasCoarse by ffViewModel.hasCoarse.collectAsState()
+        val hasBackground by ffViewModel.hasBackground.collectAsState()
+        val hasBluetooth by ffViewModel.hasBluetooth.collectAsState()
+        val hasFamily by ffViewModel.hasFamilyMember.collectAsState()
+        val firstRunCompleted by ffViewModel.firstRunCompleted.collectAsState()
         // Approximate-only needs the upgrade prompt even though the gate
         // itself only blocks on the missing set.
         val coarseOnly = hasCoarse && !hasForeground
@@ -72,35 +77,56 @@ class MainActivity : MaActivity() {
             if (coarseOnly) showUpgradeDialog = true
         }
 
-        OfflineAware {
-            AppPermissionsGate(spec = findFamilyPermissionsSpec()) {
-                val deepLinkPeerId = remember {
-                    intent?.takeIf { it.hasExtra(EXTRA_UWB_PEER_ID) }
-                        ?.getLongExtra(EXTRA_UWB_PEER_ID, -1L)
-                        ?.takeIf { it != -1L }
-                }
-                Navigation(
-                    platform,
-                    ffViewModel,
-                    ffViewModel.missingFeatures,
-                    deepLinkPeerId,
-                    deepLinkAddInvite.value,
-                    onDeepLinkAddConsumed = { deepLinkAddInvite.value = null },
-                    noShowTarget = noShowTarget.value,
-                    onNoShowTargetConsumed = { noShowTarget.value = null },
-                )
+        // Staged first-run (census M): a brand-new user (no family, flow not
+        // finished, not already granted) is NOT dropped into the all-at-once
+        // permission wall. They go straight into the app with the staged
+        // sheet over it — pair family first with no permission, location
+        // only when enabling sharing, notifications at the first alert.
+        // Returning users (family present, or the flow finished) and the
+        // already-granted fast path keep the original gate exactly: the
+        // gate passes granted users in one frame and walls the rest as before.
+        val allGateGranted = hasForeground && hasBackground && hasBluetooth
+        val isFirstRun = FirstRun.isFirstRun(hasFamily, firstRunCompleted, allGateGranted)
 
-                // Approximate-only: explain and offer a reliable way to
-                // re-open the upgrade prompt after it has been dismissed.
-                if (coarseOnly && showUpgradeDialog) {
-                    ConfirmDialog(
-                        title = stringResource(R.string.permission_upgrade_dialog_title),
-                        message = stringResource(R.string.permission_upgrade_dialog_message),
-                        confirmLabel = stringResource(R.string.permission_upgrade_dialog_confirm),
-                        dismissLabel = stringResource(R.string.permission_upgrade_dialog_dismiss),
-                        onConfirm = { showUpgradeDialog = false },
-                        onDismiss = { showUpgradeDialog = false },
-                    )
+        val gatedContent: @Composable (Boolean) -> Unit = { showFirstRun ->
+            val deepLinkPeerId = remember {
+                intent?.takeIf { it.hasExtra(EXTRA_UWB_PEER_ID) }
+                    ?.getLongExtra(EXTRA_UWB_PEER_ID, -1L)
+                    ?.takeIf { it != -1L }
+            }
+            Navigation(
+                platform,
+                ffViewModel,
+                ffViewModel.missingFeatures,
+                deepLinkPeerId,
+                deepLinkAddInvite.value,
+                onDeepLinkAddConsumed = { deepLinkAddInvite.value = null },
+                noShowTarget = noShowTarget.value,
+                onNoShowTargetConsumed = { noShowTarget.value = null },
+                showFirstRun = showFirstRun,
+                onFirstRunFinished = { ffViewModel.completeFirstRun() },
+            )
+
+            // Approximate-only: explain and offer a reliable way to
+            // re-open the upgrade prompt after it has been dismissed.
+            if (coarseOnly && showUpgradeDialog) {
+                ConfirmDialog(
+                    title = stringResource(R.string.permission_upgrade_dialog_title),
+                    message = stringResource(R.string.permission_upgrade_dialog_message),
+                    confirmLabel = stringResource(R.string.permission_upgrade_dialog_confirm),
+                    dismissLabel = stringResource(R.string.permission_upgrade_dialog_dismiss),
+                    onConfirm = { showUpgradeDialog = false },
+                    onDismiss = { showUpgradeDialog = false },
+                )
+            }
+        }
+
+        OfflineAware {
+            if (isFirstRun) {
+                gatedContent(true)
+            } else {
+                AppPermissionsGate(spec = findFamilyPermissionsSpec()) {
+                    gatedContent(false)
                 }
             }
         }

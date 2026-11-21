@@ -21,6 +21,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.vayunmathur.findfamily.data.FindFamilyRepository
+import com.vayunmathur.findfamily.domain.FirstRun
 import com.vayunmathur.findfamily.data.LocationValue
 import com.vayunmathur.findfamily.data.NoShowAlert
 import com.vayunmathur.findfamily.data.RequestStatus
@@ -101,6 +102,11 @@ class FindFamilyViewModel(
             }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** True once any non-self person row exists (connected, requested, or awaiting). Excluding the self row is essential: [Networking.init] creates it on first launch, so counting it would make every new user look like a returning one. */
+    val hasFamilyMember: StateFlow<Boolean> = repository.users
+        .map { list -> list.any { it.id != Networking.userid } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     /** Inbound requests awaiting the user's acceptance. */
     val awaitingRequestUsers: StateFlow<List<User>> = repository.users
@@ -298,6 +304,18 @@ class FindFamilyViewModel(
      * always on, and without this the scanner starts and immediately closes with no error.
      */
     val hasBluetooth: StateFlow<Boolean> = _hasBluetooth.asStateFlow()
+
+    /** Whether the staged first-run flow has been finished on this device. Defaults to false, so pre-change installs read as unfinished — but [com.vayunmathur.findfamily.domain.FirstRun.isFirstRun] also requires no family, so returning users with family are never treated as first-run. */
+    val firstRunCompleted: StateFlow<Boolean> =
+        DataStoreUtils.getInstance(ctx).booleanFlow(FirstRun.COMPLETED_KEY, false)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    /** Mark the staged first-run flow finished; it is never shown again after this. */
+    fun completeFirstRun() {
+        viewModelScope.launch(Dispatchers.IO) {
+            DataStoreUtils.getInstance(ctx).setBoolean(FirstRun.COMPLETED_KEY, true)
+        }
+    }
 
     /** Re-read all permission flags from the OS and reconcile the tracking
      * service. Call on resume so returning from Settings (grant, revoke,

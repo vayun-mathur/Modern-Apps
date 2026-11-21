@@ -69,9 +69,43 @@ fun PersonSheet(
     val requestPickContact = platform.requestPickContact { name, photo ->
         ffViewModel.updateContactNamePhoto(userId, name, photo)
     }
-    val personActions = remember(ffViewModel) {
+    // Enabling sharing is where location permission belongs (staged from
+    // the first frame): turning a person on requests foreground →
+    // background → Bluetooth first and only then flips the switch; a
+    // denial leaves sharing off and explains. Turning off never asks.
+    val messenger = com.vayunmathur.library.ui.rememberMessenger()
+    val locationDeniedMessage = stringResource(R.string.first_run_location_denied)
+    val notificationsDeniedMessage = stringResource(R.string.notifications_denied)
+    val ensureLocationSharing = rememberLocationSharingAction {
+        messenger.show(locationDeniedMessage)
+    }
+    // A no-show watch is the first alert-relevant action: notifications are
+    // requested here, at the watch, not at startup.
+    val ensureNotifications = rememberNotificationPermissionAction {
+        messenger.show(notificationsDeniedMessage)
+    }
+    val personActions = remember(ffViewModel, ensureLocationSharing, ensureNotifications) {
         object : PersonActions by ffViewModel {
             override fun changeConnectedContact() = requestPickContact()
+
+            override fun setUserSharing(user: com.vayunmathur.findfamily.data.User, enabled: Boolean) {
+                if (enabled) {
+                    ensureLocationSharing { ffViewModel.setUserSharing(user, true) }
+                } else {
+                    ffViewModel.setUserSharing(user, false)
+                }
+            }
+
+            override fun setNoShowAlert(
+                user: com.vayunmathur.findfamily.data.User,
+                waypointId: Long?,
+                expectedAt: kotlin.time.Instant,
+                graceMinutes: Int,
+            ) {
+                ensureNotifications {
+                    ffViewModel.setNoShowAlert(user, waypointId, expectedAt, graceMinutes)
+                }
+            }
         }
     }
 

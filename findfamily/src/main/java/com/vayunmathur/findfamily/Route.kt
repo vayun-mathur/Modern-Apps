@@ -12,6 +12,10 @@ sealed interface Route: NavKey {
     data object MainPage: Route
 
     @Serializable
+    /** Staged first-run sheet (pair family, then enable location sharing), shown over the map only for new users. */
+    data object FirstRunSheet: Route
+
+    @Serializable
     /** Sheet for the given person, shown over the map. */
     data class PersonSheet(val userId: Long): Route
 

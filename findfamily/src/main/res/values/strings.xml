@@ -58,6 +58,31 @@
     <!-- Permission upgrade dialog: Dismiss button. Verb phrase -->
     <string name="permission_upgrade_dialog_dismiss">Not now</string>
 
+    <!-- FirstRunSheet: Stage 1 title. Noun phrase -->
+    <string name="first_run_pair_title">Share location with family</string>
+    <!-- FirstRunSheet: Stage 1 body explaining pairing needs no permission. Sentences -->
+    <string name="first_run_pair_body">FindFamily shares your location only with people you add, end-to-end encrypted. Add a family member first — no permission is needed to pair.</string>
+    <!-- FirstRunSheet: Stage 1 primary button pushing the Add Person dialog. Verb phrase -->
+    <string name="first_run_add_family">Add family member</string>
+    <!-- FirstRunSheet: Stage 2 title. Noun phrase -->
+    <string name="first_run_location_title">Turn on location sharing</string>
+    <!-- FirstRunSheet: Stage 2 body explaining why location is asked for now. Sentences -->
+    <string name="first_run_location_body">You\'ve added family. To share your location with them — including in the background, and to help find powered-off phones nearby — FindFamily needs location and Bluetooth permission.</string>
+    <!-- FirstRunSheet: Stage 2 primary button requesting the location-sharing permissions. Verb phrase -->
+    <string name="first_run_allow_location">Allow location sharing</string>
+    <!-- FirstRunSheet: Done stage title. Noun phrase -->
+    <string name="first_run_done_title">You\'re set up</string>
+    <!-- FirstRunSheet: Done stage body. Sentence -->
+    <string name="first_run_done_body">Your family can now share locations. Alerts ask for notification permission when you first set one.</string>
+    <!-- FirstRunSheet: Done stage button. Verb phrase -->
+    <string name="first_run_done_action">Start sharing</string>
+    <!-- FirstRunSheet / sharing toggles: secondary button dismissing the sheet for this launch. Adverb -->
+    <string name="first_run_later">Later</string>
+    <!-- FirstRunSheet / PersonSheet: messenger message when the location-sharing request is denied. Sentence -->
+    <string name="first_run_location_denied">Location sharing needs location permission, so sharing stays off.</string>
+    <!-- PersonSheet / WaypointSheet: messenger message when the notification request is denied. Sentence -->
+    <string name="notifications_denied">Notifications are needed for that alert, so it wasn\'t set.</string>
+
     <!-- MainPage FAB menu: Option to add a person/contact. Noun -->
     <string name="fab_person">Person</string>
     <!-- MainPage FAB menu: Option to add a saved place/waypoint. Noun -->
