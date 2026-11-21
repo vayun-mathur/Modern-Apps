@@ -12,13 +12,16 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.vayunmathur.library.log.Log
 
 /**
  * The three "the list isn't showing you anything" screens: nothing here,
@@ -111,6 +114,17 @@ fun LoadingState(modifier: Modifier = Modifier, message: String? = null) {
  * Distinct from [EmptyState] on purpose: "there is nothing" and "we could not
  * find out" are different situations and should not look the same. [onRetry]
  * is optional because not everything can be retried.
+ *
+ * Pass [error] when the failure came from a [Throwable]: it is logged once
+ * (per distinct instance) via `Log.errorWithId` and the minted correlation
+ * id is rendered small under the message, so a user report quoting that id
+ * can be matched to the log line. [errorWithId] itself calls
+ * `Log.newErrorId` internally, so the returned id is the logged one — do
+ * not mint a separate id here. When [message] is null the throwable is
+ * mapped through [friendlyError] (raw exception text never reaches the UI);
+ * an explicit [message] still wins. Call sites that pass only authored
+ * strings (domain messages, not failures to correlate) leave [error] null
+ * and get no id.
  */
 @Composable
 fun ErrorState(
@@ -119,7 +133,13 @@ fun ErrorState(
     message: String? = null,
     retryLabel: String? = null,
     onRetry: (() -> Unit)? = null,
+    error: Throwable? = null,
 ) {
+    // Mint + log once per distinct throwable, not on every recomposition.
+    val errorId = remember(error) {
+        error?.let { Log.errorWithId("ErrorState", "ErrorState: $title", it) }
+    }
+    val displayMessage = message ?: if (error != null) friendlyError(error) else null
     Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(32.dp),
@@ -132,10 +152,18 @@ fun ErrorState(
                 color = MaterialTheme.colorScheme.error,
                 textAlign = TextAlign.Center,
             )
-            if (message != null) {
+            if (displayMessage != null) {
                 Text(
-                    message,
+                    displayMessage,
                     style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.outline,
+                    textAlign = TextAlign.Center,
+                )
+            }
+            if (errorId != null) {
+                Text(
+                    stringResource(R.string.error_id_format, errorId),
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.outline,
                     textAlign = TextAlign.Center,
                 )

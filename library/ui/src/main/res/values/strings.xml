@@ -359,4 +359,6 @@
     <string name="friendly_error_parse">The response could not be read. It may be damaged or in an unexpected format.</string>
     <!-- Shared library: UI - FriendlyError: fallback for every other failure. Full sentence -->
     <string name="friendly_error_generic">Something went wrong. Try again.</string>
+    <!-- Shared library: UI - StateScreens/ErrorState: small correlation id under a throwable-backed error, quoted in user reports to find the log line. %1$s = 8-char hex id from Log.errorWithId, e.g. 3f9a1c07 -->
+    <string name="error_id_format">Error ID: <xliff:g id="error_id" example="3f9a1c07">%1$s</xliff:g></string>
 </resources>
