@@ -4,6 +4,7 @@ import androidx.annotation.OptIn
 import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 
 import com.vayunmathur.library.log.Log
+import com.vayunmathur.camera.domain.PreviewExposurePolicy
 
 fun CameraViewModel.setExposureTimeIndex(index: Int) {
     exposureTimeIndexMutable.value = index.coerceIn(0, CameraViewModel.EXPOSURE_TIME_STOPS.lastIndex)
@@ -41,10 +42,56 @@ internal fun CameraViewModel.isExposureAuto(): Boolean =
     exposureTimeIndexMutable.value == 0 && manualIsoIndexMutable.value == 0
 
 /**
+ * The current manual exposure split into preview vs still (see [PreviewExposurePolicy]),
+ * or null when shutter and ISO are both Auto. The un-set half of a half-manual exposure
+ * is seeded from the last auto-converged value (or a sensible default), exactly as the
+ * still has always been seeded; only the preview half is capped/brightened.
+ */
+internal fun CameraViewModel.currentExposureSplit(): PreviewExposurePolicy.SplitExposure? {
+    val manualShutter = CameraViewModel.EXPOSURE_TIME_STOPS[exposureTimeIndexMutable.value].nanos
+    val manualIso = manualIso()
+    if (manualShutter == null && manualIso == null) return null
+    val stillNanos = manualShutter ?: lastAeExposureNanos ?: 16_666_667L // ~1/60s
+    val stillIso = manualIso ?: lastAeIso ?: isoStopsMutable.value.getOrNull(isoStopsMutable.value.size / 2) ?: 400
+    return PreviewExposurePolicy.split(stillNanos, stillIso, isoStopsMutable.value.maxOrNull())
+}
+
+/** True when the next still needs its full exposure applied at capture time. */
+internal fun CameraViewModel.stillExposureOverrideRequired(): Boolean =
+    currentExposureSplit()?.stillOverrideRequired == true
+
+/** AE-off + [nanos]/[iso] capture options for one still, shared by the capture paths. */
+@Suppress("DEPRECATION")
+@OptIn(ExperimentalCamera2Interop::class)
+internal fun stillCaptureRequestOptions(
+    nanos: Long,
+    iso: Int?
+): androidx.camera.camera2.interop.CaptureRequestOptions {
+    val builder = androidx.camera.camera2.interop.CaptureRequestOptions.Builder()
+        .setCaptureRequestOption(
+            android.hardware.camera2.CaptureRequest.CONTROL_AE_MODE,
+            android.hardware.camera2.CameraMetadata.CONTROL_AE_MODE_OFF
+        )
+        .setCaptureRequestOption(
+            android.hardware.camera2.CaptureRequest.SENSOR_EXPOSURE_TIME, nanos
+        )
+    if (iso != null) {
+        builder.setCaptureRequestOption(
+            android.hardware.camera2.CaptureRequest.SENSOR_SENSITIVITY, iso
+        )
+    }
+    return builder.build()
+}
+
+/**
  * Rebuilds a single [CaptureRequestOptions] from the current manual exposure/ISO state and
- * pushes it to the bound camera, affecting the live preview and subsequent stills. When on Auto
- * the options are cleared, reverting to CameraX's default auto behavior (including tap-to-focus).
- * Called on every manual-control change and re-applied after a session rebind.
+ * pushes it to the bound camera. This drives the LIVE (repeating) request shared by preview
+ * and analysis, so it carries only the preview half of [currentExposureSplit]: a long manual
+ * shutter is capped at 1/30s with a compensating ISO boost, keeping the viewfinder smooth —
+ * the full still exposure is applied transiently at capture time instead (see
+ * CameraSingleCapture). When on Auto the options are cleared, reverting to CameraX's default
+ * auto behavior (including tap-to-focus). Called on every manual-control change and
+ * re-applied after a session rebind.
  */
 @Suppress("DEPRECATION")
 @OptIn(ExperimentalCamera2Interop::class)
@@ -52,22 +99,20 @@ fun CameraViewModel.applyManualControls() {
     val cam2 = camera2ControlOrNull() ?: return
     val builder = androidx.camera.camera2.interop.CaptureRequestOptions.Builder()
 
-    // Manual exposure / ISO with linkage: if either is manual, lock AE off and set both,
-    // seeding the un-set one from the last auto-converged value (or a sensible default).
-    val manualShutter = CameraViewModel.EXPOSURE_TIME_STOPS[exposureTimeIndexMutable.value].nanos
-    val manualIso = manualIso()
-    if (manualShutter != null || manualIso != null) {
-        val exposure = manualShutter ?: lastAeExposureNanos ?: 16_666_667L // ~1/60s
-        val iso = manualIso ?: lastAeIso ?: isoStopsMutable.value.getOrNull(isoStopsMutable.value.size / 2) ?: 400
+    // Manual exposure / ISO with linkage: if either is manual, lock AE off and set both.
+    // Only the preview half goes on this live request (long shutters capped, ISO boosted
+    // to compensate); the still half is applied at capture time.
+    val split = currentExposureSplit()
+    if (split != null) {
         builder.setCaptureRequestOption(
             android.hardware.camera2.CaptureRequest.CONTROL_AE_MODE,
             android.hardware.camera2.CameraMetadata.CONTROL_AE_MODE_OFF
         )
         builder.setCaptureRequestOption(
-            android.hardware.camera2.CaptureRequest.SENSOR_EXPOSURE_TIME, exposure
+            android.hardware.camera2.CaptureRequest.SENSOR_EXPOSURE_TIME, split.previewNanos
         )
         builder.setCaptureRequestOption(
-            android.hardware.camera2.CaptureRequest.SENSOR_SENSITIVITY, iso
+            android.hardware.camera2.CaptureRequest.SENSOR_SENSITIVITY, split.previewIso
         )
     }
 

@@ -139,6 +139,10 @@ internal fun CameraViewModel.routeStillCapture(): StillRoute = when {
     // produce the multi-frame night image.
     nightPreviewActiveMutable.value -> StillRoute.SINGLE
     nightCaptureApplies() -> StillRoute.NIGHT
+    // A Motion Photo still must carry the manual exposure; with a long shutter the
+    // preview runs a capped split, so take the single path that locks the full
+    // exposure for the shot instead of inheriting the preview's.
+    stillExposureOverrideRequired() -> StillRoute.SINGLE
     !motionPhotoEligible() -> StillRoute.SINGLE
     motionSaveQueue.tryReserve() -> StillRoute.MOTION_PHOTO
     else -> {
@@ -186,6 +190,8 @@ private fun CameraViewModel.motionPhotoEligible(): Boolean {
  * flight at a time) with `IMG_<ts>_BURSTn` names, until [stopBurst] or [CameraViewModel.BURST_MAX]
  * is reached. Uses the plain capture path (no night/manual special-casing).
  */
+@Suppress("DEPRECATION")
+@OptIn(androidx.camera.camera2.interop.ExperimentalCamera2Interop::class)
 fun CameraViewModel.startBurst() {
     if (burstActiveMutable.value || isCapturingMutable.value) return
     // A burst is immediate: an armed shutter timer no longer applies.
@@ -197,10 +203,19 @@ fun CameraViewModel.startBurst() {
     burstActiveMutable.value = true
     burstCountMutable.value = 0
     val ts = MediaStoreSaver.timestamp()
+    // Long manual shutter: lock the full still exposure for the burst's frames (the
+    // live preview otherwise runs the capped split) and restore it when the burst ends.
+    val burstSplit = currentExposureSplit()?.takeIf { it.stillOverrideRequired }
+    val burstCam2 = if (burstSplit != null) camera2ControlOrNull() else null
+    var burstExposureLocked = false
 
     fun finishBurst() {
         burstActiveMutable.value = false
         isCapturingMutable.value = false
+        if (burstExposureLocked) {
+            burstExposureLocked = false
+            applyManualControls()
+        }
     }
 
     fun shootNext(n: Int) {
@@ -235,15 +250,36 @@ fun CameraViewModel.startBurst() {
             }
         )
     }
+    fun beginBurst() {
+        if (burstSplit == null || burstCam2 == null) {
+            shootNext(1)
+            return
+        }
+        try {
+            burstCam2.setCaptureRequestOptions(
+                stillCaptureRequestOptions(burstSplit.stillNanos, burstSplit.stillIso)
+            ).addListener({
+                burstExposureLocked = true
+                if (burstActiveMutable.value) shootNext(1) else finishBurst()
+            }, ContextCompat.getMainExecutor(app))
+        } catch (e: IllegalStateException) {
+            Log.status("CameraViewModel", "Failed to lock burst exposure", e)
+            shootNext(1)
+        } catch (e: IllegalArgumentException) {
+            Log.status("CameraViewModel", "Failed to lock burst exposure", e)
+            shootNext(1)
+        }
+    }
+
     // Same ZSL stale-frame gate as capturePhoto(): only the first frame can predate
     // AE convergence — once it lands, AE has settled for the rest of the burst.
     if (stillCaptureIsZsl() && !isAeConvergedForCapture()) {
         viewModelScope.launch {
             awaitAeConvergence()
-            if (burstActiveMutable.value) shootNext(1) else finishBurst()
+            if (burstActiveMutable.value) beginBurst() else finishBurst()
         }
     } else {
-        shootNext(1)
+        beginBurst()
     }
 }
 

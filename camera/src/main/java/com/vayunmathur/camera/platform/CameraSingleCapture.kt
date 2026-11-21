@@ -72,8 +72,9 @@ private fun CameraViewModel.buildSingleCapturePlan(pending: PendingStill): Singl
     val outputOptions = pending.outputOptions
 
     val stop = CameraViewModel.EXPOSURE_TIME_STOPS[exposureTimeIndexMutable.value]
-    // Manual shutter/ISO are already applied live via applyManualControls(); the only transient
-    // per-capture override here is the night-mode emulation (fully-auto exposure + night active).
+    // applyManualControls() applies only the preview half of a manual exposure live; the
+    // transient per-capture overrides here are the night-mode emulation (fully-auto
+    // exposure + night active) and, below, the full manual still exposure.
     // Skip it when the vendor NIGHT extension preview is bound: that session runs its own
     // multi-frame AE and rejects Camera2-interop AE_MODE_OFF/manual-exposure options, which makes
     // the capture fail. In that case a plain takePicture() lets the extension produce the shot.
@@ -85,6 +86,14 @@ private fun CameraViewModel.buildSingleCapturePlan(pending: PendingStill): Singl
     } else {
         null
     }
+    // Long manual shutter: the live request runs the capped preview split, so the still
+    // needs its full exposure locked at capture time via the same transient slot the
+    // night override uses (night takes precedence — it only applies on a fully-auto
+    // exposure, where there is no manual split). The plan's nightExposure/nightIso
+    // fields therefore carry whichever transient still exposure this shot needs.
+    val stillExposure = nightExposure ?: currentExposureSplit()
+        ?.takeIf { it.stillOverrideRequired }
+        ?.let { NightExposure(it.stillNanos, it.stillIso) }
     // Used only to drive the long-exposure countdown overlay.
     val exposureNanos = stop.nanos ?: nightExposure?.nanos
     val cam2Control = try {
@@ -103,9 +112,9 @@ private fun CameraViewModel.buildSingleCapturePlan(pending: PendingStill): Singl
         pending = pending,
         outputOptions = outputOptions,
         exposureNanos = exposureNanos,
-        nightIso = nightExposure?.iso,
+        nightIso = stillExposure?.iso,
         cam2Control = cam2Control,
-        nightExposure = nightExposure,
+        nightExposure = stillExposure,
         warmth = warmthMutable.value,
         shadows = shadowsMutable.value,
         mirror = mirrorCaptures,
@@ -114,27 +123,14 @@ private fun CameraViewModel.buildSingleCapturePlan(pending: PendingStill): Singl
     )
 }
 
-/** Applies the transient night exposure, then runs the capture (or the capture directly). */
+/** Applies the transient night/manual still exposure, then runs the capture (or directly). */
 @Suppress("DEPRECATION")
 @OptIn(ExperimentalCamera2Interop::class)
 private fun CameraViewModel.applyNightExposureThen(plan: SingleCapturePlan, doCapture: (SingleCapturePlan) -> Unit) {
     try {
-        val options = androidx.camera.camera2.interop.CaptureRequestOptions.Builder()
-            .setCaptureRequestOption(
-                android.hardware.camera2.CaptureRequest.CONTROL_AE_MODE,
-                android.hardware.camera2.CameraMetadata.CONTROL_AE_MODE_OFF
-            )
-            .setCaptureRequestOption(
-                android.hardware.camera2.CaptureRequest.SENSOR_EXPOSURE_TIME,
-                plan.nightExposure!!.nanos
-            )
-        if (plan.nightIso != null) {
-            options.setCaptureRequestOption(
-                android.hardware.camera2.CaptureRequest.SENSOR_SENSITIVITY,
-                plan.nightIso
-            )
-        }
-        plan.cam2Control!!.setCaptureRequestOptions(options.build())
+        plan.cam2Control!!.setCaptureRequestOptions(
+            stillCaptureRequestOptions(plan.nightExposure!!.nanos, plan.nightIso)
+        )
             .addListener({ doCapture(plan) }, ContextCompat.getMainExecutor(app))
     } catch (e: IllegalStateException) {
         Log.status("CameraViewModel", "Failed to set night exposure", e)
@@ -152,7 +148,7 @@ private fun CameraViewModel.runSingleCapture(plan: SingleCapturePlan) {
     }
 
     fun restoreAfterNight() {
-        // Undo the transient night override by re-asserting the (auto) manual-control state.
+        // Undo the transient still override by re-asserting the live (preview) control state.
         if (plan.nightExposure != null) applyManualControls()
     }
 
@@ -261,9 +257,38 @@ private fun CameraViewModel.processSingleFrame(
  * Capture path for the system IMAGE_CAPTURE intent. If the caller supplied an EXTRA_OUTPUT
  * Uri, the full-resolution JPEG is written there and [onSaved] is invoked with a null
  * thumbnail (the documented "no data extra needed" contract). Otherwise a downscaled
- * thumbnail Bitmap is returned for the result "data" extra.
+ * thumbnail Bitmap is returned for the result "data" extra. Locks the full still
+ * exposure first when the preview runs a capped split of a long manual shutter,
+ * restoring the preview split on completion.
  */
+@Suppress("DEPRECATION")
+@OptIn(ExperimentalCamera2Interop::class)
 fun CameraViewModel.capturePhotoForResult(onSaved: (Bitmap?) -> Unit, onError: () -> Unit) {
+    val split = currentExposureSplit()?.takeIf { it.stillOverrideRequired }
+    val cam2 = if (split != null) camera2ControlOrNull() else null
+    // A capture already in flight keeps its silent no-op path (no callbacks to restore on).
+    if (split == null || cam2 == null || isCapturingMutable.value) {
+        capturePhotoForResultInternal(onSaved, onError)
+        return
+    }
+    try {
+        cam2.setCaptureRequestOptions(stillCaptureRequestOptions(split.stillNanos, split.stillIso))
+            .addListener({
+                capturePhotoForResultInternal(
+                    { bitmap -> applyManualControls(); onSaved(bitmap) },
+                    { applyManualControls(); onError() }
+                )
+            }, ContextCompat.getMainExecutor(app))
+    } catch (e: IllegalStateException) {
+        Log.status("CameraViewModel", "Failed to set still exposure for IMAGE_CAPTURE", e)
+        capturePhotoForResultInternal(onSaved, onError)
+    } catch (e: IllegalArgumentException) {
+        Log.status("CameraViewModel", "Failed to set still exposure for IMAGE_CAPTURE", e)
+        capturePhotoForResultInternal(onSaved, onError)
+    }
+}
+
+internal fun CameraViewModel.capturePhotoForResultInternal(onSaved: (Bitmap?) -> Unit, onError: () -> Unit) {
     val capture = imageCapture ?: return onError()
     if (isCapturingMutable.value) return
     isCapturingMutable.value = true
