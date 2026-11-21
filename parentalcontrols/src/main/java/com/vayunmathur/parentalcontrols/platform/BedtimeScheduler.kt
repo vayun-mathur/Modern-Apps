@@ -48,11 +48,72 @@ class BedtimeScheduler(private val context: Context) {
         bedtime: BedtimeSchedule,
         downtime: DowntimeSchedule,
         schoolTime: SchoolTimeSchedule,
+    ) = armAll(bedtime, downtime, schoolTime, deviceLimitActive = false)
+
+    /**
+     * Arms every recurring trigger: the three window boundaries, the midnight reset and —
+     * while a device-wide daily limit exists — a periodic budget check.
+     *
+     * The midnight alarm is not optional decoration. Per-app spent marks and usage
+     * observers are day-scoped, but nothing else is guaranteed to run at midnight: without
+     * it an app that spent its budget stayed blocked into the next day until some unrelated
+     * trigger happened to reconcile. The periodic check is the device limit's only trigger
+     * of its own (the platform has no device-total observer); it is inexact and re-armed by
+     * every reconcile, so a spent device budget is noticed within one interval instead of
+     * only at the next window boundary.
+     */
+    fun armAll(
+        bedtime: BedtimeSchedule,
+        downtime: DowntimeSchedule,
+        schoolTime: SchoolTimeSchedule,
+        deviceLimitActive: Boolean,
     ) {
         armWindow(bedtime.enabled, bedtime::activeAt, REQUEST_BEDTIME)
         armWindow(downtime.enabled, downtime::activeAt, REQUEST_DOWNTIME)
         armWindow(schoolTime.enabled, schoolTime::activeAt, REQUEST_SCHOOLTIME)
+        armMidnight()
+        armPeriodicCheck(deviceLimitActive)
     }
+
+    private fun armMidnight() {
+        val alarms = alarms ?: return
+        val pending = pendingIntent(REQUEST_MIDNIGHT)
+        alarms.cancel(pending)
+        val nextMidnight = ZonedDateTime.now(ZoneId.systemDefault())
+            .toLocalDate().plusDays(1).atStartOfDay(ZoneId.systemDefault())
+            .plusSeconds(MIDNIGHT_GRACE_SECONDS)
+        runCatching {
+            if (alarms.canScheduleExactAlarms()) {
+                alarms.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP, nextMidnight.toInstant().toEpochMilli(), pending,
+                )
+            } else {
+                alarms.setAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP, nextMidnight.toInstant().toEpochMilli(), pending,
+                )
+            }
+        }.onFailure { Log.status(TAG, "could not arm the midnight alarm", it) }
+    }
+
+    private fun armPeriodicCheck(enabled: Boolean) {
+        val alarms = alarms ?: return
+        val pending = periodicIntent()
+        alarms.cancel(pending)
+        if (!enabled) return
+        val at = System.currentTimeMillis() + DEVICE_CHECK_INTERVAL_MINUTES * 60_000L
+        // Deliberately inexact: an approximate quarter-hourly budget check is the honest
+        // trade for not holding a wakeup all day. Doze may defer it further; observers and
+        // window boundaries still enforce in the meantime.
+        runCatching { alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pending) }
+            .onFailure { Log.status(TAG, "could not arm the device-limit check", it) }
+    }
+
+    private fun periodicIntent(): PendingIntent = PendingIntent.getBroadcast(
+        context,
+        REQUEST_DEVICE_CHECK,
+        BedtimeReceiver.periodicIntent(context),
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+    )
 
     private fun armWindow(
         enabled: Boolean,
@@ -117,7 +178,11 @@ class BedtimeScheduler(private val context: Context) {
         const val REQUEST_BEDTIME = 1
         const val REQUEST_DOWNTIME = 2
         const val REQUEST_SCHOOLTIME = 3
+        const val REQUEST_MIDNIGHT = 4
+        const val REQUEST_DEVICE_CHECK = 5
         const val MINUTES_IN_WEEK = 7 * 24 * 60
+        const val MIDNIGHT_GRACE_SECONDS = 30L
+        const val DEVICE_CHECK_INTERVAL_MINUTES = 15L
     }
 }
 

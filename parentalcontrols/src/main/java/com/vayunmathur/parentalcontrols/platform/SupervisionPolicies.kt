@@ -5,7 +5,6 @@ import android.app.supervision.SupervisionManager
 import android.content.Context
 import com.vayunmathur.library.log.Log
 import androidx.core.content.getSystemService
-import java.time.Duration
 
 private const val TAG = "ParentalControlsPolicy"
 
@@ -28,41 +27,38 @@ private const val TAG = "ParentalControlsPolicy"
  *
  * So [block] and [allow] are what actually gate an app, and the decision of *when* to call them
  * comes from `UsageStatsManager` observers ([AppLimits]) and from the bedtime alarm
- * ([BedtimeScheduler]). [limit] exists to record the parent's intent in the platform's own store
- * so it survives us and shows up in `getPolicies`, not because it enforces anything.
+ * ([BedtimeScheduler]).
+ *
+ * There is deliberately no `limit()` writer any more. The previous implementation wrote a
+ * `TYPE_TIME_LIMIT` policy *after* the block/allow decision on every reconcile, intending it
+ * as a record of the parent's cap. Because the platform suspends on that write, the record
+ * replaced the decision: every capped app ended every reconcile suspended, whatever its
+ * usage. A policy type that enforces on write cannot be used as a notebook.
  */
 class SupervisionPolicies(context: Context) {
 
     private val manager = context.getSystemService<SupervisionManager>()
 
-    /** False when the role is unheld or the platform service is missing; nothing will enforce. */
-    val isAvailable: Boolean get() = manager != null
+    /**
+     * False when nothing will enforce: no platform service, or supervision is not enabled.
+     *
+     * Merely obtaining the manager is not evidence — the service can exist on a build where
+     * this app does not hold the supervision role or supervision was never switched on, and
+     * then every `setPolicy` is rejected. `isSupervisionEnabled` is the platform's own answer;
+     * a probe failure is treated as unavailable rather than optimistic.
+     */
+    val isAvailable: Boolean
+        get() {
+            val manager = manager ?: return false
+            return runCatching { manager.isSupervisionEnabled() }
+                .onFailure { Log.status(TAG, "could not probe supervision state", it) }
+                .getOrDefault(false)
+        }
+
 
     fun block(packageName: String) = write(packageName, PackageUsagePolicy.TYPE_BLOCKED)
 
     fun allow(packageName: String) = write(packageName, PackageUsagePolicy.TYPE_ALLOWED)
-
-    /**
-     * Records the parent's daily cap in the platform policy store.
-     *
-     * Enforcement does not follow from this; see the class note. Rejected by the platform above
-     * 24 h, on a negative duration, and entirely unless the
-     * `enable_supervision_package_usage_apis` aconfig flag is on - which MAOS enables from
-     * `build/release/aconfig/cp2a/`.
-     */
-    fun limit(packageName: String, minutes: Int) {
-        val policy = runCatching {
-            PackageUsagePolicy.Builder(packageName, PackageUsagePolicy.TYPE_TIME_LIMIT)
-                .setTimeLimit(Duration.ofMinutes(minutes.toLong()))
-                .build()
-        }.getOrElse {
-            // IllegalStateException from performBuild when the flag is off or the duration is
-            // out of range. Not fatal: the cap still works, because we time it ourselves.
-            Log.status(TAG, "could not build a time-limit policy for $packageName", it)
-            return
-        }
-        set(policy)
-    }
 
     private fun write(packageName: String, type: Int) {
         val policy = runCatching {
@@ -82,4 +78,22 @@ class SupervisionPolicies(context: Context) {
         runCatching { manager.setPolicy(policy) }
             .onFailure { Log.status(TAG, "setPolicy rejected for ${policy.packageName}", it) }
     }
+}
+
+/**
+ * Whether supervision enforcement is available on this device, probed reflectively.
+ *
+ * UI and other host-adjacent code must use this rather than touching [SupervisionPolicies]:
+ * `SupervisionManager` is a compile-only stub that does not exist on a stock device (or a
+ * host JVM), so loading the class that names it throws instead of answering false. Here a
+ * missing class, a missing service and a negative answer all mean the same truthful thing:
+ * controls can be configured but nothing will be blocked.
+ */
+object SupervisionAvailability {
+
+    fun isAvailable(context: Context): Boolean = runCatching {
+        val managerClass = Class.forName("android.app.supervision.SupervisionManager")
+        val manager = context.getSystemService(managerClass) ?: return false
+        managerClass.getMethod("isSupervisionEnabled").invoke(manager) as? Boolean ?: false
+    }.getOrDefault(false)
 }

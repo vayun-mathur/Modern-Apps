@@ -8,6 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.IconBedtime
+import com.vayunmathur.library.ui.IconBook
 import com.vayunmathur.library.ui.IconGlobe
 import com.vayunmathur.library.ui.IconHourglass
 import com.vayunmathur.library.ui.IconKey
@@ -26,7 +27,9 @@ data class DashboardActions(
     val onSetControls: (Boolean) -> Unit,
     val onOpenDailyLimit: () -> Unit,
     val onOpenAppLimits: () -> Unit,
+    val onOpenBedtime: () -> Unit,
     val onOpenDowntime: () -> Unit,
+    val onOpenSchoolTime: () -> Unit,
     val onOpenWebFilters: () -> Unit,
     val onOpenPin: () -> Unit,
 )
@@ -55,6 +58,17 @@ fun DashboardScreen(state: SupervisionUiState, actions: DashboardActions) {
             }
         }
 
+        if (!state.enforcementAvailable) {
+            item {
+                SettingsSection {
+                    SettingsRow(
+                        title = stringResource(R.string.enforcement_unavailable),
+                        supportingText = stringResource(R.string.enforcement_unavailable_hint),
+                    )
+                }
+            }
+        }
+
         item {
             SettingsSection {
                 SettingsRow(
@@ -70,10 +84,22 @@ fun DashboardScreen(state: SupervisionUiState, actions: DashboardActions) {
                     onClick = actions.onOpenAppLimits,
                 )
                 SettingsRow(
+                    title = stringResource(R.string.bedtime_title),
+                    supportingText = bedtimeSummary(state),
+                    leadingContent = { IconBedtime() },
+                    onClick = actions.onOpenBedtime,
+                )
+                SettingsRow(
                     title = stringResource(R.string.downtime_title),
                     supportingText = downtimeSummary(state),
                     leadingContent = { IconBedtime() },
                     onClick = actions.onOpenDowntime,
+                )
+                SettingsRow(
+                    title = stringResource(R.string.school_title),
+                    supportingText = schoolSummary(state),
+                    leadingContent = { IconBook() },
+                    onClick = actions.onOpenSchoolTime,
                 )
                 SettingsRow(
                     title = stringResource(R.string.dashboard_web_filters),
@@ -107,6 +133,22 @@ private fun appLimitsSummary(state: SupervisionUiState): String =
         stringResource(R.string.summary_app_limits_set)
     } else {
         stringResource(R.string.summary_no_app_limits)
+    }
+
+@Composable
+private fun bedtimeSummary(state: SupervisionUiState): String =
+    if (state.schedule.enabled) {
+        "${clock(state.schedule.startMinute)} – ${clock(state.schedule.endMinute)}"
+    } else {
+        stringResource(R.string.summary_off)
+    }
+
+@Composable
+private fun schoolSummary(state: SupervisionUiState): String =
+    if (state.schoolTime.enabled) {
+        "${clock(state.schoolTime.startMinute)} – ${clock(state.schoolTime.endMinute)}"
+    } else {
+        stringResource(R.string.summary_off)
     }
 
 @Composable

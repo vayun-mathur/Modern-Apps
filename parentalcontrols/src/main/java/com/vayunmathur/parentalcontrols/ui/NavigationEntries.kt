@@ -51,8 +51,14 @@ internal fun EntryProviderScope<Route>.dashboardEntry(
                 onOpenAppLimits = {
                     requestGated(backStack, pin, pinVerified, pendingAfterSetup, PinGateTarget.AppLimits)
                 },
+                onOpenBedtime = {
+                    requestGated(backStack, pin, pinVerified, pendingAfterSetup, PinGateTarget.Bedtime)
+                },
                 onOpenDowntime = {
                     requestGated(backStack, pin, pinVerified, pendingAfterSetup, PinGateTarget.Downtime)
+                },
+                onOpenSchoolTime = {
+                    requestGated(backStack, pin, pinVerified, pendingAfterSetup, PinGateTarget.SchoolTime)
                 },
                 onOpenWebFilters = {
                     requestGated(backStack, pin, pinVerified, pendingAfterSetup, PinGateTarget.WebFilters)

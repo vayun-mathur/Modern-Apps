@@ -74,14 +74,15 @@ class PlatformStateTest {
         val scheduler = BedtimeScheduler(ctx)
         val alarmManager = ctx.getSystemService(AlarmManager::class.java)
         val shadow = shadowOf(alarmManager)
-        // Disabled schedules cancel and arm nothing.
+        // Disabled schedules cancel their window alarms; armAll still arms exactly the
+        // midnight reset, which is what makes spent limits reopen the next day.
         scheduler.arm(BedtimeSchedule(enabled = false))
         scheduler.armAll(
             BedtimeSchedule(enabled = false),
             DowntimeSchedule(enabled = false),
             SchoolTimeSchedule(enabled = false),
         )
-        assertTrue(shadow.scheduledAlarms.isEmpty())
+        assertEquals(1, shadow.scheduledAlarms.size)
         // An enabled cross-midnight window always has a next boundary within a week.
         scheduler.arm(BedtimeSchedule(enabled = true))
         assertTrue(shadow.scheduledAlarms.isNotEmpty())
@@ -94,6 +95,45 @@ class PlatformStateTest {
             SchoolTimeSchedule(enabled = true),
         )
         assertTrue(shadow.scheduledAlarms.isNotEmpty())
+    }
+
+    @Test
+    fun limitStateClearReachedReopensAfterBonus() {
+        val state = LimitState(ctx)
+        state.pruneToToday()
+        state.markReached("com.example.game")
+        assertTrue(state.hasReached("com.example.game"))
+        // A bonus grant clears the spent mark so reconcile can reopen the app
+        // under its extended budget (previously the mark made bonuses unusable).
+        state.clearReached("com.example.game")
+        assertFalse(state.hasReached("com.example.game"))
+        assertFalse(state.reachedPackages().contains("com.example.game"))
+        // Device-spent transition mark: set once, cleared when back under budget,
+        // and reset by the day rollover.
+        assertFalse(state.hasDeviceReached())
+        state.markDeviceReached()
+        assertTrue(state.hasDeviceReached())
+        state.clearDeviceReached()
+        assertFalse(state.hasDeviceReached())
+    }
+
+    @Test
+    fun bedtimeSchedulerArmsMidnightAndPeriodicCheck() {
+        val scheduler = BedtimeScheduler(ctx)
+        val alarmManager = ctx.getSystemService(AlarmManager::class.java)
+        val shadow = shadowOf(alarmManager)
+        val before = shadow.scheduledAlarms.size
+        // Even with every window off, the midnight reset must be armed.
+        scheduler.armAll(
+            BedtimeSchedule(enabled = false),
+            DowntimeSchedule(enabled = false),
+            SchoolTimeSchedule(enabled = false),
+            deviceLimitActive = true,
+        )
+        assertTrue(
+            shadow.scheduledAlarms.size >= before + 2,
+            "expected midnight + periodic alarms, got ${shadow.scheduledAlarms.size - before}",
+        )
     }
 
     @Test

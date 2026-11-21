@@ -8,10 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.lifecycleScope
 import com.vayunmathur.library.ui.DynamicTheme
-import com.vayunmathur.parentalcontrols.data.BonusGrant
-import com.vayunmathur.parentalcontrols.data.SupervisionRules
 import com.vayunmathur.parentalcontrols.platform.Enforcer
-import java.time.LocalDate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
@@ -72,15 +69,9 @@ abstract class BaseLockActivity : ComponentActivity() {
 
     private fun grantBonus() {
         lifecycleScope.launch(Dispatchers.IO) {
-            val rules = SupervisionRules.get(this@BaseLockActivity)
-            rules.grantBonus(
-                BonusGrant(
-                    packageName = blockedPackage,
-                    bonusMinutes = BONUS_MINUTES,
-                    day = LocalDate.now().toString(),
-                ),
-            )
-            Enforcer(this@BaseLockActivity).reconcile()
+            // Enforcer.onBonusGranted also clears the package's spent mark — without that
+            // the extended budget was armed but the app stayed blocked (audit fix).
+            Enforcer(this@BaseLockActivity).onBonusGranted(blockedPackage, BONUS_MINUTES)
             finish()
         }
     }

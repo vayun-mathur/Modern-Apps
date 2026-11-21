@@ -1,5 +1,6 @@
 package com.vayunmathur.parentalcontrols.ui
 
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -138,7 +139,9 @@ class ParentalControlsScreensTest {
         onSetControls = { record.add("controls:$it") },
         onOpenDailyLimit = { record.add("daily") },
         onOpenAppLimits = { record.add("apps") },
+        onOpenBedtime = { record.add("bedtime") },
         onOpenDowntime = { record.add("downtime") },
+        onOpenSchoolTime = { record.add("school") },
         onOpenWebFilters = { record.add("web") },
         onOpenPin = { record.add("pin") },
     )
@@ -148,6 +151,7 @@ class ParentalControlsScreensTest {
         val record = mutableListOf<String>()
         val state = SupervisionUiState(
             controlsEnabled = true,
+            enforcementAvailable = true,
             dailyLimitMinutes = 90,
             downtime = DowntimeSchedule(enabled = true, startMinute = 12 * 60, endMinute = 14 * 60),
             apps = listOf(SupervisableApp("com.a", "Alpha", AppRule("com.a", dailyLimitMinutes = 30))),
@@ -162,20 +166,31 @@ class ParentalControlsScreensTest {
         rule.onNodeWithText("Daily limit").performClick()
         rule.onNodeWithText("App limits").performClick()
         rule.onRoot().performTouchInput { swipeUp() }
+        rule.onNodeWithText("Child bedtime").performClick()
         rule.onNodeWithText("Downtime").performClick()
+        rule.onRoot().performTouchInput { swipeUp() }
+        rule.onNodeWithText("School time").performClick()
         rule.onNodeWithText("Web content filters").performClick()
         rule.onRoot().performTouchInput { swipeUp() }
         rule.onNodeWithText("Manage your PIN").performClick()
-        assertEquals(listOf("daily", "apps", "downtime", "web", "pin"), record)
+        assertEquals(listOf("daily", "apps", "bedtime", "downtime", "school", "web", "pin"), record)
     }
 
     @Test
     fun dashboardDefaultsSummaries() {
         val record = mutableListOf<String>()
-        rule.setContent { DynamicTheme { DashboardScreen(SupervisionUiState(loading = false), dashboardActions(record)) } }
+        rule.setContent {
+            DynamicTheme {
+                DashboardScreen(
+                    SupervisionUiState(loading = false, enforcementAvailable = true),
+                    dashboardActions(record),
+                )
+            }
+        }
         rule.onNodeWithText("Not set").assertIsDisplayed()
         rule.onNodeWithText("No app limits").assertIsDisplayed()
-        rule.onNodeWithText("Off").assertIsDisplayed()
+        // Bedtime, downtime and school time each summarise as Off.
+        rule.onAllNodesWithText("Off").assertCountEquals(3)
         rule.onNodeWithText("Controls for this phone").performClick()
         assertEquals(listOf("controls:false"), record)
     }

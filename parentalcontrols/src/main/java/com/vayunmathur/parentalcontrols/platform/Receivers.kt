@@ -57,7 +57,10 @@ class LimitReachedReceiver : BroadcastReceiver() {
     }
 }
 
-/** Fired at each supervised-window boundary. Re-arms the next one through [Enforcer]. */
+/**
+ * Fired at each supervised-window boundary, at midnight, and by the periodic
+ * device-limit check. Re-arms the next one through [Enforcer].
+ */
 class BedtimeReceiver : BroadcastReceiver() {
 
     // Broad catch is deliberate: onReceive must not throw, and the enforcer path
@@ -65,12 +68,21 @@ class BedtimeReceiver : BroadcastReceiver() {
     @Suppress("TooGenericExceptionCaught")
     override fun onReceive(context: Context, intent: Intent) {
         val app = context.applicationContext
+        val periodic = intent.getBooleanExtra(EXTRA_PERIODIC_CHECK, false)
         val pending = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // reconcile plus entry notifications for windows that just opened - not a bare
-                // reconcile, or the child would never learn why apps just closed.
-                Enforcer(app).onWindowBoundary()
+                if (periodic) {
+                    // Budget check only: a plain reconcile (the device-spent transition is
+                    // notified inside it), never window-entry notices for a non-boundary.
+                    Enforcer(app).reconcile()
+                } else {
+                    // reconcile plus entry notifications for windows that just opened - not a
+                    // bare reconcile, or the child would never learn why apps just closed.
+                    // The midnight alarm also arrives here: reconcile prunes yesterday's
+                    // spent marks and re-arms observers for the new day.
+                    Enforcer(app).onWindowBoundary()
+                }
             } catch (e: Exception) {
                 Log.error(TAG, "window boundary failed", e)
             } finally {
@@ -79,9 +91,56 @@ class BedtimeReceiver : BroadcastReceiver() {
         }
     }
 
-    /** Intent factory for [BedtimeReceiver]. */
+    /** Intent factories for [BedtimeReceiver]. */
     companion object {
         fun intent(context: Context): Intent = Intent(context, BedtimeReceiver::class.java)
+
+        /** The periodic device-limit check intent (see [BedtimeScheduler]). */
+        fun periodicIntent(context: Context): Intent =
+            Intent(context, BedtimeReceiver::class.java).putExtra(EXTRA_PERIODIC_CHECK, true)
+    }
+}
+
+/** Extra marking a [BedtimeReceiver] broadcast as the periodic device-limit check. */
+const val EXTRA_PERIODIC_CHECK = "com.vayunmathur.parentalcontrols.extra.PERIODIC_CHECK"
+
+/**
+ * Fired when the wall clock, date or timezone changes.
+ *
+ * Window alarms are armed as absolute instants computed in the then-current timezone, and
+ * day-scoped state is keyed by local date — so a clock or timezone change (a routine travel
+ * event, and also the obvious way for a child with Settings access to try to walk a bedtime
+ * backwards) left every armed boundary stale until something else reconciled. Reconciling
+ * re-derives windows, re-arms alarms in the new zone and prunes spent marks by the new date.
+ * It cannot stop a determined child changing the clock — only removing their Settings
+ * access does that, which is a supervision-policy decision for the OS, not this app — but it
+ * removes the "change the clock and nothing notices" hole.
+ */
+class TimeChangedReceiver : BroadcastReceiver() {
+
+    // Broad catch is deliberate: onReceive must not throw.
+    @Suppress("TooGenericExceptionCaught")
+    override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action !in TIME_CHANGE_ACTIONS) return
+        val app = context.applicationContext
+        val pending = goAsync()
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                Enforcer(app).reconcile()
+            } catch (e: Exception) {
+                Log.error(TAG, "time-change reconcile failed", e)
+            } finally {
+                pending.finish()
+            }
+        }
+    }
+
+    private companion object {
+        val TIME_CHANGE_ACTIONS = setOf(
+            Intent.ACTION_TIME_CHANGED,
+            Intent.ACTION_TIMEZONE_CHANGED,
+            Intent.ACTION_DATE_CHANGED,
+        )
     }
 }
 
@@ -99,9 +158,12 @@ class BootReceiver : BroadcastReceiver() {
     // throws undocumented RuntimeExceptions (not just SQLiteException).
     @Suppress("TooGenericExceptionCaught")
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action != Intent.ACTION_BOOT_COMPLETED &&
-            intent.action != Intent.ACTION_LOCKED_BOOT_COMPLETED
-        ) {
+        // BOOT_COMPLETED only, deliberately not LOCKED_BOOT_COMPLETED: before the first
+        // unlock this app's credential-protected storage (the Room rules database and the
+        // SharedPreferences state) is unavailable, so a locked-boot reconcile could only
+        // fail. BOOT_COMPLETED is delivered after unlock, when enforcement can actually
+        // be re-established.
+        if (intent.action != Intent.ACTION_BOOT_COMPLETED) {
             return
         }
         val app = context.applicationContext

@@ -141,4 +141,8 @@
     <string name="daily_explainer_hint">Everything locks once the day\'s budget is used up, and unlocks again at midnight.</string>
     <!-- Daily limit screen: row showing the current budget. Noun phrase. -->
     <string name="daily_budget">Daily budget</string>
+    <!-- Dashboard: shown when the platform cannot enforce (no supervision role / supervision off). -->
+    <string name="enforcement_unavailable">Controls are not enforcing on this device</string>
+    <!-- Dashboard: explanation under the not-enforcing notice. -->
+    <string name="enforcement_unavailable_hint">This device has not granted this app supervision, so limits and schedules are saved but nothing is blocked. On a supported device, turn on parental controls in Settings first.</string>
 </resources>

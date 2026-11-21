@@ -281,6 +281,19 @@
             </intent-filter>
         </activity-alias>
 
+        <!-- Clock, date and timezone changes: re-derive windows and re-arm alarms in the
+             new local time instead of leaving boundaries armed in the old one. System
+             broadcasts only; not exported. -->
+        <receiver
+            android:name=".platform.TimeChangedReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.DATE_CHANGED" />
+            </intent-filter>
+        </receiver>
+
         <!-- Fired by UsageStatsService when an app spends its daily budget. Not exported: the
              PendingIntent we hand the platform is what delivers it. -->
         <receiver
@@ -298,7 +311,6 @@
             android:permission="android.permission.BIND_SUPERVISION_APP_SERVICE">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
-                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
 

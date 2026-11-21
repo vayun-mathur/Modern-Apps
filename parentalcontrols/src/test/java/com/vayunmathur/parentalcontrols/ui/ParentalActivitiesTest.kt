@@ -5,6 +5,9 @@ import android.content.Intent
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.room3.Room
@@ -65,6 +68,8 @@ class ParentalActivitiesTest {
             waitForText("App limits")
             composeRule.onNodeWithText("App limits").assertIsDisplayed()
             scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
+            // Bedtime/downtime/school rows now sit above this one; scroll it into view.
+            composeRule.onRoot().performTouchInput { swipeUp() }
             composeRule.onNodeWithText("Web content filters").performClick()
             composeRule.onNodeWithText("PIN").performTextInput("1234")
             composeRule.onNodeWithText("Unlock").performClick()

@@ -38,12 +38,21 @@ data class SupervisionUiState(
     val dailyLimitMinutes: Int? = null,
     val apps: List<SupervisableApp> = emptyList(),
     val loading: Boolean = true,
+    /**
+     * Whether the platform will actually enforce any of this (supervision role held and
+     * supervision enabled). False on a build without the MAOS supervision plumbing — the
+     * dashboard must say so instead of presenting controls that do nothing.
+     */
+    val enforcementAvailable: Boolean = false,
 )
 
 /** ViewModel combining supervision rules and installed apps into screen state. */
 class SupervisionViewModel(app: Application) : AndroidViewModel(app) {
 
     private val rules = SupervisionRules.get(app)
+    // Probed on every state emission rather than cached: completing the platform setup
+    // flow in another activity must be reflected when the parent lands back here.
+    private fun enforcementAvailable(): Boolean = SupervisionAvailability.isAvailable(getApplication())
     private val installed = MutableStateFlow<List<Pair<String, String>>>(emptyList())
     private val controlsEnabled = MutableStateFlow(SupervisionMaster.isEnabled(app))
 
@@ -74,6 +83,7 @@ class SupervisionViewModel(app: Application) : AndroidViewModel(app) {
             dailyLimitMinutes = dailyLimit,
             apps = apps.map { (pkg, label) -> SupervisableApp(pkg, label, byPackage[pkg]) },
             loading = apps.isEmpty(),
+            enforcementAvailable = enforcementAvailable(),
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), SupervisionUiState())
 

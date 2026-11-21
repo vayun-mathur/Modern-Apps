@@ -3,6 +3,7 @@ package com.vayunmathur.parentalcontrols.platform
 import android.app.PendingIntent
 import android.app.usage.UsageStatsManager
 import android.content.Context
+import androidx.core.content.edit
 import com.vayunmathur.library.log.Log
 import androidx.core.content.getSystemService
 import com.vayunmathur.parentalcontrols.data.AppRule
@@ -64,11 +65,30 @@ class AppLimits(private val context: Context) {
         val bonusByPackage = bonuses.filter { it.packageName != null }
             .groupBy { it.packageName!! }
             .mapValues { (_, grants) -> grants.sumOf { it.bonusMinutes } }
-        for (rule in rules) {
+        val desired = rules.filter { it.dailyLimitMinutes != null }
+        // Unregister observers whose cap was removed, whose app became blocked for another
+        // reason, or that the master switch turned off (sync with an empty list). The old
+        // register-only sync left those observers armed: a removed cap could still fire,
+        // mark the app spent and block it for the rest of the day.
+        val stale = registeredPackages() - desired.map { it.packageName }.toSet()
+        for (packageName in stale) unregister(packageName)
+        for (rule in desired) {
             val minutes = rule.dailyLimitMinutes ?: continue
             val budget = minutes + (bonusByPackage[rule.packageName] ?: 0)
             register(usage, rule.packageName, budget)
         }
+        rememberRegistered(desired.map { it.packageName }.toSet())
+    }
+
+    private fun registeredPackages(): Set<String> =
+        context.applicationContext
+            .getSharedPreferences(OBSERVER_PREFS, Context.MODE_PRIVATE)
+            .getStringSet(KEY_REGISTERED, emptySet()) ?: emptySet()
+
+    private fun rememberRegistered(packages: Set<String>) {
+        context.applicationContext
+            .getSharedPreferences(OBSERVER_PREFS, Context.MODE_PRIVATE)
+            .edit { putStringSet(KEY_REGISTERED, packages) }
     }
 
     /**
@@ -158,6 +178,9 @@ class AppLimits(private val context: Context) {
     private fun observerId(packageName: String): Int = packageName.hashCode()
 
     private companion object {
+        const val OBSERVER_PREFS = "parentalcontrols_observers"
+        const val KEY_REGISTERED = "registered"
+
         val registerMethod: Method? by lazy { systemApi("registerAppUsageLimitObserver",
             Int::class.javaPrimitiveType!!, Array<String>::class.java,
             Duration::class.java, Duration::class.java, PendingIntent::class.java) }

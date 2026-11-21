@@ -76,7 +76,9 @@ class MetadataPreviews {
         onSetControls = {},
         onOpenDailyLimit = {},
         onOpenAppLimits = {},
+        onOpenBedtime = {},
         onOpenDowntime = {},
+        onOpenSchoolTime = {},
         onOpenWebFilters = {},
         onOpenPin = {},
     )

@@ -63,6 +63,9 @@ class ParentPinTest {
 
     @Test
     fun parentPinInstancesShareStorageAndShortPinGuard() {
+        // Previously this relied on another test having installed the fake
+        // keystore provider first — order-dependent and failing standalone.
+        FakeAndroidKeyStore.install()
         val pin = ParentPin.get(app)
         // No static instance is retained (ParentPin holds a Context); a second instance
         // reads the same keystore-wrapped verifier and preferences.
