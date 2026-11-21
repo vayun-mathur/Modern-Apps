@@ -218,22 +218,25 @@ class KartViewModel(application: Application) : AndroidViewModel(application),
                 }
                 val standings = parseStandings(KartNative.getStandingsJson())
                 if (standings.isEmpty()) continue
-                if (standings.any { it.lap >= RACE_LAPS }) {
-                    val ordered = standings.sortedBy { it.place }
-                    finishRace(
-                        winner = ordered.first().player,
-                        order = ordered.map { it.player },
-                    )
-                    return@launch
-                }
                 val ordered = standings.sortedBy { it.place }
                 val order = ordered.map { it.player }
-                buzzPlaceLosers(prevOrder, order, localSeats, lastBuzzMs)
-                prevOrder = order
+                // Fold the local lap in before the finish check so the final lap's
+                // time can count as this race's best lap.
                 val nowMs = android.os.SystemClock.uptimeMillis()
                 val lap = ordered.firstOrNull { it.player == seat }?.lap ?: 0
                 lapState = LapTracker.onLapTick(prevLap, lap, nowMs, lapState)
                 prevLap = lap
+                if (standings.any { it.lap >= RACE_LAPS }) {
+                    // Standings sort by place ascending, so place 1 heads the order.
+                    finishRace(
+                        winner = ordered.first().player,
+                        order = order,
+                        bestLapMs = lapState.times.bestLapMs,
+                    )
+                    return@launch
+                }
+                buzzPlaceLosers(prevOrder, order, localSeats, lastBuzzMs)
+                prevOrder = order
                 _racePhase.value = RacePhase.Racing(
                     order = order,
                     lapProgress = ordered.associate { it.player to it.progress },
@@ -281,20 +284,24 @@ class KartViewModel(application: Application) : AndroidViewModel(application),
                     }
                 }
                 newRace.tick(dt)
+                // Same fold-before-finish as the native loop, so both loops hand
+                // finishRace the same shape (the gate there drops placeholder stats).
+                val lap = newRace.lapOf(seat)
+                lapState = LapTracker.onLapTick(prevLap, lap, nowMs, lapState)
+                prevLap = lap
                 if (newRace.finished) {
+                    // The leaderboard sorts by progress descending, so its head won.
                     val order = newRace.leaderboard()
                     finishRace(
                         winner = newRace.winner() ?: order.first(),
                         order = order,
+                        bestLapMs = lapState.times.bestLapMs,
                     )
                     return@launch
                 }
                 val order = newRace.leaderboard()
                 buzzPlaceLosers(prevOrder, order, localSeats, lastBuzzMs)
                 prevOrder = order
-                val lap = newRace.lapOf(seat)
-                lapState = LapTracker.onLapTick(prevLap, lap, nowMs, lapState)
-                prevLap = lap
                 _racePhase.value = RacePhase.Racing(
                     order = order,
                     lapProgress = order.associateWith { newRace.lapProgress(it) },
@@ -306,7 +313,7 @@ class KartViewModel(application: Application) : AndroidViewModel(application),
             }
         }
     }
-    private fun finishRace(winner: String, order: List<String>) {
+    private fun finishRace(winner: String, order: List<String>, bestLapMs: Long?) {
         tickJob?.cancel()
         tickJob = null
         // Celebration buzz for every remote phone still on the grid.
@@ -320,8 +327,26 @@ class KartViewModel(application: Application) : AndroidViewModel(application),
         val state = _uiState.value
         viewModelScope.launch {
             KartRules.nextCup(state.progress.currentCup)?.let { dataStore.saveCup(it) }
+            bankRaceStats(winner, localPlayerId, bestLapMs)
         }
         race = null
+    }
+
+    /**
+     * Bank the lifetime counters for one finished race.
+     *
+     * [KartNative.isAvailable] is the gate: without the native engine the finish came from
+     * the placeholder model, whose laps are model ticks rather than real lap times, so a
+     * placeholder race writes nothing (no win, no best lap). A win is 1st place for the
+     * local seat (see [KartRules.isPlayerWin]); [bestLapMs] is the local player's best lap
+     * this race from `LapTracker`, already folded to include the final lap.
+     */
+    internal suspend fun bankRaceStats(winner: String, localPlayerId: String?, bestLapMs: Long?) {
+        if (!KartNative.isAvailable) return
+        dataStore.recordRaceResult(
+            won = KartRules.isPlayerWin(winner, localPlayerId),
+            bestLapMs = bestLapMs,
+        )
     }
 
     /**

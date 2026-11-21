@@ -30,6 +30,28 @@ class KartStoresTest {
         assertEquals(0L, store.bestLapMs.first())
         store.saveCup(0)
         assertEquals(0, store.currentCup.first())
+        // Lifetime counters: a win increments, a non-win does not; only a better
+        // real lap replaces the best, and untimed/zero laps never write.
+        store.recordRaceResult(won = true, bestLapMs = 60_000L)
+        assertEquals(1, store.racesWon.first())
+        assertEquals(60_000L, store.bestLapMs.first())
+        store.recordRaceResult(won = false, bestLapMs = 70_000L)
+        assertEquals(1, store.racesWon.first())
+        assertEquals(60_000L, store.bestLapMs.first())
+        store.recordRaceResult(won = true, bestLapMs = null)
+        assertEquals(2, store.racesWon.first())
+        assertEquals(60_000L, store.bestLapMs.first())
+        store.recordRaceResult(won = false, bestLapMs = 0L)
+        store.recordRaceResult(won = false, bestLapMs = -5L)
+        assertEquals(2, store.racesWon.first())
+        assertEquals(60_000L, store.bestLapMs.first())
+        store.recordRaceResult(won = false, bestLapMs = 59_999L)
+        assertEquals(2, store.racesWon.first())
+        assertEquals(59_999L, store.bestLapMs.first())
+        // Saving the cup still leaves the banked counters untouched.
+        store.saveCup(0)
+        assertEquals(2, store.racesWon.first())
+        assertEquals(59_999L, store.bestLapMs.first())
     }
 
     @Test fun pairingStoreBytesKeysAndDeviceId() = runBlocking {

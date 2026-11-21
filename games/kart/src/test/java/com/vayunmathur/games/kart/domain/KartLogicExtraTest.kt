@@ -39,6 +39,17 @@ class KartLogicExtraTest {
         assertNull(KartRules.nextCup(CUPS.size + 5))
     }
 
+    @Test fun playerWinIsFirstPlaceForLocalSeatOnly() {
+        // Standings order heads are the winners (place 1 / most progress), so a win
+        // is exactly the local seat heading that order.
+        assertTrue(KartRules.isPlayerWin("you", "you"))
+        assertFalse(KartRules.isPlayerWin("ai-0", "you"))
+        assertFalse(KartRules.isPlayerWin("remote-1", "you"))
+        assertFalse(KartRules.isPlayerWin("you", null))
+        assertFalse(KartRules.isPlayerWin(null, "you"))
+        assertFalse(KartRules.isPlayerWin(null, null))
+    }
+
     // --- LapTracker ---
 
     @Test fun lapTickWithoutSeedRecordsNoDurationButAdvances() {

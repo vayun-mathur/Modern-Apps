@@ -7,6 +7,8 @@ import com.vayunmathur.games.kart.util.KartNative
 import com.vayunmathur.sdk.controller.ControllerButton
 import com.vayunmathur.sdk.controller.ControllerInput
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
@@ -102,6 +104,8 @@ class KartViewModelTest {
             val vm = KartViewModel(app)
             await("cup loads") { vm.uiState.value.cup != null }
             val cupBefore = vm.uiState.value.progress.currentCup
+            val wonBefore = vm.uiState.value.progress.racesWon
+            val bestBefore = vm.uiState.value.progress.bestLapMs
             vm.startRace()
             pump(4_000)
             await("placeholder racing") { vm.racePhase.value is RacePhase.Racing }
@@ -117,6 +121,9 @@ class KartViewModelTest {
             assertTrue(results.winner in results.order)
             val expectedCup = com.vayunmathur.games.kart.domain.KartRules.nextCup(cupBefore) ?: cupBefore
             await("cup banked") { vm.uiState.value.progress.currentCup == expectedCup }
+            // A placeholder race writes no lifetime stats, even though it banked the cup.
+            assertEquals(wonBefore, vm.uiState.value.progress.racesWon)
+            assertEquals(bestBefore, vm.uiState.value.progress.bestLapMs)
             vm.backToLobby()
             assertTrue(vm.racePhase.value is RacePhase.Lobby)
             // Starting from the lobby again works after results.
@@ -133,6 +140,43 @@ class KartViewModelTest {
         // Whatever cup a previous race banked, the garage mirrors the store exactly.
         val cupIndex = vm.uiState.value.progress.currentCup
         assertEquals(com.vayunmathur.games.kart.domain.KartRules.cupAt(cupIndex), vm.uiState.value.cup)
-        assertEquals(0, vm.uiState.value.progress.racesWon)
+        // Lifetime counters mirror the store exactly (a sibling test may have banked wins).
+        assertEquals(runBlocking { vm.dataStore.racesWon.first() }, vm.uiState.value.progress.racesWon)
+        assertEquals(runBlocking { vm.dataStore.bestLapMs.first() }, vm.uiState.value.progress.bestLapMs)
+    }
+
+    @Test fun nativeRaceStatsBankWinAndBestLapOnlyWhenNative() {
+        val wasAvailable = KartNative.isAvailable
+        try {
+            val vm = KartViewModel(app)
+            await("cup loads") { vm.uiState.value.cup != null }
+            val won0 = vm.uiState.value.progress.racesWon
+            val best0 = vm.uiState.value.progress.bestLapMs
+            val fast = if (best0 > 1_000L) best0 - 1_000L else 45_000L
+            KartNative.isAvailable = true
+            // Win for the local seat (1st in the standings): win + better lap bank.
+            runBlocking { vm.bankRaceStats("me", "me", fast) }
+            await("win banked") {
+                vm.uiState.value.progress.racesWon == won0 + 1 &&
+                    vm.uiState.value.progress.bestLapMs == fast
+            }
+            // Non-win with a worse lap: neither counter moves.
+            runBlocking { vm.bankRaceStats("ai-0", "me", fast + 10_000L) }
+            pump(500)
+            assertEquals(won0 + 1, vm.uiState.value.progress.racesWon)
+            assertEquals(fast, vm.uiState.value.progress.bestLapMs)
+            // A better lap without a win still replaces the best.
+            runBlocking { vm.bankRaceStats("ai-0", "me", fast - 1L) }
+            await("better lap banked") { vm.uiState.value.progress.bestLapMs == fast - 1L }
+            assertEquals(won0 + 1, vm.uiState.value.progress.racesWon)
+            // Placeholder gate: the same win with a far faster lap writes nothing.
+            KartNative.isAvailable = false
+            runBlocking { vm.bankRaceStats("me", "me", 1_000L) }
+            pump(500)
+            assertEquals(won0 + 1, vm.uiState.value.progress.racesWon)
+            assertEquals(fast - 1L, vm.uiState.value.progress.bestLapMs)
+        } finally {
+            KartNative.isAvailable = wasAvailable
+        }
     }
 }

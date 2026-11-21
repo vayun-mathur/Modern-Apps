@@ -20,4 +20,14 @@ object KartRules {
     /** The next cup after [cupIndex], or null once the last cup is cleared. */
     fun nextCup(cupIndex: Int): Int? =
         if (cupIndex + 1 < CUPS.size) cupIndex + 1 else null
+
+    /**
+     * Whether [winner] is a win for the local seat: 1st place in the final standings.
+     *
+     * Both race loops order standings by place/progress descending and pass the head of that
+     * order as the winner, so a win is exactly `winner == localPlayerId`. A race with no
+     * local seat (null id) or no winner is never a win.
+     */
+    fun isPlayerWin(winner: String?, localPlayerId: String?): Boolean =
+        winner != null && localPlayerId != null && winner == localPlayerId
 }
