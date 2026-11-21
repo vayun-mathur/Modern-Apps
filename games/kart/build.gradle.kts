@@ -46,6 +46,42 @@ rustNativeLib(
     shaders = listOf("kart.vert", "kart.frag"),
 )
 
+// Only the classes below actually load a native library: KartHostAndNativeTest
+// calls KartNative.* directly, KartSurfaceViewTest drives KartSurfaceView's
+// surface callbacks (each reads KartNative.isAvailable), and the two screen
+// tests compose KartGameScreen's RacingBody, which reads
+// KartNative.isAvailable before composing KartSurfaceView. Touching
+// KartNative triggers its clinit (NativeLoader.load("kart_engine")).
+// Quarantine those loaders into testDevUnitTestNative (forkEvery = 1); the
+// remaining classes batch 20-per-JVM in testDevUnitTest, which depends on
+// the quarantine task so the usual invocation still runs everything.
+rustNativeTests {
+    nativeClasses.addAll(
+        listOf(
+            "com.vayunmathur.games.kart.platform.KartHostAndNativeTest",
+            "com.vayunmathur.games.kart.ui.KartGameScreenTest",
+            "com.vayunmathur.games.kart.ui.KartRaceSurfaceTest",
+            "com.vayunmathur.games.kart.ui.KartSurfaceViewTest",
+        )
+    )
+    // Shared-JVM polluters keep forkEvery = 1 in the same companion task:
+    // KartViewModelTest and MainActivityTest instantiate KartViewModel,
+    // whose viewModelScope collects the process-wide preferencesDataStore
+    // ("settings" via KartDataStore, plus "kart_identity" via
+    // KartPairingStore) for the VM's lifetime and whose races bank cup /
+    // win / best-lap state other classes expect at defaults;
+    // KartViewModelTest also mutates the global KartNative.isAvailable.
+    // KartStoresTest writes the same two DataStores directly and asserts
+    // defaults first. All other classes batch.
+    isolatedClasses.addAll(
+        listOf(
+            "com.vayunmathur.games.kart.MainActivityTest",
+            "com.vayunmathur.games.kart.data.KartStoresTest",
+            "com.vayunmathur.games.kart.platform.KartViewModelTest",
+        )
+    )
+}
+
 dependencies {
     implementation(project(":sdk:games"))
     implementation(project(":sdk:controller"))

@@ -24,6 +24,35 @@ android {
         noCompress += "maml"
     }
 }
+// This module has no rustNativeLib of its own: the native load arrives
+// transitively from :library:ml (libmodelrunner via MlNative), which is
+// what puts this module's tests on the forkEvery = 1 path at all. Only
+// the classes below actually load it: WhisperModelAndEngineTest and
+// SupertonicEngineAndBundleTest drive the real engines' ensure() paths
+// (WhisperHandle.inAssets / SupertonicSynthesizer.inAssets, both gated
+// on MlNative.isAvailable), and the two service tests build the real
+// services, whose onCreate threads call engine.preload() on the real
+// engine (the fake-engine tests in the same files never reach ensure,
+// but a class cannot be split below class granularity). Quarantine
+// those loaders into testDevUnitTestNative (forkEvery = 1); the
+// remaining classes batch 20-per-JVM in testDevUnitTest, which depends
+// on the quarantine task so the usual invocation still runs everything.
+// No isolatedClasses: this app has no DataStore and no ViewModel (see
+// the dependencies note below), the WhisperRecognitionSessionTest fake
+// engine overrides every native entry point, and SupertonicBundle's
+// process-wide isPresent cache returns the same asset-derived answer
+// for every caller — its own test already tolerates a warm cache.
+rustNativeTests {
+    nativeClasses.addAll(
+        listOf(
+            "com.vayunmathur.speech.platform.SupertonicEngineAndBundleTest",
+            "com.vayunmathur.speech.platform.WhisperModelAndEngineTest",
+            "com.vayunmathur.speech.service.SupertonicTtsServiceTest",
+            "com.vayunmathur.speech.service.WhisperRecognitionServiceTest",
+        )
+    )
+}
+
 dependencies {
     // Both directions run on :library:ml, our own Vulkan compute runtime, and this app links no
     // third-party inference runtime at all.
