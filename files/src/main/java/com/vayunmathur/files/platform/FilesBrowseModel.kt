@@ -3,7 +3,16 @@ package com.vayunmathur.files.platform
 import android.app.Application
 import android.os.Environment
 import androidx.core.content.edit
+import androidx.lifecycle.viewModelScope
 import com.vayunmathur.files.R
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
@@ -71,11 +80,51 @@ abstract class FilesBrowseModel(application: Application) :
 
     override fun setSearchActive(active: Boolean) {
         isSearchActiveState.value = active
-        if (!active) searchQueryState.value = ""
+        if (!active) {
+            searchQueryState.value = ""
+            searchResultsState.value = emptyList()
+            isSearchLoadingState.value = false
+        }
     }
 
     override fun setSearchQuery(query: String) {
         searchQueryState.value = query
+    }
+
+    /**
+     * Recursive search behind [setSearchQuery]: while a non-blank query is
+     * active in a real folder, walk that folder (never the whole device, and
+     * never inside a zip or a MediaStore category, which keep the old
+     * current-listing filter). Debounced, and `collectLatest` cancels the
+     * previous walk on Dispatchers.IO as soon as the query or folder changes.
+     * Started once from [FilesViewModel]'s init.
+     */
+    @OptIn(FlowPreview::class)
+    fun startSearchPipeline() {
+        viewModelScope.launch {
+            combine(
+                searchQueryState, currentDirectoryState, zipPathState,
+                categoryTitleState, showHiddenState,
+            ) { query, dir, zip, category, hidden ->
+                SearchRequest(query, dir, zip != null, category != null, hidden)
+            }.debounce(SEARCH_DEBOUNCE_MS)
+                .distinctUntilChanged()
+                .collectLatest { request ->
+                    if (request.query.isBlank() || request.isVirtual) {
+                        searchResultsState.value = emptyList()
+                        isSearchLoadingState.value = false
+                        return@collectLatest
+                    }
+                    isSearchLoadingState.value = true
+                    try {
+                        searchResultsState.value = withContext(Dispatchers.IO) {
+                            recursiveSearch(request.root, request.query, request.showHidden)
+                        }
+                    } finally {
+                        isSearchLoadingState.value = false
+                    }
+                }
+        }
     }
 
     override fun toggleHidden() {
@@ -197,4 +246,15 @@ abstract class FilesBrowseModel(application: Application) :
         cancelDirectoryObserver()
         loadTrash()
     }
+}
+
+/** One debounced search-pipeline request; virtual (zip/category) scopes skip the walk. */
+private data class SearchRequest(
+    val query: String,
+    val root: File,
+    val inZip: Boolean,
+    val inCategory: Boolean,
+    val showHidden: Boolean,
+) {
+    val isVirtual: Boolean get() = inZip || inCategory
 }

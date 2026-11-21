@@ -40,6 +40,7 @@ internal fun DirectoryTitle(
     actions: FilesActions,
     isCategory: Boolean,
     isReadOnly: Boolean,
+    searchFocusRequester: FocusRequester,
 ) {
     DirectoryTitle(
         rootDirectory = state.rootDirectory,
@@ -53,6 +54,7 @@ internal fun DirectoryTitle(
         actions = actions,
         isCategory = isCategory,
         isReadOnly = isReadOnly,
+        searchFocusRequester = searchFocusRequester,
     )
 }
 
@@ -69,6 +71,7 @@ internal fun DirectoryTitle(
     actions: FilesActions,
     isCategory: Boolean,
     isReadOnly: Boolean,
+    searchFocusRequester: FocusRequester,
 ) {
     val root = rootDirectory
     val breadcrumbs = remember(
@@ -96,7 +99,6 @@ internal fun DirectoryTitle(
     }
 
     if (isSearchActive) {
-        val searchFocus = remember { FocusRequester() }
         TextField(
             value = searchQuery,
             onValueChange = { actions.setSearchQuery(it) },
@@ -104,9 +106,10 @@ internal fun DirectoryTitle(
             singleLine = true,
             modifier = Modifier
                 .fillMaxWidth()
-                .focusRequester(searchFocus),
+                .focusRequester(searchFocusRequester),
         )
-        LaunchedEffect(Unit) { searchFocus.requestFocus() }
+        // Autofocus on activation; Ctrl+F/L re-requests via the hoisted requester.
+        LaunchedEffect(Unit) { searchFocusRequester.requestFocus() }
     } else if (isCategory) {
         Text(categoryTitle.orEmpty(), style = MaterialTheme.typography.titleLarge)
     } else {

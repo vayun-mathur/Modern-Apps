@@ -227,6 +227,14 @@ abstract class FilesCoreModel(application: Application) : AndroidViewModel(appli
     internal val isSearchActiveState = MutableStateFlow(false)
     val isSearchActive: StateFlow<Boolean> = isSearchActiveState.asStateFlow()
 
+    /** Flattened recursive-search hits for [searchQuery] under the browsed folder. */
+    internal val searchResultsState = MutableStateFlow<List<FilesSearchHit>>(emptyList())
+    val searchResults: StateFlow<List<FilesSearchHit>> = searchResultsState.asStateFlow()
+
+    /** True while the recursive walk for the current query is still running. */
+    internal val isSearchLoadingState = MutableStateFlow(false)
+    val isSearchLoading: StateFlow<Boolean> = isSearchLoadingState.asStateFlow()
+
     internal val showHiddenState = MutableStateFlow(prefs.getBoolean("show_hidden", false))
     val showHidden: StateFlow<Boolean> = showHiddenState.asStateFlow()
 

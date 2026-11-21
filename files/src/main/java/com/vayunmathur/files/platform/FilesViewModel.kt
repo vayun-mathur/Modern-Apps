@@ -46,6 +46,7 @@ class FilesViewModel(application: Application) : FilesTrashModel(application), F
         loadDirectory()
         restartObserver()
         loadHome()
+        startSearchPipeline()
     }
 
     override fun unzip(zipItem: FileBrowserItem, destPath: File) {

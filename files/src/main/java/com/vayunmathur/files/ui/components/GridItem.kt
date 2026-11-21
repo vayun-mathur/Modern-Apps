@@ -28,6 +28,8 @@ fun GridItem(
     isSelected: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
+    /** Parent-path subtitle for recursive-search hits; null in normal browsing. */
+    subtitle: String? = null,
 ) {
     Column(
         modifier = Modifier
@@ -50,5 +52,15 @@ fun GridItem(
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center,
         )
+        if (subtitle != null) {
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.outline,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+            )
+        }
     }
 }

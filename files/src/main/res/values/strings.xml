@@ -119,6 +119,10 @@
 
     <!-- Empty folder placeholder -->
     <string name="no_files">Nothing here</string>
+    <!-- Search: no recursive results for the query. %1$s = query -->
+    <string name="no_search_results">No results for “%1$s”</string>
+    <!-- Search: recursive walk in progress -->
+    <string name="searching_files">Searching…</string>
 
     <!-- Properties dialog rows -->
     <string name="prop_path">Path</string>

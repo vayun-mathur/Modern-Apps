@@ -17,6 +17,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
@@ -67,12 +68,13 @@ fun DirectoryScreen(
         actions = actions,
         snackbarHostState = snackbarHostState,
         onOpenDrawer = onOpenDrawer,
-        title = {
+        title = { searchFocusRequester ->
             DirectoryTitle(
                 state = state,
                 actions = actions,
                 isCategory = isCategory,
                 isReadOnly = isReadOnly,
+                searchFocusRequester = searchFocusRequester,
             )
         },
         topActions = { onRename, onShowProperties, onArchive, onShowNewFolder, onShowNewFile ->
@@ -182,7 +184,7 @@ internal fun DirectoryScreenCore(
     actions: FilesActions,
     snackbarHostState: SnackbarHostState,
     onOpenDrawer: () -> Unit,
-    title: @Composable () -> Unit,
+    title: @Composable (androidx.compose.ui.focus.FocusRequester) -> Unit,
     topActions: @Composable (
         onRename: (FileBrowserItem) -> Unit,
         onShowProperties: (FileBrowserItem) -> Unit,
@@ -285,6 +287,11 @@ internal fun DirectoryScreenCore(
     }
 
     val focusManager = LocalFocusManager.current
+    // Hoisted so the desktop shortcut handler below can (re)focus the search
+    // field in DirectoryTitle; activating search also autofocuses it there.
+    val searchFocusRequester = remember { androidx.compose.ui.focus.FocusRequester() }
+    val anyDialogOpen = showArchiveDialog || itemBeingRenamed != null ||
+        showNewFolderDialog || showNewFileDialog || itemForProperties != null
 
     // Only the parts of Back that are not navigation. Folder, archive and category depth are back
     // stack entries now, so everything else has to fall through to the navigation host - swallowing
@@ -296,6 +303,21 @@ internal fun DirectoryScreenCore(
 
     AppScaffold(
         modifier = Modifier
+            .onPreviewKeyEvent { event ->
+                handleDirectoryKey(
+                    event = event,
+                    dialogOpen = anyDialogOpen,
+                    isSearchActive = isSearchActive,
+                    hasSelection = selectedPaths.isNotEmpty(),
+                    onFocusSearch = {
+                        if (isSearchActive) searchFocusRequester.requestFocus()
+                        else actions.setSearchActive(true)
+                    },
+                    onSelectAll = { actions.selectAll() },
+                    onClearSearch = { actions.setSearchActive(false) },
+                    onClearSelection = { actions.clearSelection() },
+                )
+            }
             .clickable(
                 interactionSource = remember { MutableInteractionSource() }, indication = null
             ) {
@@ -309,7 +331,7 @@ internal fun DirectoryScreenCore(
                     IconButton(onClick = onOpenDrawer) { IconMenu() }
                 }
             },
-        title = title,
+        title = { title(searchFocusRequester) },
         actions = {
             topActions(
                 { itemBeingRenamed = it },

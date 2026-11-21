@@ -49,6 +49,14 @@ data class FilesUiState(
     /** Non-empty while the search field filters the current listing by name. */
     val searchQuery: String = "",
     val isSearchActive: Boolean = false,
+    /**
+     * Recursive-search hits under the browsed folder, flattened with parent
+     * subtitles. Null means no recursive search supplies this state (previews,
+     * zip/category scopes), so the listing keeps its current-folder filter.
+     */
+    val searchResults: List<FilesSearchHit>? = null,
+    /** True while the recursive search walk for [searchQuery] is running. */
+    val isSearchLoading: Boolean = false,
     /** Number of files on the copy/cut clipboard (0 = nothing to paste). */
     val clipboardCount: Int = 0,
     /** True when the clipboard holds a cut (move on paste) rather than a copy. */

@@ -18,11 +18,14 @@ import androidx.compose.ui.unit.dp
 import com.vayunmathur.files.R
 import com.vayunmathur.files.platform.FileBrowserItem
 import com.vayunmathur.files.platform.FilesActions
+import com.vayunmathur.files.platform.FilesSearchHit
 import com.vayunmathur.files.platform.FilesUiState
 import com.vayunmathur.files.platform.ViewMode
+import com.vayunmathur.files.platform.searchMatches
 import com.vayunmathur.files.ui.components.DirectoryItem
 import com.vayunmathur.files.ui.components.GridItem
 import com.vayunmathur.library.ui.EmptyState
+import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.HorizontalDivider
 import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.IconClose
@@ -52,6 +55,8 @@ internal fun DirectoryListing(
         directories = state.directories,
         files = state.files,
         searchQuery = state.searchQuery,
+        searchResults = state.searchResults,
+        isSearchLoading = state.isSearchLoading,
         clipboardCount = state.clipboardCount,
         selectedPaths = state.selectedPaths,
         isSearchActive = state.isSearchActive,
@@ -79,11 +84,27 @@ internal fun DirectoryListing(
     modifier: Modifier = Modifier,
     /** Clears the rename dialog target; owned by [DirectoryScreen]. */
     onClearRenameTarget: () -> Unit = {},
+    /**
+     * Recursive-search hits for a non-blank query, flattened with parent
+     * subtitles. Null keeps the current-folder fast path/filter (blank query,
+     * previews, zip and category scopes).
+     */
+    searchResults: List<FilesSearchHit>? = null,
+    /** True while the recursive walk for [searchQuery] is still running. */
+    isSearchLoading: Boolean = false,
 ) {
     val query = searchQuery.trim()
-    fun matches(item: FileBrowserItem) =
-        query.isEmpty() || item.name.contains(query, ignoreCase = true)
-    val allItems = (directories + files).filter(::matches)
+    val useRecursive = query.isNotEmpty() && searchResults != null
+    val subtitles = if (useRecursive) {
+        searchResults.associate { it.item.key to it.parentSubtitle }
+    } else {
+        emptyMap()
+    }
+    val allItems = if (useRecursive) {
+        searchResults.map { it.item }
+    } else {
+        (directories + files).filter { searchMatches(it.name, query) }
+    }
 
     Column(modifier) {
             // Paste bar: shown when the clipboard has files and we can write here.
@@ -126,9 +147,18 @@ internal fun DirectoryListing(
                 }
             }
 
-            if (allItems.isEmpty()) {
+            if (useRecursive && isSearchLoading && allItems.isEmpty()) {
+                LoadingState(
+                    message = stringResource(R.string.searching_files),
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                )
+            } else if (allItems.isEmpty()) {
                 EmptyState(
-                    title = stringResource(R.string.no_files),
+                    title = if (query.isNotEmpty()) {
+                        stringResource(R.string.no_search_results, query)
+                    } else {
+                        stringResource(R.string.no_files)
+                    },
                     modifier = Modifier.weight(1f).fillMaxWidth(),
                 )
             } else if (viewMode == ViewMode.GRID) {
@@ -142,6 +172,7 @@ internal fun DirectoryListing(
                             isSelected = selectedPaths.any { it.key == child.key },
                             onClick = { onItemClick(child) },
                             onLongClick = { onItemLongClick(child) },
+                            subtitle = subtitles[child.key],
                         )
                     }
                 }
@@ -153,6 +184,7 @@ internal fun DirectoryListing(
                             file = child,
                             isSelected = isSelected,
                             isReadOnly = isReadOnly,
+                            subtitle = subtitles[child.key],
                             onLongClick = { onItemLongClick(child) },
                             onClick = { onItemClick(child) },
                             onMove = { sources: List<File> ->

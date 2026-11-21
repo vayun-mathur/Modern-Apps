@@ -43,7 +43,9 @@ fun DirectoryItem(
     onLongClick: () -> Unit,
     onClick: () -> Unit,
     onMove: (List<File>) -> Unit,
-    onStartDrag: () -> List<File>
+    onStartDrag: () -> List<File>,
+    /** Parent-path subtitle for recursive-search hits; null in normal browsing. */
+    subtitle: String? = null,
 ) {
     var isDraggingOver by remember { mutableStateOf(false) }
     val currentOnMove by rememberUpdatedState(onMove)
@@ -123,7 +125,9 @@ fun DirectoryItem(
             content = { Text(file.name.ifEmpty { "/" }) },
             leadingContent = { FileLeading(file, isSelected, 40.dp) },
             supportingContent = {
-                if (!file.isDirectory) {
+                if (subtitle != null) {
+                    Text(subtitle)
+                } else if (!file.isDirectory) {
                     file.size?.let { size -> Text(Formatter.formatShortFileSize(context, size)) }
                 }
             },

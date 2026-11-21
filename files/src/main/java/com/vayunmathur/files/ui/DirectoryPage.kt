@@ -102,7 +102,7 @@ fun DirectoryPage(
         actions = actions,
         snackbarHostState = snackbarHostState,
         onOpenDrawer = onOpenDrawer,
-        title = { DirectoryTitleLive(viewModel, actions, isCurrent) },
+        title = { searchFocus -> DirectoryTitleLive(viewModel, actions, isCurrent, searchFocus) },
         topActions = { onRename, onShowProperties, onArchive, onShowNewFolder, onShowNewFile ->
             DirectoryTopActionsLive(
                 viewModel = viewModel,
@@ -138,6 +138,7 @@ private fun DirectoryTitleLive(
     viewModel: FilesViewModel,
     actions: FilesActions,
     isCurrent: Boolean,
+    searchFocusRequester: androidx.compose.ui.focus.FocusRequester,
 ) {
     val currentDirectory by viewModel.currentDirectory.collectAsStateWithLifecycle()
     val zipPath by viewModel.zipPath.collectAsStateWithLifecycle()
@@ -159,6 +160,7 @@ private fun DirectoryTitleLive(
         actions = actions,
         isCategory = shownCategoryTitle != null,
         isReadOnly = shownZipPath != null,
+        searchFocusRequester = searchFocusRequester,
     )
 }
 
@@ -278,16 +280,27 @@ private fun DirectoryListingLive(
     onClearRenameTarget: () -> Unit,
 ) {
     val entries by viewModel.entries.collectAsStateWithLifecycle()
+    val categoryTitle by viewModel.categoryTitle.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val searchResults by viewModel.searchResults.collectAsStateWithLifecycle()
+    val isSearchLoading by viewModel.isSearchLoading.collectAsStateWithLifecycle()
     val clipboard by viewModel.clipboard.collectAsStateWithLifecycle()
     val selectedPaths by viewModel.selectedPaths.collectAsStateWithLifecycle()
     val isSearchActive by viewModel.isSearchActive.collectAsStateWithLifecycle()
     val viewMode by viewModel.viewMode.collectAsStateWithLifecycle()
     val (directories, files) = frozen(isCurrent, entries)
+    // Zip and category scopes keep the current-listing filter: no recursive walk.
+    val recursiveResults = if (isReadOnly || frozen(isCurrent, categoryTitle) != null) {
+        null
+    } else {
+        frozen(isCurrent, searchResults)
+    }
     DirectoryListing(
         directories = directories,
         files = files,
         searchQuery = frozen(isCurrent, searchQuery),
+        searchResults = recursiveResults,
+        isSearchLoading = frozen(isCurrent, isSearchLoading),
         clipboardCount = frozen(isCurrent, clipboard).size,
         selectedPaths = frozen(isCurrent, selectedPaths),
         isSearchActive = frozen(isCurrent, isSearchActive),

@@ -360,6 +360,43 @@ class DirectoryScreenTest {
     }
 
     @Test
+    fun `recursive search results render flattened with parent subtitles`() {
+        val actions = RecordingFilesActions()
+        val hit = com.vayunmathur.files.platform.FilesSearchHit(
+            fileItem("deep-report.txt", File(root, "Docs/inner")),
+            parentSubtitle = "Docs/inner",
+        )
+        rule.setContent {
+            DirectoryScreen(
+                state = baseState().copy(
+                    isSearchActive = true, searchQuery = "report",
+                    searchResults = listOf(hit),
+                ),
+                actions = actions,
+            )
+        }
+        rule.onNodeWithText("deep-report.txt").assertIsDisplayed()
+        rule.onNodeWithText("Docs/inner").assertIsDisplayed()
+        // Current-folder items that do not come from the walk are not shown.
+        rule.onNodeWithText("notes.txt").assertDoesNotExist()
+    }
+
+    @Test
+    fun `recursive search with no hits shows the no-results state`() {
+        val actions = RecordingFilesActions()
+        rule.setContent {
+            DirectoryScreen(
+                state = baseState().copy(
+                    isSearchActive = true, searchQuery = "zzznothing",
+                    searchResults = emptyList(),
+                ),
+                actions = actions,
+            )
+        }
+        rule.onNodeWithText("No results for", substring = true).assertIsDisplayed()
+    }
+
+    @Test
     fun `sort labels cover every sort`() {
         rule.setContent {
             Column { SortBy.entries.forEach { Text2(it) } }
