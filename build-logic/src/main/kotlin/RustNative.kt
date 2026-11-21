@@ -875,6 +875,85 @@ private fun Project.rustHostLibRefs(): MutableMap<String, MutableList<RustHostLi
 }
 
 /**
+ * Per-module opt-in for splitting native-loading unit tests out of the main
+ * unit-test task (see [wireRustHostLibsForUnitTests]).
+ *
+ * A test class belongs in the native split when executing it can actually
+ * `System.loadLibrary` a Rust cdylib — directly, or through the module's
+ * `<Feature>Native` wrapper / a facade over it (e.g. appstore's
+ * `Signify.verify` -> `SignifyNative`). Classes that merely reference a
+ * repository whose native path is stubbed out in the test do NOT load the
+ * library and stay in the main task.
+ */
+abstract class RustNativeTestsExtension {
+    /**
+     * Fully-qualified names of test classes that load a Rust native library.
+     * Each name also matches its nested classes. Naming a class here (or
+     * adding [nativePatterns]) enables the split for the module.
+     */
+    abstract val nativeClasses: ListProperty<String>
+
+    /**
+     * Extra class-file include patterns for native-loading tests, in Gradle
+     * [Test] include syntax (glob patterns over class-file paths). Added to
+     * the built-in conventions in [DEFAULT_NATIVE_TEST_PATTERNS].
+     */
+    abstract val nativePatterns: ListProperty<String>
+
+    /**
+     * Fully-qualified names of test classes that must keep one-JVM-per-class
+     * for a non-JNI reason: they pollute a shared JVM (leaked
+     * `viewModelScope` collectors on the process-wide DataStores, persisted
+     * DataStore files, process-wide flows) or depend on that state being
+     * fresh. Each name also matches its nested classes. These classes join
+     * the same per-class companion task as [nativeClasses]; the companion
+     * is a quarantine, whatever the reason a class needs its own JVM.
+     */
+    abstract val isolatedClasses: ListProperty<String>
+
+    /**
+     * Enables the split even with no explicit classes/patterns, relying only
+     * on the built-in naming/package conventions. Defaults to false: modules
+     * that have not audited which classes load a native library keep the
+     * historic one-JVM-per-class behaviour for every test.
+     */
+    abstract val split: Property<Boolean>
+}
+
+/** DSL entry point for [RustNativeTestsExtension], e.g. in a module build file. */
+fun Project.rustNativeTests(configure: RustNativeTestsExtension.() -> Unit) {
+    rustNativeTestsExtension().configure()
+}
+
+private fun Project.rustNativeTestsExtension(): RustNativeTestsExtension =
+    extensions.findByType(RustNativeTestsExtension::class.java)
+        ?: extensions.create("rustNativeTests", RustNativeTestsExtension::class.java)
+
+/** Suffix of the per-class-fork companion task of a unit-test task (`testDevUnitTest` -> `testDevUnitTestNative`). */
+const val NATIVE_TEST_TASK_SUFFIX = "Native"
+
+/**
+ * Built-in conventions for native-loading test classes, as class-file
+ * patterns: a test type named `*Native*Test(s)` in any package, or any test
+ * type under a `native` package segment. Deliberately narrow — a class that
+ * matches but never actually loads a library only costs itself a dedicated
+ * JVM, while the explicit [RustNativeTestsExtension.nativeClasses] list is
+ * the precise mechanism for loaders that follow neither convention
+ * (appstore's `FingerprintNormalizeTest` reaches `SignifyNative` through
+ * `Signify.verify`).
+ */
+val DEFAULT_NATIVE_TEST_PATTERNS: List<String> = listOf(
+    "**/*NativeTest.class",
+    "**/*NativeTest\$*.class",
+    "**/*NativeTests.class",
+    "**/*NativeTests\$*.class",
+    "**/native/**Test.class",
+    "**/native/**Test\$*.class",
+    "**/native/**Tests.class",
+    "**/native/**Tests\$*.class",
+)
+
+/**
  * Wires every unit [Test] task (testDevUnitTest, testDebugUnitTest, ...) so
  * `System.loadLibrary` finds Rust cdylibs on the host JVM: each Test task
  * depends on the host build tasks of this module and of every project it
@@ -894,6 +973,11 @@ private fun Project.rustHostLibRefs(): MutableMap<String, MutableList<RustHostLi
  * task configuration — never a Project.
  */
 fun Project.wireRustHostLibsForUnitTests() {
+    // Created here, while the convention plugin is being applied, so the
+    // module's own build file (evaluated afterwards) can configure it via
+    // `rustNativeTests { ... }`. Read only in afterEvaluate below, when the
+    // module's values are final.
+    rustNativeTestsExtension().split.convention(false)
     // Deferred to afterEvaluate: the module's own `dependencies {}` block runs
     // after the convention plugin, so the project-dep graph is only complete
     // then. Task wiring uses configureEach, which covers Test tasks whether
@@ -950,5 +1034,89 @@ fun Project.wireRustHostLibsForUnitTests() {
             // as many JVMs as they have test classes queued.
             maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).coerceIn(1, 6)
         }
+        splitNativeLoadingTests(self)
+    }
+}
+
+/**
+ * The quarantine, quarantined: `forkEvery = 1` exists only because a JNI
+ * library binds to one classloader per JVM (see [wireRustHostLibsForUnitTests]),
+ * yet it was applied to every test class in every [rustNativeLib] module —
+ * appstore paid 152 sequential JVM + Robolectric sandbox startups for the
+ * one class that actually loads `libappstore_signify`. A single [Test] task
+ * cannot vary its fork cadence per class, so an opted-in module gets two:
+ *
+ * - the AGP task (`testDevUnitTest`, ...), excluding the native-loading
+ *   classes and running the rest with `forkEvery = 20` (the
+ *   `maxParallelForks` formula set above is unchanged);
+ * - a companion `<task>Native` task including only those classes, keeping
+ *   `forkEvery = 1`.
+ *
+ * The AGP task depends on its companion, so existing invocations —
+ * `./gradlew :appstore:testDevUnitTest`, `check`, the merged-coverage
+ * task's `dependsOn("testDevUnitTest")` — still run the union of both
+ * class sets; no test is dropped from the task CI already names. The
+ * companion copies the AGP task's classes/classpath (their `builtBy`
+ * edges still drive compilation) and is itself a [Test] task, so the
+ * `configureEach` wiring above gives it the host cargo builds and the
+ * merged `java.library.path` too.
+ *
+ * Opt-in only (see [RustNativeTestsExtension]): without explicit classes,
+ * explicit patterns, `-Pmodernapps.nativeTestClasses=<fqcn>[,...]`, or
+ * `split = true`, the module keeps the historic per-class fork for all
+ * tests — the safe default for a module that has not audited which of
+ * its classes load a native library.
+ */
+private fun Project.splitNativeLoadingTests(self: Project) {
+    val extension = self.rustNativeTestsExtension()
+    val propertyClasses = self.providers.gradleProperty("modernapps.nativeTestClasses").orNull
+        ?.split(',')?.map { it.trim() }?.filter { it.isNotEmpty() }.orEmpty()
+    val explicitClasses = (extension.nativeClasses.get() + propertyClasses).distinct()
+    val explicitPatterns = extension.nativePatterns.get()
+    val isolatedClasses = extension.isolatedClasses.get().distinct()
+    if (!extension.split.get() && explicitClasses.isEmpty() && explicitPatterns.isEmpty() &&
+        isolatedClasses.isEmpty()
+    ) return
+
+    fun classPatterns(fqcns: List<String>) = fqcns.flatMap { fqcn ->
+        val path = fqcn.replace('.', '/')
+        listOf("$path.class", "$path\$*.class")
+    }
+    // One quarantine pattern set: native loaders and isolated polluters both
+    // keep forkEvery = 1 in the companion; everything else batches.
+    val nativePatterns = (DEFAULT_NATIVE_TEST_PATTERNS + explicitPatterns +
+        classPatterns(explicitClasses) + classPatterns(isolatedClasses)).distinct()
+    val parallelForks = (Runtime.getRuntime().availableProcessors() / 2).coerceIn(1, 6)
+
+    // Snapshot: registering the companions below mutates the live collection.
+    val mainTasks = self.tasks.withType<Test>()
+        .filter { !it.name.endsWith(NATIVE_TEST_TASK_SUFFIX) }
+    mainTasks.forEach { main ->
+        val nativeName = main.name + NATIVE_TEST_TASK_SUFFIX
+        if (self.tasks.findByName(nativeName) == null) {
+            self.tasks.register<Test>(nativeName) {
+                group = "verification"
+                description = "Runs the ${main.name} classes quarantined to one JVM " +
+                    "per class (Rust native loaders and isolated polluters)."
+                testClassesDirs = main.testClassesDirs
+                classpath = main.classpath
+                maxHeapSize = main.maxHeapSize
+                minHeapSize = main.minHeapSize
+                jvmArgs = main.jvmArgs
+                systemProperties = main.systemProperties
+                include(nativePatterns)
+                // A `--tests` filter naming only main-task classes must not
+                // fail this task for finding nothing to run.
+                filter { isFailOnNoMatchingTests = false }
+                forkEvery = 1
+                maxParallelForks = parallelForks
+            }
+        }
+        main.exclude(nativePatterns)
+        // Batch classes that never load a native library: 20 classes share
+        // one JVM + Robolectric sandbox instead of paying a startup each.
+        main.forkEvery = 20
+        main.maxParallelForks = parallelForks
+        main.dependsOn(nativeName)
     }
 }
