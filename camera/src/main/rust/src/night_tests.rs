@@ -2,6 +2,7 @@
 //! and the public burst-merge entry point on synthetic frames.
 
 use super::*;
+use crate::imgbuf::Gray;
 use crate::linalg::Matrix3;
 
 fn approx(a: f64, b: f64) -> bool {
@@ -83,6 +84,141 @@ fn align_and_merge_identical_frames_returns_same_image() {
     let out = align_and_merge(&[f.clone(), f.clone(), f.clone()]).expect("merge");
     assert_eq!((out.w, out.h), (24, 18));
     assert!(out.px.chunks_exact(4).all(|p| p == [90, 80, 70, 255]));
+}
+
+fn gray_checkerboard(w: usize, h: usize) -> Gray {
+    let mut g = Gray::new(w, h);
+    for y in 0..h {
+        for x in 0..w {
+            g.px[y * w + x] = if (x + y) % 2 == 0 { 255 } else { 0 };
+        }
+    }
+    g
+}
+
+/// 3x3 box blur with clamped edges: a stand-in for a defocused frame.
+fn blurred(g: &Gray) -> Gray {
+    let mut out = Gray::new(g.w, g.h);
+    for y in 0..g.h {
+        for x in 0..g.w {
+            let mut sum = 0u32;
+            for dy in -1i32..=1 {
+                for dx in -1i32..=1 {
+                    let xx = (x as i32 + dx).clamp(0, g.w as i32 - 1) as usize;
+                    let yy = (y as i32 + dy).clamp(0, g.h as i32 - 1) as usize;
+                    sum += g.px[yy * g.w + xx] as u32;
+                }
+            }
+            out.px[y * g.w + x] = (sum / 9) as u8;
+        }
+    }
+    out
+}
+
+#[test]
+fn sharpest_frame_is_not_the_blurred_one() {
+    let sharp = gray_checkerboard(24, 18);
+    let blurry = blurred(&sharp);
+    assert!(laplacian_variance(&sharp) > laplacian_variance(&blurry));
+    assert_eq!(laplacian_variance(&Gray::new(8, 8)), 0.0, "flat scores zero");
+    assert_eq!(pick_sharpest_index(&[blurry.clone(), sharp.clone()]), 1);
+    assert_eq!(pick_sharpest_index(&[sharp, blurry]), 0);
+    // No sharpness signal anywhere: earliest frame wins.
+    assert_eq!(pick_sharpest_index(&[Gray::new(8, 8), Gray::new(8, 8)]), 0);
+}
+
+#[test]
+fn align_and_merge_does_not_pick_blurry_first_frame_as_reference() {
+    let blurry = solid(24, 18, [100, 100, 100, 255]);
+    let mut sharp = Rgba::new(24, 18);
+    for y in 0..18 {
+        for x in 0..24 {
+            let v = if (x / 2 + y / 2) % 2 == 0 { 40 } else { 220 };
+            sharp.set(x, y, [v, v, v, 255]);
+        }
+    }
+    // Frame 0 is the blurry one; the sharp frame must become the reference,
+    // so the output is the sharp frame, not the flat first frame.
+    let out = align_and_merge(&[blurry, sharp.clone()]).expect("merge");
+    assert_eq!(out.px, sharp.px);
+}
+
+#[test]
+fn ghost_threshold_is_luma_adaptive_with_dark_floor() {
+    assert_eq!(ghost_threshold_sum([0, 0, 0, 255]), 28, "dark floor 25% of 110");
+    assert_eq!(ghost_threshold_sum([255, 255, 255, 255]), 110, "full legacy value at white");
+    let dark = ghost_threshold_sum([12, 12, 12, 255]);
+    let mid = ghost_threshold_sum([128, 128, 128, 255]);
+    assert!(dark < mid && mid < 110, "monotonic in luma: {dark} {mid}");
+}
+
+#[test]
+fn trimmed_mean_by_sample_count() {
+    assert_eq!(trimmed_mean(100.0, 100.0, 100.0, 1), 100.0);
+    assert_eq!(trimmed_mean(300.0, 100.0, 200.0, 2), 150.0, "two samples: mean");
+    assert_eq!(trimmed_mean(390.0, 90.0, 200.0, 3), 100.0, "three samples: median");
+    // Four samples 100,100,100,255: drop min+max, average the middle two.
+    assert_eq!(trimmed_mean(555.0, 100.0, 255.0, 4), 100.0);
+}
+
+fn identities(n: usize) -> Vec<Option<Matrix3<f64>>> {
+    vec![Some(Matrix3::identity()); n]
+}
+
+#[test]
+fn merge_identical_frames_preserves_image() {
+    let mut f = Rgba::new(16, 12);
+    for y in 0..12 {
+        for x in 0..16 {
+            let v = ((x * 11 + y * 7) % 251) as u8;
+            f.set(x, y, [v, v, v, 255]);
+        }
+    }
+    let frames = vec![f.clone(), f.clone(), f.clone(), f.clone()];
+    let out = merge_with_homographies(&frames, 0, &identities(4)).expect("merge");
+    assert_eq!(out.px, f.px, "identical frames: trimmed mean is the frame");
+}
+
+#[test]
+fn merge_rejects_single_flash_frame_via_trimming() {
+    // Baseline 200 with one frame flashed to 230 in a block. The flash
+    // passes deghosting (diff 90 <= adaptive threshold 92 at luma 200), so
+    // only the trimmed mean can reject it: the plain mean would give 208.
+    let base = solid(16, 12, [200, 200, 200, 255]);
+    let mut flash = base.clone();
+    for y in 4..8 {
+        for x in 4..8 {
+            flash.set(x, y, [230, 230, 230, 255]);
+        }
+    }
+    let frames = vec![base.clone(), base.clone(), base.clone(), flash];
+    let out = merge_with_homographies(&frames, 0, &identities(4)).expect("merge");
+    assert_eq!(out.get(5, 5), [200, 200, 200, 255], "flash block trimmed away");
+    assert_eq!(out.get(0, 0), [200, 200, 200, 255]);
+}
+
+#[test]
+fn merge_three_frames_uses_median() {
+    // 200/210/230 all pass deghosting vs the 200 reference; the median
+    // (210), not the mean (213), wins with three samples.
+    let frames = vec![
+        solid(8, 6, [200, 200, 200, 255]),
+        solid(8, 6, [210, 210, 210, 255]),
+        solid(8, 6, [230, 230, 230, 255]),
+    ];
+    let out = merge_with_homographies(&frames, 0, &identities(3)).expect("merge");
+    assert_eq!(out.get(2, 2), [210, 210, 210, 255]);
+}
+
+#[test]
+fn merge_dark_region_small_change_still_merges() {
+    // Dark pixels: 12 -> 20 is a summed diff of 24, below both the old
+    // fixed 110 and the adaptive threshold at luma 12 (31), so the second
+    // frame still contributes and the output is the two-frame mean.
+    assert!(24 < ghost_threshold_sum([12, 12, 12, 255]));
+    let frames = vec![solid(8, 6, [12, 12, 12, 255]), solid(8, 6, [20, 20, 20, 255])];
+    let out = merge_with_homographies(&frames, 0, &identities(2)).expect("merge");
+    assert_eq!(out.get(2, 2), [16, 16, 16, 255]);
 }
 
 #[test]
