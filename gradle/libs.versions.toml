@@ -115,7 +115,7 @@ jsr305 = "3.0.2"
 # `measure_cv` crate — see measure/src/main/rust — so no third-party native CV
 # library ships in the APK at all.)
 zxing = "3.5.4"
-libphonenumber = "9.0.43"
+libphonenumber = "9.0.44"
 brotli = "0.1.2"
 # Pooled HTTP for :library:network's range-fetch path (issue 815): connection
 # reuse + HTTP/2 multiplexing at MapLibre's 20/host concurrency, which per-request
@@ -157,7 +157,7 @@ ringrtcAndroid = "2.72.1"
 
 # XML
 kxml2 = "2.3.0"
-robolectric = "4.18"
+robolectric = "4.18.1"
 # Plain-JVM mocks for Android framework classes (Application, Context) in unit tests.
 mockito = "5.24.0"
 
