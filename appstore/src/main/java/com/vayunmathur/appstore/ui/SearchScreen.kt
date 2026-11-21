@@ -29,7 +29,6 @@ import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.CommonSearchBar
 import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.ui.ErrorState
-import com.vayunmathur.library.ui.friendlyErrorMessage
 import com.vayunmathur.library.ui.FilterChip
 import com.vayunmathur.library.ui.IconSearch
 import com.vayunmathur.library.ui.LinearProgressIndicator
@@ -86,20 +85,25 @@ fun SearchScreen(
             }
 
             // Play's half refused (429, issue #797): say so above the results rather than
-            // silently showing a list that is missing half its sources.
+            // silently showing a list that is missing half its sources. The state line
+            // is already display-ready: every producer builds it as
+            // play_unavailable + friendlyErrorMessage(raw), so rendering it verbatim
+            // (as TvStoreSearch does) can never surface raw exception text. Mapping it
+            // again here would classify the finished sentence as an unknown failure
+            // and replace the Play/429 specifics with the generic fallback.
             val playError = state.playError.takeIf { it.isNotBlank() }
             if (playError != null && state.results.isEmpty()) {
                 ErrorState(
                     title = stringResource(R.string.search_failed_title),
-                    message = friendlyErrorMessage(playError),
+                    message = playError,
                     retryLabel = stringResource(com.vayunmathur.library.ui.R.string.retry),
                     onRetry = { actions.setSearch(state.query) },
                 )
             } else if (playError != null) {
                 // Partial failure: local results are on screen, so keep the
-                // notice as a banner above them (friendly text, not raw).
+                // notice as a banner above them.
                 Text(
-                    friendlyErrorMessage(playError),
+                    playError,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
