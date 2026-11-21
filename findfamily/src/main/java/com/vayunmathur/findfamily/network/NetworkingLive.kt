@@ -2,6 +2,7 @@ package com.vayunmathur.findfamily.network
 
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.findfamily.data.LocationValue
+import com.vayunmathur.findfamily.data.OutboundSpool
 import com.vayunmathur.findfamily.data.LocationValueCompatible
 import com.vayunmathur.findfamily.domain.UwbEnvelope
 import com.vayunmathur.library.network.WebSocketClient
@@ -203,6 +204,45 @@ private fun decryptLocationPqcBytes(raw: ByteArray): Triple<LocationValue, Strin
     val plainBytes = Networking.pqcIdentity.decrypt(raw)
     val compat = Networking.json.decodeFromString<LocationValueCompatible>(plainBytes.decodeToString())
     return Triple(compat.toLocationValue(), compat.senderPlatform, compat.pairId)
+}
+
+/**
+ * Records one location publish against the outbound spool (see [OutboundSpool]): a
+ * failed send keeps the sealed fix as the recipient's latest unpublished one, and a
+ * successful send retires any spooled fix it supersedes (no newer than [LocationValue.reportedAt]).
+ * Only sealed payloads ever reach the spool, and the whole update is a no-op until the
+ * tracking service binds a context — spooling must never fail a publish.
+ */
+internal suspend fun Networking.recordPublishOutcome(
+    recipient: Long,
+    fix: LocationValue,
+    sealed: ByteArray,
+    sent: Boolean,
+) {
+    val ctx = spoolContext ?: return
+    runCatching {
+        if (sent) {
+            OutboundSpool.clearSuperseded(ctx, recipient, fix.reportedAt.toEpochMilliseconds())
+        } else {
+            OutboundSpool.store(ctx, recipient, fix.reportedAt.toEpochMilliseconds(), sealed)
+        }
+    }.onFailure { Log.status(TAG, "outbound spool update failed", it) }
+}
+
+/**
+ * Delivers the latest spooled fix per recipient on (re)connect, right after the
+ * SUBSCRIBE frame and before the next heartbeat publish, so peers see the newest
+ * known position even if this device then goes still. Fixes whose resend fails stay
+ * spooled for the next reconnect; slots are cleared only on a successful send.
+ */
+internal suspend fun Networking.flushOutboundSpool() {
+    val ctx = spoolContext ?: return
+    runCatching {
+        val sent = OutboundSpool.flush(ctx) { recipient, payload ->
+            sendLivePublish(recipient, "location", payload)
+        }
+        if (sent > 0) Log.dev(TAG, "flushed $sent spooled outbound fix(es) on reconnect")
+    }.onFailure { Log.status(TAG, "outbound spool flush failed", it) }
 }
 
 /** Reads a big-endian u16 at [off]. */

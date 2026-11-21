@@ -314,6 +314,9 @@ class LocationTrackingService : Service(), SensorEventListener {
 
     override fun onCreate() {
         super.onCreate()
+        // Every own-device publish path runs out of this service (heartbeat, pre-unlock,
+        // parting reports), so it owns binding the outbound spool's storage context.
+        Networking.bindSpoolContext(this)
         setupNotificationChannels()
         // Runtime registration is not a style choice: neither ACTION_SHUTDOWN nor
         // ACTION_BATTERY_LOW reaches a manifest-declared receiver.

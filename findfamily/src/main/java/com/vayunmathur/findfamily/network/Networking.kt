@@ -1,4 +1,5 @@
 package com.vayunmathur.findfamily.network
+import android.content.Context
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.findfamily.data.LocationValue
 import com.vayunmathur.findfamily.data.TemporaryLink
@@ -321,6 +322,19 @@ object Networking {
         _liveConnectedFlow.value = connected
     }
 
+    /**
+     * Application context the outbound spool persists under, bound by the tracking
+     * service when it starts. Null before that (and in unit tests): failed publishes
+     * then drop exactly as they did before the spool existed.
+     */
+    @Volatile
+    internal var spoolContext: Context? = null
+
+    /** Bind the application context [com.vayunmathur.findfamily.data.OutboundSpool] persists under. */
+    fun bindSpoolContext(context: Context) {
+        spoolContext = context.applicationContext
+    }
+
     internal data class KeyResult(val status: Int, val bundle: ByteArray?)
 
     /** Reads 8 big-endian bytes at [off] back into the original Long bit pattern. */
@@ -372,6 +386,9 @@ object Networking {
                         wsSession = this
                         setLiveConnected(true)
                         sendSubscribe()
+                        // Latest unpublished fix per recipient goes out before the
+                        // next heartbeat publish (see flushOutboundSpool).
+                        Networking.flushOutboundSpool()
                         backoff = BACKOFF_INITIAL_MS
                         superviseConnection(connScope, outerScope, onLocations, onUwb, onRawMsg)
                     }
@@ -403,7 +420,7 @@ object Networking {
     }
 
     /** Send an already-encrypted payload to [recipient] over the socket. False if the socket is down. */
-    private suspend fun sendLivePublish(recipient: Long, kind: String, raw: ByteArray): Boolean {
+    internal suspend fun sendLivePublish(recipient: Long, kind: String, raw: ByteArray): Boolean {
         val session = wsSession ?: return false
         return runCatching {
             val frame = ByteArray(PUB_FRAME_HEADER_LEN + raw.size)
@@ -449,7 +466,9 @@ object Networking {
     /**
      * Publish location to a connected user over the socket. Returns false if the peer has no
      * PQC bundle (outdated app — surface [PeerCrypto.NEEDS_UPDATE] via [peerCryptoStatus]) or
-     * the socket is down (the next heartbeat retries once reconnected).
+     * the socket is down. A socket-down failure is not lost: the sealed fix becomes the
+     * recipient's spooled latest (see [recordPublishOutcome]) and flushes on reconnect.
+     * A missing bundle is not spooled — there is nothing sendable for an outdated peer.
      */
     // Broad catch is deliberate: relay-socket boundary, same as [wsGetKey].
     @Suppress("TooGenericExceptionCaught")
@@ -461,7 +480,9 @@ object Networking {
         }
         return try {
             val pairId = outboundPairIdFor(user)
-            val ok = sendLivePublish(user.id, "location", sealLocation(location, bundle, pairId))
+            val sealed = sealLocation(location, bundle, pairId)
+            val ok = sendLivePublish(user.id, "location", sealed)
+            recordPublishOutcome(user.id, location, sealed, ok)
             Log.dev(TAG, "publishLocation PQC to ${user.id.toULong()} (${user.name}) ok=$ok")
             ok
         } catch (e: Exception) {
@@ -478,7 +499,9 @@ object Networking {
             val bundle = Base64.decode(link.pqcPublicKey)
             // Anonymous link viewers prove nothing about identity and expect no auth:
             // pair ID stays null so nothing link-specific is pinned or leaked.
-            val ok = sendLivePublish(link.id, "location", sealLocation(location, bundle, pairId = null))
+            val sealed = sealLocation(location, bundle, pairId = null)
+            val ok = sendLivePublish(link.id, "location", sealed)
+            recordPublishOutcome(link.id, location, sealed, ok)
             Log.dev(TAG, "publishLocation PQC to temp link ${link.id} ok=$ok")
             ok
         } catch (e: Exception) {
@@ -504,7 +527,9 @@ object Networking {
         pairId: String? = null
     ): Boolean {
         return try {
-            val ok = sendLivePublish(targetId, "location", sealLocation(location, Base64.decode(bundleB64), pairId))
+            val sealed = sealLocation(location, Base64.decode(bundleB64), pairId)
+            val ok = sendLivePublish(targetId, "location", sealed)
+            recordPublishOutcome(targetId, location, sealed, ok)
             Log.dev(TAG, "publishLocation PQC to ${targetId.toULong()} (direct boot) ok=$ok")
             ok
         } catch (e: Exception) {

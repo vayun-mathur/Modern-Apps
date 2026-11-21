@@ -44,7 +44,8 @@ import kotlin.time.Duration.Companion.seconds
  *   where the phone demonstrably is not.
  * - **It does not reconnect, look up keys, or touch the database.** Every one of those can block
  *   for seconds. It publishes to peers whose keys are already cached, over a socket that is
- *   already open, or it publishes nothing and says so in the log.
+ *   already open; if the socket is down the sealed report is spooled instead (see
+ *   [com.vayunmathur.findfamily.data.OutboundSpool]) and delivered on the next connect.
  *
  * Registration has to happen at runtime, from the running tracking service. Both halves of that
  * were checked against the platform source in this tree:
@@ -219,12 +220,11 @@ object FinalLocationReporter {
             Log.status(TAG, "$source: identity not loaded, nothing to report as")
             return
         }
-        if (!Networking.liveConnected) {
-            // Reconnecting costs a TLS handshake we do not have time for, and on shutdown the
-            // radios are going down anyway. Saying so beats silently sending nothing.
-            Log.status(TAG, "$source: socket is down, dropping the report")
-            return
-        }
+        // A down socket no longer drops the report: publishLocation spools the sealed
+        // fix as each recipient's latest unpublished one (OutboundSpool) and it flushes
+        // on the next connect — for a shutdown report, on the next boot. Reconnecting
+        // here would still cost a TLS handshake we do not have time for, and on
+        // shutdown the radios are going down anyway; spooling is one small file write.
 
         val now = Clock.System.now()
         val battery = runCatching {
