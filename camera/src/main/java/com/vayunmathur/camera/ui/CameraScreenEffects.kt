@@ -248,8 +248,8 @@ internal fun CameraScreenEffects(
     // manual exposure or night mode makes ZSL unsafe, or safe again (#914). Other kinds ignore it.
     val zslCompatible by viewModel.zslCompatible.collectAsState()
     val zslKey = if (sessionKind == SessionKind.PHOTO) zslCompatible else null
-    LaunchedEffect(cameraMode, lensFacing, selectedLens, sessionKind, useNightPreview, zslKey, state.videoCodec, state.audioInputSource, state.mirrorFront, state.sessionBindRetry, lifecycleOwner) {
-        Log.dev("NightPreview", "CameraScreen session LaunchedEffect START keys zsl=$zslKey lensFacing=$lensFacing selectedLens=${selectedLens?.labelKey} sessionKind=$sessionKind useNightPreview=$useNightPreview codec=${state.videoCodec} audio=${state.audioInputSource} mirror=${state.mirrorFront} lifecycle=${lifecycleOwner.lifecycle.currentState} thread=${Thread.currentThread().name}")
+    LaunchedEffect(cameraMode, lensFacing, selectedLens, sessionKind, useNightPreview, zslKey, state.videoCodec, state.audioCodec, state.audioInputSource, state.mirrorFront, state.sessionBindRetry, lifecycleOwner) {
+        Log.dev("NightPreview", "CameraScreen session LaunchedEffect START keys zsl=$zslKey lensFacing=$lensFacing selectedLens=${selectedLens?.labelKey} sessionKind=$sessionKind useNightPreview=$useNightPreview codec=${state.videoCodec} audioCodec=${state.audioCodec} audio=${state.audioInputSource} mirror=${state.mirrorFront} lifecycle=${lifecycleOwner.lifecycle.currentState} thread=${Thread.currentThread().name}")
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             // A fresh (re)bind supersedes any earlier exhausted-retry failure.
             viewModel.sessionBindFailedMutable.value = false
