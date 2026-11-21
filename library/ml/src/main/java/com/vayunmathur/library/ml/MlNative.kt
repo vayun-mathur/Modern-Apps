@@ -91,6 +91,39 @@ internal object MlNative {
     ): String?
 
     /**
+     * Recognise every line in a camera plane read in place, in the same
+     * packed form as [recognizeText], or null on failure.
+     *
+     * [buffer] must be a **direct** `ByteBuffer` holding an `RGBA_8888`
+     * plane (`pixelStride` 4, rows `rowStride` bytes apart, [width] x
+     * [height] pixels) and must stay valid — its `ImageProxy` open — for
+     * the whole call, since native reads it at its direct address with no
+     * copy crossing JNI. The crop (`cropLeft`/`cropTop`/`cropRight`/
+     * `cropBottom`, right/bottom exclusive, in plane pixels) and the
+     * quarter-turn [rotationDegrees] are applied natively, so returned
+     * coordinates are in upright cropped-frame pixels, exactly as if the
+     * caller had cropped and rotated a Bitmap of the plane first.
+     *
+     * Null covers every refusal (non-direct buffer, non-RGBA stride,
+     * non-quarter-turn rotation, undersized plane, native failure):
+     * callers fall back to [recognizeText] on a Bitmap rather than
+     * treating any of them as "no text". An empty string is no text.
+     */
+    external fun recognizeTextBuffer(
+        handle: Long,
+        buffer: java.nio.ByteBuffer,
+        width: Int,
+        height: Int,
+        rowStride: Int,
+        pixelStride: Int,
+        cropLeft: Int,
+        cropTop: Int,
+        cropRight: Int,
+        cropBottom: Int,
+        rotationDegrees: Int,
+    ): String?
+
+    /**
      * Bring up Supertonic 3 from its four `.maml` files, the codepoint table and one voice.
      * Returns 0 on failure.
      *

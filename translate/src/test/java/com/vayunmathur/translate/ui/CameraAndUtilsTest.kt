@@ -183,6 +183,34 @@ class CameraAndUtilsTest {
     }
 
     @Test
+    fun `upright frame size matches crop and rotate bitmap dimensions`() {
+        // The buffer path has no Bitmap to measure, so its reported frame
+        // size must agree with the Bitmap path it replaces, per rotation.
+        val src = bitmap(40, 30)
+        for ((crop, degrees) in listOf(
+            Rect(0, 0, 40, 30) to 0, Rect(0, 0, 40, 30) to 90,
+            Rect(5, 5, 25, 20) to 180, Rect(0, 0, 20, 10) to 270,
+            Rect(0, 0, 0, 0) to 90, Rect(-10, -10, 500, 500) to 270,
+        )) {
+            val viaBitmap = cropAndRotate(src, crop, degrees)
+            val viaBuffer = uprightFrameSize(40, 30, crop, degrees)
+            assertEquals(viaBitmap.width, viaBuffer.width, "crop=$crop rot=$degrees")
+            assertEquals(viaBitmap.height, viaBuffer.height, "crop=$crop rot=$degrees")
+            if (viaBitmap !== src) viaBitmap.recycle()
+        }
+        src.recycle()
+    }
+
+    @Test
+    fun `buffer path eligibility requires direct rgba quarter turn planes`() {
+        assertTrue(bufferPathEligible(isDirect = true, pixelStride = 4, rotationDegrees = 90))
+        assertTrue(bufferPathEligible(isDirect = true, pixelStride = 4, rotationDegrees = -90))
+        assertTrue(!bufferPathEligible(isDirect = false, pixelStride = 4, rotationDegrees = 0))
+        assertTrue(!bufferPathEligible(isDirect = true, pixelStride = 1, rotationDegrees = 0))
+        assertTrue(!bufferPathEligible(isDirect = true, pixelStride = 4, rotationDegrees = 45))
+    }
+
+    @Test
     fun `frame constants and overlay box data`() {
         assertEquals(1280, ANALYSIS_SIZE.width)
         assertEquals(960, ANALYSIS_SIZE.height)

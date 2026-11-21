@@ -44,6 +44,7 @@
 //! Vulkan still passes `cargo test`. On an `x86_64-pc-windows-gnu` host, `libloading`
 //! needs a `dlltool` on `PATH` to build; the NDK's `llvm-dlltool` works under that name.
 
+pub mod frame;
 pub mod gate;
 pub mod knobs;
 pub mod logmel;

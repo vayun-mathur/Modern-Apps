@@ -112,6 +112,42 @@ class TextRecognizer(
         }
     }
 
+    /**
+     * Recognise every line in an `RGBA_8888` camera plane, reading
+     * [buffer] in place natively — no Bitmap, no `getPixels`, no pixel
+     * array crossing JNI. The crop (right/bottom exclusive) and quarter-
+     * turn [rotationDegrees] are applied natively; returned lines are in
+     * upright cropped-frame coordinates, identical to recognising a
+     * cropped-and-rotated Bitmap of the same plane.
+     *
+     * Returns null when this path cannot run — engine unavailable,
+     * [buffer] not direct, a plane shape or rotation native refuses, or
+     * the native pass failed — so the caller can fall back to [recognize]
+     * with a Bitmap. An empty list (not null) means the pass ran and
+     * found no text. [buffer] must stay valid for the whole call: keep
+     * its `ImageProxy` open until this returns.
+     */
+    @Suppress("LongParameterList") // mirrors the JNI signature one-to-one
+    fun recognizeBuffer(
+        buffer: java.nio.ByteBuffer,
+        width: Int,
+        height: Int,
+        rowStride: Int,
+        pixelStride: Int,
+        cropLeft: Int,
+        cropTop: Int,
+        cropRight: Int,
+        cropBottom: Int,
+        rotationDegrees: Int,
+    ): List<RecognizedLine>? {
+        if (handle == 0L || !buffer.isDirect) return null
+        val packed = MlNative.recognizeTextBuffer(
+            handle, buffer, width, height, rowStride, pixelStride,
+            cropLeft, cropTop, cropRight, cropBottom, rotationDegrees,
+        ) ?: return null
+        return parse(packed)
+    }
+
     /** Free both networks. Idempotent. */
     override fun close() {
         val live = handle

@@ -99,6 +99,23 @@ class OcrEngineTest {
     }
 
     @Test
+    fun bufferRecognitionIsNullWhileInertSoCallersFallBack() = runBlocking<Unit> {
+        val engine = OcrEngine(context)
+        val direct = java.nio.ByteBuffer.allocateDirect(64 * 32 * 4)
+        // Null (not an empty result) is the fallback signal: the engine is
+        // unavailable, so a caller holding the frame may retry via Bitmap.
+        kotlin.test.assertNull(
+            engine.recognizeDetailedBuffer(direct, 64, 32, 64 * 4, 4, 0, 0, 64, 32, 0),
+        )
+        kotlin.test.assertNull(
+            engine.recognizeDetailedBuffer(
+                java.nio.ByteBuffer.wrap(ByteArray(64 * 32 * 4)), 64, 32, 64 * 4, 4, 0, 0, 64, 32, 0,
+            ),
+        )
+        engine.close()
+    }
+
+    @Test
     fun closeIsIdempotentAndEngineStaysInertAfterClose() = runBlocking<Unit> {
         val engine = OcrEngine(context)
         engine.close()

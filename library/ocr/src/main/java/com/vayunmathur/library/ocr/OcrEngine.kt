@@ -95,6 +95,43 @@ class OcrEngine(private val context: Context) {
             linesToResult(engine.recognize(bitmap))
         }
     }
+    /**
+     * Like [recognizeDetailed] but over an `RGBA_8888` camera plane read
+     * in place natively: no Bitmap is materialised and no pixels cross
+     * JNI as an array. The crop (right/bottom exclusive, plane pixels)
+     * and quarter-turn [rotationDegrees] are applied natively, so boxes
+     * are in upright cropped-frame coordinates.
+     *
+     * Returns null when the buffer path cannot run (engine unavailable,
+     * [buffer] not direct, or native refusal/failure) so a caller holding
+     * the source frame can fall back to [recognizeDetailed] on a Bitmap;
+     * a non-null empty result means the pass ran and found no text.
+     * [buffer] must stay valid for the whole call — keep its `ImageProxy`
+     * open until this returns.
+     */
+    @Suppress("LongParameterList") // mirrors the native plane contract one-to-one
+    suspend fun recognizeDetailedBuffer(
+        buffer: java.nio.ByteBuffer,
+        width: Int,
+        height: Int,
+        rowStride: Int,
+        pixelStride: Int,
+        cropLeft: Int,
+        cropTop: Int,
+        cropRight: Int,
+        cropBottom: Int,
+        rotationDegrees: Int,
+    ): OcrResult? = withContext(Dispatchers.Default) {
+        lock.withLock {
+            if (!ensureInit()) return@withContext null
+            val engine = recognizer ?: return@withContext null
+            val lines = engine.recognizeBuffer(
+                buffer, width, height, rowStride, pixelStride,
+                cropLeft, cropTop, cropRight, cropBottom, rotationDegrees,
+            ) ?: return@withContext null
+            linesToResult(lines)
+        }
+    }
     /** Release the models. */
     fun close() {
         try { recognizer?.close() } catch (_: Exception) {}

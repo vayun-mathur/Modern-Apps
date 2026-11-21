@@ -41,18 +41,56 @@ internal data class OverlayBox(
  * just the region the preview is showing. May return [src] itself when there is nothing
  * to do, so callers must compare identities before recycling.
  */
-internal fun cropAndRotate(src: Bitmap, crop: Rect, degrees: Int): Bitmap {
-    var left = crop.left.coerceIn(0, src.width)
-    var top = crop.top.coerceIn(0, src.height)
-    var width = crop.width().coerceIn(0, src.width - left)
-    var height = crop.height().coerceIn(0, src.height - top)
+/**
+ * Clamp [crop] to a `srcWidth` x `srcHeight` frame exactly as
+ * [cropAndRotate] always has: left/top into the frame, the crop's own
+ * size to what remains, and an empty result falling back to the whole
+ * frame. Shared by the Bitmap path and [uprightFrameSize] so the buffer
+ * path's native clamp (which mirrors this in Rust) and both Kotlin paths
+ * cannot drift. Right/bottom are exclusive in the result, as in [Rect].
+ */
+internal fun clampedCrop(srcWidth: Int, srcHeight: Int, crop: Rect): Rect {
+    val left = crop.left.coerceIn(0, srcWidth)
+    val top = crop.top.coerceIn(0, srcHeight)
+    var width = crop.width().coerceIn(0, srcWidth - left)
+    var height = crop.height().coerceIn(0, srcHeight - top)
     // An unresolved viewport gives an empty rect; fall back to the whole frame.
     if (width <= 0 || height <= 0) {
-        left = 0
-        top = 0
-        width = src.width
-        height = src.height
+        width = srcWidth
+        height = srcHeight
+        return Rect(0, 0, width, height)
     }
+    return Rect(left, top, left + width, top + height)
+}
+
+/**
+ * The size of the upright frame [cropAndRotate] would produce from a
+ * `srcWidth` x `srcHeight` frame — quarter turns swap the axes, other
+ * rotations keep them guarded by callers to quarter turns only. This is
+ * what the plane-direct path reports as the analysed frame's size,
+ * since native does the crop and rotation and no Bitmap exists to ask.
+ */
+internal fun uprightFrameSize(srcWidth: Int, srcHeight: Int, crop: Rect, degrees: Int): Size {
+    val clamped = clampedCrop(srcWidth, srcHeight, crop)
+    return when ((degrees % 360 + 360) % 360) {
+        90, 270 -> Size(clamped.height(), clamped.width())
+        else -> Size(clamped.width(), clamped.height())
+    }
+}
+
+/** Whether a camera plane may take the direct-buffer OCR path at all. */
+internal fun bufferPathEligible(isDirect: Boolean, pixelStride: Int, rotationDegrees: Int): Boolean =
+    isDirect && pixelStride == RGBA_PIXEL_STRIDE && (rotationDegrees % 360 + 360) % 90 == 0
+
+/** Bytes per pixel (and the required pixel stride) of RGBA_8888 planes. */
+internal const val RGBA_PIXEL_STRIDE = 4
+
+internal fun cropAndRotate(src: Bitmap, crop: Rect, degrees: Int): Bitmap {
+    val clamped = clampedCrop(src.width, src.height, crop)
+    val left = clamped.left
+    val top = clamped.top
+    val width = clamped.width()
+    val height = clamped.height()
     if (width <= 0 || height <= 0) return src
     val matrix = if (degrees % 360 == 0) null else Matrix().apply { postRotate(degrees.toFloat()) }
     val whole = left == 0 && top == 0 && width == src.width && height == src.height

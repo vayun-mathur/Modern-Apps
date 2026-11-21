@@ -24,9 +24,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntSize
 import androidx.lifecycle.LifecycleOwner
 import com.vayunmathur.translate.platform.TranslateViewModel
@@ -35,8 +33,6 @@ import kotlin.concurrent.atomics.AtomicLong
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.ExecutorService
@@ -107,6 +103,9 @@ internal fun CameraBinding(
         }
     }
 
+    // One frozen-frame Bitmap capture per pause episode (see the analyser).
+    val pauseFrozen = remember { AtomicBoolean(false) }
+
     LaunchedEffect(viewSize, boundRotation) {
         if (viewSize.width <= 0 || viewSize.height <= 0) return@LaunchedEffect
         val cameraProvider = ProcessCameraProvider.awaitInstance(context)
@@ -122,21 +121,108 @@ internal fun CameraBinding(
 
         analysis.setAnalyzer(analysisExecutor) { proxy ->
             val now = System.currentTimeMillis()
-            if (pausedValue() || inFlight.load() || now - lastMs.load() < ANALYSIS_INTERVAL_MS) {
+            if (pausedValue()) {
+                // Frozen-frame capture keeps the Bitmap path: the paused UI
+                // displays a Bitmap, so one is materialised once per pause
+                // episode (not per live pass). Frames arriving while an OCR
+                // pass or this capture is in flight are simply dropped.
+                if (pauseFrozen.load() || inFlight.load()) {
+                    proxy.close()
+                    return@setAnalyzer
+                }
+                pauseFrozen.store(true)
+                inFlight.store(true)
+                val frozenBmp = try {
+                    proxy.toBitmap()
+                } catch (e: Exception) {
+                    Log.error(TAG, "toBitmap failed", e)
+                    null
+                }
+                val frozenRotation = proxy.imageInfo.rotationDegrees
+                val frozenCrop = Rect(proxy.cropRect)
+                proxy.close()
+                if (frozenBmp == null) {
+                    inFlight.store(false)
+                    return@setAnalyzer
+                }
+                scope.launch {
+                    try {
+                        frozenFrame.value = withContext(Dispatchers.Default) {
+                            cropAndRotate(frozenBmp, frozenCrop, frozenRotation)
+                                .also { if (it !== frozenBmp) frozenBmp.recycle() }
+                        }
+                    } catch (e: Exception) {
+                        Log.error(TAG, "Frozen frame capture failed", e)
+                    } finally {
+                        inFlight.store(false)
+                    }
+                }
+                return@setAnalyzer
+            }
+            pauseFrozen.store(false)
+            if (inFlight.load() || now - lastMs.load() < ANALYSIS_INTERVAL_MS) {
                 proxy.close()
                 return@setAnalyzer
             }
             inFlight.store(true)
+            val rotation = proxy.imageInfo.rotationDegrees
+            // The ViewPort's share of this buffer: exactly what the preview is showing.
+            // Copied because the proxy's own Rect is recycled with it.
+            val crop = Rect(proxy.cropRect)
+            val plane = proxy.planes.firstOrNull()
+            val buffer = plane?.buffer?.takeIf {
+                bufferPathEligible(it.isDirect, plane.pixelStride, rotation)
+            }
+            if (buffer != null) {
+                // Plane-direct live pass: native reads the RGBA plane in
+                // place and does the crop/rotate, so no Bitmap, getPixels
+                // IntArray or JNI pixel-array copy happens at all. The
+                // proxy must stay open until native has read the plane —
+                // closing it here would let CameraX reuse the buffer
+                // under the read — so it is closed in the finally below.
+                val frameWidth = proxy.width
+                val frameHeight = proxy.height
+                val rowStride = plane.rowStride
+                val pixelStride = plane.pixelStride
+                scope.launch {
+                    try {
+                        val result = viewModel.ocr.recognizeDetailedBuffer(
+                            buffer, frameWidth, frameHeight, rowStride, pixelStride,
+                            crop.left, crop.top, crop.right, crop.bottom, rotation,
+                        )
+                        if (result == null) {
+                            Log.error(TAG, "Buffer OCR failed; frame dropped")
+                        } else {
+                            val size = uprightFrameSize(frameWidth, frameHeight, crop, rotation)
+                            frameW.value = size.width
+                            frameH.value = size.height
+                            overlays.value = result.boxes.map { box ->
+                                OverlayBox(box.corners.map { Offset(it.x, it.y) }, box.text)
+                            }
+                            // frozenFrame is deliberately not updated: no
+                            // Bitmap exists on this path. It is captured
+                            // once when the user pauses (above).
+                        }
+                    } catch (e: Exception) {
+                        Log.error(TAG, "Frame analysis failed", e)
+                    } finally {
+                        proxy.close()
+                        // Measure the gap from the *end* of the pass, so a slow OCR run
+                        // doesn't immediately trigger the next one.
+                        lastMs.store(System.currentTimeMillis())
+                        inFlight.store(false)
+                    }
+                }
+                return@setAnalyzer
+            }
+            // Bitmap fallback (non-direct plane, non-RGBA stride, or a
+            // non-quarter-turn rotation): the frozen-frame path, unchanged.
             val bmp = try {
                 proxy.toBitmap()
             } catch (e: Exception) {
                 Log.error(TAG, "toBitmap failed", e)
                 null
             }
-            val rotation = proxy.imageInfo.rotationDegrees
-            // The ViewPort's share of this buffer: exactly what the preview is showing.
-            // Copied because the proxy's own Rect is recycled with it.
-            val crop = Rect(proxy.cropRect)
             proxy.close()
             if (bmp == null) {
                 inFlight.store(false)
@@ -201,77 +287,3 @@ internal fun CameraBinding(
         }
     }
 }
-
-/** Builds the shared ImageAnalysis use case. */
-@Composable
-internal fun rememberCameraAnalysis(): ImageAnalysis {
-    val context = LocalContext.current
-    return remember {
-        // Built once so the display-rotation listener and the dispose block can reach it.
-        // Target rotation is pinned to ROTATION_0 here purely so [ANALYSIS_SIZE] is read in
-        // sensor coords; the real rotation is applied after binding (see below).
-        ImageAnalysis.Builder()
-            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-            .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
-            .setTargetRotation(Surface.ROTATION_0)
-            .setResolutionSelector(
-                ResolutionSelector.Builder()
-                    .setAspectRatioStrategy(AspectRatioStrategy.RATIO_4_3_FALLBACK_AUTO_STRATEGY)
-                    .setResolutionStrategy(
-                        ResolutionStrategy(
-                            ANALYSIS_SIZE,
-                            ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER,
-                        )
-                    )
-                    .build()
-            )
-            .build()
-    }
-}
-
-/** One background translator, decoupled from the OCR loop. */
-@Composable
-internal fun TranslationLoop(
-    viewModel: TranslateViewModel,
-    sourceLang: String,
-    targetLang: String,
-    translationAvailable: Boolean,
-    overlays: List<OverlayBox>,
-    onTranslations: (Map<String, String>) -> Unit,
-) {
-    // NLLB takes on the order of a second per line, so translating every line of every
-    // frame inline (as this screen used to) meant the overlay updated once every several
-    // seconds, always against a frame the camera had long since moved off. Instead we
-    // memo per source line: repeat lines are free, and OCR keeps redrawing boxes at full
-    // rate. Keyed on the source too: switching it must drop the memo, or lines keep
-    // showing translations made from the previous source language.
-    // The overlay list arrives new on every OCR pass, but this loop must not
-    // restart for that (it would drop the memo and re-translate everything).
-    // rememberUpdatedState keeps the polling loop reading the latest snapshot.
-    val latestOverlays = rememberUpdatedState(overlays)
-    LaunchedEffect(sourceLang, targetLang, translationAvailable) {
-        onTranslations(emptyMap())
-        if (!translationAvailable) return@LaunchedEffect
-        var memo = emptyMap<String, String>()
-        while (isActive) {
-            val next = latestOverlays.value.firstOrNull { it.text !in memo }
-            if (next == null) {
-                delay(TRANSLATE_IDLE_POLL_MS)
-                continue
-            }
-            // Memo failures as the source text so a line that can't be translated
-            // isn't retried on every frame forever.
-            val translated = viewModel.translate(next.text) ?: next.text
-            memo = (memo + (next.text to translated)).let { updated ->
-                if (updated.size <= TRANSLATION_CACHE_MAX) {
-                    updated
-                } else {
-                    updated.entries.drop(updated.size - TRANSLATION_CACHE_MAX)
-                        .associate { it.key to it.value }
-                }
-            }
-            onTranslations(memo)
-        }
-    }
-}
-

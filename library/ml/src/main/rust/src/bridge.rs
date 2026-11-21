@@ -30,7 +30,8 @@ use std::fs::File;
 use std::os::fd::FromRawFd;
 
 use jni::objects::{
-    JByteArray, JClass, JFloatArray, JIntArray, JLongArray, JObjectArray, JShortArray, JString,
+    JByteArray, JByteBuffer, JClass, JFloatArray, JIntArray, JLongArray, JObjectArray, JShortArray,
+    JString,
 };
 use jni::sys::{jfloatArray, jint, jintArray, jlong, jstring};
 use jni::{Env, EnvUnowned};
@@ -439,3 +440,4 @@ include!("bridge_part8.rs");
 include!("bridge_part9.rs");
 include!("bridge_part10.rs");
 include!("bridge_part11.rs");
+include!("bridge_part12.rs");
