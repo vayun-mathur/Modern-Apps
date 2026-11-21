@@ -8,7 +8,11 @@ import com.vayunmathur.library.log.Log
 import androidx.camera.core.ImageCapture
 import androidx.core.content.ContextCompat
 import java.io.OutputStream
+import com.vayunmathur.camera.domain.StillFormat
+import com.vayunmathur.camera.domain.StillFormatRouting
 import com.vayunmathur.camera.platform.CameraViewModel
+import com.vayunmathur.camera.platform.EncodedStill
+import com.vayunmathur.camera.platform.StillEncoder.encode
 import com.vayunmathur.camera.platform.mirrorCaptures
 
 /**
@@ -82,10 +86,14 @@ internal fun PendingStill.resolveUri(results: ImageCapture.OutputFileResults): U
  * (created under [displayName]), else classic MediaStore insert. Runs the
  * blocking I/O on the calling thread — invoke from Dispatchers.IO.
  */
-internal fun CameraViewModel.saveStillBytes(displayName: String, bytes: ByteArray): Uri? {
+internal fun CameraViewModel.saveStillBytes(displayName: String, bytes: ByteArray): Uri? =
+    saveStillBytes(displayName, bytes, StillFormatRouting.mimeType(StillFormat.JPEG))
+
+/** Same as [saveStillBytes] for pre-encoded bytes in a non-JPEG container. */
+internal fun CameraViewModel.saveStillBytes(displayName: String, bytes: ByteArray, mimeType: String): Uri? {
     val target = saveTargetMutable.value
     if (target is SaveTarget.SafTree) {
-        val doc = SafDocuments.createImageDoc(app.contentResolver, target.treeUri, displayName)
+        val doc = SafDocuments.createImageDoc(app.contentResolver, target.treeUri, displayName, mimeType)
         if (doc != null) {
             MediaStoreSaver.saveJpegBytesToUri(app.contentResolver, doc, bytes)?.let {
                 scanSafDoc(doc)
@@ -95,8 +103,26 @@ internal fun CameraViewModel.saveStillBytes(displayName: String, bytes: ByteArra
         }
     }
     return MediaStoreSaver.saveJpegBytes(
-        app.contentResolver, MediaStoreSaver.imageValues(displayName), bytes
+        app.contentResolver, MediaStoreSaver.imageValues(displayName, mimeType), bytes
     )
+}
+
+/** A saved processed still: where it landed and the container actually used. */
+internal data class SavedStill(val uri: Uri, val format: StillFormat)
+
+/**
+ * Encodes a processed [bitmap] in the user's still format and saves it.
+ * AVIF has no EXIF orientation tag (ravif exposes no EXIF API), so the
+ * rotation is baked into the pixels first; JPEG keeps the bitmap as-is
+ * and the caller stamps orientation via `writeCaptureExif` as before.
+ * Falls back to JPEG bytes when the native AVIF encoder is unavailable.
+ */
+internal fun CameraViewModel.saveProcessedStill(bitmap: Bitmap, rotationDegrees: Int): SavedStill? {
+    val encoded: EncodedStill = encode(bitmap, rotationDegrees)
+    val name = StillFormatRouting.displayName(MediaStoreSaver.timestamp(), encoded.format)
+    val uri = saveStillBytes(name, encoded.bytes, StillFormatRouting.mimeType(encoded.format))
+        ?: return null
+    return SavedStill(uri, encoded.format)
 }
 
 /** Same as [saveStillBytes] for a [bitmap]. */

@@ -48,4 +48,11 @@ object StitchNative {
 
     /** Releases a night session (also cleans pano registry if mixed). */
     external fun freeNight(handle: Long)
+
+    /**
+     * Encodes one RGBA frame (len = width*height*4) to AVIF bytes, or null on
+     * failure. [quality] is 1..100, [speed] is rav1e's 1..10 (10 = fastest).
+     * Callers must check [isAvailable] first and fall back to JPEG on null.
+     */
+    external fun encodeAvif(rgba: ByteArray, width: Int, height: Int, quality: Float, speed: Int): ByteArray?
 }

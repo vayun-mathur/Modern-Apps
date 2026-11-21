@@ -19,6 +19,7 @@ mod seam;
 mod blend;
 mod stitch;
 mod night;
+mod avif;
 
 use imgbuf::Rgba;
 use std::collections::HashMap;
@@ -430,6 +431,50 @@ mod jni_bindings {
     ) {
         registry().lock().unwrap().remove(&handle);
         night_registry().lock().unwrap().remove(&handle);
+    }
+
+
+    /// Encode one RGBA frame (`rgba.len() == width * height * 4`) to AVIF
+    /// bytes, or null when the input is invalid or encoding fails (the
+    /// Kotlin side then falls back to JPEG).
+    #[no_mangle]
+    pub extern "system" fn Java_com_vayunmathur_camera_platform_StitchNative_encodeAvif<'l>(
+        mut env: EnvUnowned<'l>,
+        _class: JClass<'l>,
+        rgba: JByteArray<'l>,
+        width: jint,
+        height: jint,
+        quality: jfloat,
+        speed: jint,
+    ) -> jbyteArray {
+        env.with_env(|env| -> jni::errors::Result<jbyteArray> {
+            let null = std::ptr::null_mut();
+            if width <= 0 || height <= 0 {
+                return Ok(null);
+            }
+            let bytes = match env.convert_byte_array(&rgba) {
+                Ok(b) => b,
+                Err(_) => return Ok(null),
+            };
+            let encoded = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                crate::avif::encode_avif(
+                    &bytes,
+                    width as usize,
+                    height as usize,
+                    quality,
+                    speed.clamp(1, 10) as u8,
+                )
+            }))
+            .unwrap_or(None);
+            match encoded {
+                Some(b) => match env.byte_array_from_slice(&b) {
+                    Ok(arr) => Ok(arr.into_raw()),
+                    Err(_) => Ok(null),
+                },
+                None => Ok(null),
+            }
+        })
+        .resolve::<jni::errors::LogErrorAndDefault>()
     }
 
     fn run_and_return(env: &mut Env, handle: jlong, panorama: bool) -> jbyteArray {

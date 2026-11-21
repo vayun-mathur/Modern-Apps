@@ -14,6 +14,7 @@ import com.vayunmathur.camera.platform.CameraViewModel
 import com.vayunmathur.camera.platform.CodecSupport
 import com.vayunmathur.camera.platform.FlashMode
 import com.vayunmathur.camera.platform.MotionPhotoDuration
+import com.vayunmathur.camera.platform.PhotoFormat
 import com.vayunmathur.camera.platform.TimerDuration
 import com.vayunmathur.camera.platform.VideoCodec
 import com.vayunmathur.camera.platform.applyManualControls
@@ -42,6 +43,9 @@ private fun CameraViewModel.loadCaptureSettings() {
         videoCodecMutable.value = try { VideoCodec.valueOf(it) } catch (_: Exception) {
             CodecSupport.defaultVideoCodec
         }
+    }
+    ds.getString("camera_photo_format")?.let {
+        runCatching { photoFormatMutable.value = PhotoFormat.valueOf(it) }
     }
     ds.getString("camera_motion_duration")?.let {
         runCatching { motionPhotoDurationMutable.value = MotionPhotoDuration.valueOf(it) }
@@ -145,6 +149,11 @@ fun CameraViewModel.cycleAspectRatio() {
 fun CameraViewModel.setLocationEnabled(enabled: Boolean) {
     locationEnabledMutable.value = enabled
     viewModelScope.launch { ds.setString("camera_location", enabled.toString()) }
+}
+
+fun CameraViewModel.setPhotoFormat(format: PhotoFormat) {
+    photoFormatMutable.value = format
+    viewModelScope.launch { ds.setString("camera_photo_format", format.name) }
 }
 
 fun CameraViewModel.setVideoCodec(codec: VideoCodec) {

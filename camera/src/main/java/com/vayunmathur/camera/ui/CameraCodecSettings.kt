@@ -18,6 +18,7 @@ import com.vayunmathur.camera.R
 import com.vayunmathur.camera.platform.AudioCodec
 import com.vayunmathur.camera.platform.AudioInputSource
 import com.vayunmathur.camera.platform.CodecSupport
+import com.vayunmathur.camera.platform.PhotoFormat
 import com.vayunmathur.camera.platform.VideoCodec
 import com.vayunmathur.library.ui.DropdownMenu
 import com.vayunmathur.library.ui.IconArrowDropDown
@@ -35,6 +36,8 @@ import com.vayunmathur.library.ui.Text
  */
 @Composable
 fun CameraCodecSettings(
+    photoFormat: PhotoFormat,
+    onPhotoFormatChange: (PhotoFormat) -> Unit,
     videoCodec: VideoCodec,
     audioCodec: AudioCodec,
     audioInputSource: AudioInputSource,
@@ -44,6 +47,54 @@ fun CameraCodecSettings(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier) {
+        SettingsSection(title = stringResource(R.string.settings_photo_format)) {
+            var photoExpanded by remember { mutableStateOf(false) }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+            ) {
+                OutlinedButton(
+                    onClick = { photoExpanded = true },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        "${stringResource(photoFormat.labelRes)} — ${stringResource(photoFormat.descriptionRes)}",
+                        modifier = Modifier.weight(1f),
+                        textAlign = TextAlign.Start,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    IconArrowDropDown()
+                }
+                DropdownMenu(
+                    expanded = photoExpanded,
+                    onDismissRequest = { photoExpanded = false }
+                ) {
+                    PhotoFormat.entries.forEach { format ->
+                        SelectableDropdownMenuItem(
+                            selected = format == photoFormat,
+                            onClick = {
+                                onPhotoFormatChange(format)
+                                photoExpanded = false
+                            },
+                            text = {
+                                Column {
+                                    Text(stringResource(format.labelRes))
+                                    Text(
+                                        stringResource(format.descriptionRes),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            },
+                            selectedLeadingIcon = { IconCheck() },
+                        )
+                    }
+                }
+            }
+        }
+
         val availableCodecs = remember {
             buildList {
                 add(VideoCodec.AVC)

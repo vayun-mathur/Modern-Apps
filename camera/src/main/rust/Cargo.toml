@@ -18,6 +18,7 @@ vision_core = { path = "../../../../library/vision/src/main/rust", features = ["
 # image crate 0.25 removed – pulled moxcms/pxfm/bytemuck; now jpeg-decoder + jpeg-encoder (trivial 1-function)
 jpeg-decoder.workspace = true
 jpeg-encoder.workspace = true
+ravif.workspace = true
 # nalgebra removed – replaced by a tiny in-crate linalg module (src/linalg.rs):
 # fixed 3×3 Matrix3/Vector3, closed-form inverse, Jacobi symmetric-eigen, SVD
 # (3×3 + dense DLT null-space), and partial-pivot LU solve. Drops ~9 transitive

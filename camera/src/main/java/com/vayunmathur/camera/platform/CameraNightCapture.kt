@@ -27,6 +27,7 @@ import kotlin.coroutines.resume
 import kotlin.math.roundToInt
 import com.vayunmathur.camera.data.MediaStoreSaver
 import com.vayunmathur.camera.data.prepareStillSave
+import com.vayunmathur.camera.data.saveProcessedStill
 import com.vayunmathur.camera.data.saveStillBitmap
 import com.vayunmathur.camera.data.setLastCaptureUri
 import com.vayunmathur.camera.data.closeStream
@@ -209,7 +210,11 @@ internal fun CameraViewModel.onNightBurstDone(frames: List<Bitmap>) {
 /** Completes a successful night merge: stamps EXIF, clears state, publishes the URI. */
 internal suspend fun CameraViewModel.finishNightMerge(uri: Uri) {
     // Merged pixels are already upright/mirrored, so the orientation tag is normal.
-    withContext(Dispatchers.IO) { writeCaptureExif(uri, null, 0) }
+    // AVIF stills carry no EXIF (orientation is in the pixels); only stamp JPEG.
+    val isAvif = runCatching { app.contentResolver.getType(uri) }.getOrNull() == "image/avif"
+    if (!isAvif) {
+        withContext(Dispatchers.IO) { writeCaptureExif(uri, null, 0) }
+    }
     isCapturingMutable.value = false
     stopLongExposureCountdown()
     setLastCaptureUri(uri)
@@ -232,14 +237,17 @@ internal suspend fun CameraViewModel.mergeNightFrames(frames: List<Bitmap>): Uri
     }
     if (merged != null) {
         frames.forEach { it.recycle() }
-        return saveStillBitmap("IMG_${MediaStoreSaver.timestamp()}.jpg", merged)
-            .also { merged.recycle() }
+        // Merged pixels are already upright, so rotation 0: AVIF encodes
+        // them as-is, JPEG keeps the EXIF path in finishNightMerge.
+        val saved = saveProcessedStill(merged, 0)
+        merged.recycle()
+        return saved?.uri
     }
     // Middle-frame fallback (frames are still owned here; save before recycling).
     val middle = frames.getOrNull(frames.size / 2)
     val fallbackUri = middle?.let {
         try {
-            saveStillBitmap("IMG_${MediaStoreSaver.timestamp()}.jpg", it)
+            saveProcessedStill(it, 0)?.uri
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Throwable) {

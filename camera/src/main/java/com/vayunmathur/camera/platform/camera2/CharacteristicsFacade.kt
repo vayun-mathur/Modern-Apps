@@ -228,7 +228,7 @@ class CharacteristicsFacade private constructor(
             val chars = manager.getCameraCharacteristics(cameraId)
             val extensions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 runCatching {
-                    manager.getCameraExtensionCharacteristics(cameraId).availableExtensionModes
+                    manager.getCameraExtensionCharacteristics(cameraId).supportedExtensions
                 }.getOrDefault(emptyList())
             } else {
                 emptyList()

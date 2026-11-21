@@ -90,7 +90,14 @@ object SafDocuments {
         resolver: android.content.ContentResolver,
         treeUri: Uri,
         displayName: String,
-    ): Uri? = createDoc(resolver, treeUri, "image/jpeg", displayName)
+    ): Uri? = createImageDoc(resolver, treeUri, displayName, "image/jpeg")
+
+    fun createImageDoc(
+        resolver: android.content.ContentResolver,
+        treeUri: Uri,
+        displayName: String,
+        mimeType: String,
+    ): Uri? = createDoc(resolver, treeUri, mimeType, displayName)
 
     fun createVideoDoc(
         resolver: android.content.ContentResolver,

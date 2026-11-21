@@ -195,6 +195,9 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
     internal val videoCodecMutable = MutableStateFlow(CodecSupport.defaultVideoCodec)
     val videoCodec = videoCodecMutable.asStateFlow()
 
+    internal val photoFormatMutable = MutableStateFlow(PhotoFormat.JPEG)
+    val photoFormat = photoFormatMutable.asStateFlow()
+
     // Motion-Photo clip length (issue #712). Default 3s ≈ the old ~1.5s-12-frame buffer.
     internal val motionPhotoDurationMutable = MutableStateFlow(MotionPhotoDuration.THREE)
     val motionPhotoDuration = motionPhotoDurationMutable.asStateFlow()

@@ -41,6 +41,12 @@ enum class VideoCodec(@StringRes val labelRes: Int, @StringRes val descriptionRe
     AV1(R.string.codec_av1_label, R.string.codec_av1_description),
 }
 
+/** Still photo formats selectable in settings. AVIF is encoded natively (ravif). */
+enum class PhotoFormat(@StringRes val labelRes: Int, @StringRes val descriptionRes: Int) {
+    JPEG(R.string.photo_format_jpeg_label, R.string.photo_format_jpeg_description),
+    AVIF(R.string.photo_format_avif_label, R.string.photo_format_avif_description),
+}
+
 /** Audio codecs selectable for video recording, with display text and Recorder mime. */
 enum class AudioCodec(
     @StringRes val labelRes: Int,

@@ -80,6 +80,13 @@
     <!-- Video codec description: most efficient but may not be supported everywhere -->
     <string name="codec_av1_description">Most efficient</string>
 
+    <!-- Photo format settings (SettingsPage) -->
+    <string name="settings_photo_format">Photo format</string>
+    <string name="photo_format_jpeg_label">JPEG</string>
+    <string name="photo_format_jpeg_description">Most compatible</string>
+    <string name="photo_format_avif_label">AVIF</string>
+    <string name="photo_format_avif_description">Smaller files, slower to save</string>
+
     <!-- Motion-Photo duration settings (SettingsPage, issue #712) -->
     <!-- SettingsPage: section header for motion-photo clip-length selection -->
     <string name="settings_motion_duration">Motion photo length</string>

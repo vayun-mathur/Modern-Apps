@@ -36,6 +36,9 @@ object MediaStoreSaver {
 
     fun imageValues(displayName: String): ContentValues = contentValues(displayName, "image/jpeg")
 
+    fun imageValues(displayName: String, mimeType: String): ContentValues =
+        contentValues(displayName, mimeType)
+
     fun videoValues(displayName: String): ContentValues = contentValues(displayName, "video/mp4")
 
     private fun contentValues(displayName: String, mimeType: String) = ContentValues().apply {

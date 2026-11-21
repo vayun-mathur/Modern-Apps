@@ -18,6 +18,7 @@ import kotlinx.coroutines.withContext
 import com.vayunmathur.camera.data.MediaStoreSaver
 import com.vayunmathur.camera.data.PendingStill
 import com.vayunmathur.camera.data.prepareStillSave
+import com.vayunmathur.camera.data.saveProcessedStill
 import com.vayunmathur.camera.data.saveStillBitmap
 import com.vayunmathur.camera.data.setLastCaptureUri
 import com.vayunmathur.camera.data.updateLocation
@@ -247,10 +248,15 @@ private fun CameraViewModel.processSingleFrame(
         stillBokeh.render(decoded, degrees, plan.strength, plan.warmth, plan.shadows, plan.mirror)
     } else null)
         ?: applyColorAdjustments(decoded, plan.warmth, plan.shadows, plan.mirror)
-    val name = "IMG_${MediaStoreSaver.timestamp()}.jpg"
-    return saveStillBitmap(name, adjusted)
-        ?.also { writeCaptureExif(it, sourceJpeg, degrees, mirrored = plan.mirror) }
-        .also { adjusted.recycle() }
+    // AVIF (when chosen) bakes orientation into the pixels and carries no
+    // EXIF; JPEG keeps the EXIF stamping path below.
+    val saved = saveProcessedStill(adjusted, degrees)
+    adjusted.recycle()
+    if (saved == null) return null
+    if (saved.format == com.vayunmathur.camera.domain.StillFormat.JPEG) {
+        writeCaptureExif(saved.uri, sourceJpeg, degrees, mirrored = plan.mirror)
+    }
+    return saved.uri
 }
 
 /**

@@ -43,6 +43,7 @@ import com.vayunmathur.camera.data.setMirrorFront
 import com.vayunmathur.camera.data.setMotionPhotoDuration
 import com.vayunmathur.camera.data.setNoiseReductionEnabled
 import com.vayunmathur.camera.data.setSaveTreeUri
+import com.vayunmathur.camera.data.setPhotoFormat
 import com.vayunmathur.camera.data.setVideoCodec
 import com.vayunmathur.camera.data.updateLocation
 import com.vayunmathur.library.ui.IconFolder
@@ -57,6 +58,7 @@ import com.vayunmathur.library.util.NavKey
 fun <T : NavKey> SettingsPage(backStack: NavBackStack<T>, viewModel: CameraViewModel) {
     val locationEnabled by viewModel.locationEnabled.collectAsState()
     val videoCodec by viewModel.videoCodec.collectAsState()
+    val photoFormat by viewModel.photoFormat.collectAsState()
     val audioCodec by viewModel.audioCodec.collectAsState()
     val audioInputSource by viewModel.audioInputSource.collectAsState()
     val mirrorFront by viewModel.mirrorFront.collectAsState()
@@ -138,6 +140,8 @@ fun <T : NavKey> SettingsPage(backStack: NavBackStack<T>, viewModel: CameraViewM
                 onReset = { viewModel.clearSaveTreeUri() },
             )
             CameraCodecSettings(
+                photoFormat = photoFormat,
+                onPhotoFormatChange = { viewModel.setPhotoFormat(it); noteIfDeferred() },
                 videoCodec = videoCodec,
                 audioCodec = audioCodec,
                 audioInputSource = audioInputSource,
