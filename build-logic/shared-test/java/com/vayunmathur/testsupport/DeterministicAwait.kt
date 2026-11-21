@@ -2,6 +2,7 @@ package com.vayunmathur.testsupport
 
 import android.os.Looper
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -24,7 +25,8 @@ import org.robolectric.Shadows
  *   terminal condition holds. Idling the looper is what lets a coroutine
  *   resumed on Main actually run; sleeping would only bet on load.
  * - [awaitSemantics] is a Compose semantics wait on a terminal node state,
- *   idling the main looper on every check for the same reason.
+ *   pumping the looper *and* the composition's test scheduler on every
+ *   check for the same reason (see its doc).
  *
  * None of these sleep, burn CPU, or read `System.currentTimeMillis`.
  */
@@ -77,12 +79,39 @@ fun awaitWithMainIdle(description: String, maxSteps: Int = 10_000, condition: ()
  * re-checks [condition] after every idle, and each check first pumps the
  * main looper so a parse/load resumed on Main can land and compose.
  * The timeout is the framework's failure bound, not the mechanism.
+ *
+ * The pump has three parts, and all are needed. Idling Robolectric's paused
+ * looper runs work posted to the Android main thread. But the composition's
+ * own coroutines — the recomposer and its [androidx.compose.runtime.LaunchedEffect]s
+ * — live on the Compose test environment's scheduler (the one behind
+ * [androidx.compose.ui.test.MainTestClock]), and `waitUntil` only *advances
+ * that scheduler's frame clock* between checks; it never *runs* the tasks
+ * queued on the scheduler. A state write landing from an IO thread therefore
+ * invalidated the tree (the scaffold title flipped to the parsed subject)
+ * while the recomposition that would compose the new branch sat queued past
+ * the whole 15s wait, and a debounced autosave's timer sat in the
+ * scheduler's future. So each check also (a) runs the scheduler's due tasks
+ * and (b) steps its virtual clock forward a bounded window, executing the
+ * timers and delayed resumes queued there. Stepping virtual time is the
+ * mechanism, not a timing bet: it runs the actual queued work.
  */
 fun ComposeContentTestRule.awaitSemantics(description: String, condition: () -> Boolean) {
     waitUntil(15_000) {
         idleMainLooper()
+        mainClock.scheduler.runCurrent()
+        mainClock.scheduler.advanceTimeBy(SCHEDULER_ADVANCE_SECONDS.seconds)
+        idleMainLooper()
         condition()
     }
     idleMainLooper()
+    mainClock.scheduler.advanceUntilIdle()
+    idleMainLooper()
     check(condition()) { "terminal semantics state not reached: $description" }
 }
+
+/**
+ * Virtual seconds [awaitSemantics] steps the composition scheduler per
+ * check: past an 800ms debounce or a sharing timeout (5s), far short of any
+ * point where virtual time itself becomes the thing being tested.
+ */
+private const val SCHEDULER_ADVANCE_SECONDS = 60

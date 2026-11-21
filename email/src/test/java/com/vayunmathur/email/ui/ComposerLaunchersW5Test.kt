@@ -20,6 +20,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performClick
 import androidx.core.app.ActivityOptionsCompat
+import androidx.lifecycle.viewModelScope
 import androidx.room3.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.work.Configuration
@@ -28,11 +29,15 @@ import com.vayunmathur.email.data.EmailAccount
 import com.vayunmathur.email.data.EmailDatabase
 import com.vayunmathur.email.data.EmailRepository
 import com.vayunmathur.email.platform.EmailViewModel
+import com.vayunmathur.testsupport.awaitSemantics
+import com.vayunmathur.testsupport.awaitWithMainIdle
 import java.io.File
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertTrue
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Rule
@@ -106,16 +111,29 @@ class ComposerLaunchersW5Test {
             .allowMainThreadQueries().build()
         resetRepositorySingleton()
         com.vayunmathur.library.util.databases[EmailDatabase::class] = db
-        vm = EmailViewModel(context)
         runBlocking {
             db.accountDao().insertAccount(
                 EmailAccount(email = "me@x.com", signature = "Sent from W5")
             )
         }
+        vm = EmailViewModel(context)
     }
 
     @AfterTest
     fun close() {
+        // Quiesce before closing: EmailDraftActions.save/delete fire-and-forget
+        // into viewModelScope. The ViewModel here is hand-built (no
+        // ViewModelStore ever clears it), so without cancelling the scope, a
+        // save/delete still queued on the paused main looper — or tails of the
+        // accounts/drafts StateFlows — runs during compose-rule teardown,
+        // after db.close(), and dies with "connection is closed". Cancel the
+        // scope, pump the looper until its children have drained against the
+        // still-open database, and only then close.
+        vm.viewModelScope.cancel()
+        val scopeJob = vm.viewModelScope.coroutineContext[Job]
+        awaitWithMainIdle("viewModel scope drained", maxSteps = 2_000) {
+            scopeJob?.children?.none { it.isActive } ?: true
+        }
         com.vayunmathur.library.util.databases.remove(EmailDatabase::class)
         resetRepositorySingleton()
         db.close()
@@ -153,7 +171,7 @@ class ComposerLaunchersW5Test {
                 )
             }
         }
-        rule.waitUntil(20_000) { exists("Launchers W5") }
+        rule.awaitSemantics("composer subject") { exists("Launchers W5") }
         // Toolbar actions only (attach + inline image), identified by their
         // position in the top bar - clicking Send would start a real SMTP
         // attempt and wedge the screen in "sending".
@@ -162,35 +180,24 @@ class ComposerLaunchersW5Test {
             .filter { (_, n) -> n.boundsInRoot.top < 120f && n.boundsInRoot.left > 100f }
         for ((i, _) in toolbar.take(2)) {
             runCatching { rule.onAllNodes(hasClickAction())[i].performClick() }
-            Thread.sleep(300)
+            rule.waitForIdle()
         }
         // The attachment chip for the picked file should be listed.
         assertTrue(exists("w5-inline.png") || exists("Launchers W5"))
-        // Draft autosave (800ms debounce) should persist a draft row.
-        val deadline = System.currentTimeMillis() + 20_000
-        var saved = false
-        while (System.currentTimeMillis() < deadline) {
-            runCatching { rule.waitForIdle() }
-            Thread.sleep(200)
-            saved = runBlocking { db.outboxDao().getDraftsFlow().first().isNotEmpty() }
-            if (saved) break
+        // Draft autosave (800ms debounce) should persist a draft row. Wait on
+        // the terminal signal — a draft row in the store — via the shared
+        // semantics pump: the collector and its debounce run on the
+        // composition's scheduler, which the old waitForIdle + Thread.sleep
+        // poll never drove, so under load 20 real seconds passed with the
+        // debounce unfired and the test fell through to a fire-and-forget
+        // direct save/delete that raced db.close() in teardown. (The draft
+        // store's save/load/delete CRUD itself is pinned by
+        // EmailDraftActionsTest; this test pins the composer's autosave.)
+        var autosaved = false
+        rule.awaitSemantics("draft autosave persists a draft row") {
+            autosaved = runBlocking { db.outboxDao().getDraftsFlow().first().isNotEmpty() }
+            autosaved
         }
-        // The composer's own autosave is debounce-driven; assert the draft
-        // store directly as well so the save/load/delete path is pinned.
-        if (!saved) {
-            val idRef = java.util.concurrent.atomic.AtomicLong(0)
-            vm.draftsActions.save(null, "me@x.com", "a@b.com", "", "", "Launchers W5", "Hello") {
-                idRef.set(it)
-            }
-            val deadline2 = System.currentTimeMillis() + 10_000
-            while (idRef.get() == 0L && System.currentTimeMillis() < deadline2) {
-                runCatching { rule.waitForIdle() }
-                Thread.sleep(50)
-            }
-            assertTrue(idRef.get() != 0L, "draft save should return an id")
-            val loaded = runBlocking { vm.draftsActions.load(idRef.get()) }
-            assertTrue(loaded?.subject == "Launchers W5", "saved draft should load, got $loaded")
-            vm.draftsActions.delete(idRef.get())
-        }
+        assertTrue(autosaved, "composer autosave should persist a draft row")
     }
 }

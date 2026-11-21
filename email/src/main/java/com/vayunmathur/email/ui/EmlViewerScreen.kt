@@ -82,12 +82,25 @@ fun EmlViewerScreen(
         loading = true
         error = null
         parsed = null
-        withContext(Dispatchers.IO) {
+        // Parse on IO, publish on Main — explicitly. Assigning `parsed`/`error`
+        // inside the withContext(IO) block wrote Compose state from the IO
+        // thread, and returning to this effect's own context is not a
+        // guarantee either: the composition's dispatcher resumes wherever the
+        // async work completed in some environments, so the three writes
+        // still landed off the main thread on their own schedules — the
+        // title could flip to the parsed subject (a background snapshot write
+        // the recomposer observed) while `loading = false` never invalidated
+        // a recomposition at all, leaving a torn subject + spinner state.
+        // Hopping to Dispatchers.Main makes all three writes land together,
+        // on the main thread, in one resume.
+        val result = withContext(Dispatchers.IO) {
             runCatching { EmlUtils.parseEml(context, uriString.toUri()) }
-                .onSuccess { parsed = it }
-                .onFailure { error = it.message ?: it.javaClass.simpleName }
         }
-        loading = false
+        withContext(Dispatchers.Main) {
+            result.onSuccess { parsed = it }
+            result.onFailure { error = it.message ?: it.javaClass.simpleName }
+            loading = false
+        }
     }
 
     AppScaffold(
@@ -121,12 +134,16 @@ fun EmlViewerScreen(
                         OutlinedButton(onClick = {
                             scope.launch {
                                 loading = true; error = null; parsed = null
-                                withContext(Dispatchers.IO) {
+                                // Same publication rule as the initial load: parse on
+                                // IO, publish all state together on Main.
+                                val result = withContext(Dispatchers.IO) {
                                     runCatching { EmlUtils.parseEml(context, uriString.toUri()) }
-                                        .onSuccess { parsed = it }
-                                        .onFailure { error = it.message ?: it.javaClass.simpleName }
                                 }
-                                loading = false
+                                withContext(Dispatchers.Main) {
+                                    result.onSuccess { parsed = it }
+                                    result.onFailure { error = it.message ?: it.javaClass.simpleName }
+                                    loading = false
+                                }
                             }
                         }) { Text(stringResource(R.string.retry)) }
                     }
