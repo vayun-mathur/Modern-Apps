@@ -65,13 +65,8 @@ internal fun CameraScreenEffects(
     DisposableEffect(Unit) {
         val listener = object : OrientationEventListener(context) {
             override fun onOrientationChanged(orientation: Int) {
-                if (orientation == ORIENTATION_UNKNOWN) return
-                state.deviceRotation = when {
-                    orientation in 45..134 -> 270
-                    orientation in 135..224 -> 180
-                    orientation in 225..314 -> 90
-                    else -> 0
-                }
+                // Unknown angle keeps the last rotation (helper returns null).
+                state.deviceRotation = deviceRotationForOrientation(orientation) ?: return
             }
         }
         listener.enable()
@@ -94,11 +89,17 @@ internal fun CameraScreenEffects(
         viewModel.applyExposureCompensation(state.exposureComp)
     }
 
-    // Close mode-specific settings when leaving the mode that offers them.
+    // Re-render (not close) the settings pane on a mode switch: a pane the
+    // new mode also offers (BRIGHTNESS/ZOOM in VIDEO) stays open with its
+    // correct control; a photo-only pane (SHADOWS/WARMTH/EXPOSURE_TIME/
+    // ISO/PORTRAIT_BLUR) is cleared so the column falls back to the new
+    // mode's lens/zoom bar instead of showing the stale photo slider, and
+    // does not resurrect when switching back. CameraSettingsColumn applies
+    // the same effectiveSettingForMode check at render time.
     LaunchedEffect(cameraMode) {
-        val portraitOnly = state.activeSetting == CameraSetting.PORTRAIT_BLUR && cameraMode != CameraMode.PORTRAIT
-        val photoOnly = state.activeSetting == CameraSetting.ISO && cameraMode != CameraMode.PHOTO
-        if (portraitOnly || photoOnly) state.activeSetting = null
+        if (effectiveSettingForMode(state.activeSetting, cameraMode) != state.activeSetting) {
+            state.activeSetting = null
+        }
     }
 
     // Whether to offer the NIGHT extension. Reactive: the ViewModel recomputes it on lens/mode

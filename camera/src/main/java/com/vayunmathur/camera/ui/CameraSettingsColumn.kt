@@ -80,8 +80,13 @@ internal fun CameraSettingsColumn(
                 }
             }
         }
-        when (activeSetting) {
-            null -> {
+        // A pane the current mode does not offer (e.g. SHADOWS left open
+        // when switching PHOTO -> VIDEO) falls back to the lens/zoom bar
+        // instead of rendering the stale slider; CameraScreenEffects also
+        // clears the stored pane so it does not resurrect on switching back.
+        val effectiveSetting = effectiveSettingForMode(activeSetting, cameraMode)
+        when (effectiveSetting) {
+            null, CameraSetting.ZOOM -> {
                 LensBar(
                     lenses = availableLenses,
                     selected = selectedLens,
@@ -127,7 +132,7 @@ internal fun CameraSettingsColumn(
         }
 
         SettingsButtonRow(
-            activeSetting = activeSetting,
+            activeSetting = effectiveSetting,
             cameraMode = cameraMode,
             onSelect = onSelectSetting
         )

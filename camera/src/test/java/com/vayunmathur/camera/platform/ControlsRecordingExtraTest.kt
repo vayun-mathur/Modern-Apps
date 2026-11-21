@@ -75,6 +75,22 @@ class ControlsRecordingExtraTest {
         assertEquals(8f, viewModel.zoomRatioMutable.value)
     }
 
+    @Test fun videoModeZoomAppliesToBoundCameraControl() {
+        val viewModel = vm()
+        viewModel.switchCameraMode(CameraMode.VIDEO)
+        viewModel.boundCamera = fakeCamera()
+        // setZoomRatio drives the bound camera's CameraControl, which CameraX
+        // applies to every bound use case — the video Preview and the
+        // VideoCapture alike — so it takes effect in preview and recording.
+        viewModel.setZoomRatio(2f)
+        assertEquals(2f, viewModel.zoomRatioMutable.value)
+        Mockito.verify(viewModel.boundCamera!!.cameraControl).setZoomRatio(2f)
+        // Exposure compensation likewise reaches the video session's control.
+        viewModel.applyExposureCompensation(0.5f)
+        Mockito.verify(viewModel.boundCamera!!.cameraControl)
+            .setExposureCompensationIndex(2)
+    }
+
     @Test fun qrTorchExposureAndFocusControls() {
         val viewModel = vm()
         viewModel.setQrResult("WIFI:T:WPA;S:x;;")

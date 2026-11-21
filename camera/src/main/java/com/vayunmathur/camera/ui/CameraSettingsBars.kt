@@ -33,6 +33,7 @@ import com.vayunmathur.library.ui.IconIso
 import com.vayunmathur.library.ui.IconLightbulb
 import com.vayunmathur.library.ui.IconSunny
 import com.vayunmathur.library.ui.IconTimer
+import com.vayunmathur.library.ui.IconZoomIn
 import com.vayunmathur.library.ui.Slider
 import com.vayunmathur.library.ui.SliderDefaults
 import com.vayunmathur.library.ui.Text
@@ -102,24 +103,22 @@ internal fun SettingsButtonRow(
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // The sliders below bake into saved stills (PHOTO/PORTRAIT) or drive the live
-        // preview's 3A (PHOTO only). Offer them only where they do something: elsewhere
-        // they'd silently move a preview effect that the capture path drops.
-        val bakesStills = cameraMode == CameraMode.PHOTO || cameraMode == CameraMode.PORTRAIT
-        val settings = buildList<Pair<CameraSetting, @Composable (Modifier, Color) -> Unit>> {
-            if (bakesStills) {
-                add(CameraSetting.BRIGHTNESS to { m, c -> IconSunny(m, c) })
-                add(CameraSetting.SHADOWS to { m, c -> IconContrast(m, c) })
-                add(CameraSetting.WARMTH to { m, c -> IconLightbulb(m, c) })
+        // Offer only settings the capture path honours in this mode (see
+        // settingsForMode): elsewhere they'd silently move a preview effect
+        // that the capture path drops. Video gets brightness (exposure
+        // compensation) and zoom, both CameraControl-driven.
+        val settings: List<Pair<CameraSetting, @Composable (Modifier, Color) -> Unit>> =
+            settingsForMode(cameraMode).map { setting ->
+                setting to when (setting) {
+                    CameraSetting.BRIGHTNESS -> { m: Modifier, c: Color -> IconSunny(m, c) }
+                    CameraSetting.SHADOWS -> { m: Modifier, c: Color -> IconContrast(m, c) }
+                    CameraSetting.WARMTH -> { m: Modifier, c: Color -> IconLightbulb(m, c) }
+                    CameraSetting.EXPOSURE_TIME -> { m: Modifier, c: Color -> IconTimer(m, c) }
+                    CameraSetting.ISO -> { m: Modifier, c: Color -> IconIso(m, c) }
+                    CameraSetting.PORTRAIT_BLUR -> { m: Modifier, c: Color -> IconBlur(m, c) }
+                    CameraSetting.ZOOM -> { m: Modifier, c: Color -> IconZoomIn(m, c) }
+                }
             }
-            if (cameraMode == CameraMode.PHOTO) {
-                add(CameraSetting.EXPOSURE_TIME to { m, c -> IconTimer(m, c) })
-                add(CameraSetting.ISO to { m, c -> IconIso(m, c) })
-            }
-            if (cameraMode == CameraMode.PORTRAIT) {
-                add(CameraSetting.PORTRAIT_BLUR to { m, c -> IconBlur(m, c) })
-            }
-        }
         settings.forEach { (setting, icon) ->
             val isActive = activeSetting == setting
             Box(
