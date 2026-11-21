@@ -122,6 +122,29 @@ val appVersionCode: Int = run {
     }
 }
 
+// Release signing properties: all four are required together. Previously a
+// missing RELEASE_STORE_FILE silently signed release APKs with the debug key,
+// so a "release" artifact could ship (or be rejected downstream) without any
+// sign at build time that it was not signed with the release key. Blank is
+// treated as missing, and a partially-set configuration no longer crashes
+// configuration for dev builds (it only fails release builds, below).
+val releaseSigningPropertyNames: List<String> = listOf(
+    "RELEASE_STORE_FILE",
+    "RELEASE_STORE_PASSWORD",
+    "RELEASE_KEY_ALIAS",
+    "RELEASE_KEY_PASSWORD",
+)
+val missingReleaseSigningProperties: List<String> = releaseSigningPropertyNames.filter { name ->
+    (findProperty(name) as? String)?.trim().isNullOrEmpty()
+}
+val releaseSigningFailureMessage: String =
+    "Release signing is not configured for $path: missing Gradle properties: " +
+        missingReleaseSigningProperties.joinToString(", ") +
+        ". Refusing to build a release variant signed with the debug key. " +
+        "Set all of ${releaseSigningPropertyNames.joinToString(", ")} " +
+        "(e.g. in ~/.gradle/gradle.properties or with -P<name>=<value> on the command line) " +
+        "and re-run. Dev builds are unaffected."
+
 // Adaptive launcher icons are generated at build time from Material Symbols
 // instead of committing an ic_launcher_foreground.xml per app. Each app declares
 // its symbol via `launcherIcon { symbol = "..." }` (see LauncherIconExtension).
@@ -144,7 +167,9 @@ extensions.configure<com.android.build.api.variant.ApplicationAndroidComponentsE
     // Only `dev` and `release` ship. AGP always creates a `debug` build type and
     // forbids removing it, so disable its variants instead — no debug variant means
     // no assembleDebug/compileDebugKotlin tasks are generated. (The `debug` *signing*
-    // config is untouched; `release` still falls back to it, and testBuildType = "dev".)
+    // config is untouched; `dev` inherits it via initWith(release), while a real
+    // `release` build without release signing properties fails in
+    // verifyReleaseSigning below, and testBuildType = "dev".)
     beforeVariants(selector().withBuildType("debug")) { variant ->
         variant.enable = false
     }
@@ -313,7 +338,10 @@ configure<com.android.build.api.dsl.ApplicationExtension> {
     }
 
     signingConfigs {
-        val isSigningConfigAvailable = project.hasProperty("RELEASE_STORE_FILE")
+        // Only create the release config when every required property is
+        // present; release builds are gated on this below (see
+        // verifyReleaseSigning), while dev keeps using the debug config.
+        val isSigningConfigAvailable = missingReleaseSigningProperties.isEmpty()
 
         if (isSigningConfigAvailable) {
             create("release") {
@@ -346,6 +374,12 @@ configure<com.android.build.api.dsl.ApplicationExtension> {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            // Without a release config this still names `debug` so that `dev`
+            // (initWith(release) below) keeps its developer signing. A real
+            // `release` build never reaches signing in that state:
+            // verifyReleaseSigning is wired into preReleaseBuild /
+            // assembleRelease / bundleRelease / packageRelease below and
+            // fails first with releaseSigningFailureMessage.
             signingConfig = if (signingConfigs.findByName("release") != null) {
                 signingConfigs.getByName("release")
             } else {
@@ -426,6 +460,36 @@ configure<com.android.build.api.dsl.ApplicationExtension> {
         }
         dex {
             useLegacyPackaging = false
+        }
+    }
+}
+
+// Fail release builds loudly when release signing is not configured. This is
+// deliberately execution-time and release-task-scoped, not a configuration-
+// time throw: configuring a project (dev compiles, unit tests, lint, task
+// listing) must keep working on machines without the release keystore. The
+// failure is wired into preReleaseBuild so it fires before compilation/R8,
+// and directly into the release assemble/bundle/package tasks as a backstop
+// for any entry point that bypasses preReleaseBuild. Configuration-cache
+// compatible: the task action captures only the plain failure-message String
+// computed above; no Project reference crosses into it.
+if (missingReleaseSigningProperties.isNotEmpty()) {
+    val verifyReleaseSigning = tasks.register("verifyReleaseSigning") {
+        group = "verification"
+        description = "Fails if the release signing properties are not configured."
+        val failureMessage = releaseSigningFailureMessage
+        doLast {
+            throw GradleException(failureMessage)
+        }
+    }
+    tasks.configureEach {
+        if (
+            name == "preReleaseBuild" ||
+            name == "assembleRelease" ||
+            name == "bundleRelease" ||
+            name == "packageRelease"
+        ) {
+            dependsOn(verifyReleaseSigning)
         }
     }
 }
