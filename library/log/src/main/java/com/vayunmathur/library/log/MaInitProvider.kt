@@ -18,15 +18,23 @@ import android.net.Uri
  * which matches the old `BuildConfig.DEV_BUILD` semantics (`dev` variants
  * are debuggable, `release` variants are not).
  *
+ * This provider is also where every app gets [CrashCapture]: [onCreate]
+ * installs its default uncaught-exception handler (persist-then-chain, see
+ * [CrashCapture]) alongside the dev gate. Both wirings are guarded so a
+ * failure here can never break app startup.
+ *
  * Carries no data: every method besides [onCreate] is a stub.
  */
 class MaInitProvider : ContentProvider() {
     override fun onCreate(): Boolean {
         val appContext = context?.applicationContext
         if (appContext != null) {
-            val isDev =
-                appContext.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
-            Log.init(isDev)
+            runCatching {
+                val isDev =
+                    appContext.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
+                Log.init(isDev)
+            }
+            runCatching { CrashCapture.install(appContext) }
         }
         return true
     }

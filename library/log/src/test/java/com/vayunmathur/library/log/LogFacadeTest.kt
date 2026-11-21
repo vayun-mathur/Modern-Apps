@@ -54,6 +54,32 @@ class LogFacadeTest {
     }
 
     @Test
+    fun newErrorIdIsEightLowercaseHexAndVaries() {
+        val ids = (1..64).map { Log.newErrorId() }
+        assertTrue(ids.all { it.matches(Regex("[0-9a-f]{8}")) }, "ids: $ids")
+        // 32-bit ids: 64 draws must not all collide to one value.
+        assertTrue(ids.toSet().size > 1, "ids: $ids")
+    }
+
+    @Test
+    fun errorWithIdLogsAtErrorWithTheReturnedId() {
+        ShadowLog.clear()
+        val id = Log.errorWithId("E", "something broke")
+        val logs = ShadowLog.getLogsForTag("E")
+        assertEquals(1, logs.size)
+        assertEquals(android.util.Log.ERROR, logs[0].type)
+        assertEquals("errorId=$id something broke", logs[0].msg)
+
+        ShadowLog.clear()
+        val id2 = Log.errorWithId("E", "with cause", RuntimeException("cause"))
+        val logs2 = ShadowLog.getLogsForTag("E")
+        assertEquals(1, logs2.size)
+        assertEquals(android.util.Log.ERROR, logs2[0].type)
+        assertEquals("errorId=$id2 with cause", logs2[0].msg)
+        assertTrue(id2.matches(Regex("[0-9a-f]{8}")))
+    }
+
+    @Test
     fun providerInitializesAndStubsReturnNeutral() {
         val provider = Robolectric.buildContentProvider(MaInitProvider::class.java).create().get()
         // onCreate ran during build: gate now reflects the (debuggable-in-test) app info.

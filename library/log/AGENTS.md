@@ -17,9 +17,10 @@
 **Gotchas:** This card was missing entirely (no AGENTS.md existed) — it was created by the agent-docs redesign. If an app still has an `Application` subclass doing only `Log.init`, delete it (everysync's is the exception — it schedules sync).
 
 ## Key files
-- com/vayunmathur/library/log/Log.kt — the facade (use this, never `android.util.Log`)
+- com/vayunmathur/library/log/Log.kt — the facade (use this, never `android.util.Log`); `newErrorId()`/`errorWithId()` mint + log a short error-correlation id
 - com/vayunmathur/library/log/NativeLoader.kt — the one guarded `System.loadLibrary` caller; every `<Feature>Native` wrapper loads through it and exposes the returned availability flag
-- com/vayunmathur/library/log/MaInitProvider.kt — dev-gate init via manifest merger
+- com/vayunmathur/library/log/CrashCapture.kt — default uncaught-exception handler: persists last 3 crashes to `filesDir/crashes/last_crash.txt` (rotation, never throws), then chains to the previous handler
+- com/vayunmathur/library/log/MaInitProvider.kt — dev-gate init + `CrashCapture.install` via manifest merger
 
 ## Verify (this module only)
 ```
