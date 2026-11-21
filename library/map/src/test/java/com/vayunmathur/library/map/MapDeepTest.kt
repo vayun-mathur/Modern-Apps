@@ -2,7 +2,6 @@ package com.vayunmathur.library.map
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.input.pointer.PointerId
 import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.unit.DpOffset
@@ -126,43 +125,54 @@ class MapDeepTest {
     // ---- TiltTracker (private, via reflection with real pointer changes) ----
 
     private fun change(id: Long, x: Float, y: Float, prevX: Float, prevY: Float): PointerInputChange {
-        // The public constructor is internal in this Compose version, so
-        // build the change reflectively, filling each parameter by type.
-        val ctor = PointerInputChange::class.java.declaredConstructors
-            .filter { c -> c.parameterTypes.none { it.name.contains("DefaultConstructorMarker") } }
-            .maxByOrNull { it.parameterCount }!!
+        // PointerInputChange's constructor is internal in Compose, and the
+        // library's own PointerInputTestUtilKt helpers (down/moveTo) are
+        // Kotlin-internal too, so neither is callable from this module; the
+        // change is built reflectively against the exact current signature.
+        //
+        // Current signature (androidx.compose.ui:ui-android 1.12.1, the
+        // version BOM 2026.09.00 resolves; verified with javap on ui.aar):
+        //   private PointerInputChange(long id, long uptimeMillis,
+        //       long position, boolean pressed, float pressure,
+        //       long previousUptimeMillis, long previousPosition,
+        //       boolean previousPressed, boolean downOrPositionChange,
+        //       int type, List<HistoricalChange> historical,
+        //       long scrollDelta, float scaleFactor, long panOffset,
+        //       long originalEventPosition)
+        // Offset/PointerId parameters are packed longs at the JVM level and
+        // `type` is the packed int of the PointerType value class.
+        //
+        // Why the old code broke when foundation moved to BOM 1.12.1
+        // (c47150ff7 dropped the foundation 1.13.0-beta01 override, so ui
+        // fell back from 1.13.0-beta01 to 1.12.1): it unwrapped value
+        // classes by taking their single primitive declared field. In
+        // 1.13.0-beta01 PointerType has only its instance `value` int, so
+        // that worked; in 1.12.1 PointerType also declares the static int
+        // constants Unknown/Touch/Mouse/Stylus/Eraser on the class itself,
+        // so there are six primitive fields, the "single field" lookup
+        // returned null, and the boxed PointerType object was passed for
+        // the constructor's `int type` parameter — Constructor.newInstance
+        // then threw IllegalArgumentException "argument type mismatch".
+        // Below, `type` is read from the named instance `value` field.
+        val ctor = PointerInputChange::class.java.getDeclaredConstructor(
+            Long::class.javaPrimitiveType, Long::class.javaPrimitiveType,
+            Long::class.javaPrimitiveType, Boolean::class.javaPrimitiveType,
+            Float::class.javaPrimitiveType, Long::class.javaPrimitiveType,
+            Long::class.javaPrimitiveType, Boolean::class.javaPrimitiveType,
+            Boolean::class.javaPrimitiveType, Int::class.javaPrimitiveType,
+            List::class.java, Long::class.javaPrimitiveType,
+            Float::class.javaPrimitiveType, Long::class.javaPrimitiveType,
+            Long::class.javaPrimitiveType,
+        ).apply { isAccessible = true }
+        val typeValue = PointerType::class.java.getDeclaredField("value")
             .apply { isAccessible = true }
-        // Offset parameters are packed longs at the JVM level; their
-        // positions in the constructor are fixed by the Compose version.
-        val byIndex: Map<Int, Any?> = mapOf(
-            0 to unwrapPrimitive(PointerId(id)),
-            1 to 100L,
-            2 to Offset(x, y).packedValue,
-            3 to true,
-            4 to 1f,
-            5 to 50L,
-            6 to Offset(prevX, prevY).packedValue,
-            7 to true,
-            8 to false,
-            9 to unwrapPrimitive(PointerType.Touch),
-            10 to emptyList<Any>(),
-            11 to Offset.Zero.packedValue,
-            12 to 1f,
-            13 to Offset.Zero.packedValue,
-            14 to Offset(x, y).packedValue,
-        )
-        val args: Array<Any?> = Array(ctor.parameterCount) { i ->
-            byIndex[i] ?: when (ctor.parameterTypes[i]) {
-                java.lang.Long.TYPE, java.lang.Long::class.java -> 0L
-                java.lang.Integer.TYPE, java.lang.Integer::class.java -> 0
-                java.lang.Float.TYPE, java.lang.Float::class.java -> 0f
-                java.lang.Double.TYPE, java.lang.Double::class.java -> 0.0
-                java.lang.Boolean.TYPE, java.lang.Boolean::class.java -> false
-                List::class.java -> emptyList<Any>()
-                else -> null
-            }
-        }
-        return ctor.newInstance(*args) as PointerInputChange
+            .getInt(PointerType.Touch)
+        return ctor.newInstance(
+            id, 100L, Offset(x, y).packedValue, true, 1f,
+            50L, Offset(prevX, prevY).packedValue, true, false,
+            typeValue, emptyList<Any>(), Offset.Zero.packedValue, 1f,
+            Offset.Zero.packedValue, Offset(x, y).packedValue,
+        ) as PointerInputChange
     }
 
     @Test fun quickZoomDragSlopGate() {
@@ -186,13 +196,6 @@ class MapDeepTest {
         // Once started, every drag reports, however small.
         assertEquals(2f, advance.invoke(drag, 2f) as Float?)
         assertEquals(-40f, advance.invoke(drag, -40f) as Float?)
-    }
-
-    private fun unwrapPrimitive(value: Any): Any {
-        val field = value.javaClass.declaredFields.singleOrNull { it.type.isPrimitive }
-            ?: return value
-        field.isAccessible = true
-        return field.get(value)
     }
 
     @Test fun tiltTrackerRequiresParallelVerticalMotionPastSlop() {
