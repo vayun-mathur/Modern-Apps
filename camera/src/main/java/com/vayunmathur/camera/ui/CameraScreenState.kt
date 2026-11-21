@@ -96,6 +96,8 @@ import com.vayunmathur.camera.platform.BokehAnalyzer
     deviceRotationState: MutableIntState,
     val sessionBindFailed: Boolean = false,
     val sessionBindRetry: Int = 0,
+    /** Camera2 preview gate (default OFF); policy-gated to PHOTO in the getter below. */
+    val camera2PreviewEnabled: Boolean = false,
 ) {
     var activeSetting by activeSettingState
     var maskBitmap by maskBitmapState
@@ -118,6 +120,16 @@ import com.vayunmathur.camera.platform.BokehAnalyzer
     // PHOTO mode and the extension is usable, bind the vendor NIGHT extension preview.
     val useNightPreview get() = sessionKind == SessionKind.PHOTO && cameraMode == CameraMode.PHOTO &&
         nightModeActive && nightExtAvailable
+
+    /**
+     * True when the Camera2 preview engine owns the viewfinder (gate on +
+     * PHOTO). CameraX is not bound in this state; capture still uses the
+     * CameraX still path — Phase 2 is preview + controls only.
+     */
+    val useCamera2Preview: Boolean
+        get() = com.vayunmathur.camera.platform.camera2.PreviewEnginePolicy.usesCamera2(
+            camera2PreviewEnabled, cameraMode,
+        )
 
     val previewAspectRatio get() = when {
         // The still crop only exists on the photo sessions (PHOTO/PORTRAIT ImageCapture).
@@ -194,6 +206,7 @@ internal fun rememberCameraScreenState(viewModel: CameraViewModel): CameraScreen
     val analysisStreamActive by viewModel.analysisStreamActive.collectAsState()
     val nightExtAvailable by viewModel.nightExtensionUsable.collectAsState()
     val surfaceRequest by viewModel.surfaceRequest.collectAsState()
+    val camera2PreviewEnabled by viewModel.camera2PreviewEnabled.collectAsState()
     val sessionBindFailed by viewModel.sessionBindFailed.collectAsState()
     val sessionBindRetry by viewModel.sessionBindRetry.collectAsState()
     val availableZoomLevels by viewModel.availableZoomLevels.collectAsState()
@@ -222,6 +235,7 @@ internal fun rememberCameraScreenState(viewModel: CameraViewModel): CameraScreen
         isoStops, longExposureProgress, longExposureRemaining, lowLightDetected,
         nightModeActive, extensionStrength, sloMoSupported, highSpeedActive,
         photoSessionActive, analysisStreamActive, nightExtAvailable, surfaceRequest,
+        camera2PreviewEnabled,
         sessionBindFailed, sessionBindRetry,
         availableZoomLevels, galleryBitmap, panoSweeping, panoStitching, panoDots,
         panoCurrentAngle, panoDirection, panoPitch,
@@ -287,6 +301,7 @@ internal fun rememberCameraScreenState(viewModel: CameraViewModel): CameraScreen
             deviceRotationState = deviceRotationState,
             sessionBindFailed = sessionBindFailed,
             sessionBindRetry = sessionBindRetry,
+            camera2PreviewEnabled = camera2PreviewEnabled,
         )
     }
 }

@@ -60,6 +60,7 @@ internal fun CameraScreenEffects(
     val selectedLens = state.selectedLens
     val sessionKind = state.sessionKind
     val useNightPreview = state.useNightPreview
+    val useCamera2Preview = state.useCamera2Preview
 
     // Tracks physical orientation purely to rotate the on-screen control icons. Capture output
     // rotation is handled by CameraX via SessionConfig.setAutoRotationEnabled(true).
@@ -253,7 +254,21 @@ internal fun CameraScreenEffects(
     val zslCompatible by viewModel.zslCompatible.collectAsState()
     val zslKey = if (sessionKind == SessionKind.PHOTO) zslCompatible else null
     val bindSettings by viewModel.bindTimeSettings.collectAsState()
-    LaunchedEffect(cameraMode, lensFacing, selectedLens, sessionKind, useNightPreview, zslKey, bindSettings, state.sessionBindRetry, lifecycleOwner) {
+    LaunchedEffect(cameraMode, lensFacing, selectedLens, sessionKind, useNightPreview, useCamera2Preview, zslKey, bindSettings, state.sessionBindRetry, lifecycleOwner) {
+        // Camera2 preview engine (Phase 2, PHOTO, no other outputs yet) owns a
+        // camera via Camera2Session directly. SetupPhotoSession() would double-open
+        // the same cameraId — Camera2 open fails ERROR_CAMERA_IN_USE. So keep full
+        // CameraX teardown lifecycle, skip CameraX Preview/ImageCapture/ImageAnalysis
+        // preview binding, and let Camera2Preview compose the surface.
+        if (useCamera2Preview) {
+            lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.sessionBindFailedMutable.value = false
+                viewModel.teardownSession()
+                try { awaitCancellation() } finally { viewModel.teardownSession() }
+            }
+            Log.dev("NightPreview", "CameraScreen repeatOnLifecycle block EXIT – lifecycle dropped below STARTED")
+            return@LaunchedEffect
+        }
         Log.dev("NightPreview", "CameraScreen session LaunchedEffect START keys zsl=$zslKey lensFacing=$lensFacing selectedLens=${selectedLens?.labelKey} sessionKind=$sessionKind useNightPreview=$useNightPreview codec=${bindSettings.videoCodec} audioCodec=${bindSettings.audioCodec} audio=${bindSettings.audioInputSource} mirror=${bindSettings.mirrorFront} lifecycle=${lifecycleOwner.lifecycle.currentState} thread=${Thread.currentThread().name}")
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             // A fresh (re)bind supersedes any earlier exhausted-retry failure.

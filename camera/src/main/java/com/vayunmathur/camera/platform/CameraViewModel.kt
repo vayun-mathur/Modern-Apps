@@ -157,6 +157,19 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
 
     internal val ds = DataStoreUtils.getInstance(app)
 
+    /**
+     * Gate for the Camera2 preview engine (Phase 2). Default OFF — CameraX
+     * stays the live path and `Camera2Preview` is never composed. In-memory
+     * only for now; `PreviewEnginePolicy` further restricts it to PHOTO.
+     */
+    internal val camera2PreviewEnabledMutable = MutableStateFlow(false)
+    val camera2PreviewEnabled = camera2PreviewEnabledMutable.asStateFlow()
+
+    /** Turns the Camera2 preview gate on/off (PHOTO only; see PreviewEnginePolicy). */
+    fun setCamera2PreviewEnabled(enabled: Boolean) {
+        camera2PreviewEnabledMutable.value = enabled
+    }
+
     internal val cameraModeMutable = MutableStateFlow(CameraMode.PHOTO)
     val cameraMode = cameraModeMutable.asStateFlow()
 

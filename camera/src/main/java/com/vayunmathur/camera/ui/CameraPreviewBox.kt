@@ -112,6 +112,7 @@ internal fun BoxWithConstraintsScope.CameraPreviewBox(
     }
     val coordinateTransformer = remember { MutableCoordinateTransformer() }
     val tapToFocusState = remember { TapToFocusState() }
+    val useCamera2Preview = state.useCamera2Preview
     val previewModifier = previewSize
         // CameraX mirrors the front-camera preview by default; counter it when the
         // user turns selfie mirroring off so the preview matches the saved image (#632).
@@ -179,7 +180,13 @@ internal fun BoxWithConstraintsScope.CameraPreviewBox(
         )
             // Tap-to-focus (gesture, metering, indicator) is owned by
             // TapToFocus.kt; pinch-to-zoom stays built-in below.
-            .tapToFocus(
+            // Camera2 preview owns its taps (see Camera2Preview); do not attach
+            // CameraX tapToFocus there (it self-gates on CameraX FocusMetering).
+            .then(
+                if (useCamera2Preview) {
+                    Modifier
+                } else {
+                    Modifier.tapToFocus(
                 state = tapToFocusState,
                 surfaceRequest = surfaceRequest,
                 mirrorPreview = state.mirrorPreview,
@@ -187,8 +194,28 @@ internal fun BoxWithConstraintsScope.CameraPreviewBox(
                 onFocus = { viewModel.startFocusAndMetering(it) },
                 onLockFocus = { viewModel.lockFocusAndMetering(it) },
                 onFallback = { viewModel.fallbackToDefaultMetering() },
+                    )
+                }
             )
 
+    if (useCamera2Preview) {
+        // Camera2 preview behind gate (CameraScreenState.useCamera2Preview, PHOTO only).
+        // TextureView-backed, same overlay tree / RenderEffects below.
+        // Guard: never compose with empty cameraId — fall back to CameraX black/error branch below.
+        val camera2Id = state.selectedLens?.logicalCameraId.orEmpty()
+        if (camera2Id.isNotEmpty()) {
+            Camera2Preview(
+                cameraId = camera2Id,
+                zoomRatio = state.zoomRatio,
+                torchOn = state.torchEnabled,
+                exposureCompEv = state.exposureComp,
+                modifier = previewModifier,
+            )
+        } else {
+            Box(modifier = previewModifier.background(Color.Black))
+        }
+    }
+    if (!useCamera2Preview) {
     surfaceRequest?.let { request ->
         LaunchedEffect(request) {
             Log.dev("NightPreview", "CameraXViewfinder COMPOSED with request res=${request.resolution} dynamicRange=${request.dynamicRange} useNightPreview=${state.useNightPreview} sessionKind=${state.sessionKind} zoomRatio=${state.zoomRatio} levels=${state.availableZoomLevels} thread=${Thread.currentThread().name}")
@@ -237,7 +264,7 @@ internal fun BoxWithConstraintsScope.CameraPreviewBox(
             onScreenFlashReady = { screenFlash -> viewModel.setScreenFlash(screenFlash) },
         )
     }
-    if (surfaceRequest == null) {
+    if (!useCamera2Preview && surfaceRequest == null) {
         if (state.sessionBindFailed) {
             // Bind exhausted its retries: a visible, retryable error instead
             // of parking on a black preview until the next mode/lens change.
@@ -254,6 +281,7 @@ internal fun BoxWithConstraintsScope.CameraPreviewBox(
             // Show a plain black fill (no debug text) so the switch reads as instant.
             Box(modifier = previewModifier.background(Color.Black))
         }
+    }
     }
     CaptureFlashOverlay(viewModel.shutterFeedback, previewSize.clip(RoundedCornerShape(12.dp)))
 

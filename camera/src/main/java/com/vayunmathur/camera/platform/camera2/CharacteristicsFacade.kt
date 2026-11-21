@@ -35,6 +35,12 @@ data class FormatSummary(
 /** Pure-data summary of a stream configuration map (never holds the map itself). */
 data class StreamConfigSummary(
     val formats: Map<Int, FormatSummary>,
+    /**
+     * Sizes legal for a `SurfaceTexture` (TextureView) preview output, from
+     * `getOutputSizes(SurfaceTexture::class.java)`. Empty when built from plain
+     * sizes (tests) — preview selection then falls back to the format lists.
+     */
+    val surfaceTextureSizes: List<Size> = emptyList(),
 ) {
     fun sizesFor(format: Int): List<Size> = formats[format]?.sizes.orEmpty()
     fun maxSizeFor(format: Int): Size? = formats[format]?.maxSize
@@ -44,15 +50,23 @@ data class StreamConfigSummary(
         val EMPTY = StreamConfigSummary(emptyMap())
 
         /** Builds a summary from plain sizes — the fake-map entry point for tests. */
-        fun fromSizes(sizesByFormat: Map<Int, List<Size>>): StreamConfigSummary =
-            StreamConfigSummary(sizesByFormat.mapValues { (format, sizes) -> FormatSummary(format, sizes) })
+        fun fromSizes(
+            sizesByFormat: Map<Int, List<Size>>,
+            surfaceTextureSizes: List<Size> = emptyList(),
+        ): StreamConfigSummary = StreamConfigSummary(
+            sizesByFormat.mapValues { (format, sizes) -> FormatSummary(format, sizes) },
+            surfaceTextureSizes,
+        )
 
         fun fromMap(map: StreamConfigurationMap?): StreamConfigSummary {
             if (map == null) return EMPTY
             val byFormat = map.outputFormats.associateWith { format ->
                 runCatching { map.getOutputSizes(format)?.toList().orEmpty() }.getOrDefault(emptyList())
             }
-            return fromSizes(byFormat)
+            val textureSizes = runCatching {
+                map.getOutputSizes(android.graphics.SurfaceTexture::class.java)?.toList().orEmpty()
+            }.getOrDefault(emptyList())
+            return fromSizes(byFormat, textureSizes)
         }
     }
 }
@@ -80,6 +94,31 @@ data class LensCharacteristicsSnapshot(
     val availableExtensionModes: List<Int>,
     val focalLengthsMm: List<Float>,
     val colorFilterArrangement: Int?,
+    /** `SENSOR_INFO_ACTIVE_ARRAY_SIZE` width in pixels; 0 when unreadable. */
+    val activeArrayWidth: Int = 0,
+    /** `SENSOR_INFO_ACTIVE_ARRAY_SIZE` height in pixels; 0 when unreadable. */
+    val activeArrayHeight: Int = 0,
+    /** `SENSOR_ORIENTATION` in degrees (0/90/180/270); 0 when unreadable. */
+    val sensorOrientationDegrees: Int = 0,
+    /**
+     * `CONTROL_AE_COMPENSATION_STEP` as a float (EV per compensation step,
+     * e.g. 1/6); null when unreadable. Converts an EV value to the integer
+     * step count `CONTROL_AE_EXPOSURE_COMPENSATION` takes.
+     */
+    val exposureCompensationStepEv: Float? = null,
+    /**
+     * `CONTROL_MAX_REGIONS_AF` / `CONTROL_MAX_REGIONS_AE`; 0 when unreadable.
+     * A zero means tap metering regions are not honoured by the HAL.
+     */
+    val maxAfRegions: Int = 0,
+    val maxAeRegions: Int = 0,
+    /**
+     * True when `CONTROL_ZOOM_RATIO_RANGE` itself was reported, i.e. the
+     * request key `CONTROL_ZOOM_RATIO` is honoured. False when [zoomRatioRange]
+     * was synthesised from `SCALER_AVAILABLE_MAX_DIGITAL_ZOOM` — zoom then
+     * goes through `SCALER_CROP_REGION` instead.
+     */
+    val supportsZoomRatioKey: Boolean = false,
 ) {
     val lensFacing: LensFacing? = when (lensFacingRaw) {
         CameraMetadata.LENS_FACING_BACK -> LensFacing.BACK
@@ -134,6 +173,14 @@ class CharacteristicsFacade private constructor(
             availableExtensionModes: List<Int> = emptyList(),
             focalLengthsMm: List<Float> = emptyList(),
             colorFilterArrangement: Int? = null,
+            activeArrayWidth: Int = 0,
+            activeArrayHeight: Int = 0,
+            sensorOrientationDegrees: Int = 0,
+            exposureCompensationStepEv: Float? = null,
+            maxAfRegions: Int = 0,
+            maxAeRegions: Int = 0,
+            supportsZoomRatioKey: Boolean = zoomRatioRange != null,
+            surfaceTextureSizes: List<Size> = emptyList(),
         ): CharacteristicsFacade = fromSnapshot(
             LensCharacteristicsSnapshot(
                 cameraId = cameraId,
@@ -149,12 +196,19 @@ class CharacteristicsFacade private constructor(
                 videoStabilizationModes = videoStabilizationModes,
                 opticalStabilizationModes = opticalStabilizationModes,
                 aeTargetFpsRanges = aeTargetFpsRanges,
-                streamConfig = StreamConfigSummary.fromSizes(sizesByFormat),
+                streamConfig = StreamConfigSummary.fromSizes(sizesByFormat, surfaceTextureSizes),
                 hardwareLevel = hardwareLevel,
                 availableCapabilities = availableCapabilities,
                 availableExtensionModes = availableExtensionModes,
                 focalLengthsMm = focalLengthsMm,
                 colorFilterArrangement = colorFilterArrangement,
+                activeArrayWidth = activeArrayWidth,
+                activeArrayHeight = activeArrayHeight,
+                sensorOrientationDegrees = sensorOrientationDegrees,
+                exposureCompensationStepEv = exposureCompensationStepEv,
+                maxAfRegions = maxAfRegions,
+                maxAeRegions = maxAeRegions,
+                supportsZoomRatioKey = supportsZoomRatioKey,
             ),
         )
 
@@ -169,12 +223,14 @@ class CharacteristicsFacade private constructor(
 
             val capabilities = get(CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES)
                 ?.toSet().orEmpty()
-            val zoomRange = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val zoomRatioRange = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 get(CameraCharacteristics.CONTROL_ZOOM_RATIO_RANGE)
             } else {
                 null
-            } ?: get(CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM)
-                ?.let { max -> Range(1f, max) }
+            }
+            val zoomRange = zoomRatioRange
+                ?: get(CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM)
+                    ?.let { max -> Range(1f, max) }
             val compensationRange = get(CameraCharacteristics.CONTROL_AE_COMPENSATION_RANGE)
             val compensationStep = get(CameraCharacteristics.CONTROL_AE_COMPENSATION_STEP)
             val evRange = if (compensationRange != null && compensationStep != null) {
@@ -215,6 +271,15 @@ class CharacteristicsFacade private constructor(
                     focalLengthsMm =
                         get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS)?.toList().orEmpty(),
                     colorFilterArrangement = get(CameraCharacteristics.SENSOR_INFO_COLOR_FILTER_ARRANGEMENT),
+                    activeArrayWidth =
+                        get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE)?.width() ?: 0,
+                    activeArrayHeight =
+                        get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE)?.height() ?: 0,
+                    sensorOrientationDegrees = get(CameraCharacteristics.SENSOR_ORIENTATION) ?: 0,
+                    exposureCompensationStepEv = compensationStep?.toFloat(),
+                    maxAfRegions = get(CameraCharacteristics.CONTROL_MAX_REGIONS_AF) ?: 0,
+                    maxAeRegions = get(CameraCharacteristics.CONTROL_MAX_REGIONS_AE) ?: 0,
+                    supportsZoomRatioKey = zoomRatioRange != null,
                 ),
             )
         }
