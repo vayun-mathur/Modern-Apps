@@ -152,6 +152,12 @@ adblock = { version = "0.13.3", default-features = false, features = ["embedded-
 # Imaging – image crate 0.25->moxcms/pxfm removed, use tiny jpeg-encoder/decoder (1 function per your rule)
 jpeg-decoder = { version = "0.3.2", default-features = false }
 jpeg-encoder = { version = "0.7.1", default-features = false }
+# AVIF still encoding (camera): ravif is the pure-Rust AV1/AVIF encoder (rav1e
+# under it). default-features off drops `asm` (needs nasm on x86 hosts and
+# prebuilt asm objects on device) and keeps `threading` (rayon, already in the
+# workspace). No C toolchain, no bindgen: libavif-sys/libaom rejected for that
+# reason. Offline at runtime, so no SUPPLY_CHAIN_RISKS.md fetch entry.
+ravif = { version = "0.13", default-features = false, features = ["threading"] }
 flate2 = "1.1.10"
 
 # Crypto / PQC (features preserved – no feature loss)

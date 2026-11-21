@@ -140,8 +140,6 @@ fun <T : NavKey> SettingsPage(backStack: NavBackStack<T>, viewModel: CameraViewM
                 onReset = { viewModel.clearSaveTreeUri() },
             )
             CameraCodecSettings(
-                photoFormat = photoFormat,
-                onPhotoFormatChange = { viewModel.setPhotoFormat(it); noteIfDeferred() },
                 videoCodec = videoCodec,
                 audioCodec = audioCodec,
                 audioInputSource = audioInputSource,
@@ -157,6 +155,11 @@ fun <T : NavKey> SettingsPage(backStack: NavBackStack<T>, viewModel: CameraViewM
                     onCheckedChange = { viewModel.setMirrorFront(it); noteIfDeferred() },
                 )
             }
+
+            CameraPhotoFormatSettings(
+                photoFormat = photoFormat,
+                onPhotoFormatChange = { viewModel.setPhotoFormat(it); noteIfDeferred() },
+            )
 
             CameraPostProcessingSettings(
                 noiseReductionEnabled = noiseReductionEnabled,

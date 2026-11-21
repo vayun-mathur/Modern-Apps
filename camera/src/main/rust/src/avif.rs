@@ -64,6 +64,7 @@ pub fn encode_avif(rgba: &[u8], width: usize, height: usize, quality: f32, speed
 }
 
 /// True when `bytes` carry the AVIF file-type box (`....ftypavif`).
+#[cfg(test)]
 pub fn has_avif_magic(bytes: &[u8]) -> bool {
     bytes.len() >= 12 && &bytes[4..12] == b"ftypavif"
 }
@@ -71,6 +72,7 @@ pub fn has_avif_magic(bytes: &[u8]) -> bool {
 /// Read the `ispe` (image spatial extents) dimensions out of an AVIF
 /// container by walking top-level/meta boxes. Used by tests to confirm a
 /// real round-trip without pulling in a decoder crate.
+#[cfg(test)]
 pub fn avif_dimensions(bytes: &[u8]) -> Option<(u32, u32)> {
     fn boxes(bytes: &[u8]) -> Vec<(&[u8], &[u8])> {
         let mut out = Vec::new();
@@ -149,4 +151,40 @@ mod avif_tests {
         );
         assert!(has_avif_magic(&bytes));
     }
+}
+
+/// JNI entry for `StitchNative.encodeAvif`: RGBA frame in, AVIF bytes out,
+/// null on any failure so Kotlin falls back to JPEG.
+#[no_mangle]
+pub extern "system" fn Java_com_vayunmathur_camera_platform_StitchNative_encodeAvif<'l>(
+    mut env: jni::EnvUnowned<'l>,
+    _class: jni::objects::JClass<'l>,
+    rgba: jni::objects::JByteArray<'l>,
+    width: jni::sys::jint,
+    height: jni::sys::jint,
+    quality: jni::sys::jfloat,
+    speed: jni::sys::jint,
+) -> jni::sys::jbyteArray {
+    env.with_env(|env| -> jni::errors::Result<jni::sys::jbyteArray> {
+        let null = std::ptr::null_mut();
+        if width <= 0 || height <= 0 {
+            return Ok(null);
+        }
+        let bytes = match env.convert_byte_array(&rgba) {
+            Ok(b) => b,
+            Err(_) => return Ok(null),
+        };
+        let encoded = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            encode_avif(&bytes, width as usize, height as usize, quality, speed.clamp(1, 10) as u8)
+        }))
+        .unwrap_or(None);
+        match encoded {
+            Some(b) => match env.byte_array_from_slice(&b) {
+                Ok(arr) => Ok(arr.into_raw()),
+                Err(_) => Ok(null),
+            },
+            None => Ok(null),
+        }
+    })
+    .resolve::<jni::errors::LogErrorAndDefault>()
 }
