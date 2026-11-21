@@ -26,15 +26,15 @@ import com.vayunmathur.library.util.SiblingPage
 import com.vayunmathur.library.util.rememberNavBackStack
 import androidx.compose.ui.Modifier
 
-/** The three tab destinations, registered once and shared by both layout branches below. */
-private fun EntryProviderScope<Route>.calculatorEntries(viewModel: CalculatorViewModel) {
-    entry<Route.Calculator>(metadata = SiblingPage()) { CalculatorPage(viewModel) }
-    entry<Route.Graph>(metadata = SiblingPage()) { GraphPage(viewModel) }
-    entry<Route.Units>(metadata = SiblingPage()) { UnitConverterPage(viewModel) }
-}
-
 @Composable
 fun Navigation(viewModel: CalculatorViewModel, unitsRequest: Int = 0) {
+    /** The three tab destinations, registered once and shared by both layout branches below. */
+    fun EntryProviderScope<Route>.calculatorEntries() {
+        entry<Route.Calculator>(metadata = SiblingPage()) { CalculatorPage(viewModel) }
+        entry<Route.Graph>(metadata = SiblingPage()) { GraphPage(viewModel) }
+        entry<Route.Units>(metadata = SiblingPage()) { UnitConverterPage(viewModel) }
+    }
+
     val backStack = rememberNavBackStack<Route>(if (unitsRequest > 0) Route.Units else Route.Calculator)
     LaunchedEffect(unitsRequest) {
         if (unitsRequest > 0 && backStack.last() != Route.Units) backStack.reset(Route.Units)
@@ -63,13 +63,13 @@ fun Navigation(viewModel: CalculatorViewModel, unitsRequest: Int = 0) {
                 }
             }
             Box(Modifier.weight(1f).fillMaxHeight()) {
-                MainNavigation(backStack) { calculatorEntries(viewModel) }
+                MainNavigation(backStack) { calculatorEntries() }
             }
         }
     } else {
         MainNavigation(
             backStack,
             bottomBar = { BottomNavBar(backStack, tabs, current) },
-        ) { calculatorEntries(viewModel) }
+        ) { calculatorEntries() }
     }
 }
