@@ -1,10 +1,5 @@
 package com.vayunmathur.photos.ui
 
-import android.content.Intent
-import android.provider.MediaStore
-import android.provider.Settings
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -12,7 +7,6 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
-import androidx.core.net.toUri
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.photos.Route
 import com.vayunmathur.photos.platform.GalleryUiState
@@ -50,23 +44,9 @@ fun GalleryPage(
         enqueueSyncWork(context)
     }
 
-    // Helper to request MANAGE_MEDIA permission
-    val manageMediaLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { _ ->
-        // User returned from Settings - permission may or may not be granted
-        // The next delete attempt will check again
-    }
-
-    fun requestManageMediaPermission() {
-        if (!MediaStore.canManageMedia(context)) {
-            val intent = Intent(Settings.ACTION_REQUEST_MANAGE_MEDIA).apply {
-                data = "package:${context.packageName}".toUri()
-            }
-            manageMediaLauncher.launch(intent)
-        }
-    }
-
+    // Trash/delete/album actions request MANAGE_MEDIA contextually inside
+    // rememberGalleryActions (rememberManageMediaAction); nothing to ask for
+    // on this browsing screen.
     val actions = rememberGalleryActions(galleryViewModel, secureFolderViewModel, photos, selectedIds)
 
     GalleryScreen(

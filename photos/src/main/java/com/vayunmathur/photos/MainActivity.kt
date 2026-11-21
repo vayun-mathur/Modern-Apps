@@ -130,10 +130,15 @@ class MainActivity : MaFragmentActivity() {
                     arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
                 )
             }
+        // MANAGE_MEDIA is deliberately NOT a startup requirement: browsing
+        // only needs the runtime media reads below. It is requested
+        // contextually at the first trash/delete/move action instead (see
+        // rememberManageMediaAction), so first use is not blocked on an
+        // edit-only grant.
         AppPermissionsGate(
             spec = AppPermissionsSpec(
                 title = getString(R.string.grant_image_video_permissions),
-                requirements = listOf(runtime, PermissionRequirement.ManageMedia)
+                requirements = listOf(runtime)
             )
         ) {
             Navigation(galleryViewModel, photoMapViewModel, secureFolderViewModel, viewUri)

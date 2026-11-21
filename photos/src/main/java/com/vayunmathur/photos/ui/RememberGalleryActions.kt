@@ -11,9 +11,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.core.net.toUri
 import androidx.fragment.app.FragmentActivity
 import com.vayunmathur.library.log.Log
+import com.vayunmathur.library.ui.rememberMessenger
+import com.vayunmathur.photos.R
 import com.vayunmathur.photos.data.Photo
 import com.vayunmathur.photos.platform.GalleryActions
 import com.vayunmathur.photos.platform.GalleryViewModel
@@ -36,6 +39,13 @@ fun rememberGalleryActions(
     selectedIds: Set<Long>,
 ): GalleryActions {
     val context = LocalContext.current
+    val messenger = rememberMessenger()
+    val manageMediaDeniedMessage = stringResource(R.string.manage_media_required)
+    // MANAGE_MEDIA is deferred from app start: the first trash/delete/move
+    // asks for it here, and a refusal just explains and drops the action.
+    val ensureManageMedia = rememberManageMediaAction {
+        messenger.show(manageMediaDeniedMessage)
+    }
 
     val mediaResultLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
@@ -62,11 +72,11 @@ fun rememberGalleryActions(
     val currentPhotos by rememberUpdatedState(photos)
     val currentSelectedIds by rememberUpdatedState(selectedIds)
 
-    return remember(galleryViewModel, secureFolderViewModel, context, toggleFavorite) {
+    return remember(galleryViewModel, secureFolderViewModel, context, toggleFavorite, ensureManageMedia) {
         // The ViewModel is the actions implementation; the two MediaStore operations are
         // the exception, because they need the launchers created above.
         object : GalleryActions by galleryViewModel {
-            override fun moveSelectionToSecureFolder() {
+            override fun moveSelectionToSecureFolder() = ensureManageMedia {
                 val activity = context as FragmentActivity
                 val selectedPhotos = currentPhotos.filter { it.id in currentSelectedIds }
 
@@ -77,14 +87,15 @@ fun rememberGalleryActions(
                             photos = selectedPhotos,
                             sourceRepository = com.vayunmathur.photos.data.PhotosRepository.get(context.applicationContext),
                         ) { urisToDelete ->
-                            // Use MediaStore operations to delete files
-                            // MANAGE_MEDIA permission is required to run the app (checked in PermissionsWrapper)
+                            // Delete the originals now the copies are in the
+                            // vault. The ensureManageMedia wrapper above has
+                            // already secured MANAGE_MEDIA, so this applies
+                            // without a per-item popup.
                             try {
                                 val pendingIntent = MediaStore.createDeleteRequest(
                                     context.contentResolver,
                                     urisToDelete
                                 )
-                                // With MANAGE_MEDIA permission granted, this will delete without popup
                                 mediaResultLauncher.launch(
                                     IntentSenderRequest.Builder(pendingIntent.intentSender).build()
                                 )
@@ -105,7 +116,7 @@ fun rememberGalleryActions(
                 )
             }
 
-            override fun trashSelection() {
+            override fun trashSelection() = ensureManageMedia {
                 val uris = currentPhotos.filter { it.id in currentSelectedIds }.map { it.uri.toUri() }
                 val pendingIntent = MediaStore.createTrashRequest(context.contentResolver, uris, true)
                 mediaResultLauncher.launch(IntentSenderRequest.Builder(pendingIntent.intentSender).build())
@@ -115,11 +126,11 @@ fun rememberGalleryActions(
                 toggleFavorite(currentPhotos.filter { it.id in currentSelectedIds })
             }
 
-            override fun addSelectionToAlbum(name: String) {
+            override fun addSelectionToAlbum(name: String) = ensureManageMedia gate@{
                 val album = com.vayunmathur.photos.platform.AlbumMediaStore.sanitizeAlbumName(name)
-                if (album.isBlank()) return
+                if (album.isBlank()) return@gate
                 val selected = currentPhotos.filter { it.id in currentSelectedIds }
-                if (selected.isEmpty()) return
+                if (selected.isEmpty()) return@gate
                 galleryViewModel.requestAlbumMove(selected, album)
                 val pendingIntent = MediaStore.createWriteRequest(
                     context.contentResolver,

@@ -13,7 +13,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.vayunmathur.library.ui.rememberMessenger
 import com.vayunmathur.library.util.NavBackStack
+import com.vayunmathur.photos.R
 import com.vayunmathur.photos.Route
 import com.vayunmathur.photos.data.Photo
 import com.vayunmathur.photos.platform.AlbumMediaStore
@@ -45,6 +48,15 @@ fun AlbumDetailPage(
     // the album ceases to exist and there is nothing left to show.
     var pendingPop by remember { mutableStateOf(false) }
 
+    val messenger = rememberMessenger()
+    val manageMediaDeniedMessage = stringResource(R.string.manage_media_required)
+    // Album moves edit shared media: MANAGE_MEDIA is asked for here, at the
+    // action, not at app start. A refusal clears the pending pop and explains.
+    val ensureManageMedia = rememberManageMediaAction {
+        pendingPop = false
+        messenger.show(manageMediaDeniedMessage)
+    }
+
     val mediaResultLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
@@ -61,9 +73,11 @@ fun AlbumDetailPage(
 
     fun launchMove(photos: List<Photo>, target: String?) {
         if (photos.isEmpty()) return
-        galleryViewModel.requestAlbumMove(photos, target)
-        val pendingIntent = MediaStore.createWriteRequest(context.contentResolver, AlbumMediaStore.urisOf(photos))
-        mediaResultLauncher.launch(IntentSenderRequest.Builder(pendingIntent.intentSender).build())
+        ensureManageMedia {
+            galleryViewModel.requestAlbumMove(photos, target)
+            val pendingIntent = MediaStore.createWriteRequest(context.contentResolver, AlbumMediaStore.urisOf(photos))
+            mediaResultLauncher.launch(IntentSenderRequest.Builder(pendingIntent.intentSender).build())
+        }
     }
 
     AlbumDetailScreen(

@@ -255,6 +255,7 @@ class PhotosSlice3PagesTest {
 
     // ---- PhotoPage re-deriving its list from the view-model by sourceKey ----
 
+    @OptIn(androidx.compose.ui.test.ExperimentalTestApi::class)
     @Test
     fun photoPagePagerOpensOnOverridePhoto() {
         val gallery = galleryVm()

@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.IconUnarchive
+import com.vayunmathur.library.ui.rememberMessenger
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.photos.ui.LocalColumnCount
 import com.vayunmathur.photos.Route
@@ -78,6 +79,14 @@ fun TrashPage(backStack: NavBackStack<Route>, galleryViewModel: GalleryViewModel
         }
     }
 
+    val messenger = rememberMessenger()
+    val manageMediaDeniedMessage = stringResource(R.string.manage_media_required)
+    // Restore and permanent delete edit shared media: MANAGE_MEDIA is asked
+    // for at the tap, not at app start; a refusal explains and changes nothing.
+    val ensureManageMedia = rememberManageMediaAction {
+        messenger.show(manageMediaDeniedMessage)
+    }
+
     // Grouping is O(N) with a timezone conversion per photo, so it runs on
     // Dispatchers.Default. The seed is computed once so the grid isn't blank on the
     // first frame; produceState's initialValue is eagerly evaluated, hence the
@@ -103,25 +112,31 @@ fun TrashPage(backStack: NavBackStack<Route>, galleryViewModel: GalleryViewModel
         actions = {
             if (isSelectionMode) {
                 IconButton(onClick = {
-                    val uris = trashedPhotos.filter { it.id in selectedIds }.map { it.uri.toUri() }
-                    val pendingIntent = MediaStore.createTrashRequest(context.contentResolver, uris, false)
-                    trashLauncher.launch(IntentSenderRequest.Builder(pendingIntent.intentSender).build())
+                    ensureManageMedia {
+                        val uris = trashedPhotos.filter { it.id in selectedIds }.map { it.uri.toUri() }
+                        val pendingIntent = MediaStore.createTrashRequest(context.contentResolver, uris, false)
+                        trashLauncher.launch(IntentSenderRequest.Builder(pendingIntent.intentSender).build())
+                    }
                 }) {
                     IconUnarchive() // Restore icon
                 }
                 IconButton(onClick = {
-                    val uris = trashedPhotos.filter { it.id in selectedIds }.map { it.uri.toUri() }
-                    val pendingIntent = MediaStore.createDeleteRequest(context.contentResolver, uris)
-                    trashLauncher.launch(IntentSenderRequest.Builder(pendingIntent.intentSender).build())
+                    ensureManageMedia {
+                        val uris = trashedPhotos.filter { it.id in selectedIds }.map { it.uri.toUri() }
+                        val pendingIntent = MediaStore.createDeleteRequest(context.contentResolver, uris)
+                        trashLauncher.launch(IntentSenderRequest.Builder(pendingIntent.intentSender).build())
+                    }
                 }) {
                     IconDelete() // Permanent delete icon
                 }
             } else {
                 if (trashedPhotos.isNotEmpty()) {
                     IconButton(onClick = {
-                        val uris = trashedPhotos.map { it.uri.toUri() }
-                        val pendingIntent = MediaStore.createDeleteRequest(context.contentResolver, uris)
-                        trashLauncher.launch(IntentSenderRequest.Builder(pendingIntent.intentSender).build())
+                        ensureManageMedia {
+                            val uris = trashedPhotos.map { it.uri.toUri() }
+                            val pendingIntent = MediaStore.createDeleteRequest(context.contentResolver, uris)
+                            trashLauncher.launch(IntentSenderRequest.Builder(pendingIntent.intentSender).build())
+                        }
                     }) {
                         IconDelete()
                     }

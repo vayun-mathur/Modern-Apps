@@ -19,8 +19,11 @@ import com.vayunmathur.photos.data.Photo
  *
  * Callers must hold write access to the items first — most library photos are not
  * owned by this app, so the binder runs [MediaStore.createWriteRequest] over
- * [urisOf] before invoking [applyMove]. The app requires MANAGE_MEDIA, so that
- * grant is silent, like the existing trash/delete flows.
+ * [urisOf] before invoking [applyMove]. The UI ensures MANAGE_MEDIA
+ * contextually before that (rememberManageMediaAction, deferred from app
+ * start), so the direct [resolver.update][android.content.ContentResolver.update]
+ * calls below apply silently; without the grant they throw
+ * [SecurityException] and the item is logged and skipped.
  */
 object AlbumMediaStore {
     private const val TAG = "AlbumMediaStore"

@@ -26,15 +26,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.ZoomState
+import com.vayunmathur.library.ui.rememberMessenger
 import com.vayunmathur.library.ui.isExpandedWidth
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.photos.PhotoSource
+import com.vayunmathur.photos.R
 import com.vayunmathur.photos.Route
 import com.vayunmathur.photos.data.Photo
 import com.vayunmathur.photos.platform.pushPhoto
@@ -84,9 +87,11 @@ fun PhotoPage(galleryViewModel: GalleryViewModel, photoMapViewModel: PhotoMapVie
     val faceBoxes by galleryViewModel.faceBoxesByPhoto.collectAsState()
 
     // In-viewer delete: move the current photo to the system trash via the same
-    // MediaStore IntentSender flow the grid uses. MANAGE_MEDIA (enforced at app
-    // start) means no per-item confirmation popup. On success we hide it locally
-    // (the pager falls through to the next photo) and trash it in the DB.
+    // MediaStore IntentSender flow the grid uses. MANAGE_MEDIA is requested
+    // contextually here (it is no longer an app-start requirement), so the
+    // trash applies without a per-item confirmation popup once granted; a
+    // refusal explains and leaves the photo in place. On success we hide it
+    // locally (the pager falls through to the next photo) and trash it in the DB.
     //
     // Declared before the delete launcher: its result callback resets the chrome
     // so the photo the pager falls through to keeps its info card.
@@ -107,12 +112,19 @@ fun PhotoPage(galleryViewModel: GalleryViewModel, photoMapViewModel: PhotoMapVie
         }
         pendingDelete = null
     }
+    val messenger = rememberMessenger()
+    val manageMediaDeniedMessage = stringResource(R.string.manage_media_required)
+    val ensureManageMedia = rememberManageMediaAction {
+        messenger.show(manageMediaDeniedMessage)
+    }
     val onDeletePhoto: (Photo) -> Unit = { p ->
-        pendingDelete = p
-        val pendingIntent = MediaStore.createTrashRequest(
-            context.contentResolver, listOf(p.uri.toUri()), true
-        )
-        deleteLauncher.launch(IntentSenderRequest.Builder(pendingIntent.intentSender).build())
+        ensureManageMedia {
+            pendingDelete = p
+            val pendingIntent = MediaStore.createTrashRequest(
+                context.contentResolver, listOf(p.uri.toUri()), true
+            )
+            deleteLauncher.launch(IntentSenderRequest.Builder(pendingIntent.intentSender).build())
+        }
     }
 
     // Resolve the page to open by id, falling back to the incoming view-intent

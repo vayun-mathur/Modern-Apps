@@ -9,9 +9,8 @@
     <!-- Permission prompt button to grant READ_MEDIA_IMAGES/VIDEO. Verb phrase -->
     <string name="grant_image_video_permissions">Grant Image/Video Permissions</string>
     <!-- Button to request storage permission. Shown on Android versions below 13. Verb phrase -->
-    <!-- Title when Media Management permission required to delete/move -->
-    <!-- Explanatory body when canManageMedia false, tells user to grant Allow media management in Settings -->
-    <!-- Button to open system Settings from permission blocker screen. Verb phrase -->
+    <!-- Message when a trash/delete/move action cannot proceed because media management is not granted. Sentence -->
+    <string name="manage_media_required">Allow media management to delete, move or restore photos</string>
     <!-- Navigation label: Gallery tab. Noun -->
     <string name="label_gallery">Gallery</string>
     <!-- Navigation label: Map tab. Noun -->
