@@ -17,8 +17,8 @@ _Install: ./install auto (dev by default)._
 - USB + wireless transports (`network/UsbConnector`/`WifiDirectConnector`, `HeadUnitServer`) speaking the GAL protocol in `:auto:protocol` (framing, TLS, video/input/sensor codecs)
 - Car cards: nav guidance, media now-playing + capture, call cards, messaging with voice reply, TTS, sensor feed (speed/gear/night-mode)
 - Role negotiation (MAOS host vs mirror), pairing flow, boot/startup services, `telephony/` in-call services for car calls
-**Architecture / data-flow:** Transports → `:auto:protocol` codecs/sessions → `platform/` channels (video/audio/input/sensor/nav/media/messaging) → `CarAppHost` + card pushers → car display; `service/ProjectionService` owns the session, `platform/AutoViewModel` (+ `PairingViewModel`) drives `ui/` phone-side pairing/status.
-**Entry points + reading order:** `Route` → `MainActivity.kt` → `platform/CarAppHost.kt` → `service/ProjectionService.kt` → `network/HeadUnitServer.kt` → `:auto:protocol` `GalConnection.kt`.
+**Architecture / data-flow:** Transports → `:auto:protocol` codecs/sessions → `platform/` channels (video/audio/input/sensor/nav/media/messaging) → `HostManager`/`HostSession` (owned by `service/CarAppHostSession`) + card pushers → car display; `service/ProjectionService` owns the session, `platform/AutoViewModel` (+ `PairingViewModel`) drives `ui/` phone-side pairing/status.
+**Entry points + reading order:** `Route` → `MainActivity.kt` → `service/CarAppHostSession.kt` → `service/ProjectionService.kt` → `network/HeadUnitServer.kt` → `:auto:protocol` `GalConnection.kt`.
 **Gotchas:**
 - Never evaluate this module on a phone screen — `./dhu` is the loop; car-display geometry comes from the head unit
 - Driver-distraction rules constrain the car UI (cards, not free navigation) — keep car surfaces templated
@@ -35,7 +35,9 @@ _Install: ./install auto (dev by default)._
 - com/vayunmathur/auto/network/UsbConnector.kt
 - com/vayunmathur/auto/network/WifiDirectConnector.kt
 ### platform/ — host, cards, channels, pairing, receivers
-- com/vayunmathur/auto/platform/CarAppHost.kt
+- com/vayunmathur/auto/platform/HostSession.kt — successor to the old `CarAppHost` (one hosted car-app session)
+- com/vayunmathur/auto/platform/HostManager.kt — multi-app host fan-in
+- com/vayunmathur/auto/service/CarAppHostSession.kt — session-scoped host owner
 - com/vayunmathur/auto/platform/AutoViewModel.kt
 - com/vayunmathur/auto/platform/PairingViewModel.kt
 - com/vayunmathur/auto/platform/AutoConnectionState.kt
@@ -43,13 +45,7 @@ _Install: ./install auto (dev by default)._
 - com/vayunmathur/auto/platform/CarDisplay.kt
 - com/vayunmathur/auto/platform/CarPresentation.kt
 - com/vayunmathur/auto/platform/CarApps.kt
-- com/vayunmathur/auto/platform/CarDrawerView.kt
-- com/vayunmathur/auto/platform/CarRailView.kt
-- com/vayunmathur/auto/platform/CarNavCard.kt
-- com/vayunmathur/auto/platform/CarMediaCard.kt
-- com/vayunmathur/auto/platform/CarCallCard.kt
 - com/vayunmathur/auto/platform/CallCardPush.kt
-- com/vayunmathur/auto/platform/CarUiKit.kt
 - com/vayunmathur/auto/platform/CarTts.kt
 - com/vayunmathur/auto/platform/VideoEncoder.kt
 - com/vayunmathur/auto/platform/VideoSinkChannel.kt

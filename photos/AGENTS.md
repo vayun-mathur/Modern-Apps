@@ -5,7 +5,7 @@
 _Install: ./install photos (dev by default)._
 <!-- last-reviewed: 2026-10-16 -->
 - Gradle: :photos / dir: photos/
-- Package roots present: ui, data, domain, platform, service
+- Package roots present: ui, data, domain, platform, service, widget
 - Entry files: MainActivity.kt (no Route.kt — `Route` + `Navigation` are inline)
 - Deps: :library:map, :library:image, :library:ml, :library:room, :library:ink, :library:widgets, :library:biometric, :library:ocr, :library:downloadservice
 - Metadata: metadata_data/photos.md (present)
@@ -18,13 +18,13 @@ _Install: ./install photos (dev by default)._
 - Non-destructive editor: curves, HSL, levels, healing, liquify, layers, selective edits, undo/redo — edits stored as `data/*Data` docs, composited by `LayerCompositor`
 - On-device search by content (CLIP), by text (OCR layout), and by person (face recognition + segmentation); biometric-locked secure folder with optional relock-on-exit
 - Wallpaper/live-wallpaper, Glance home widget, motion-photo support, and background sync worker
-**Architecture / data-flow:** `ui/` pages over `util/` ViewModels (`GalleryViewModel`, `PhotoEditViewModel`, `VideoEditViewModel`, `PhotoMapViewModel`, `SecureFolderViewModel`) → `data/` Room (`PhotoDatabase`, `VaultDatabase`, `PhotosRepository`/`VaultRepository`) plus MediaStore indexing (`AlbumMediaStore`); ML (faces, CLIP, OCR, segmentation) runs on `:library:ml` with a Rust native bridge (`PhotosNative`). `onCreateBeforeContent`: widget previews + `ImageLoader.init`; `Content()` provides the column-count state behind a media-permissions gate into inline `Navigation()`.
-**Entry points + reading order:** `Route` (`Gallery` / `PhotoPage` / `Map` / `People` / `Albums` / `Trash` / `SecureFolder` / `VaultViewer` / `Wallpaper`, inline) → `MainActivity.kt` → `ui/GalleryPage.kt` → `util/GalleryViewModel.kt` → `data/PhotosRepository.kt`.
+**Architecture / data-flow:** `ui/` pages over `platform/` ViewModels (`GalleryViewModel`, `PhotoEditViewModel`, `VideoEditViewModel`, `PhotoMapViewModel`, `SecureFolderViewModel`) → `data/` Room (`PhotoDatabase`, `VaultDatabase`, `PhotosRepository`/`VaultRepository`) plus MediaStore indexing (`AlbumMediaStore`); ML (faces, CLIP, OCR, segmentation) runs on `:library:ml` with a Rust native bridge (`PhotosNative`). `onCreateBeforeContent`: widget previews + `ImageLoader.init`; `Content()` provides the column-count state behind a media-permissions gate into inline `Navigation()`.
+**Entry points + reading order:** `Route` (`Gallery` / `PhotoPage` / `Map` / `People` / `Albums` / `Trash` / `SecureFolder` / `VaultViewer` / `Wallpaper`, inline) → `MainActivity.kt` → `ui/GalleryPage.kt` → `platform/GalleryViewModel.kt` → `data/PhotosRepository.kt`.
 **Gotchas:**
 - Re-tapping a photo replaces the viewer (`pushPhoto`/`setLast`) instead of stacking — don't `add()` photo routes or back steps through stale viewers
 - `ACTION_VIEW` from another app (e.g. the camera) makes that one photo the stack root with no gallery beneath; in-app back handling must not swallow the system predictive-back gesture there
 - `MaFragmentActivity` (not `MaActivity`) — biometric + fragment-hosting requirement
-- Extra non-conforming dirs (`glance/`, `util/`) hold real code — closed-roots migration pending
+- Widget code is flat in `widget/` (widget + receiver in one file); ViewModels/ML/compositing live in `platform/`, pure helpers in `domain/`
 
 ## Key files
 ### Root — entry + inline navigation
@@ -74,12 +74,10 @@ _Install: ./install photos (dev by default)._
 - com/vayunmathur/photos/domain/FaceQuality.kt — which faces may form people
 - com/vayunmathur/photos/domain/FaceClustering.kt — batch average-linkage grouping
 - com/vayunmathur/photos/domain/FaceClusterIdentity.kt — keeps person ids/names across regroups
-### glance/ — home widget
-- com/vayunmathur/photos/glance/PhotoGlanceWidget.kt
-- com/vayunmathur/photos/glance/PhotoGlanceWidgetReceiver.kt
-### platform/ — motion-photo + ET models
+### widget/ — home widget
+- com/vayunmathur/photos/widget/PhotoGlanceWidget.kt — includes `PhotoGlanceWidgetReceiver` (one widget, one file)
+### platform/ — motion-photo
 - com/vayunmathur/photos/platform/MotionPhotoVideo.kt
-- com/vayunmathur/photos/platform/PhotosEtModels.kt
 ### service/ — live wallpaper
 - com/vayunmathur/photos/service/LiveWallpaperService.kt
 ### ui/ — gallery, albums, people, map
@@ -153,31 +151,30 @@ _Install: ./install photos (dev by default)._
 - com/vayunmathur/photos/ui/SecureFolderPage.kt
 - com/vayunmathur/photos/ui/VaultViewerPage.kt
 - com/vayunmathur/photos/ui/VaultViewerScreen.kt
-### util/ — ViewModels, ML, compositing, sync (migration pending)
-- com/vayunmathur/photos/util/GalleryViewModel.kt
-- com/vayunmathur/photos/util/GalleryUiContract.kt
-- com/vayunmathur/photos/util/PhotoEditViewModel.kt
-- com/vayunmathur/photos/util/VideoEditViewModel.kt
-- com/vayunmathur/photos/util/PhotoMapViewModel.kt
-- com/vayunmathur/photos/util/SecureFolderViewModel.kt
-- com/vayunmathur/photos/util/SecureFolderManager.kt
-- com/vayunmathur/photos/util/LayerCompositor.kt
-- com/vayunmathur/photos/util/UndoRedoManager.kt
-- com/vayunmathur/photos/util/OverlayRendering.kt
-- com/vayunmathur/photos/util/FaceRecognizer.kt
-- com/vayunmathur/photos/util/FaceCropTransformation.kt
-- com/vayunmathur/photos/util/MlSegmentation.kt
-- com/vayunmathur/photos/util/ClipEmbedder.kt
-- com/vayunmathur/photos/util/ClipTokenizer.kt
-- com/vayunmathur/photos/util/ImageLoader.kt
-- com/vayunmathur/photos/util/PanoXmpParser.kt
-- com/vayunmathur/photos/util/PhotosNative.kt — Rust bridge
-- com/vayunmathur/photos/util/AlbumMediaStore.kt
-- com/vayunmathur/photos/util/SyncWorker.kt
-- com/vayunmathur/photos/util/SyncWorkerHelper.kt
-- com/vayunmathur/photos/util/LiveWallpaperLauncher.kt
-- com/vayunmathur/photos/util/WallpaperHelper.kt
-- com/vayunmathur/photos/util/AppBackupAgent.kt
+### platform/ — ViewModels, ML, compositing, sync
+- com/vayunmathur/photos/platform/GalleryViewModel.kt
+- com/vayunmathur/photos/platform/GalleryUiContract.kt
+- com/vayunmathur/photos/platform/PhotoEditViewModel.kt
+- com/vayunmathur/photos/platform/VideoEditViewModel.kt
+- com/vayunmathur/photos/platform/PhotoMapViewModel.kt
+- com/vayunmathur/photos/platform/SecureFolderViewModel.kt
+- com/vayunmathur/photos/platform/SecureFolderManager.kt
+- com/vayunmathur/photos/platform/LayerCompositor.kt
+- com/vayunmathur/photos/domain/UndoRedoManager.kt
+- com/vayunmathur/photos/platform/OverlayRendering.kt
+- com/vayunmathur/photos/platform/FaceRecognizer.kt
+- com/vayunmathur/photos/platform/FaceCropTransformation.kt
+- com/vayunmathur/photos/platform/MlSegmentation.kt
+- com/vayunmathur/photos/platform/ClipEmbedder.kt
+- com/vayunmathur/photos/platform/ClipTokenizer.kt
+- com/vayunmathur/photos/platform/ImageLoader.kt
+- com/vayunmathur/photos/domain/PanoXmpParser.kt
+- com/vayunmathur/photos/platform/PhotosNative.kt — Rust bridge
+- com/vayunmathur/photos/platform/AlbumMediaStore.kt
+- com/vayunmathur/photos/platform/SyncWorker.kt
+- com/vayunmathur/photos/platform/SyncWorkerHelper.kt
+- com/vayunmathur/photos/platform/LiveWallpaperLauncher.kt
+- com/vayunmathur/photos/platform/WallpaperHelper.kt
 
 ## Verify (this module only)
 ```

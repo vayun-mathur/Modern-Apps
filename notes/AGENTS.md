@@ -16,7 +16,7 @@ _Install: ./install notes (dev by default)._
 **Key features:**
 - Block-based editor (`Note`/`NoteBlock`) with stylus ink (`:library:ink`) and images (`:library:image`, content-addressed `sha256.jpg`)
 - `.md` import/export — opens files shared from other apps, desktop file-drop, shares notes back out
-- OpenAssistant read/add via `intents/`; local backup/restore via `AppBackupAgent`
+- OpenAssistant read/add via `intents/`; local backup/restore via the in-app backup buttons (`BackupButtons`, no backup agent)
 **Architecture / data-flow:** `ui/` Compose list/detail → `platform/NotesViewModel` (+ `NotesUiContract`) → `data/NotesRepository` singleton over Room (`Note`/`NoteBlock`/`NoteDatabase`). `MainActivity.onCreateBeforeContent`: repo init → one-time legacy-notes clear + image `img_<uuid>.jpg → sha256.jpg` migration with block-reference rewrite → `ready` gate before `Navigation`.
 **Entry points + reading order:** `Route` (`NotesList` / `Note(id)` / `ExternalNote(uri)`) → `MainActivity.kt` → `Navigation.kt` → `platform/NotesViewModel.kt` → `data/NotesRepository.kt`.
 **Gotchas:**
@@ -42,7 +42,6 @@ _Install: ./install notes (dev by default)._
 - com/vayunmathur/notes/platform/NotesUiContract.kt
 - com/vayunmathur/notes/platform/NoteImageStore.kt — content-addressed image copy + migration
 - com/vayunmathur/notes/platform/NoteMarkdownExporter.kt
-- com/vayunmathur/notes/platform/AppBackupAgent.kt
 ### ui/ — list/detail/ink/external screens
 - com/vayunmathur/notes/ui/NotesListScreen.kt
 - com/vayunmathur/notes/ui/NotesListPage.kt

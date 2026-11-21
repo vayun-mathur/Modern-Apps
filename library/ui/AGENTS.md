@@ -163,7 +163,7 @@
 - com/vayunmathur/library/ui/odf/PdfExporter.kt
 - com/vayunmathur/library/ui/odf/LatexExporter.kt
 ### Connectivity
-- com/vayunmathur/library/util/ConnectivityCompose.kt — offline banner (`OfflineAware`); `util` package but owned by this module
+- com/vayunmathur/library/util/ConnectivityCompose.kt — offline banner (`OfflineAware`); lives in `:library:network`, not this module (#884)
 - com/vayunmathur/library/ui/Haptics.kt
 
 ## Verify (this module only)

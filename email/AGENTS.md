@@ -117,8 +117,7 @@ _Install: ./install email (dev by default)._
 - com/vayunmathur/email/intents/SearchIntent.kt
 - com/vayunmathur/email/intents/EmailDataMapper.kt
 ### widget/ — unified-inbox home widget
-- com/vayunmathur/email/widget/EmailWidget.kt
-- com/vayunmathur/email/widget/EmailWidgetReceiver.kt
+- com/vayunmathur/email/widget/EmailWidget.kt — includes `EmailWidgetReceiver` (one widget, one file)
 
 ## Verify (this module only)
 ```

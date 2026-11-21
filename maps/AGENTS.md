@@ -5,7 +5,7 @@
 _Install: ./install maps (dev by default)._
 <!-- last-reviewed: 2026-10-16 -->
 - Gradle: :maps / dir: maps/
-- Package roots present: ui, data, intents
+- Package roots present: ui, data, domain, platform, service, intents, util (single JNI-exception file)
 - Entry files: MainActivity.kt (no Route.kt — `Route` + `Navigation` are inline)
 - Deps: :library:map, :library:image, :library:network, :library:downloadservice
 - Metadata: metadata_data/maps.md (present)
@@ -15,28 +15,28 @@ _Install: ./install maps (dev by default)._
 **Purpose:** A fast open-source map + navigation app on OpenStreetMap, with all routing on device. Internet only for new tiles, search, traffic, and transit delays.
 **Key features:**
 - On-device routing (drive/walk/bike/transit) over a single packed `.mamaps` archive, downloaded once on first launch; viewed areas keep working offline
-- Turn-by-turn navigation with voice (TTS), lane guidance, speed-limit widget, and elevation; Android Auto via `car/`
+- Turn-by-turn navigation with voice (TTS), lane guidance, speed-limit widget, and elevation; Android Auto via `platform/`
 - Place details, saved places, transit departure boards, Street View, parking, and POI search (offline index from the archive; ratings/review counts/summaries are archive-only, `poi_attrs` keys 10-12)
 - Google is used for exactly two opt-in features (Settings → Google services): Street View and non-review place details (photos, hours, phone/website, popular times) via `GooglePoiDataSource`. No Google search, traffic, POI discovery or reviews
 - Handles external `geo:` / `google.navigation:` / Google-Maps links from other apps
-**Architecture / data-flow:** `ui/` map surface + sheets over per-concern `util/` ViewModels (`SelectedFeatureViewModel`, `MapsSearchViewModel`, `SavedPlacesViewModel`, …) → `data/` stores/parsers + `util/OfflineRouter*` routing against the memory-mapped archive; guidance runs in the `util/NavigationService` foreground service via `NavigationSessionManager`. `onCreateBeforeContent`: `NetworkClient.init(FIRST_PARTY)` → delete the legacy `world_z0-6.pmtiles` → route the cold-start deep link; `Content()` gates on the `.mamaps` download before the map renders.
-**Entry points + reading order:** `Route` (`MapPage` / `SavedPlacesPage` / `SettingsPage`, inline) → `MainActivity.kt` (`handleIntent`, `navigateTo`) → `ui/MapPage.kt` → `util/SelectedFeatureViewModel.kt` → `util/OfflineRouterRoadRoutes.kt`.
+**Architecture / data-flow:** `ui/` map surface + sheets over per-concern `platform/` ViewModels (`SelectedFeatureViewModel`, `MapsSearchViewModel`, `SavedPlacesViewModel`, …) → `data/` stores/parsers + `data/OfflineRouter*` routing against the memory-mapped archive; guidance runs in the `service/NavigationService` foreground service via `NavigationSessionManager`. `onCreateBeforeContent`: `NetworkClient.init(FIRST_PARTY)` → delete the legacy `world_z0-6.pmtiles` → route the cold-start deep link; `Content()` gates on the `.mamaps` download before the map renders.
+**Entry points + reading order:** `Route` (`MapPage` / `SavedPlacesPage` / `SettingsPage`, inline) → `MainActivity.kt` (`handleIntent`, `navigateTo`) → `ui/MapPage.kt` → `platform/SelectedFeatureViewModel.kt` → `data/OfflineRouterRoadRoutes.kt`.
 **Gotchas:**
 - The `.mamaps` gate hosts app start — the archive URL must be live before a version ships; `adb push` the file to sideload a locally built archive
 - `singleTop` warm-start geo/navigation links arrive via `onNewIntent`, not a fresh `onCreate`
 - The map itself never splits panes (list/detail metadata only for settings/saved); its expanded side panel is separate inside `MapPage`
-- Extra non-conforming dirs (`car/`, `ipc/`, `util/`) hold real code — closed-roots migration pending
+- `util/` now holds only `OfflineRouter.kt` (JNI package exception); car, cross-app clients and ViewModels all live in closed roots (`platform/`, `intents/`)
 
 ## Key files
 ### Root — entry + inline navigation
 - com/vayunmathur/maps/MainActivity.kt — Route, Navigation, geo-link handling, archive gate
-### car/ — Android Auto surface
-- com/vayunmathur/maps/car/MapsCarAppService.kt
-- com/vayunmathur/maps/car/MapsSession.kt
-- com/vayunmathur/maps/car/NavMapScreen.kt
-- com/vayunmathur/maps/car/CarMapRenderer.kt
-- com/vayunmathur/maps/car/CarManeuvers.kt
-- com/vayunmathur/maps/car/CarSearchScreen.kt
+### platform/ — Android Auto surface
+- com/vayunmathur/maps/platform/MapsCarAppService.kt
+- com/vayunmathur/maps/platform/MapsSession.kt
+- com/vayunmathur/maps/platform/NavMapScreen.kt
+- com/vayunmathur/maps/platform/CarMapRenderer.kt
+- com/vayunmathur/maps/platform/CarManeuvers.kt
+- com/vayunmathur/maps/platform/CarSearchScreen.kt
 ### data/ — prefs, places, POI + transit sources
 - com/vayunmathur/maps/data/MapPreferences.kt
 - com/vayunmathur/maps/data/MapLinkParser.kt — external geo/maps URL parsing
@@ -58,12 +58,12 @@ _Install: ./install maps (dev by default)._
 - com/vayunmathur/maps/data/transit/TransitousModels.kt
 ### intents/ — assistant IPC
 - com/vayunmathur/maps/intents/DirectionsIntent.kt
-### ipc/ — cross-app estimate/lookup clients
-- com/vayunmathur/maps/ipc/RideEstimateClient.kt — launches taxi intents
-- com/vayunmathur/maps/ipc/OrderLookupClient.kt — launches fooddelivery intents
-- com/vayunmathur/maps/ipc/FamilyLocationClient.kt
-- com/vayunmathur/maps/ipc/FamilyLocationProtocol.kt
-- com/vayunmathur/maps/ipc/IntentLaunch.kt
+### intents/ — cross-app estimate/lookup clients
+- com/vayunmathur/maps/intents/RideEstimateClient.kt — launches taxi intents
+- com/vayunmathur/maps/intents/OrderLookupClient.kt — launches fooddelivery intents
+- com/vayunmathur/maps/intents/FamilyLocationClient.kt
+- com/vayunmathur/maps/intents/FamilyLocationProtocol.kt
+- com/vayunmathur/maps/intents/IntentLaunch.kt
 ### ui/ — pages, sheets, layers
 - com/vayunmathur/maps/ui/MapPage.kt
 - com/vayunmathur/maps/ui/MapPageScope.kt
@@ -140,46 +140,46 @@ _Install: ./install maps (dev by default)._
 - com/vayunmathur/maps/ui/theme/MapTokens.kt
 - com/vayunmathur/maps/ui/theme/BasemapPalette.kt
 - com/vayunmathur/maps/ui/theme/MapChromeMetrics.kt
-### util/ — ViewModels, offline router, navigation service (migration pending)
-- com/vayunmathur/maps/util/SelectedFeatureViewModel.kt
-- com/vayunmathur/maps/util/MapsSearchViewModel.kt
-- com/vayunmathur/maps/util/MapsUiContract.kt
-- com/vayunmathur/maps/util/SavedPlacesViewModel.kt
-- com/vayunmathur/maps/util/MapSettingsViewModel.kt
-- com/vayunmathur/maps/util/PlacePanelState.kt
-- com/vayunmathur/maps/util/PoiMapViewModel.kt — map POI pins from the offline index
-- com/vayunmathur/maps/util/TransitStopsViewModel.kt
-- com/vayunmathur/maps/util/TransitClock.kt
-- com/vayunmathur/maps/util/ParkingViewModel.kt
-- com/vayunmathur/maps/util/MapTileCache.kt — `.mamaps` archive access
+### platform/ + data/ + domain/ + service/ — ViewModels, offline router, navigation service
+- com/vayunmathur/maps/platform/SelectedFeatureViewModel.kt
+- com/vayunmathur/maps/platform/MapsSearchViewModel.kt
+- com/vayunmathur/maps/platform/MapsUiContract.kt
+- com/vayunmathur/maps/platform/SavedPlacesViewModel.kt
+- com/vayunmathur/maps/platform/MapSettingsViewModel.kt
+- com/vayunmathur/maps/platform/PlacePanelState.kt
+- com/vayunmathur/maps/platform/PoiMapViewModel.kt — map POI pins from the offline index
+- com/vayunmathur/maps/platform/TransitStopsViewModel.kt
+- com/vayunmathur/maps/domain/TransitClock.kt
+- com/vayunmathur/maps/platform/ParkingViewModel.kt
+- com/vayunmathur/maps/data/MapTileCache.kt — `.mamaps` archive access
 - com/vayunmathur/maps/util/OfflineRouter.kt
-- com/vayunmathur/maps/util/OfflineRouterRoadRoutes.kt
-- com/vayunmathur/maps/util/OfflineRouterRouteBuilder.kt
-- com/vayunmathur/maps/util/OfflineRouterTraffic.kt
-- com/vayunmathur/maps/util/OfflineRouterTransit.kt
-- com/vayunmathur/maps/util/RouteService.kt
-- com/vayunmathur/maps/util/NavigationService.kt — foreground guidance service
-- com/vayunmathur/maps/util/NavigationSessionManager.kt
-- com/vayunmathur/maps/util/NavigationTts.kt
-- com/vayunmathur/maps/util/PolylineProgress.kt
-- com/vayunmathur/maps/util/GTFSProvider.kt
-- com/vayunmathur/maps/util/PoiIndex.kt
-- com/vayunmathur/maps/util/PoiIndexAttrs.kt
-- com/vayunmathur/maps/util/PoiIndexSpatial.kt
-- com/vayunmathur/maps/util/PoiIndexWords.kt
-- com/vayunmathur/maps/util/PoiIndexRegion.kt — `poi_region` (kind 15) boundary links
-- com/vayunmathur/maps/util/PoiIndexAdmin.kt — `poi_admin` (kind 16) hierarchy; search-row locality ("City, State, Country")
-- com/vayunmathur/maps/util/PoiSearchEngine.kt — indexed name search (ordinal scans + grid join, blended text/distance rank)
-- com/vayunmathur/maps/util/PoiSearchHits.kt — ordinal hit table for the search engine
-- com/vayunmathur/maps/util/PoiArchive.kt — POI sections out of the archive (per-section mmaps; planet is ~80 GB)
-- com/vayunmathur/maps/util/PoiCategories.kt
-- com/vayunmathur/maps/util/SpatialKey.kt
-- com/vayunmathur/maps/util/RegionalUnits.kt
-- com/vayunmathur/maps/util/ItineraryWording.kt
-- com/vayunmathur/maps/util/Wikidata.kt
-- com/vayunmathur/maps/util/CameraBounds.kt
-- com/vayunmathur/maps/util/ContactLookup.kt
-- com/vayunmathur/maps/util/FrameworkLocationManager.kt
+- com/vayunmathur/maps/data/OfflineRouterRoadRoutes.kt
+- com/vayunmathur/maps/data/OfflineRouterRouteBuilder.kt
+- com/vayunmathur/maps/data/OfflineRouterTraffic.kt
+- com/vayunmathur/maps/data/OfflineRouterTransit.kt
+- com/vayunmathur/maps/domain/RouteService.kt
+- com/vayunmathur/maps/service/NavigationService.kt — foreground guidance service
+- com/vayunmathur/maps/platform/NavigationSessionManager.kt
+- com/vayunmathur/maps/platform/NavigationTts.kt
+- com/vayunmathur/maps/domain/PolylineProgress.kt
+- com/vayunmathur/maps/data/GTFSProvider.kt
+- com/vayunmathur/maps/data/PoiIndex.kt
+- com/vayunmathur/maps/data/PoiIndexAttrs.kt
+- com/vayunmathur/maps/data/PoiIndexSpatial.kt
+- com/vayunmathur/maps/data/PoiIndexWords.kt
+- com/vayunmathur/maps/data/PoiIndexRegion.kt — `poi_region` (kind 15) boundary links
+- com/vayunmathur/maps/data/PoiIndexAdmin.kt — `poi_admin` (kind 16) hierarchy; search-row locality ("City, State, Country")
+- com/vayunmathur/maps/data/PoiSearchEngine.kt — indexed name search (ordinal scans + grid join, blended text/distance rank)
+- com/vayunmathur/maps/data/PoiSearchHits.kt — ordinal hit table for the search engine
+- com/vayunmathur/maps/data/PoiArchive.kt — POI sections out of the archive (per-section mmaps; planet is ~80 GB)
+- com/vayunmathur/maps/data/PoiCategories.kt
+- com/vayunmathur/maps/domain/SpatialKey.kt
+- com/vayunmathur/maps/platform/RegionalUnits.kt
+- com/vayunmathur/maps/domain/ItineraryWording.kt
+- com/vayunmathur/maps/data/Wikidata.kt
+- com/vayunmathur/maps/domain/CameraBounds.kt
+- com/vayunmathur/maps/platform/ContactLookup.kt
+- com/vayunmathur/maps/platform/FrameworkLocationManager.kt
 
 ## Verify (this module only)
 ```
