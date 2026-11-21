@@ -36,6 +36,7 @@ import com.vayunmathur.library.ui.ModalNavigationDrawer
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.library.ui.isExpandedWidth
+import androidx.compose.ui.focus.FocusRequester
 import com.vayunmathur.library.ui.odf.OdfDocument
 import com.vayunmathur.office.ui.OfficeEditorWideLayout
 import com.vayunmathur.office.platform.OfficeViewModel
@@ -65,6 +66,8 @@ internal fun DocumentScaffoldBody(
     onSlideChange: (Int) -> Unit,
     onSlideElementSelected: (Int, Int) -> Unit,
     modifier: Modifier = Modifier,
+    bodyFocusRequester: FocusRequester? = null,
+    onBodyFocusChanged: (Boolean) -> Unit = {},
 ) {
     Column(Modifier.fillMaxSize().padding(contentPadding)) {
         ScaffoldMenuBars(
@@ -86,6 +89,8 @@ internal fun DocumentScaffoldBody(
             onSlideChange = onSlideChange,
             onSlideElementSelected = onSlideElementSelected,
             modifier = modifier,
+            bodyFocusRequester = bodyFocusRequester,
+            onBodyFocusChanged = onBodyFocusChanged,
         )
     }
 }
@@ -154,6 +159,8 @@ internal fun DocumentEditorPane(
     onSlideChange: (Int) -> Unit,
     onSlideElementSelected: (Int, Int) -> Unit,
     modifier: Modifier = Modifier,
+    bodyFocusRequester: FocusRequester? = null,
+    onBodyFocusChanged: (Boolean) -> Unit = {},
 ) {
     Column(modifier) {
         val showOutline = isExpandedWidth() && chrome.isTextDoc &&
@@ -173,7 +180,9 @@ internal fun DocumentEditorPane(
                         listState = listState, onRunSelectionChange = onRunSelectionChange,
                         onCellFocus = onCellFocus, onCellSelected = onCellSelected,
                         onSlideChange = onSlideChange, onSlideElementSelected = onSlideElementSelected,
-                        modifier = Modifier.fillMaxSize())
+                        modifier = Modifier.fillMaxSize(),
+                        bodyFocusRequester = bodyFocusRequester,
+                        onBodyFocusChanged = onBodyFocusChanged)
                 },
             )
         } else {
@@ -182,7 +191,9 @@ internal fun DocumentEditorPane(
                 listState = listState, onRunSelectionChange = onRunSelectionChange,
                 onCellFocus = onCellFocus, onCellSelected = onCellSelected,
                 onSlideChange = onSlideChange, onSlideElementSelected = onSlideElementSelected,
-                modifier = Modifier.fillMaxSize())
+                modifier = Modifier.fillMaxSize(),
+                bodyFocusRequester = bodyFocusRequester,
+                onBodyFocusChanged = onBodyFocusChanged)
         }
     }
 }
@@ -201,6 +212,8 @@ internal fun EditorDocumentPane(
     onSlideChange: (Int) -> Unit,
     onSlideElementSelected: (Int, Int) -> Unit,
     modifier: Modifier = Modifier,
+    bodyFocusRequester: FocusRequester? = null,
+    onBodyFocusChanged: (Boolean) -> Unit = {},
 ) {
     val activeSlideEl by s.activeSlideElState
     OfficeDocumentPane(
@@ -223,6 +236,8 @@ internal fun EditorDocumentPane(
         onCropSlide = { si, e -> s.cropSlideTarget = si to e },
         onCropSheet = { si, e -> s.cropSheetTarget = si to e },
         modifier = modifier,
+        bodyFocusRequester = bodyFocusRequester,
+        onBodyFocusChanged = onBodyFocusChanged,
     )
 }
 

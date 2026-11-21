@@ -41,6 +41,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -64,6 +67,22 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 import com.vayunmathur.office.platform.firstSpan
+/**
+ * Visible keyboard-focus indication for the editor's non-Material stops
+ * (paragraph runs, table cells, image/chart blocks, the title): a 2dp ring in
+ * the theme's primary colour — the same colour the editor uses for the caret
+ * and active toolbar state — drawn only while the stop holds focus. The
+ * transparent unfocused border keeps the ring from shifting layout, and
+ * pointer/touch interaction is untouched (a tap still shows the caret, the
+ * ring appears only as focus state).
+ */
+@Composable
+internal fun Modifier.officeFocusRing(focused: Boolean): Modifier =
+    border(
+        2.dp,
+        if (focused) MaterialTheme.colorScheme.primary else Color.Transparent,
+        RoundedCornerShape(6.dp))
+
 // --- Text Document (continuous editor) ---
 
 internal sealed class DocSegment {
@@ -126,13 +145,32 @@ fun TextDocumentView(
     onCellFocus: (Int, Int, Int) -> Unit = { _, _, _ -> },
     onChartClick: (Int) -> Unit = {},
     onCropImage: (Int) -> Unit = {},
-    remoteCarets: List<com.vayunmathur.library.ui.odf.RemoteCaret> = emptyList()
+    remoteCarets: List<com.vayunmathur.library.ui.odf.RemoteCaret> = emptyList(),
+    // Keyboard focus: [bodyFocusRequester] lands on the first interactive body
+    // stop (first paragraph run, else first table cell / image / chart) so the
+    // screen's Escape handler can return focus to the body; [onBodyFocusChanged]
+    // reports whether any body stop currently holds focus (hasFocus).
+    bodyFocusRequester: FocusRequester? = null,
+    onBodyFocusChanged: (Boolean) -> Unit = {}
 ) {
     val segments = remember(doc.content) { buildSegments(doc.content) }
+    // First interactive stop in document (visual) order: paragraph runs and
+    // table/image/chart blocks are stops; page breaks, formulas, TOCs and
+    // section markers are not interactive.
+    val firstStopSegment = segments.indexOfFirst { seg ->
+        when (seg) {
+            is DocSegment.Paragraphs -> true
+            is DocSegment.Block -> when (doc.content[seg.index]) {
+                is OdfContentBlock.Table, is OdfContentBlock.Image, is OdfContentBlock.Chart -> true
+                else -> false
+            }
+        }
+    }
 
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 12.dp)
+            .onFocusChanged { onBodyFocusChanged(it.hasFocus) }
     ) {
         if (doc.headerParagraphs.isNotEmpty()) {
             // Header stays one composed block: its paragraphs render inside a
@@ -157,31 +195,58 @@ fun TextDocumentView(
             contentType = { si -> segments[si].lazyContentType(doc.content) },
         ) { si ->
             when (val seg = segments[si]) {
-                is DocSegment.Paragraphs -> ContinuousParagraphEditor(
-                    doc, seg.start, seg.endInclusive, fontSizeMultiplier, onRunSelectionChange, onRunTextChange,
-                    modifier = Modifier.fillMaxWidth(),
-                    onEnter = { gPos -> onRunEnter(seg.start, seg.endInclusive, gPos) },
-                    onBackspace = { gPos -> onRunBackspace(seg.start, seg.endInclusive, gPos) },
-                    onToggleCheckbox = onToggleCheckbox,
-                    onDeletePrevBlock = { onDeletePrevBlock(seg.start) },
-                    remoteCarets = remoteCarets,
-                )
+                is DocSegment.Paragraphs -> {
+                    var segmentFocused by remember { mutableStateOf(false) }
+                    ContinuousParagraphEditor(
+                        doc, seg.start, seg.endInclusive, fontSizeMultiplier, onRunSelectionChange, onRunTextChange,
+                        modifier = Modifier.fillMaxWidth().officeFocusRing(segmentFocused),
+                        onEnter = { gPos -> onRunEnter(seg.start, seg.endInclusive, gPos) },
+                        onBackspace = { gPos -> onRunBackspace(seg.start, seg.endInclusive, gPos) },
+                        onToggleCheckbox = onToggleCheckbox,
+                        onDeletePrevBlock = { onDeletePrevBlock(seg.start) },
+                        onFocusChangedCb = { segmentFocused = it },
+                        focusRequester = if (si == firstStopSegment) bodyFocusRequester else null,
+                        remoteCarets = remoteCarets,
+                    )
+                }
                 is DocSegment.Block -> when (val block = doc.content[seg.index]) {
                     is OdfContentBlock.Table -> TableView(
                         block.table,
                         seg.index,
                         fontSizeMultiplier,
                         onCellTextChange,
-                        onCellFocus)
+                        onCellFocus,
+                        firstCellFocusRequester = if (si == firstStopSegment) bodyFocusRequester else null)
                     is OdfContentBlock.Image -> {
                         var fullScreen by remember { mutableStateOf(false) }
+                        var imageFocused by remember { mutableStateOf(false) }
                         if (fullScreen) FullScreenImage(
                             block.image,
                             onCrop = { fullScreen = false; onCropImage(seg.index) }) { fullScreen = false }
-                        else Box(modifier = Modifier.clickable { fullScreen = true }) { OdfImageView(block.image) }
+                        else Box(
+                            modifier = Modifier
+                                .then(
+                                    if (si == firstStopSegment && bodyFocusRequester != null) {
+                                        Modifier.focusRequester(bodyFocusRequester)
+                                    } else Modifier)
+                                .onFocusChanged { imageFocused = it.isFocused }
+                                .officeFocusRing(imageFocused)
+                                .clickable { fullScreen = true }) { OdfImageView(block.image) }
                     }
                     is OdfContentBlock.PageBreak -> PageBreakView()
-                    is OdfContentBlock.Chart -> OdfChartView(block.chart, onClick = { onChartClick(seg.index) })
+                    is OdfContentBlock.Chart -> {
+                        var chartFocused by remember { mutableStateOf(false) }
+                        OdfChartView(
+                            block.chart,
+                            onClick = { onChartClick(seg.index) },
+                            modifier = Modifier
+                                .then(
+                                    if (si == firstStopSegment && bodyFocusRequester != null) {
+                                        Modifier.focusRequester(bodyFocusRequester)
+                                    } else Modifier)
+                                .onFocusChanged { chartFocused = it.isFocused }
+                                .officeFocusRing(chartFocused))
+                    }
                     is OdfContentBlock.Formula -> MathView(block.mathml)
                     is OdfContentBlock.TableOfContents -> {
                         Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
@@ -294,8 +359,13 @@ private fun TableView(
     blockIndex: Int,
     fontSizeMultiplier: Float = 1f,
     onCellTextChange: (Int, Int, Int, String) -> Unit = { _, _, _, _ -> },
-    onCellFocus: (Int, Int, Int) -> Unit = { _, _, _ -> }
+    onCellFocus: (Int, Int, Int) -> Unit = { _, _, _ -> },
+    firstCellFocusRequester: FocusRequester? = null
 ) {
+    // First editable cell in row-major (visual) order, for Escape-to-body.
+    val firstCell: Pair<Int, Int>? = table.rows.indices.firstNotNullOfOrNull { r ->
+        table.rows[r].cells.indexOfFirst { !it.isCovered }.takeIf { it >= 0 }?.let { c -> r to c }
+    }
     val onSurface = MaterialTheme.colorScheme.onSurface
     fun colWidthDp(start: Int, span: Int): androidx.compose.ui.unit.Dp {
         var w = 0f
@@ -331,7 +401,8 @@ private fun TableView(
                             cell,
                             onSurface,
                             fontSizeMultiplier,
-                            onFocus = { onCellFocus(blockIndex, r, c) })
+                            onFocus = { onCellFocus(blockIndex, r, c) },
+                            focusRequester = if (firstCell == (r to c)) firstCellFocusRequester else null)
                         { txt -> onCellTextChange(blockIndex, r, c, txt) }
                     }
                 }
@@ -350,7 +421,9 @@ private fun EditableCell(
     onSurface: Color,
     mult: Float,
     onFocus: () -> Unit,
+    focusRequester: FocusRequester? = null,
     onChange: (String) -> Unit) {
+    var cellFocused by remember { mutableStateOf(false) }
     val plain = cell.paragraphs.joinToString("\n") { p -> p.spans.joinToString("") { it.text } }
     var tfv by remember { mutableStateOf(TextFieldValue(plain)) }
     if (tfv.text != plain) tfv = TextFieldValue(plain, TextRange(tfv.selection.end.coerceIn(0, plain.length)))
@@ -369,6 +442,9 @@ private fun EditableCell(
         onValueChange = { nv -> val changed = nv.text != tfv.text; tfv = nv; if (changed) onChange(nv.text) },
         textStyle = style,
         cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-        modifier = Modifier.fillMaxWidth().onFocusChanged { if (it.isFocused) onFocus() }
+        modifier = Modifier.fillMaxWidth()
+            .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
+            .onFocusChanged { cellFocused = it.isFocused; if (it.isFocused) onFocus() }
+            .officeFocusRing(cellFocused)
     )
 }

@@ -5,9 +5,16 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.platform.LocalFocusManager
 import com.vayunmathur.library.ui.DrawerValue
 import com.vayunmathur.library.ui.EditorFormat
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
@@ -72,6 +79,14 @@ fun DocumentScreen(
         formatter?.toggle(format)
         return formatter != null
     }
+    // Keyboard focus traversal (Tab/Shift-Tab/Escape), at the same editor root
+    // and with the same anyDialogOpen + open-menu suppression as the Ctrl/Meta
+    // shortcuts below. Stops are every focusable in visual order (top bar incl.
+    // the title, menu bar, body segments, bottom toolbar); Escape returns
+    // focus to the first body stop unless the body already has it.
+    val focusManager = LocalFocusManager.current
+    val bodyFocusRequester = remember { FocusRequester() }
+    var bodyHasFocus by remember { mutableStateOf(false) }
     Box(
         Modifier.fillMaxSize().onPreviewKeyEvent { event ->
             handleOfficeDocumentKey(
@@ -88,6 +103,15 @@ fun DocumentScreen(
                 },
                 onToggleBold = { toggleFormat(EditorFormat.BOLD) },
                 onToggleItalic = { toggleFormat(EditorFormat.ITALIC) },
+            ) || handleOfficeFocusTraversalKey(
+                event = event,
+                dialogOpen = anyOverlayOpen,
+                onNext = { focusManager.moveFocus(FocusDirection.Next) },
+                onPrevious = { focusManager.moveFocus(FocusDirection.Previous) },
+                onEscapeToBody = {
+                    if (bodyHasFocus) false
+                    else runCatching { bodyFocusRequester.requestFocus() }.isSuccess
+                },
             )
         },
     ) {
@@ -114,6 +138,8 @@ fun DocumentScreen(
         focusedPara = focusedPara,
         onBack = onBack,
         onBecameOnline = onBecameOnline,
+        bodyFocusRequester = bodyFocusRequester,
+        onBodyFocusChanged = { bodyHasFocus = it },
     )
     }
 }

@@ -3,8 +3,10 @@ package com.vayunmathur.office.ui
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isAltPressed
 import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.isMetaPressed
+import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
 
@@ -31,6 +33,47 @@ internal fun handleOfficeDocumentKey(
         Key.S -> onSave()
         Key.B -> onToggleBold()
         Key.I -> onToggleItalic()
+        else -> false
+    }
+}
+
+/**
+ * Keyboard focus traversal for the document editor: Tab moves to the next
+ * interactive stop, Shift-Tab to the previous one, and Escape returns focus
+ * to the document body. Stops follow the focus tree, which the editor
+ * composes in visual order (top bar, menu bar, body segments in document
+ * order, bottom toolbar), so moving focus with
+ * [androidx.compose.ui.focus.FocusManager.moveFocus] walks them visually.
+ *
+ * Like [handleOfficeDocumentKey] this is key-down only and is suppressed
+ * while a dialog or menu owns the keyboard ([dialogOpen], the same
+ * `anyDialogOpen()` + open-menu guard the shortcuts use): Tab is swallowed
+ * (consumed, no movement — otherwise Compose's default Tab handling would
+ * move editor focus behind the overlay), while Escape is left unconsumed so
+ * the overlay's own dismissal handling still wins. A callback
+ * that declines (returns false — e.g. Escape while the body already has
+ * focus, or no focusable stop in that direction) leaves the event
+ * unconsumed so default handling still applies. Ctrl/Meta/Alt+Tab is left
+ * to the window/OS (tab/app switching), never consumed here.
+ */
+internal fun handleOfficeFocusTraversalKey(
+    event: KeyEvent,
+    dialogOpen: Boolean,
+    onNext: () -> Boolean,
+    onPrevious: () -> Boolean,
+    onEscapeToBody: () -> Boolean,
+): Boolean {
+    if (event.type != KeyEventType.KeyDown) return false
+    if (dialogOpen) {
+        return event.key == Key.Tab &&
+            !event.isCtrlPressed && !event.isMetaPressed && !event.isAltPressed
+    }
+    return when (event.key) {
+        Key.Tab -> {
+            if (event.isCtrlPressed || event.isMetaPressed || event.isAltPressed) false
+            else if (event.isShiftPressed) onPrevious() else onNext()
+        }
+        Key.Escape -> onEscapeToBody()
         else -> false
     }
 }

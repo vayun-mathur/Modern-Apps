@@ -38,11 +38,16 @@ private val chartPalette = listOf(
 internal fun formatAxis(v: Float): String = if (v == v.toLong().toFloat()) v.toLong().toString() else "%.1f".format(v)
 
 @Composable
-internal fun OdfChartView(chart: OdfChart, onClick: () -> Unit = {}) {
+internal fun OdfChartView(chart: OdfChart, onClick: () -> Unit = {}) =
+    OdfChartView(chart, onClick, Modifier)
+
+/** [modifier] overload (kept separate so trailing-lambda call sites keep binding to onClick). */
+@Composable
+internal fun OdfChartView(chart: OdfChart, onClick: () -> Unit, modifier: Modifier) {
     val onSurface = MaterialTheme.colorScheme.onSurface
     val gridColor = MaterialTheme.colorScheme.outlineVariant
     val surfaceColor = MaterialTheme.colorScheme.surface
-    Column(Modifier.fillMaxWidth().clickable { onClick() }.padding(vertical = 12.dp)) {
+    Column(Modifier.fillMaxWidth().then(modifier).clickable { onClick() }.padding(vertical = 12.dp)) {
         chart.title?.let { Text(
             it,
             style = MaterialTheme.typography.titleSmall,

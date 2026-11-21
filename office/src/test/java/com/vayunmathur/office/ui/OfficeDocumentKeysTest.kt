@@ -72,6 +72,80 @@ class OfficeDocumentKeysTest {
         assertFalse(handle(event(AndroidKeyEvent.KEYCODE_S, ctrl, AndroidKeyEvent.ACTION_UP)).first)
     }
 
+    // ---- Focus traversal (Tab / Shift-Tab / Escape) ----
+
+    private class FocusSink {
+        var next = 0
+        var previous = 0
+        var escape = 0
+        var nextResult = true
+        var escapeResult = true
+    }
+
+    private fun traverse(
+        e: KeyEvent, dialogOpen: Boolean = false, sink: FocusSink = FocusSink(),
+    ): Pair<Boolean, FocusSink> {
+        val handled = handleOfficeFocusTraversalKey(
+            event = e,
+            dialogOpen = dialogOpen,
+            onNext = { sink.next++; sink.nextResult },
+            onPrevious = { sink.previous++; true },
+            onEscapeToBody = { sink.escape++; sink.escapeResult },
+        )
+        return handled to sink
+    }
+
+    private val shift = AndroidKeyEvent.META_SHIFT_ON
+
+    @Test
+    fun tabMovesNextAndShiftTabMovesPrevious() {
+        val (_, tabSink) = traverse(event(AndroidKeyEvent.KEYCODE_TAB))
+        assertEquals(1, tabSink.next)
+        assertEquals(0, tabSink.previous)
+        val (_, shiftSink) = traverse(event(AndroidKeyEvent.KEYCODE_TAB, shift))
+        assertEquals(0, shiftSink.next)
+        assertEquals(1, shiftSink.previous)
+    }
+
+    @Test
+    fun escapeReturnsToBody() {
+        val (handled, sink) = traverse(event(AndroidKeyEvent.KEYCODE_ESCAPE))
+        assertTrue(handled)
+        assertEquals(1, sink.escape)
+    }
+
+    @Test
+    fun traversalSuppressedWhileDialogOrMenuOpen() {
+        // Tab is swallowed (consumed, no movement) so Compose's default Tab
+        // handling cannot move editor focus behind the overlay...
+        val (tabHandled, tabSink) = traverse(event(AndroidKeyEvent.KEYCODE_TAB), dialogOpen = true)
+        assertTrue(tabHandled)
+        assertEquals(0, tabSink.next + tabSink.previous + tabSink.escape)
+        // ...while Escape is left to the overlay's own dismissal handling.
+        val (escHandled, escSink) = traverse(event(AndroidKeyEvent.KEYCODE_ESCAPE), dialogOpen = true)
+        assertFalse(escHandled)
+        assertEquals(0, escSink.escape)
+    }
+
+    @Test
+    fun decliningTraversalIsNotConsumed() {
+        val sink = FocusSink().apply { nextResult = false; escapeResult = false }
+        assertFalse(traverse(event(AndroidKeyEvent.KEYCODE_TAB), sink = sink).first)
+        assertFalse(traverse(event(AndroidKeyEvent.KEYCODE_ESCAPE), sink = sink).first)
+        assertEquals(1, sink.next)
+        assertEquals(1, sink.escape)
+    }
+
+    @Test
+    fun traversalIgnoresOtherKeysKeyUpAndModifiedTab() {
+        assertFalse(traverse(event(AndroidKeyEvent.KEYCODE_A)).first)
+        assertFalse(traverse(event(AndroidKeyEvent.KEYCODE_TAB, 0, AndroidKeyEvent.ACTION_UP)).first)
+        // Ctrl/Meta+Tab belongs to the window/OS, not the editor.
+        assertFalse(traverse(event(AndroidKeyEvent.KEYCODE_TAB, ctrl)).first)
+        assertFalse(traverse(event(AndroidKeyEvent.KEYCODE_TAB, meta)).first)
+        assertEquals(0, traverse(event(AndroidKeyEvent.KEYCODE_X)).second.next)
+    }
+
     @Test
     fun anyDialogOpenReflectsOverlayFlags() {
         val state = DocumentScreenState()

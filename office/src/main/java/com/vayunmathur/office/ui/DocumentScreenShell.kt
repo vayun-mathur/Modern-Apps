@@ -18,6 +18,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -119,6 +120,8 @@ internal fun DocumentDrawerShell(
     focusedPara: Int,
     onBack: () -> Unit,
     onBecameOnline: (String) -> Unit,
+    bodyFocusRequester: FocusRequester? = null,
+    onBodyFocusChanged: (Boolean) -> Unit = {},
 ) {
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -147,6 +150,8 @@ internal fun DocumentDrawerShell(
             onSlideChange = onSlideChange,
             onSlideElementSelected = onSlideElementSelected,
             onBack = onBack,
+            bodyFocusRequester = bodyFocusRequester,
+            onBodyFocusChanged = onBodyFocusChanged,
         )
         DrawerScreenOverlays(
             s = s,

@@ -17,7 +17,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.focusable
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -67,13 +72,25 @@ internal fun DocumentScaffoldShell(
     onSlideChange: (Int) -> Unit,
     onSlideElementSelected: (Int, Int) -> Unit,
     onBack: () -> Unit,
+    bodyFocusRequester: FocusRequester? = null,
+    onBodyFocusChanged: (Boolean) -> Unit = {},
 ) {
     AppScaffold(
-        title = { Text(
-            document.title,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            style = MaterialTheme.typography.titleSmall) },
+        title = {
+            // Title is the first keyboard stop after Back (visual order): a
+            // focusable, ringed label so Tab can land on it and continue into
+            // the body. Pointer/touch behaviour is unchanged (not clickable).
+            var titleFocused by remember { mutableStateOf(false) }
+            Text(
+                document.title,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier
+                    .onFocusChanged { titleFocused = it.isFocused }
+                    .officeFocusRing(titleFocused)
+                    .focusable())
+        },
         navigationIcon = {
             IconButton(onClick = {
                 if (!chrome.isOnline && chrome.hasUnsavedChanges) onShowUnsavedDialog() else onBack()
@@ -111,6 +128,8 @@ internal fun DocumentScaffoldShell(
             onCellSelected = onCellSelected,
             onSlideChange = onSlideChange,
             onSlideElementSelected = onSlideElementSelected,
+            bodyFocusRequester = bodyFocusRequester,
+            onBodyFocusChanged = onBodyFocusChanged,
         )
     }
 }

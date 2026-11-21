@@ -11,6 +11,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -94,6 +95,8 @@ fun OfficeDocumentPane(
     onCropSlide: (Int, Int) -> Unit,
     onCropSheet: (Int, Int) -> Unit,
     modifier: Modifier = Modifier,
+    bodyFocusRequester: FocusRequester? = null,
+    onBodyFocusChanged: (Boolean) -> Unit = {},
 ) {
     Box(modifier) {
         val presence by viewModel.remotePresence.collectAsState()
@@ -108,7 +111,8 @@ fun OfficeDocumentPane(
         when (document) {
             is OdfDocument.TextDocument -> TextPane(
                 document, viewModel, searchQuery, fontSizeMultiplier, listState,
-                presence, onRunSelectionChange, onCellFocus, onChartClick, onCropImage)
+                presence, onRunSelectionChange, onCellFocus, onChartClick, onCropImage,
+                bodyFocusRequester, onBodyFocusChanged)
             is OdfDocument.Spreadsheet -> SheetPane(
                 document, viewModel, searchQuery, fontSizeMultiplier, isEditMode,
                 onCellSelected, onCropSheet)
@@ -159,6 +163,8 @@ private fun TextPane(
     onCellFocus: (Int, Int, Int) -> Unit,
     onChartClick: (Int) -> Unit,
     onCropImage: (Int) -> Unit,
+    bodyFocusRequester: FocusRequester? = null,
+    onBodyFocusChanged: (Boolean) -> Unit = {},
 ) {
     val remoteCarets = presence.mapNotNull { p ->
         p.caret?.let { com.vayunmathur.library.ui.odf.RemoteCaret(
@@ -184,7 +190,9 @@ private fun TextPane(
         onCellTextChange = { bi, r, c, text -> viewModel.updateTextTableCell(bi, r, c, text) },
         onCellFocus = { bi, r, c -> onCellFocus(bi, r, c) },
         onChartClick = { bi -> onChartClick(bi) },
-        onCropImage = { bi -> onCropImage(bi) })
+        onCropImage = { bi -> onCropImage(bi) },
+        bodyFocusRequester = bodyFocusRequester,
+        onBodyFocusChanged = onBodyFocusChanged)
 }
 
 /** Spreadsheet pane. */
