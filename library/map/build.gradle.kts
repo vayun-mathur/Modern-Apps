@@ -82,3 +82,27 @@ rustNativeLib(
     shaders = listOf("*.vert", "*.frag"),
     glslcArgs = listOf("--target-env=vulkan1.1", "-O"),
 )
+
+// Only the classes below actually load a native library: they compose
+// VectorMap, which binds a TextureView surface through VulkanMapSurface's
+// MapSurfaceHost into SurfaceMapRenderer.attachSurface — the path that
+// reads MapNative.isAvailable and queues MapNative.create for
+// libmap_renderer. Every other class is camera/projection/gesture math,
+// value types, or a SurfaceMapRenderer with no surface attached (whose
+// mutators are dropped by MapNativeLink before any JNI: FrameLoopWakeTest,
+// MapRenderThreadTest and RendererStateTest pin exactly that no-JNI
+// contract), and MapGesturesTest exercises only the gesture modifier, not
+// VectorMap. Quarantine the loaders into testDebugUnitTestNative
+// (forkEvery = 1); the remaining classes batch 20-per-JVM in
+// testDebugUnitTest, which depends on the quarantine task so the usual
+// invocation still runs everything. No isolatedClasses: no
+// DataStore/ViewModel here, and the no-surface renderers share only
+// MapRenderThread's queue, which they never post to while unattached.
+rustNativeTests {
+    nativeClasses.addAll(
+        listOf(
+            "com.vayunmathur.library.map.MapAttachTest",
+            "com.vayunmathur.library.map.MapComposeTest",
+        )
+    )
+}

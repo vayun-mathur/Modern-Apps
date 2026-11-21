@@ -31,3 +31,29 @@ rustNativeLib(
     shaders = listOf("*.comp"),
     glslcArgs = listOf("--target-env=vulkan1.1", "-O"),
 )
+
+// Only the classes below actually load a native library: they construct a
+// handle, segmenter or recogniser (WhisperHandle, ClipHandle,
+// Gemma4AudioHandle/Gemma4VisionHandle, TextRecognizer, FaceDetector, the
+// segmenters, SupertonicSynthesizer), whose init reads MlNative.isAvailable
+// — the one System.loadLibrary("modelrunner") attempt — or read that flag
+// directly (HandlesUnavailableTest's `native availability flag` test). The
+// pure Gemma companion tests (render/declare/parse, fitAudio/promptCeiling,
+// markers, n-gram draft, sampling, tool calls) never construct a handle and
+// never touch MlNative, so they stay in the main task. Quarantine the
+// loaders into testDebugUnitTestNative (forkEvery = 1); the remaining
+// classes batch 20-per-JVM in testDebugUnitTest, which depends on the
+// quarantine task so the usual invocation still runs everything. No
+// isolatedClasses: this module has no DataStore/ViewModel or other
+// process-wide singleton for a test to pollute.
+rustNativeTests {
+    nativeClasses.addAll(
+        listOf(
+            "com.vayunmathur.library.ml.DataSemanticsTest",
+            "com.vayunmathur.library.ml.HandlesUnavailableTest",
+            "com.vayunmathur.library.ml.MlDeepTest",
+            "com.vayunmathur.library.ml.SegmentationAndFacesTest",
+            "com.vayunmathur.library.ml.SupertonicTest",
+        )
+    )
+}
