@@ -29,6 +29,7 @@ import com.vayunmathur.share.platform.receive.ShareReceiveController
 import com.vayunmathur.share.platform.transfer.ShareTransferService
 import com.vayunmathur.share.protocol.ShareNativeDiscovery
 import com.vayunmathur.share.ui.SharePopupSheet
+import com.vayunmathur.testsupport.awaitWithMainIdle
 import java.io.File
 import java.net.InetAddress
 import kotlinx.coroutines.async
@@ -53,16 +54,10 @@ class GapPush2Test {
     private fun b64(b: ByteArray) = Base64.encodeToString(b, Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP)
     private fun pump() = Shadows.shadowOf(Looper.getMainLooper()).idle()
 
-    /** Polls [fetch] (pumping the main looper) until it returns a value or times out. */
-    private fun <T> awaitNonNull(timeoutMs: Long, sleepMs: Long, fetch: () -> T?): T? {
-        val deadline = System.currentTimeMillis() + timeoutMs
-        var value: T? = null
-        while (value == null && System.currentTimeMillis() < deadline) {
-            pump()
-            value = fetch()
-            if (value == null) Thread.sleep(sleepMs)
-        }
-        return value
+    /** Waits (pumping the main looper) until [fetch] returns a value. */
+    private fun <T> awaitNonNull(description: String, fetch: () -> T?): T? {
+        awaitWithMainIdle(description) { fetch() != null }
+        return fetch()
     }
 
     @Test
@@ -81,7 +76,7 @@ class GapPush2Test {
         val nsd = app.getSystemService(NsdManager::class.java)
         val shadow = Shadows.shadowOf(nsd)
         // Wait for NSD discovery listener registration (viewModelScope is Main-bound).
-        val listener = awaitNonNull(10_000, 50) {
+        val listener = awaitNonNull("NSD discovery listener registered") {
             shadow.getDiscoveryListeners(SHARE_SERVICE_TYPE)?.firstOrNull()
         }
         assertNotNull(listener)
@@ -91,7 +86,7 @@ class GapPush2Test {
         val found = NsdServiceInfo().apply { serviceName = instance; serviceType = SHARE_SERVICE_TYPE }
         listener!!.onServiceFound(found)
         // Poll for the resolve listener the manager registers in onServiceFound.
-        val resolveListener = awaitNonNull(8_000, 50) {
+        val resolveListener = awaitNonNull("resolve listener registered") {
             shadow.getResolveListeners(found)?.firstOrNull()
         }
         assertNotNull("resolve listener registered", resolveListener)
@@ -114,7 +109,7 @@ class GapPush2Test {
         val result = ScanResult(device, record, -50, 1L)
         val scanner = bt.adapter.bluetoothLeScanner
         // Re-deliver the BLE result until the ViewModel merges it with the NSD leg.
-        awaitNonNull(10_000, 100) {
+        awaitNonNull("BLE leg merged with NSD leg") {
             Shadows.shadowOf(scanner).scanCallbacks.forEach { it.onScanResult(1, result) }
             vm.sendUiState.value.discoveredDevices
                 .firstOrNull { it.endpointId == "ABCD" && it.source == DiscoverySource.Both }

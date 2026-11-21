@@ -34,6 +34,7 @@ import com.vayunmathur.share.protocol.ShareNativeDiscovery
 import com.vayunmathur.share.ui.OutgoingFilesCard
 import com.vayunmathur.share.ui.ShareSendScreen
 import com.vayunmathur.share.ui.TransferCard
+import com.vayunmathur.testsupport.awaitWithMainIdle
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -64,15 +65,13 @@ class GapPush3Test {
     private fun grant(vararg p: String) = Shadows.shadowOf(app).grantPermissions(*p)
     private fun pump() = Shadows.shadowOf(Looper.getMainLooper()).idle()
 
-    /** Polls [fetch] until it returns a value or times out. */
-    private suspend fun <T> awaitNonNullSuspend(timeoutMs: Long, pollMs: Long, fetch: () -> T?): T? {
-        val deadline = System.currentTimeMillis() + timeoutMs
-        var value: T? = null
-        while (value == null && System.currentTimeMillis() < deadline) {
-            value = fetch()
-            if (value == null) delay(pollMs)
-        }
-        return value
+    /** Waits (pumping the main looper) until [fetch] returns a value. */
+    private fun <T> awaitNonNull(description: String, fetch: () -> T?): T? {
+        // Producers here run on Dispatchers.Default/IO (browse collectors,
+        // HTTP server), so the step bound must leave them wall time to
+        // land: the clock precedent uses 100k steps for background waits.
+        awaitWithMainIdle(description, maxSteps = 200_000) { fetch() != null }
+        return fetch()
     }
 
     @Test
@@ -273,7 +272,7 @@ class GapPush3Test {
                     // Ignored: collection is cancelled at test end; assertions check collected state.
                 }
             }
-            val listener = awaitNonNullSuspend(10_000, 100) {
+            val listener = awaitNonNull("AirDrop discovery listener registered") {
                 shadow.getDiscoveryListeners(AIRDROP_SERVICE_TYPE)?.firstOrNull()
             }
             assertNotNull(listener)
@@ -284,7 +283,7 @@ class GapPush3Test {
                 serviceName = "vmmac"; serviceType = AIRDROP_SERVICE_TYPE
                 port = serverPort; setHost(InetAddress.getByName("127.0.0.1"))
             }
-            val device = awaitNonNullSuspend(12_000, 300) {
+            val device = awaitNonNull("browse emits the Apple peer") {
                 shadow.getResolveListeners(found)?.firstOrNull()?.onServiceResolved(resolved)
                 emitted.firstOrNull()
             }
@@ -297,13 +296,13 @@ class GapPush3Test {
             delay(400)
             vm.connectToDevice(device!!)
             // Accept the Ask on the standalone receiver; VM scope is Main-bound so pump.
-            val accepted = awaitNonNullSuspend(15_000, 60) {
+            val accepted = awaitNonNull("receiver sees the VM Ask") {
                 pump()
                 receiver.incoming.value.firstOrNull()?.also { receiver.accept(it.sessionHandle, true) }
             } != null
             assertTrue("receiver should see the VM Ask", accepted)
             // Let the upload finish.
-            val completed = awaitNonNullSuspend(15_000, 80) {
+            val completed = awaitNonNull("upload completes") {
                 pump()
                 receiver.incoming.value.firstOrNull()?.takeIf { it.state.value == ShareState.Completed }
             } != null

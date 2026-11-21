@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Intent
 import android.net.Uri
 import androidx.test.core.app.ApplicationProvider
+import com.vayunmathur.testsupport.awaitWithMainIdle
 import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -56,12 +57,8 @@ class ShareViewModelHelpersTest {
             putExtra(Intent.EXTRA_TEXT, "shared hello text")
         }
         vm.handleShareIntent(intent)
-        // staging is async on IO; poll briefly while pumping the main looper
-        val deadline = System.currentTimeMillis() + 8_000
-        while (System.currentTimeMillis() < deadline && vm.outgoingUris.value.isEmpty()) {
-            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
-            Thread.sleep(50)
-        }
+        // Staging is async on IO; wait on the terminal flow value.
+        awaitWithMainIdle("outgoing URIs staged from share intent") { vm.outgoingUris.value.isNotEmpty() }
         assertEquals(1, vm.outgoingUris.value.size)
     }
 
