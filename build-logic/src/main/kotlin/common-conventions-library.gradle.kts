@@ -1,4 +1,5 @@
 import org.gradle.api.tasks.bundling.AbstractArchiveTask
+import org.gradle.api.tasks.testing.Test
 import org.gradle.testing.jacoco.tasks.JacocoReport
 
 plugins {
@@ -196,6 +197,15 @@ tasks.register<JacocoReport>(MERGED_COVERAGE_TASK) {
 if (project.path in COMPILE_ONLY_STUB_MODULES) {
     tasks.named(MERGED_COVERAGE_TASK) {
         onlyIf("compile-only stub module (see TestCoverage.kt)") { false }
+    }
+    // No real tests: the shared-test helper is injected into every library's
+    // test source set, so Gradle 9 sees sources but discovers zero tests and
+    // would fail the task. Allow empty discovery for stub modules only.
+    // Lazy: AGP creates testDebugUnitTest after this convention applies.
+    tasks.withType<Test>().configureEach {
+        if (name == "testDebugUnitTest") {
+            failOnNoDiscoveredTests.set(false)
+        }
     }
 }
 
