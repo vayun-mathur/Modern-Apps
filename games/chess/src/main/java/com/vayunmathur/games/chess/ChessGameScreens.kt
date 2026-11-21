@@ -24,6 +24,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -224,6 +226,9 @@ fun ChessGame(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+
+    LaunchedEffect(Unit) { viewModel.restoreInProgress() }
+    LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { viewModel.saveInProgress() }
 
     MoveAchievements(state = uiState, achievementsManager = achievementsManager)
     WinAchievements(state = uiState, viewModel = viewModel, achievementsManager = achievementsManager)

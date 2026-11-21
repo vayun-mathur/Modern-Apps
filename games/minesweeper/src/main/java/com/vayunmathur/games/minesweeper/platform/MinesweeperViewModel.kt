@@ -2,29 +2,34 @@ package com.vayunmathur.games.minesweeper.platform
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
 import com.vayunmathur.games.minesweeper.data.BoardSize
 import com.vayunmathur.games.minesweeper.data.Difficulty
 import com.vayunmathur.games.minesweeper.data.GameConfig
 import com.vayunmathur.games.minesweeper.data.GameOutcome
+import com.vayunmathur.games.minesweeper.data.InProgressField
 import com.vayunmathur.games.minesweeper.data.MinesweeperGameState
 import com.vayunmathur.games.minesweeper.data.MinesweeperStatsRepository
+import com.vayunmathur.games.minesweeper.data.SavedMinesweeperGame
 import com.vayunmathur.games.minesweeper.data.TapMode
 import com.vayunmathur.games.minesweeper.domain.FieldGenerator
 import com.vayunmathur.games.minesweeper.domain.MinesweeperRules
 import com.vayunmathur.library.util.AchievementsManager
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import kotlin.random.Random
 
 /**
  * Owns the field in progress.
  *
- * The field is held in memory only. The Activity declares every `configChanges` it can, so this
- * survives rotation and theme changes without a saved-state handle; a game is lost on process death,
- * which matches the other games in this family and is why the home screen offers "Continue" rather
- * than a saved-game list.
+ * The field survives rotation in memory, and is also persisted (debounced, and on
+ * pause via [saveInProgress]) to [InProgressField] keyed by variant, so process
+ * death restores it on entry through [ensureGame] when the route config matches.
  *
  * Unlike sudoku there is no generation cost worth dispatching off the main thread: laying mines is a
  * shuffle and one pass for the neighbour counts, so it runs inline on the first tap.
@@ -36,6 +41,8 @@ class MinesweeperViewModel(application: Application) :
     val uiState: StateFlow<MinesweeperUiState> = _uiState.asStateFlow()
 
     private val statsRepository = MinesweeperStatsRepository(application)
+    private val inProgress = InProgressField(application)
+    private var saveJob: Job? = null
 
     private val _elapsedSeconds = MutableStateFlow(0)
 
@@ -62,6 +69,55 @@ class MinesweeperViewModel(application: Application) :
 
     init {
         achievementsManager.checkExistingAchievements()
+        viewModelScope.launch { _uiState.collect { scheduleSaveInProgress() } }
+    }
+
+    private fun scheduleSaveInProgress() {
+        saveJob?.cancel()
+        saveJob = viewModelScope.launch {
+            delay(SAVE_DEBOUNCE_MS)
+            writeInProgress()
+        }
+    }
+
+    /** Flushes the in-progress field now (on pause); a finished field clears its slot. */
+    fun saveInProgress() {
+        saveJob?.cancel()
+        writeInProgress()
+    }
+
+    private fun writeInProgress() {
+        val state = _uiState.value
+        val game = state.game ?: return
+        if (game.isOver) {
+            inProgress.clear(state.config.variant)
+        } else {
+            inProgress.save(
+                state.config,
+                SavedMinesweeperGame(game, _elapsedSeconds.value, state.tapMode, placedAnyFlag),
+            )
+        }
+    }
+
+    /**
+     * Entry for the Game route: keeps a matching in-memory field, restores the saved
+     * field for [config], or deals a new one.
+     */
+    fun ensureGame(config: GameConfig) {
+        val current = _uiState.value
+        if (current.game != null && current.config == config) return
+        val saved = inProgress.load(config)
+        if (saved == null) {
+            newGame(config)
+        } else {
+            placedAnyFlag = saved.placedAnyFlag
+            _elapsedSeconds.value = saved.elapsedSeconds
+            _uiState.value = MinesweeperUiState(
+                config = config,
+                game = saved.game,
+                tapMode = saved.tapMode,
+            )
+        }
     }
 
     fun hasActiveGame(): Boolean = _uiState.value.game?.isOver == false
@@ -188,6 +244,7 @@ class MinesweeperViewModel(application: Application) :
         }
         _elapsedSeconds.value = 0
         _uiState.value = MinesweeperUiState(config = state.config, tapMode = state.tapMode)
+        inProgress.clear(state.config.variant)
     }
 
     fun incrementTimer() {
@@ -240,5 +297,6 @@ class MinesweeperViewModel(application: Application) :
     private companion object {
         /** Matches the "under a minute" wording of the `speed_win` description. */
         const val FAST_WIN_SECONDS = 60
+        const val SAVE_DEBOUNCE_MS = 300L
     }
 }

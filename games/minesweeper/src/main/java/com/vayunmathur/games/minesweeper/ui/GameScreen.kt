@@ -7,6 +7,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import com.vayunmathur.games.minesweeper.Route
 import com.vayunmathur.games.minesweeper.data.GameConfig
 import com.vayunmathur.games.minesweeper.platform.MinesweeperViewModel
@@ -31,9 +33,8 @@ fun GameScreen(
     // clock text instead of this whole screen and the field under it.
     val elapsedSeconds = viewModel.elapsedSeconds.collectAsState()
 
-    LaunchedEffect(config) {
-        if (uiState.game == null) viewModel.newGame(config)
-    }
+    LaunchedEffect(config) { viewModel.ensureGame(config) }
+    LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { viewModel.saveInProgress() }
 
     // The clock starts on the first reveal, not on entering the screen, and stops while a
     // confirmation dialog or the result overlay (isOver) covers the field and whenever the screen

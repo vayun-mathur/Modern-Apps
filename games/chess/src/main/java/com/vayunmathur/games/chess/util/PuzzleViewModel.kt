@@ -11,7 +11,11 @@ import com.vayunmathur.games.chess.data.Puzzle
 import com.vayunmathur.games.chess.data.PuzzleMove
 import com.vayunmathur.games.chess.data.PuzzleRepository
 import com.vayunmathur.games.chess.data.opposite
+import com.vayunmathur.games.chess.data.toFen
+import com.vayunmathur.games.chess.data.toUci
+import com.vayunmathur.library.util.DataStoreUtils
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,6 +23,15 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.int
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 
 /** Difficulty bands, mapped to Lichess rating ranges within the bundled set. */
 private val EASY_RANGE = 400..1199
@@ -60,6 +73,78 @@ data class PuzzleUiState(
     val difficulty: PuzzleDifficulty = PuzzleDifficulty.EASY
 )
 
+/** A puzzle left mid-solve, rebuilt by replaying its solution up to [solutionIndex]. */
+data class SavedPuzzleGame(
+    val puzzle: Puzzle,
+    val board: Board,
+    val solutionIndex: Int,
+    val playerColor: PieceColor,
+    val difficulty: PuzzleDifficulty,
+)
+
+/**
+ * FEN + solution-list codec for a puzzle in progress. The puzzle's starting FEN and
+ * its UCI solution are stored; the current board is replayed from them and dropped
+ * unless the replay is legal and the index is in range.
+ */
+object PuzzleProgressCodec {
+    private const val VERSION = 1
+
+    fun encode(state: PuzzleUiState): String {
+        val puzzle = requireNotNull(state.puzzle)
+        return buildJsonObject {
+            put("v", VERSION)
+            put("fen", puzzle.board.toFen())
+            put("fenNow", state.board.toFen())
+            put("rating", puzzle.rating)
+            put("difficulty", state.difficulty.name)
+            put("index", state.solutionIndex)
+            put(
+                "solution",
+                buildJsonArray { for (move in puzzle.solution) add(move.toUci()) },
+            )
+        }.toString()
+    }
+
+    fun decode(json: String): SavedPuzzleGame? = runCatching {
+        val root = Json.parseToJsonElement(json).jsonObject
+        if (root["v"]?.jsonPrimitive?.int != VERSION) return null
+        val startBoard = Board.fromFen(root.getValue("fen").jsonPrimitive.content)
+        val solution = root.getValue("solution").jsonArray.map { element ->
+            val (from, to, promotion) =
+                com.vayunmathur.games.chess.data.parseUciMove(element.jsonPrimitive.content)
+                    ?: return null
+            PuzzleMove(from, to, promotion)
+        }
+        if (solution.isEmpty()) return null
+        val index = root.getValue("index").jsonPrimitive.int
+        if (index !in 1 until solution.size) return null
+        var board = startBoard
+        for (move in solution.subList(0, index)) {
+            if (!board.isValidMove(move.from, move.to)) return null
+            board = board.movePiece(move.from, move.to, move.promotion)
+        }
+        if (board.toFen() != root.getValue("fenNow").jsonPrimitive.content) return null
+        if (board.promotionPosition != null) return null
+        val puzzle = Puzzle(
+            rating = root.getValue("rating").jsonPrimitive.int,
+            board = startBoard,
+            solution = solution,
+        )
+        val opponent = startBoard.pieces[solution[0].from.row][solution[0].from.col]?.color
+            ?: return null
+        SavedPuzzleGame(
+            puzzle = puzzle,
+            board = board,
+            solutionIndex = index,
+            playerColor = opponent.opposite,
+            difficulty = PuzzleDifficulty.valueOf(
+                root.getValue("difficulty").jsonPrimitive.content,
+            ),
+        )
+    }.getOrNull()
+}
+
 /**
  * Drives the Lichess puzzle solve flow. A puzzle's stored FEN is the position
  * *before* the opponent's setup move; `solution[0]` is auto-played by the
@@ -79,6 +164,69 @@ class PuzzleViewModel(application: Application) : AndroidViewModel(application),
     /** Shared constants and helpers for PuzzleViewModel. */
     companion object {
         private const val REPLAY_STEP_DELAY_MS = 600L
+        private const val SAVE_DEBOUNCE_MS = 300L
+        internal const val IN_PROGRESS_KEY = "chess_puzzle_in_progress"
+    }
+
+    private val store = DataStoreUtils.getInstance(application)
+    private var saveJob: Job? = null
+    private var restoreAttempted = false
+
+    init {
+        viewModelScope.launch { _uiState.collect { scheduleSaveInProgress() } }
+    }
+
+    private fun scheduleSaveInProgress() {
+        saveJob?.cancel()
+        saveJob = viewModelScope.launch {
+            delay(SAVE_DEBOUNCE_MS)
+            writeInProgress()
+        }
+    }
+
+    /** Flushes the in-progress puzzle now (on pause); a finished puzzle clears its slot. */
+    fun saveInProgress() {
+        saveJob?.cancel()
+        viewModelScope.launch { writeInProgress() }
+    }
+
+    private suspend fun writeInProgress() {
+        val state = _uiState.value
+        when {
+            state.puzzle == null || state.status != PuzzleStatus.Solving ||
+                state.board.promotionPosition != null ->
+                store.removeKeys(listOf(IN_PROGRESS_KEY))
+            else -> store.setString(IN_PROGRESS_KEY, PuzzleProgressCodec.encode(state))
+        }
+    }
+
+    /** Entry for the Puzzles route: restores a mid-solve puzzle, or loads a fresh one. */
+    fun ensurePuzzle() {
+        if (_uiState.value.puzzle != null) return
+        if (restoreAttempted) {
+            loadRandom(_uiState.value.difficulty)
+            return
+        }
+        restoreAttempted = true
+        viewModelScope.launch {
+            val saved = store.getStringAwait(IN_PROGRESS_KEY)
+                ?.let { PuzzleProgressCodec.decode(it) }
+            if (_uiState.value.puzzle != null) return@launch
+            if (saved == null) {
+                loadRandom(_uiState.value.difficulty)
+            } else {
+                _uiState.value = PuzzleUiState(
+                    puzzle = saved.puzzle,
+                    board = saved.board,
+                    isBoardFlipped = saved.playerColor == PieceColor.BLACK,
+                    playerColor = saved.playerColor,
+                    rating = saved.puzzle.rating,
+                    solutionIndex = saved.solutionIndex,
+                    status = PuzzleStatus.Solving,
+                    difficulty = saved.difficulty,
+                )
+            }
+        }
     }
 
     // The board before the pawn stepped onto the last rank, while its promotion is pending.

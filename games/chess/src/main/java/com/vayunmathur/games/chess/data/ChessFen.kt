@@ -18,6 +18,54 @@ fun Board.toFen(): String {
     return "$boardStr $turn ${castling.ifEmpty { "-" }} $enPassant 0 1"
 }
 
+/** UCI text for this move (`e2e4`, `e7e8q`): the move-list encoding saved games persist. */
+fun Move.toUci(): String = buildString {
+    append(getFileChar(start.col)); append(getRankChar(start.row))
+    append(getFileChar(end.col)); append(getRankChar(end.row))
+    promotedTo?.let {
+        append(
+            when (it) {
+                PieceType.QUEEN -> 'q'; PieceType.ROOK -> 'r'
+                PieceType.BISHOP -> 'b'; PieceType.KNIGHT -> 'n'
+                else -> 'q'
+            },
+        )
+    }
+}
+
+/** UCI text for a puzzle solution move: the encoding saved puzzles persist. */
+fun PuzzleMove.toUci(): String = buildString {
+    append(getFileChar(from.col)); append(getRankChar(from.row))
+    append(getFileChar(to.col)); append(getRankChar(to.row))
+    promotion?.let {
+        append(
+            when (it) {
+                PieceType.QUEEN -> 'q'; PieceType.ROOK -> 'r'
+                PieceType.BISHOP -> 'b'; PieceType.KNIGHT -> 'n'
+                else -> 'q'
+            },
+        )
+    }
+}
+
+/** Parses UCI text (`e2e4`, `e7e8q`) into from/to/promotion, or null when malformed. */
+fun parseUciMove(uci: String): Triple<Position, Position, PieceType?>? {
+    if (uci.length !in 4..5) return null
+    fun square(file: Char, rank: Char): Position? {
+        if (file !in 'a'..'h' || rank !in '1'..'8') return null
+        return Position(8 - (rank - '0'), file - 'a')
+    }
+    val from = square(uci[0], uci[1]) ?: return null
+    val to = square(uci[2], uci[3]) ?: return null
+    val promotion = when (uci.getOrNull(4)) {
+        null -> null
+        'q' -> PieceType.QUEEN; 'r' -> PieceType.ROOK
+        'b' -> PieceType.BISHOP; 'n' -> PieceType.KNIGHT
+        else -> return null
+    }
+    return Triple(from, to, promotion)
+}
+
 private fun Board.encodeFenRow(row: List<Piece?>): String {
     return buildString {
         var empty = 0

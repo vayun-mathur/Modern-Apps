@@ -7,6 +7,7 @@ import com.vayunmathur.games.sudoku.data.ANSWER_MODE_LIVES
 import com.vayunmathur.games.sudoku.data.BoardSize
 import com.vayunmathur.games.sudoku.data.Difficulty
 import com.vayunmathur.games.sudoku.data.GameConfig
+import com.vayunmathur.games.sudoku.data.SavedSudokuGame
 import com.vayunmathur.games.sudoku.data.SudokuDataStore
 import com.vayunmathur.games.sudoku.data.SudokuGameState
 import com.vayunmathur.games.sudoku.data.SudokuSnapshot
@@ -22,6 +23,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.random.Random
@@ -29,10 +32,9 @@ import kotlin.random.Random
 /**
  * Owns the puzzle in progress.
  *
- * The board is held in memory only. The Activity declares every `configChanges` it can, so this
- * survives rotation and theme changes without a saved-state handle; a puzzle is lost on process
- * death, which matches the other games in this family and is why the home screen offers "Continue"
- * rather than a saved-game list.
+ * The board survives rotation in memory, and is also persisted (debounced, and on
+ * pause via [saveInProgress]) to [SudokuDataStore] keyed by variant, so process
+ * death restores it on entry through [ensureGame] when the route config matches.
  */
 class SudokuViewModel(application: Application) : AndroidViewModel(application), SudokuActions {
 
@@ -106,7 +108,73 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
 
     init {
         achievementsManager.checkExistingAchievements()
+        viewModelScope.launch { _uiState.collect { scheduleSaveInProgress() } }
     }
+
+    private var saveJob: Job? = null
+
+    /** Debounced save on every state change; the write reads the latest state at fire time. */
+    private fun scheduleSaveInProgress() {
+        saveJob?.cancel()
+        saveJob = viewModelScope.launch {
+            delay(SAVE_DEBOUNCE_MS)
+            writeInProgress()
+        }
+    }
+
+    /** Flushes the in-progress game now (on pause); a finished game clears its slot. */
+    fun saveInProgress() {
+        saveJob?.cancel()
+        viewModelScope.launch { writeInProgress() }
+    }
+
+    private suspend fun writeInProgress() {
+        val game = _uiState.value.game ?: return
+        if (game.isWon || game.isGameOver) {
+            settingsStore.clearInProgress(game.variant)
+        } else {
+            settingsStore.saveInProgress(
+                SavedSudokuGame(game, history.toList(), _elapsedSeconds.value),
+            )
+        }
+    }
+
+    /**
+     * Entry for the Game route: keeps a matching in-memory game, restores the saved
+     * game for [config], or deals a new one. A saved game is restored only when its
+     * size, difficulty and answer mode all match [config].
+     */
+    fun ensureGame(config: GameConfig) {
+        if (_uiState.value.generating) return
+        val current = _uiState.value.game
+        if (current != null && matches(current, config)) return
+        viewModelScope.launch {
+            val saved = settingsStore.loadInProgress(config)
+            val now = _uiState.value.game
+            if (now != null && matches(now, config)) return@launch
+            if (_uiState.value.generating) return@launch
+            if (saved == null) {
+                newGame(config)
+            } else {
+                history.clear()
+                history.addAll(saved.history)
+                madeMistake = saved.game.entries.indices.any { i ->
+                    saved.game.entries[i] != 0 && saved.game.entries[i] != saved.game.solution[i]
+                }
+                winRecorded = false
+                rejectionAttempt = 0
+                _elapsedSeconds.value = saved.elapsedSeconds
+                _uiState.value = SudokuUiState(
+                    game = saved.game,
+                    canUndo = saved.history.isNotEmpty(),
+                )
+            }
+        }
+    }
+
+    private fun matches(game: SudokuGameState, config: GameConfig): Boolean =
+        game.size == config.size && game.difficulty == config.difficulty &&
+            game.answerMode == config.answerMode
 
     fun hasActiveGame(): Boolean = _uiState.value.game?.isWon == false
 
@@ -355,6 +423,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         history.clear()
         _elapsedSeconds.value = 0
         _uiState.value = SudokuUiState()
+        viewModelScope.launch { settingsStore.clearInProgress(game.variant) }
     }
 
     fun incrementTimer() {
@@ -443,6 +512,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
          * worst — bounded mainly so a long session cannot grow without limit.
          */
         const val MAX_HISTORY = 200
+        const val SAVE_DEBOUNCE_MS = 300L
     }
 }
 

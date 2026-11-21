@@ -8,12 +8,26 @@ import com.vayunmathur.games.chess.data.PieceColor
 import com.vayunmathur.games.chess.data.PieceType
 import com.vayunmathur.games.chess.data.Position
 import com.vayunmathur.games.chess.data.opposite
+import com.vayunmathur.games.chess.data.parseUciMove
+import com.vayunmathur.games.chess.data.toFen
+import com.vayunmathur.games.chess.data.toUci
+import com.vayunmathur.library.util.DataStoreUtils
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.int
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 
 /** Type representing game mode. */
 sealed class GameMode {
@@ -48,6 +62,66 @@ data class ChessUiState(
     val aiThinking: Boolean = false,
 )
 
+/** A local game left in progress, rebuilt by replaying its UCI move list. */
+data class SavedChessGame(
+    val board: Board,
+    val gameMode: GameMode,
+    val turn: PieceColor,
+    val isBoardFlipped: Boolean,
+)
+
+/**
+ * FEN + move-list codec for a local game, following the pipes/unblockjam approach.
+ * The stored FEN is the validation: the move list is replayed from the initial
+ * board (each move must be legal) and dropped unless it lands on that FEN.
+ */
+object ChessProgressCodec {
+    private const val VERSION = 1
+
+    fun encode(state: ChessUiState): String = buildJsonObject {
+        put("v", VERSION)
+        put("fen", state.board.toFen())
+        put("flipped", state.isBoardFlipped)
+        when (val mode = state.gameMode) {
+            GameMode.TwoPlayer -> put("mode", "two")
+            is GameMode.VsAI -> {
+                put("mode", "ai")
+                put("player", mode.playerColor.name)
+                put("difficulty", mode.difficulty.name)
+            }
+        }
+        put("moves", buildJsonArray { for (move in state.board.moves) add(move.toUci()) })
+    }.toString()
+
+    fun decode(json: String): SavedChessGame? = runCatching {
+        val root = Json.parseToJsonElement(json).jsonObject
+        if (root["v"]?.jsonPrimitive?.int != VERSION) return null
+        val fen = root.getValue("fen").jsonPrimitive.content
+        var board = Board.initialState
+        val ucis = root.getValue("moves").jsonArray.map { it.jsonPrimitive.content }
+        for (uci in ucis) {
+            val (from, to, promotion) = parseUciMove(uci) ?: return null
+            if (!board.isValidMove(from, to)) return null
+            board = board.movePiece(from, to, promotion)
+        }
+        if (board.toFen() != fen || board.promotionPosition != null) return null
+        val mode: GameMode = when (root.getValue("mode").jsonPrimitive.content) {
+            "two" -> GameMode.TwoPlayer
+            "ai" -> GameMode.VsAI(
+                PieceColor.valueOf(root.getValue("player").jsonPrimitive.content),
+                Difficulty.valueOf(root.getValue("difficulty").jsonPrimitive.content),
+            )
+            else -> return null
+        }
+        SavedChessGame(
+            board = board,
+            gameMode = mode,
+            turn = if (ucis.size % 2 == 0) PieceColor.WHITE else PieceColor.BLACK,
+            isBoardFlipped = root.getValue("flipped").jsonPrimitive.content.toBooleanStrict(),
+        )
+    }.getOrNull()
+}
+
 /** Chess View Model: a application implementation for chess view model. */
 class ChessViewModel(application: Application) : AndroidViewModel(application), ChessActions {
 
@@ -80,10 +154,74 @@ class ChessViewModel(application: Application) : AndroidViewModel(application), 
     /** Shared constants and helpers for ChessViewModel. */
     companion object {
         private const val AI_REPLY_DELAY_MS = 500L
+        private const val SAVE_DEBOUNCE_MS = 300L
+        internal const val IN_PROGRESS_KEY = "chess_local_in_progress"
     }
+
+    private val store = DataStoreUtils.getInstance(application)
+    private var saveJob: Job? = null
+    private var restoreAttempted = false
 
     init {
         viewModelScope.launch { _aiAvailable.value = chessApi.isAvailable() }
+        viewModelScope.launch { _uiState.collect { scheduleSaveInProgress() } }
+    }
+
+    private fun scheduleSaveInProgress() {
+        saveJob?.cancel()
+        saveJob = viewModelScope.launch {
+            delay(SAVE_DEBOUNCE_MS)
+            writeInProgress()
+        }
+    }
+
+    /** Flushes the in-progress game now (on pause); a finished game clears its slot. */
+    fun saveInProgress() {
+        saveJob?.cancel()
+        viewModelScope.launch { writeInProgress() }
+    }
+
+    private suspend fun writeInProgress() {
+        val state = _uiState.value
+        when {
+            state.gameResult != null || state.board.promotionPosition != null ->
+                store.removeKeys(listOf(IN_PROGRESS_KEY))
+            state.board.moves.isEmpty() -> store.removeKeys(listOf(IN_PROGRESS_KEY))
+            else -> store.setString(IN_PROGRESS_KEY, ChessProgressCodec.encode(state))
+        }
+    }
+
+    /**
+     * Restores the saved local game on entry, unless a game is already under way
+     * or a new game has been started since this ViewModel was created.
+     */
+    fun restoreInProgress() {
+        if (restoreAttempted) return
+        restoreAttempted = true
+        val generation = gameGeneration
+        viewModelScope.launch {
+            val saved = store.getStringAwait(IN_PROGRESS_KEY)
+                ?.let { ChessProgressCodec.decode(it) } ?: return@launch
+            if (generation != gameGeneration) return@launch
+            if (_uiState.value.board.moves.isNotEmpty()) return@launch
+            val (result, status) = statusFor(saved.board, saved.turn)
+            if (result != null) {
+                store.removeKeys(listOf(IN_PROGRESS_KEY))
+                return@launch
+            }
+            val aiReplies = saved.gameMode is GameMode.VsAI &&
+                saved.turn != (saved.gameMode as GameMode.VsAI).playerColor
+            winScored = false
+            _uiState.value = ChessUiState(
+                board = saved.board,
+                gameMode = saved.gameMode,
+                turn = saved.turn,
+                gameStatus = status,
+                isBoardFlipped = saved.isBoardFlipped,
+                aiThinking = aiReplies,
+            )
+            if (aiReplies) scheduleAiReply()
+        }
     }
 
     /** Returns true only the first time it is called for the current game; false thereafter. */
@@ -97,6 +235,7 @@ class ChessViewModel(application: Application) : AndroidViewModel(application), 
         winScored = false
         promotionUndo = null
         gameGeneration++
+        viewModelScope.launch { store.removeKeys(listOf(IN_PROGRESS_KEY)) }
         val isFlipped = gameMode is GameMode.VsAI && gameMode.playerColor == PieceColor.BLACK
         _uiState.value = ChessUiState(gameMode = gameMode, isBoardFlipped = isFlipped, aiThinking = isFlipped)
         if (isFlipped) makeAiMove(gameGeneration)

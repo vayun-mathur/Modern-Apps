@@ -18,6 +18,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -54,9 +56,8 @@ private const val BOARDSIDE_WIDTH_SHARE = 0.62f
 fun PuzzleScreen(viewModel: PuzzleViewModel) {
     val uiState by viewModel.uiState.collectAsState()
 
-    LaunchedEffect(Unit) {
-        if (uiState.puzzle == null) viewModel.loadRandom(uiState.difficulty)
-    }
+    LaunchedEffect(Unit) { viewModel.ensurePuzzle() }
+    LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { viewModel.saveInProgress() }
 
     PuzzleBoardScreen(state = uiState, actions = viewModel)
 }

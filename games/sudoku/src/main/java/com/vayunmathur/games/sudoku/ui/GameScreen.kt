@@ -7,6 +7,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import com.vayunmathur.games.sudoku.Route
 import com.vayunmathur.games.sudoku.data.GameConfig
 import com.vayunmathur.games.sudoku.platform.SudokuViewModel
@@ -33,9 +35,8 @@ fun GameScreen(
     val elapsedSeconds = viewModel.elapsedSeconds.collectAsState()
     val highlightMistakes by viewModel.highlightMistakes.collectAsState()
 
-    LaunchedEffect(config) {
-        if (uiState.game == null && !uiState.generating) viewModel.newGame(config)
-    }
+    LaunchedEffect(config) { viewModel.ensureGame(config) }
+    LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { viewModel.saveInProgress() }
 
     // A confirmation dialog or the result overlay covers the board, so the clock stops for them
     // too: time spent deciding whether to give up is not time spent solving.

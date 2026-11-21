@@ -5,23 +5,29 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.unit.IntSize
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
 import com.vayunmathur.games.solitaire.data.Card
 import com.vayunmathur.games.solitaire.data.CardColorScheme
 import com.vayunmathur.games.solitaire.data.FreeCellState
 import com.vayunmathur.games.solitaire.data.GameConfig
 import com.vayunmathur.games.solitaire.data.GameMode
 import com.vayunmathur.games.solitaire.data.GameStats
+import com.vayunmathur.games.solitaire.data.InProgressGame
 import com.vayunmathur.games.solitaire.data.KlondikeState
 import com.vayunmathur.games.solitaire.data.PyramidState
 import com.vayunmathur.games.solitaire.data.SolitaireUiState
 import com.vayunmathur.games.solitaire.data.SolitaireStatsRepository
 import com.vayunmathur.games.solitaire.data.SolitaireSettingsRepository
+import com.vayunmathur.games.solitaire.data.SolitaireProgressCodec
 import com.vayunmathur.games.solitaire.data.SpiderState
 import com.vayunmathur.library.util.AchievementsManager
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 /**
  * The stack under the finger. [offset] is the leading card's current top-left and [startPos]
@@ -99,6 +105,46 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
 
     init {
         achievementsManager.checkExistingAchievements()
+        viewModelScope.launch { uiState.collect { scheduleSaveInProgress() } }
+    }
+
+    internal val inProgress = InProgressGame(application)
+    private var saveJob: Job? = null
+
+    private fun scheduleSaveInProgress() {
+        saveJob?.cancel()
+        saveJob = viewModelScope.launch {
+            delay(SAVE_DEBOUNCE_MS)
+            writeInProgress()
+        }
+    }
+
+    /** Flushes the in-progress game now (on pause); a won game clears its slot. */
+    fun saveInProgress() {
+        saveJob?.cancel()
+        writeInProgress()
+    }
+
+    private fun writeInProgress() {
+        val state = uiStateInternal.value
+        val mode = state.gameMode ?: return
+        if (SolitaireProgressCodec.isWon(state)) inProgress.clear(mode) else inProgress.save(state)
+    }
+
+    /**
+     * Entry for the Game route: keeps a matching in-memory game, restores the saved
+     * game for [mode], or deals a new one.
+     */
+    fun ensureMode(mode: GameMode) {
+        if (uiStateInternal.value.gameMode == mode) return
+        val saved = inProgress.load(mode)
+        if (saved == null) {
+            selectMode(mode)
+        } else {
+            clearMotion()
+            cardPositions.clear()
+            uiStateInternal.value = saved
+        }
     }
 
     fun getStats(mode: GameMode): GameStats = statsRepository.getModeStats(mode)
@@ -114,6 +160,7 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun selectMode(mode: GameMode, config: GameConfig = GameConfig()) {
+        inProgress.clear(mode)
         clearMotion()
         cardPositions.clear()
         when (mode) {
@@ -141,6 +188,7 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
         val mode = uiStateInternal.value.gameMode ?: return
         statsRepository.recordGameLost(mode, currentVariant())
         uiStateInternal.value = SolitaireUiState()
+        inProgress.clear(mode)
     }
 
     // --- Klondike ---
@@ -297,6 +345,7 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
     companion object {
         /** Klondike win under three minutes earns the speed achievement. */
         private const val SPEED_DEMON_SECONDS = 180
+        private const val SAVE_DEBOUNCE_MS = 300L
     }
 }
 
