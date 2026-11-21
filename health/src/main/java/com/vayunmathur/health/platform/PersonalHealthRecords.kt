@@ -101,6 +101,26 @@ object PersonalHealthRecords {
         }
     }
 
+    /**
+     * Whether every [PERMISSIONS] entry is currently granted.
+     *
+     * Probed by the Medical tab before deciding whether to show its permission card; never
+     * launches a request itself. Returns false when the feature or client is unavailable.
+     */
+    // Broad catch is deliberate: same never-throw contract as [isAvailable] — the client
+    // throws undocumented RuntimeExceptions when the module is missing or outdated.
+    @Suppress("TooGenericExceptionCaught")
+    suspend fun hasAllPermissions(): Boolean {
+        val current = client ?: return false
+        if (!isAvailable()) return false
+        return try {
+            current.permissionController.getGrantedPermissions().containsAll(PERMISSIONS)
+        } catch (e: Exception) {
+            Log.status(TAG, "Could not query granted medical permissions", e)
+            false
+        }
+    }
+
     // Broad catch is deliberate: this is the availability probe whose contract is to
     // never throw, and the Health Connect client throws undocumented RuntimeExceptions
     // (not just declared ones) when the module is missing or outdated.

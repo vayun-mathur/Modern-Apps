@@ -278,6 +278,12 @@
     <string name="uwb_status_failed">Find Nearby (UWB) failed.</string>
     <!-- UwbRangingScreen: Status when the other person's phone declined the request because it has no UWB / Find Nearby support. Sentence -->
     <string name="uwb_status_peer_unsupported">Their phone doesn\'t support Find Nearby.</string>
+    <!-- UwbRangingScreen: Title shown before ranging starts, above the permission purpose text. Noun phrase -->
+    <string name="uwb_permission_title">Find nearby</string>
+    <!-- UwbRangingScreen: Purpose text read before the RANGING permission request. Sentences -->
+    <string name="uwb_permission_body">Find Nearby uses ultra-wideband to measure distance and direction to this person. It needs the RANGING permission — tap Start to allow it and begin finding.</string>
+    <!-- UwbRangingScreen: Button that requests RANGING (if needed) and starts ranging. Verb phrase -->
+    <string name="uwb_start_action">Start Find Nearby</string>
 
     <!-- SecurityCodeDialog: Title. Noun phrase -->
     <string name="security_code">Security code</string>

@@ -292,6 +292,12 @@
 
     <!-- MedicalPage: Banner shown when the device cannot store FHIR records. Sentence -->
     <string name="phr_unavailable">Health Connect on this device cannot store medical records, so these are kept in the app only.</string>
+    <!-- MedicalPage: Title of the card asking for medical-record access. Noun phrase -->
+    <string name="phr_permission_title">Medical records in Health Connect</string>
+    <!-- MedicalPage: Purpose text shown before the medical-record permission request. Sentences -->
+    <string name="phr_permission_body">Allow Health to read and write your medical records — vaccinations, medications, allergies, conditions and lab results — in Health Connect so other health apps can see them. Without this, records stay in this app only.</string>
+    <!-- MedicalPage: Button that launches the medical-record permission request. Verb phrase -->
+    <string name="phr_permission_action">Allow medical records</string>
     <!-- MedicalPage: Shown when no records exist in any category. Sentence -->
 
     <!-- MedicalPage: FAB entry and add screen title. Verb phrase -->

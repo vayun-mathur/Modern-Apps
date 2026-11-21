@@ -2,12 +2,11 @@ package com.vayunmathur.auto.ui
 
 import android.Manifest
 import android.content.pm.PackageManager
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -17,6 +16,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.vayunmathur.auto.R
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.Card
@@ -24,6 +26,7 @@ import com.vayunmathur.library.ui.ListItem
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.SettingsSection
 import com.vayunmathur.library.ui.Text
+import com.vayunmathur.library.ui.rememberPermissionRequest
 
 /**
  * Gates voice-reply retention on the microphone permission.
@@ -43,9 +46,25 @@ fun MicPermissionCard(modifier: Modifier = Modifier) {
                 PackageManager.PERMISSION_GRANTED,
         )
     }
-    val requestor = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission(),
+    // Shared helper: a permanently denied request opens app settings instead of
+    // dead-ending (the raw RequestPermission contract returned denied silently).
+    val requestMicPermission = rememberPermissionRequest(
+        Manifest.permission.RECORD_AUDIO,
     ) { granted = it }
+    // A grant made in Settings produces no result callback, so re-probe on resume.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                granted = ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.RECORD_AUDIO,
+                ) == PackageManager.PERMISSION_GRANTED
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     Card(modifier.fillMaxWidth()) {
         Column(Modifier.padding(vertical = 8.dp)) {
             SettingsSection(title = stringResource(R.string.mic_headline)) {
@@ -66,9 +85,7 @@ fun MicPermissionCard(modifier: Modifier = Modifier) {
                     },
                     trailingContent = {
                         if (!granted) {
-                            Button(onClick = {
-                                requestor.launch(Manifest.permission.RECORD_AUDIO)
-                            }) {
+                            Button(onClick = requestMicPermission) {
                                 Text(stringResource(R.string.mic_allow))
                             }
                         }

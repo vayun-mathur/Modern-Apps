@@ -1,6 +1,5 @@
 package com.vayunmathur.health
 
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.viewModels
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -11,7 +10,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import androidx.health.connect.client.HealthConnectClient
-import androidx.health.connect.client.PermissionController
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -112,11 +110,6 @@ class MainActivity : MaActivity() {
             return
         }
 
-        val requestMedicalPermissions = rememberLauncherForActivityResult(
-            contract = PermissionController.createRequestPermissionResultContract(),
-            onResult = { /* Refusal is fine — the medical screens fall back to local data. */ }
-        )
-
         AppPermissionsGate(
             spec = AppPermissionsSpec(
                 title = stringResource(R.string.grant_permissions),
@@ -133,19 +126,12 @@ class MainActivity : MaActivity() {
             LaunchedEffect(Unit) {
                 HealthSyncWorker.enqueue(this@MainActivity)
             }
-            // FHIR record access is requested separately and is allowed to fail. It only
-            // exists on Android 15 with an updated Health Connect module, so folding it
-            // into PERMISSIONS above would gate the whole app on something most supported
-            // devices cannot grant; the medical screens work from Room without it.
-            LaunchedEffect(Unit) {
-                if (PersonalHealthRecords.isAvailable() &&
-                    ::healthConnectClient.isInitialized &&
-                    !healthConnectClient.permissionController.getGrantedPermissions()
-                        .containsAll(PersonalHealthRecords.PERMISSIONS)
-                ) {
-                    requestMedicalPermissions.launch(PersonalHealthRecords.PERMISSIONS)
-                }
-            }
+            // FHIR (PHR) record access is requested separately from the gate above and is
+            // allowed to fail: it only exists on Android 15 with an updated Health Connect
+            // module, so folding it into PERMISSIONS would gate the whole app on something
+            // most supported devices cannot grant. It is requested only from the explicit
+            // tap on the Medical tab's permission card (see MedicalPage), never auto-fired
+            // here — entering the app must not pop the system dialog with no rationale.
             Navigation(healthViewModel, medicalViewModel)
         }
     }

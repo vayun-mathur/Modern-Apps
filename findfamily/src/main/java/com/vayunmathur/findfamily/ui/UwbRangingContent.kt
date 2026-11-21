@@ -16,6 +16,7 @@ import com.vayunmathur.findfamily.R
 import com.vayunmathur.findfamily.platform.RangingSample
 import com.vayunmathur.findfamily.platform.UwbSessionManager
 import com.vayunmathur.library.ui.AppScaffold
+import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.MaterialTheme
@@ -32,13 +33,19 @@ import com.vayunmathur.library.ui.IconNavigationArrow
 /**
  * The rendered half of [UwbRangingScreen] — no ViewModel, no session lifecycle — so the
  * store-listing preview can draw it.
+ *
+ * When [showStart] is true the purpose text and Start button replace the session status:
+ * nothing (permission request included) fires until the user taps. Defaults keep the
+ * preview/test call sites showing session state directly.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UwbRangingContent(
     peerName: String,
     session: UwbSessionManager.UwbSessionState,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    showStart: Boolean = false,
+    onStart: () -> Unit = {},
 ) {
     AppScaffold(
         title = peerName,
@@ -52,6 +59,10 @@ fun UwbRangingContent(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceEvenly
         ) {
+            if (showStart) {
+                StartBlock(onStart = onStart)
+                return@Column
+            }
             when (val s = session) {
                 UwbSessionManager.UwbSessionState.Idle,
                 UwbSessionManager.UwbSessionState.Starting -> StatusBlock(
@@ -82,6 +93,32 @@ fun UwbRangingContent(
                 )
                 is UwbSessionManager.UwbSessionState.Ranging -> RangingBody(s.sample)
             }
+        }
+    }
+}
+
+@Composable
+private fun StartBlock(onStart: () -> Unit) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Text(
+            stringResource(R.string.uwb_permission_title),
+            style = MaterialTheme.typography.titleLarge,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            stringResource(R.string.uwb_permission_body),
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(16.dp))
+        Button(onClick = onStart) {
+            Text(stringResource(R.string.uwb_start_action))
         }
     }
 }

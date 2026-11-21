@@ -1,17 +1,26 @@
 package com.vayunmathur.health.ui
 
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.unit.dp
+import androidx.health.connect.client.PermissionController
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.vayunmathur.health.R
 import com.vayunmathur.health.Route
 import com.vayunmathur.health.data.AllergyEntry
@@ -20,6 +29,7 @@ import com.vayunmathur.health.data.LabResultEntry
 import com.vayunmathur.health.data.MedicationEntry
 import com.vayunmathur.health.data.VaccinationEntry
 import com.vayunmathur.health.platform.MedicalViewModel
+import com.vayunmathur.health.platform.PersonalHealthRecords
 import com.vayunmathur.health.platform.deleteAllergy
 import com.vayunmathur.health.platform.deleteCondition
 import com.vayunmathur.health.platform.deleteLabResult
@@ -29,6 +39,8 @@ import com.vayunmathur.health.platform.importFromHealthConnect
 import com.vayunmathur.health.platform.recordDoseTaken
 import com.vayunmathur.health.ui.components.HealthRow
 import com.vayunmathur.health.ui.components.MedicalStorageNotice
+import com.vayunmathur.library.ui.Button
+import com.vayunmathur.library.ui.Card
 import com.vayunmathur.library.ui.ConfirmDialog
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.ExperimentalMaterial3ExpressiveApi
@@ -42,6 +54,7 @@ import com.vayunmathur.library.ui.IconScience
 import com.vayunmathur.library.ui.IconVaccine
 import com.vayunmathur.library.ui.IconWarning
 import com.vayunmathur.library.ui.LazyListScaffold
+import com.vayunmathur.library.ui.ListItem
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.library.ui.SwipeActionsBox
 import com.vayunmathur.library.ui.Text
@@ -70,6 +83,31 @@ fun MedicalPage(backStack: NavBackStack<Route>, viewModel: MedicalViewModel) {
     val conditions by viewModel.conditions.collectAsState()
     val labResults by viewModel.labResults.collectAsState()
     val medications by viewModel.medications.collectAsState()
+
+    // PHR (FHIR) access is tap-gated: entering this tab never launches the system
+    // dialog. The card below explains the purpose first and only its button fires
+    // the request; refusal leaves the Room-backed logs fully usable.
+    var phrGranted by remember { mutableStateOf(false) }
+    var resumeEpoch by remember { mutableIntStateOf(0) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) resumeEpoch++
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    LaunchedEffect(viewModel.healthConnectAvailable, resumeEpoch) {
+        if (viewModel.healthConnectAvailable) {
+            phrGranted = PersonalHealthRecords.hasAllPermissions()
+        }
+    }
+    val requestPhrPermissions = rememberLauncherForActivityResult(
+        contract = PermissionController.createRequestPermissionResultContract(),
+    ) { granted ->
+        phrGranted = granted.containsAll(PersonalHealthRecords.PERMISSIONS)
+        if (phrGranted) viewModel.importFromHealthConnect()
+    }
 
     LaunchedEffect(Unit) { viewModel.importFromHealthConnect() }
 
@@ -211,6 +249,12 @@ fun MedicalPage(backStack: NavBackStack<Route>, viewModel: MedicalViewModel) {
     ) {
         if (!viewModel.healthConnectAvailable) {
             item { MedicalStorageNotice() }
+        } else if (!phrGranted) {
+            item(key = "medical-phr-permission") {
+                MedicalPhrPermissionCard(
+                    onRequest = { requestPhrPermissions.launch(PersonalHealthRecords.PERMISSIONS) },
+                )
+            }
         }
 
         item(key = "medical-about-you") {
@@ -328,6 +372,26 @@ fun MedicalPage(backStack: NavBackStack<Route>, viewModel: MedicalViewModel) {
                 onTakeDose = { viewModel.recordDoseTaken(it) },
             )
         }
+    }
+}
+
+/**
+ * The tap target for PHR access, following the gate-row pattern (Card + ListItem +
+ * trailing Grant button) the shared permission gate uses: purpose text is read
+ * first, and only the button invokes the Health Connect contract.
+ */
+@Composable
+private fun MedicalPhrPermissionCard(onRequest: () -> Unit) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        ListItem(
+            headlineContent = { Text(stringResource(R.string.phr_permission_title)) },
+            supportingContent = { Text(stringResource(R.string.phr_permission_body)) },
+            trailingContent = {
+                Button(onClick = onRequest) {
+                    Text(stringResource(R.string.phr_permission_action))
+                }
+            },
+        )
     }
 }
 

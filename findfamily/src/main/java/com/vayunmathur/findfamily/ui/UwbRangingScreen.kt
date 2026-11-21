@@ -48,7 +48,9 @@ import com.vayunmathur.library.util.NavBackStack
  * arrow to the selected peer.
  *
  * The screen owns the UWB session lifecycle: it triggers [FindFamilyViewModel.startRanging]
- * on first composition and [FindFamilyViewModel.stopRanging] on dispose.
+ * only after the user taps Start (which first requests RANGING if needed) and
+ * [FindFamilyViewModel.stopRanging] on dispose. Opening the screen never fires the
+ * system permission dialog.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,16 +76,27 @@ fun UwbRangingScreen(
             ) == PackageManager.PERMISSION_GRANTED
         )
     }
+    var rangingStarted by remember { mutableStateOf(false) }
     val requestRangingPermission = rememberPermissionRequest(
         "android.permission.RANGING"
-    ) { granted -> hasRangingPermission = granted }
+    ) { granted ->
+        hasRangingPermission = granted
+        if (granted) rangingStarted = true
+    }
 
-    LaunchedEffect(hasRangingPermission) {
-        if (!hasRangingPermission) {
-            requestRangingPermission()
-            return@LaunchedEffect
+    // A session the service already auto-accepted for this peer needs no Start tap —
+    // reveal it in place. This never requests permission or starts a session.
+    LaunchedEffect(activePeerId, session) {
+        if (activePeerId == peerUserId &&
+            session !is UwbSessionManager.UwbSessionState.Idle
+        ) {
+            rangingStarted = true
         }
-        // Three cases when the screen opens:
+    }
+
+    LaunchedEffect(hasRangingPermission, rangingStarted) {
+        if (!rangingStarted || !hasRangingPermission) return@LaunchedEffect
+        // Three cases once the user has tapped Start:
         //  (a) session is Idle           → user wants to find peer; start as initiator.
         //  (b) session is active for THIS peer → service already auto-accepted; just observe.
         //  (c) session is active for ANOTHER peer → busy; show a Failed state (one session at a time).
@@ -112,7 +125,15 @@ fun UwbRangingScreen(
     UwbRangingContent(
         peerName = peer?.name ?: stringResource(UiR.string.unknown),
         session = session,
-        onBack = { backStack.pop() }
+        onBack = { backStack.pop() },
+        showStart = !rangingStarted,
+        onStart = {
+            if (hasRangingPermission) {
+                rangingStarted = true
+            } else {
+                requestRangingPermission()
+            }
+        },
     )
 }
 
