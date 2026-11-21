@@ -94,6 +94,38 @@ private fun paintLinearMask(mask: SelectiveMask, alpha: FloatArray, w: Int, h: I
     }
 }
 
+/**
+ * Zero-copy entry point: applies each masked adjustment in place to [pixels]
+ * and returns it, or returns null if any mask's adjustment has no
+ * pixel-identical array path (see [ImageAdjustments.applyToPixels]) and the
+ * caller must fall back to [applySelectiveEdits].
+ */
+fun SelectiveEdits.applyToPixels(pixels: IntArray, width: Int, height: Int): IntArray? {
+    val w = width
+    val h = height
+    for (mask in masks) {
+        if (mask.adjustments == ImageAdjustments()) continue
+        val adjPixels = mask.adjustments.applyToPixels(pixels.copyOf(), w, h) ?: return null
+        val alpha = generateSelectiveMask(mask, w, h)
+        for (i in pixels.indices) {
+            val m = alpha[i]
+            if (m <= 0f) continue
+            val oA = (pixels[i] shr 24) and 0xFF
+            val oR = (pixels[i] shr 16) and 0xFF
+            val oG = (pixels[i] shr 8) and 0xFF
+            val oB = pixels[i] and 0xFF
+            val aR = (adjPixels[i] shr 16) and 0xFF
+            val aG = (adjPixels[i] shr 8) and 0xFF
+            val aB = adjPixels[i] and 0xFF
+            val r = (oR + (aR - oR) * m).toInt().coerceIn(0, 255)
+            val g = (oG + (aG - oG) * m).toInt().coerceIn(0, 255)
+            val b = (oB + (aB - oB) * m).toInt().coerceIn(0, 255)
+            pixels[i] = (oA shl ALPHA_SHIFT) or (r shl RED_SHIFT) or (g shl GREEN_SHIFT) or b
+        }
+    }
+    return pixels
+}
+
 fun SelectiveEdits.applySelectiveEdits(bitmap: Bitmap): Bitmap {
     var result = bitmap.copy(Bitmap.Config.ARGB_8888, true)
     val w = result.width

@@ -13,6 +13,12 @@ data class UnsharpMask(
     fun isIdentity(): Boolean = amount == 0f
 }
 
+/** Zero-copy entry point: runs native unsharp in place on [pixels] and returns it. */
+fun UnsharpMask.applyToPixels(pixels: IntArray, width: Int, height: Int): IntArray {
+    PhotosNative.unsharpInPlace(pixels, width, height, amount, radius, threshold)
+    return pixels
+}
+
 fun UnsharpMask.applyToBitmap(bitmap: Bitmap): Bitmap {
     val w = bitmap.width
     val h = bitmap.height

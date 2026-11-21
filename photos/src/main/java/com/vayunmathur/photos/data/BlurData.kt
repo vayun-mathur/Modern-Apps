@@ -20,6 +20,12 @@ data class BlurParams(
     fun isIdentity(): Boolean = intensity == 0f
 }
 
+/** Zero-copy entry point: runs the native blur in place on [pixels] and returns it. */
+fun BlurParams.applyToPixels(pixels: IntArray, width: Int, height: Int): IntArray {
+    PhotosNative.blurParamsInPlace(pixels, width, height, mode.ordinal, centerX, centerY, radius, intensity, feather, angle)
+    return pixels
+}
+
 fun BlurParams.applyBlurToBitmap(bitmap: Bitmap): Bitmap {
     val w = bitmap.width
     val h = bitmap.height
@@ -43,6 +49,14 @@ data class FilterBlur(
     val centerY: Float = 0.5f,
 ) {
     fun isIdentity(): Boolean = amount == 0f
+}
+
+/** Zero-copy entry point: runs the native filter blur in place on [pixels] and returns it. */
+fun FilterBlur.applyToPixels(pixels: IntArray, width: Int, height: Int): IntArray {
+    if (!isIdentity()) {
+        PhotosNative.filterBlurInPlace(pixels, width, height, mode.ordinal, amount, angle, centerX, centerY)
+    }
+    return pixels
 }
 
 fun FilterBlur.applyToBitmap(bitmap: Bitmap): Bitmap {

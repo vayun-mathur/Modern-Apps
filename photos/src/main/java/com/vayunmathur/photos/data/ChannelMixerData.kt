@@ -27,28 +27,39 @@ data class ChannelMixerAdjustment(
             bFromR == 0f && bFromG == 0f && bFromB == 1f
 }
 
-fun ChannelMixerAdjustment.applyToBitmap(bitmap: Bitmap): Bitmap =
-    bitmap.copy(Bitmap.Config.ARGB_8888, true).apply {
-        mapPixels { p ->
-            val a = (p ushr 24) and 0xFF
-            val r = (p ushr 16) and 0xFF
-            val g = (p ushr 8) and 0xFF
-            val b = p and 0xFF
+/** Zero-copy entry point: applies the channel mix in place to [pixels] and returns it. */
+fun ChannelMixerAdjustment.applyToPixels(pixels: IntArray, width: Int, height: Int): IntArray {
+    for (i in pixels.indices) {
+        val p = pixels[i]
+        val a = (p ushr 24) and 0xFF
+        val r = (p ushr 16) and 0xFF
+        val g = (p ushr 8) and 0xFF
+        val b = p and 0xFF
 
-            val nr: Int
-            val ng: Int
-            val nb: Int
-            if (monochrome) {
-                val gray = (rFromR * r + rFromG * g + rFromB * b).toInt().coerceIn(0, 255)
-                nr = gray
-                ng = gray
-                nb = gray
-            } else {
-                nr = (rFromR * r + rFromG * g + rFromB * b).toInt().coerceIn(0, CHANNEL_MAX)
-                ng = (gFromR * r + gFromG * g + gFromB * b).toInt().coerceIn(0, CHANNEL_MAX)
-                nb = (bFromR * r + bFromG * g + bFromB * b).toInt().coerceIn(0, CHANNEL_MAX)
-            }
-
-            (a shl ALPHA_SHIFT) or (nr shl RED_SHIFT) or (ng shl GREEN_SHIFT) or nb
+        val nr: Int
+        val ng: Int
+        val nb: Int
+        if (monochrome) {
+            val gray = (rFromR * r + rFromG * g + rFromB * b).toInt().coerceIn(0, 255)
+            nr = gray
+            ng = gray
+            nb = gray
+        } else {
+            nr = (rFromR * r + rFromG * g + rFromB * b).toInt().coerceIn(0, CHANNEL_MAX)
+            ng = (gFromR * r + gFromG * g + gFromB * b).toInt().coerceIn(0, CHANNEL_MAX)
+            nb = (bFromR * r + bFromG * g + bFromB * b).toInt().coerceIn(0, CHANNEL_MAX)
         }
+
+        pixels[i] = (a shl ALPHA_SHIFT) or (nr shl RED_SHIFT) or (ng shl GREEN_SHIFT) or nb
     }
+    return pixels
+}
+
+fun ChannelMixerAdjustment.applyToBitmap(bitmap: Bitmap): Bitmap {
+    val result = bitmap.copy(Bitmap.Config.ARGB_8888, true)
+    val pixels = IntArray(result.width * result.height)
+    result.getPixels(pixels, 0, result.width, 0, 0, result.width, result.height)
+    applyToPixels(pixels, result.width, result.height)
+    result.setPixels(pixels, 0, result.width, 0, 0, result.width, result.height)
+    return result
+}

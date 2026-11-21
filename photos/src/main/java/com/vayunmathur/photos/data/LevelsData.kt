@@ -23,7 +23,7 @@ data class LevelsAdjustment(
         inBlack == 0f && inWhite == CHANNEL_MAX_F && gamma == 1f && outBlack == 0f && outWhite == CHANNEL_MAX_F
 }
 
-fun LevelsAdjustment.applyToBitmap(bitmap: Bitmap): Bitmap {
+fun LevelsAdjustment.applyToPixels(pixels: IntArray, width: Int, height: Int): IntArray {
     val lut = IntArray(LUT_SIZE)
     val range = (inWhite - inBlack).coerceAtLeast(1f)
     val invGamma = 1f / gamma.coerceAtLeast(MIN_GAMMA)
@@ -33,13 +33,22 @@ fun LevelsAdjustment.applyToBitmap(bitmap: Bitmap): Bitmap {
         lut[v] = (outBlack + n * (outWhite - outBlack)).toInt().coerceIn(0, CHANNEL_MAX)
     }
 
-    return bitmap.copy(Bitmap.Config.ARGB_8888, true).apply {
-        mapPixels { p ->
-            val a = (p ushr 24) and 0xFF
-            val r = (p ushr 16) and 0xFF
-            val g = (p ushr 8) and 0xFF
-            val b = p and 0xFF
-            (a shl ALPHA_SHIFT) or (lut[r] shl RED_SHIFT) or (lut[g] shl GREEN_SHIFT) or lut[b]
-        }
+    for (i in pixels.indices) {
+        val p = pixels[i]
+        val a = (p ushr 24) and 0xFF
+        val r = (p ushr 16) and 0xFF
+        val g = (p ushr 8) and 0xFF
+        val b = p and 0xFF
+        pixels[i] = (a shl ALPHA_SHIFT) or (lut[r] shl RED_SHIFT) or (lut[g] shl GREEN_SHIFT) or lut[b]
     }
+    return pixels
+}
+
+fun LevelsAdjustment.applyToBitmap(bitmap: Bitmap): Bitmap {
+    val result = bitmap.copy(Bitmap.Config.ARGB_8888, true)
+    val pixels = IntArray(result.width * result.height)
+    result.getPixels(pixels, 0, result.width, 0, 0, result.width, result.height)
+    applyToPixels(pixels, result.width, result.height)
+    result.setPixels(pixels, 0, result.width, 0, 0, result.width, result.height)
+    return result
 }

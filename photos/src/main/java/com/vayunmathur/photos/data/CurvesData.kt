@@ -78,25 +78,35 @@ fun CurvesAdjustment.toColorMatrix(): ColorMatrix {
     ))
 }
 
-fun CurvesAdjustment.applyLutToBitmap(bitmap: Bitmap): Bitmap {
+/** Zero-copy entry point: applies the curve LUTs in place to [pixels] and returns it. */
+fun CurvesAdjustment.applyToPixels(pixels: IntArray, width: Int, height: Int): IntArray {
     val luts = generateLuts()
     val combinedLut = luts[0]
     val rLut = luts[1]
     val gLut = luts[2]
     val bLut = luts[3]
-    return bitmap.copy(Bitmap.Config.ARGB_8888, true).apply {
-        mapPixels { p ->
-            val a = (p shr 24) and 0xFF
-            var r = (p shr 16) and 0xFF
-            var g = (p shr 8) and 0xFF
-            var b = p and 0xFF
-            r = (combinedLut[r] * CHANNEL_MAX_F).toInt().coerceIn(0, CHANNEL_MAX)
-            g = (combinedLut[g] * CHANNEL_MAX_F).toInt().coerceIn(0, CHANNEL_MAX)
-            b = (combinedLut[b] * CHANNEL_MAX_F).toInt().coerceIn(0, CHANNEL_MAX)
-            r = (rLut[r] * CHANNEL_MAX_F).toInt().coerceIn(0, CHANNEL_MAX)
-            g = (gLut[g] * CHANNEL_MAX_F).toInt().coerceIn(0, CHANNEL_MAX)
-            b = (bLut[b] * CHANNEL_MAX_F).toInt().coerceIn(0, CHANNEL_MAX)
-            (a shl ALPHA_SHIFT) or (r shl RED_SHIFT) or (g shl GREEN_SHIFT) or b
-        }
+    for (i in pixels.indices) {
+        val p = pixels[i]
+        val a = (p shr 24) and 0xFF
+        var r = (p shr 16) and 0xFF
+        var g = (p shr 8) and 0xFF
+        var b = p and 0xFF
+        r = (combinedLut[r] * CHANNEL_MAX_F).toInt().coerceIn(0, CHANNEL_MAX)
+        g = (combinedLut[g] * CHANNEL_MAX_F).toInt().coerceIn(0, CHANNEL_MAX)
+        b = (combinedLut[b] * CHANNEL_MAX_F).toInt().coerceIn(0, CHANNEL_MAX)
+        r = (rLut[r] * CHANNEL_MAX_F).toInt().coerceIn(0, CHANNEL_MAX)
+        g = (gLut[g] * CHANNEL_MAX_F).toInt().coerceIn(0, CHANNEL_MAX)
+        b = (bLut[b] * CHANNEL_MAX_F).toInt().coerceIn(0, CHANNEL_MAX)
+        pixels[i] = (a shl ALPHA_SHIFT) or (r shl RED_SHIFT) or (g shl GREEN_SHIFT) or b
     }
+    return pixels
+}
+
+fun CurvesAdjustment.applyLutToBitmap(bitmap: Bitmap): Bitmap {
+    val result = bitmap.copy(Bitmap.Config.ARGB_8888, true)
+    val pixels = IntArray(result.width * result.height)
+    result.getPixels(pixels, 0, result.width, 0, 0, result.width, result.height)
+    applyToPixels(pixels, result.width, result.height)
+    result.setPixels(pixels, 0, result.width, 0, 0, result.width, result.height)
+    return result
 }

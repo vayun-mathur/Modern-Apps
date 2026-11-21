@@ -11,6 +11,7 @@ import android.graphics.PorterDuff
 import android.graphics.PorterDuffXfermode
 import androidx.core.graphics.createBitmap
 import kotlin.math.pow
+import kotlin.math.roundToInt
 import kotlin.random.Random
 
 private const val ALPHA_SHIFT = 24
@@ -221,34 +222,52 @@ fun ImageAdjustments.applyToBitmap(bitmap: Bitmap): Bitmap {
     return result
 }
 
-fun ImageAdjustments.hasPixelEffects(): Boolean =
-    sharpness != 0f || vignette != 0f || grain != 0f
-
-fun ImageAdjustments.applyPixelEffects(bitmap: Bitmap): Bitmap {
-    if (!hasPixelEffects()) return bitmap
-    var result = bitmap
-    if (sharpness > 0f) {
-        val sharpenSrc =
-            if (result === bitmap) bitmap.copy(Bitmap.Config.ARGB_8888, true) else result
-        result = applySharpen(sharpenSrc, sharpness / PERCENT_DIVISOR)
+/**
+ * Zero-copy entry point: applies these adjustments in place to [pixels]
+ * (ARGB, row-major [width] x [height]) and returns the result array (the same
+ * array, except after sharpening, which needs a neighbour scratch buffer).
+ *
+ * The color-matrix stage replicates the `Canvas` + `ColorMatrixColorFilter`
+ * math of [applyToBitmap] per pixel with round-to-nearest channel conversion
+ * (verified pixel-identical against the bitmap path). Returns null when the
+ * adjustment needs the vignette stage: that stage draws a `RadialGradient`
+ * through Skia, whose interpolation is not reproducible bit-exactly in
+ * per-pixel float math (probed ±1 on ~30–55% of pixels), so callers must fall
+ * back to [applyToBitmap] for pixel-identical output.
+ */
+fun ImageAdjustments.applyToPixels(pixels: IntArray, width: Int, height: Int): IntArray? {
+    if (vignette > 0f) return null
+    val cm = toColorMatrix()
+    if (!cm.array.contentEquals(ColorMatrix().array)) {
+        applyColorMatrixToPixels(pixels, cm.array)
     }
-    if (vignette > 0f) {
-        if (result === bitmap) result = bitmap.copy(Bitmap.Config.ARGB_8888, true)
-        applyVignette(result, vignette / PERCENT_DIVISOR)
+    var result = pixels
+    if (sharpness > 0f) {
+        result = applySharpenToPixels(result, width, height, sharpness / PERCENT_DIVISOR)
     }
     if (grain > 0f) {
-        if (result === bitmap) result = bitmap.copy(Bitmap.Config.ARGB_8888, true)
-        applyGrain(result, grain / PERCENT_DIVISOR)
+        applyGrainToPixels(result, grain / PERCENT_DIVISOR)
     }
     return result
 }
 
-private fun applySharpen(src: Bitmap, amount: Float): Bitmap {
-    val w = src.width
-    val h = src.height
-    val pixels = IntArray(w * h)
-    src.getPixels(pixels, 0, w, 0, 0, w, h)
+private fun applyColorMatrixToPixels(pixels: IntArray, m: FloatArray) {
+    for (i in pixels.indices) {
+        val p = pixels[i]
+        val a = (p ushr ALPHA_SHIFT) and 0xFF
+        val r = (p ushr RED_SHIFT) and 0xFF
+        val g = (p ushr GREEN_SHIFT) and 0xFF
+        val b = p and 0xFF
+        val nr = (m[0] * r + m[1] * g + m[2] * b + m[3] * a + m[4]).roundToInt().coerceIn(0, CHANNEL_MAX)
+        val ng = (m[5] * r + m[6] * g + m[7] * b + m[8] * a + m[9]).roundToInt().coerceIn(0, CHANNEL_MAX)
+        val nb = (m[10] * r + m[11] * g + m[12] * b + m[13] * a + m[14]).roundToInt().coerceIn(0, CHANNEL_MAX)
+        val na = (m[15] * r + m[16] * g + m[17] * b + m[18] * a + m[19]).roundToInt().coerceIn(0, CHANNEL_MAX)
+        pixels[i] = (na shl ALPHA_SHIFT) or (nr shl RED_SHIFT) or (ng shl GREEN_SHIFT) or nb
+    }
+}
 
+/** Sharpen stage on raw pixels; returns a new array (edges copied verbatim). */
+private fun applySharpenToPixels(pixels: IntArray, w: Int, h: Int, amount: Float): IntArray {
     val out = IntArray(w * h)
     val strength = amount * SHARPEN_GAIN
     val center = 1f + SHARPEN_CENTER_WEIGHT * strength
@@ -287,6 +306,53 @@ private fun applySharpen(src: Bitmap, amount: Float): Bitmap {
         out[y * w] = pixels[y * w]
         out[y * w + w - 1] = pixels[y * w + w - 1]
     }
+    return out
+}
+
+/** Grain stage on raw pixels, in place; same seeded sequence as the bitmap path. */
+private fun applyGrainToPixels(pixels: IntArray, amount: Float) {
+    val intensity = (amount * 50f).toInt()
+    val rng = Random(42)
+    for (i in pixels.indices) {
+        val pixel = pixels[i]
+        val noise = rng.nextInt(-intensity, intensity + 1)
+        val a = (pixel shr 24) and 0xFF
+        val r = (((pixel shr 16) and 0xFF) + noise).coerceIn(0, 255)
+        val g = (((pixel shr 8) and 0xFF) + noise).coerceIn(0, 255)
+        val b = ((pixel and 0xFF) + noise).coerceIn(0, 255)
+        pixels[i] = (a shl ALPHA_SHIFT) or (r shl RED_SHIFT) or (g shl GREEN_SHIFT) or b
+    }
+}
+
+fun ImageAdjustments.hasPixelEffects(): Boolean =
+    sharpness != 0f || vignette != 0f || grain != 0f
+
+fun ImageAdjustments.applyPixelEffects(bitmap: Bitmap): Bitmap {
+    if (!hasPixelEffects()) return bitmap
+    var result = bitmap
+    if (sharpness > 0f) {
+        val sharpenSrc =
+            if (result === bitmap) bitmap.copy(Bitmap.Config.ARGB_8888, true) else result
+        result = applySharpen(sharpenSrc, sharpness / PERCENT_DIVISOR)
+    }
+    if (vignette > 0f) {
+        if (result === bitmap) result = bitmap.copy(Bitmap.Config.ARGB_8888, true)
+        applyVignette(result, vignette / PERCENT_DIVISOR)
+    }
+    if (grain > 0f) {
+        if (result === bitmap) result = bitmap.copy(Bitmap.Config.ARGB_8888, true)
+        applyGrain(result, grain / PERCENT_DIVISOR)
+    }
+    return result
+}
+
+private fun applySharpen(src: Bitmap, amount: Float): Bitmap {
+    val w = src.width
+    val h = src.height
+    val pixels = IntArray(w * h)
+    src.getPixels(pixels, 0, w, 0, 0, w, h)
+
+    val out = applySharpenToPixels(pixels, w, h, amount)
 
     val result = createBitmap(w, h)
     result.setPixels(out, 0, w, 0, 0, w, h)
@@ -320,14 +386,8 @@ private fun applyVignette(bitmap: Bitmap, amount: Float) {
 }
 
 private fun applyGrain(bitmap: Bitmap, amount: Float) {
-    val intensity = (amount * 50f).toInt()
-    val rng = Random(42)
-    bitmap.mapPixels { pixel ->
-        val noise = rng.nextInt(-intensity, intensity + 1)
-        val a = (pixel shr 24) and 0xFF
-        val r = (((pixel shr 16) and 0xFF) + noise).coerceIn(0, 255)
-        val g = (((pixel shr 8) and 0xFF) + noise).coerceIn(0, 255)
-        val b = ((pixel and 0xFF) + noise).coerceIn(0, 255)
-        (a shl ALPHA_SHIFT) or (r shl RED_SHIFT) or (g shl GREEN_SHIFT) or b
-    }
+    val pixels = IntArray(bitmap.width * bitmap.height)
+    bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+    applyGrainToPixels(pixels, amount)
+    bitmap.setPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
 }

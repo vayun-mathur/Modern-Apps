@@ -14,6 +14,12 @@ data class StylizeParams(
     fun isIdentity(): Boolean = mode == StylizeMode.None
 }
 
+/** Zero-copy entry point: runs native stylize in place on [pixels] and returns it. */
+fun StylizeParams.applyToPixels(pixels: IntArray, width: Int, height: Int): IntArray {
+    PhotosNative.stylizeInPlace(pixels, width, height, mode.ordinal)
+    return pixels
+}
+
 fun StylizeParams.applyToBitmap(bitmap: Bitmap): Bitmap {
     val w = bitmap.width
     val h = bitmap.height

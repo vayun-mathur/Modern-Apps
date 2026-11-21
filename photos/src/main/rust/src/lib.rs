@@ -26,6 +26,9 @@ mod sharpen_tests;
 mod stylize_tests;
 
 #[cfg(not(test))]
+mod jni_inplace;
+
+#[cfg(not(test))]
 mod jni_bindings {
     use crate::{blur, inpaint, liquify, sharpen, stylize};
     use jni::objects::{JClass, JFloatArray, JIntArray};

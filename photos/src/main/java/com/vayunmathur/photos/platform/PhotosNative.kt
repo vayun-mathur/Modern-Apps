@@ -64,6 +64,52 @@ object PhotosNative {
         centerY: Float,
     ): IntArray
 
+    // --- Caller-owned-buffer variants ---------------------------------------
+    // These reuse the caller's [pixels] array as both input and output (the
+    // native side writes its result back into the same Java array instead of
+    // allocating a fresh one), mirroring the reusable `state.pixels` scratch
+    // buffer pattern in library/ml's bridge.rs. Use them where the caller
+    // already owns an IntArray (e.g. LayerCompositor's backdrops).
+
+    /** In-place [stylize]: result overwrites [pixels]. */
+    external fun stylizeInPlace(pixels: IntArray, w: Int, h: Int, mode: Int): Boolean
+
+    /** In-place [unsharp]: result overwrites [pixels]. */
+    external fun unsharpInPlace(
+        pixels: IntArray,
+        w: Int,
+        h: Int,
+        amount: Float,
+        radius: Float,
+        threshold: Int,
+    ): Boolean
+
+    /** In-place [blurParams]: result overwrites [pixels]. */
+    external fun blurParamsInPlace(
+        pixels: IntArray,
+        w: Int,
+        h: Int,
+        mode: Int,
+        centerX: Float,
+        centerY: Float,
+        radius: Float,
+        intensity: Float,
+        feather: Float,
+        angle: Float,
+    ): Boolean
+
+    /** In-place [filterBlur]: result overwrites [pixels]. */
+    external fun filterBlurInPlace(
+        pixels: IntArray,
+        w: Int,
+        h: Int,
+        mode: Int,
+        amount: Float,
+        angle: Float,
+        centerX: Float,
+        centerY: Float,
+    ): Boolean
+
     /** Content-aware fill (exemplar synthesis / diffusion fallback). */
     external fun inpaint(
         pixels: IntArray,

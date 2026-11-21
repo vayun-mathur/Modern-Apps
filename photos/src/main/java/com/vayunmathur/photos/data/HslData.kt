@@ -97,11 +97,13 @@ private fun hueWeight(pixelHue: Float, centerHue: Float): Float {
     return (1f - (diff / HUE_RANGE_HALF_WIDTH)).coerceIn(0f, 1f)
 }
 
-fun HslAdjustments.applyHslToBitmap(bitmap: Bitmap): Bitmap {
-    val w = bitmap.width
-    val h = bitmap.height
-    val pixels = IntArray(w * h)
-    bitmap.getPixels(pixels, 0, w, 0, 0, w, h)
+/**
+ * Zero-copy entry point: applies the HSL adjustment in place to [pixels]
+ * (ARGB, row-major [width] x [height]) and returns the same array. Shares the
+ * exact per-pixel math with [applyHslToBitmap], so ints-in produce the same
+ * ints-out as the bitmap path.
+ */
+fun HslAdjustments.applyToPixels(pixels: IntArray, width: Int, height: Int): IntArray {
     for (i in pixels.indices) {
         val a = (pixels[i] shr 24) and 0xFF
         val r = (pixels[i] shr 16) and 0xFF
@@ -123,6 +125,15 @@ fun HslAdjustments.applyHslToBitmap(bitmap: Bitmap): Bitmap {
         val rgb = hslToRgb(hue, sat, lum)
         pixels[i] = (a shl ALPHA_SHIFT) or (rgb[0] shl RED_SHIFT) or (rgb[1] shl GREEN_SHIFT) or rgb[2]
     }
+    return pixels
+}
+
+fun HslAdjustments.applyHslToBitmap(bitmap: Bitmap): Bitmap {
+    val w = bitmap.width
+    val h = bitmap.height
+    val pixels = IntArray(w * h)
+    bitmap.getPixels(pixels, 0, w, 0, 0, w, h)
+    applyToPixels(pixels, w, h)
     val result = createBitmap(w, h)
     result.setPixels(pixels, 0, w, 0, 0, w, h)
     return result

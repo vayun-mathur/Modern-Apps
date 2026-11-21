@@ -86,6 +86,21 @@ data class GroupInfo(
 sealed interface LayerAdjustment {
     fun isIdentity(): Boolean
     fun applyToBitmap(bitmap: Bitmap): Bitmap
+
+    /**
+     * Zero-copy entry point used by the compositor, which owns raw ARGB
+     * [pixels] (row-major [width] x [height]) instead of bitmaps.
+     *
+     * Implementations apply the adjustment to [pixels] — mutating and
+     * returning that same array where possible, or returning a replacement
+     * array when the op needs a scratch buffer — with output pixel-identical
+     * to [applyToBitmap] on the same ints. Returns null when no
+     * pixel-identical array path exists for this adjustment's parameters;
+     * [pixels] may then be partially mutated and the caller must fall back to
+     * [applyToBitmap] on its original source. Bitmap entry points stay for
+     * non-compositor callers.
+     */
+    fun applyToPixels(pixels: IntArray, width: Int, height: Int): IntArray? = null
     val label: String
 }
 
@@ -93,6 +108,8 @@ sealed interface LayerAdjustment {
 data class BasicAdjustment(val adjustments: ImageAdjustments = ImageAdjustments()) : LayerAdjustment {
     override fun isIdentity(): Boolean = adjustments == ImageAdjustments()
     override fun applyToBitmap(bitmap: Bitmap): Bitmap = adjustments.applyToBitmap(bitmap)
+    override fun applyToPixels(pixels: IntArray, width: Int, height: Int): IntArray? =
+        adjustments.applyToPixels(pixels, width, height)
     override val label: String get() = "Adjustments"
 }
 
@@ -100,6 +117,8 @@ data class BasicAdjustment(val adjustments: ImageAdjustments = ImageAdjustments(
 data class CurvesAdj(val curves: CurvesAdjustment = CurvesAdjustment()) : LayerAdjustment {
     override fun isIdentity(): Boolean = curves.isIdentity()
     override fun applyToBitmap(bitmap: Bitmap): Bitmap = curves.applyLutToBitmap(bitmap)
+    override fun applyToPixels(pixels: IntArray, width: Int, height: Int): IntArray =
+        curves.applyToPixels(pixels, width, height)
     override val label: String get() = "Curves"
 }
 
@@ -107,6 +126,8 @@ data class CurvesAdj(val curves: CurvesAdjustment = CurvesAdjustment()) : LayerA
 data class HslAdj(val hsl: HslAdjustments = HslAdjustments()) : LayerAdjustment {
     override fun isIdentity(): Boolean = hsl.isIdentity()
     override fun applyToBitmap(bitmap: Bitmap): Bitmap = hsl.applyHslToBitmap(bitmap)
+    override fun applyToPixels(pixels: IntArray, width: Int, height: Int): IntArray =
+        hsl.applyToPixels(pixels, width, height)
     override val label: String get() = "HSL"
 }
 
@@ -114,6 +135,8 @@ data class HslAdj(val hsl: HslAdjustments = HslAdjustments()) : LayerAdjustment 
 data class BlurAdj(val blur: BlurParams = BlurParams()) : LayerAdjustment {
     override fun isIdentity(): Boolean = blur.isIdentity()
     override fun applyToBitmap(bitmap: Bitmap): Bitmap = blur.applyBlurToBitmap(bitmap)
+    override fun applyToPixels(pixels: IntArray, width: Int, height: Int): IntArray =
+        blur.applyToPixels(pixels, width, height)
     override val label: String get() = "Blur"
 }
 
@@ -121,6 +144,8 @@ data class BlurAdj(val blur: BlurParams = BlurParams()) : LayerAdjustment {
 data class SelectiveAdj(val selective: SelectiveEdits = SelectiveEdits()) : LayerAdjustment {
     override fun isIdentity(): Boolean = selective.isIdentity()
     override fun applyToBitmap(bitmap: Bitmap): Bitmap = selective.applySelectiveEdits(bitmap)
+    override fun applyToPixels(pixels: IntArray, width: Int, height: Int): IntArray? =
+        selective.applyToPixels(pixels, width, height)
     override val label: String get() = "Selective"
 }
 
@@ -128,6 +153,8 @@ data class SelectiveAdj(val selective: SelectiveEdits = SelectiveEdits()) : Laye
 data class LevelsAdj(val levels: LevelsAdjustment = LevelsAdjustment()) : LayerAdjustment {
     override fun isIdentity(): Boolean = levels.isIdentity()
     override fun applyToBitmap(bitmap: Bitmap): Bitmap = levels.applyToBitmap(bitmap)
+    override fun applyToPixels(pixels: IntArray, width: Int, height: Int): IntArray =
+        levels.applyToPixels(pixels, width, height)
     override val label: String get() = "Levels"
 }
 
@@ -135,6 +162,8 @@ data class LevelsAdj(val levels: LevelsAdjustment = LevelsAdjustment()) : LayerA
 data class ColorBalanceAdj(val balance: ColorBalanceAdjustment = ColorBalanceAdjustment()) : LayerAdjustment {
     override fun isIdentity(): Boolean = balance.isIdentity()
     override fun applyToBitmap(bitmap: Bitmap): Bitmap = balance.applyToBitmap(bitmap)
+    override fun applyToPixels(pixels: IntArray, width: Int, height: Int): IntArray =
+        balance.applyToPixels(pixels, width, height)
     override val label: String get() = "Color Balance"
 }
 
@@ -142,6 +171,8 @@ data class ColorBalanceAdj(val balance: ColorBalanceAdjustment = ColorBalanceAdj
 data class ChannelMixerAdj(val mixer: ChannelMixerAdjustment = ChannelMixerAdjustment()) : LayerAdjustment {
     override fun isIdentity(): Boolean = mixer.isIdentity()
     override fun applyToBitmap(bitmap: Bitmap): Bitmap = mixer.applyToBitmap(bitmap)
+    override fun applyToPixels(pixels: IntArray, width: Int, height: Int): IntArray =
+        mixer.applyToPixels(pixels, width, height)
     override val label: String get() = "Channel Mixer"
 }
 
@@ -149,6 +180,8 @@ data class ChannelMixerAdj(val mixer: ChannelMixerAdjustment = ChannelMixerAdjus
 data class GradientMapAdj(val gradient: GradientMapAdjustment = GradientMapAdjustment()) : LayerAdjustment {
     override fun isIdentity(): Boolean = gradient.isIdentity()
     override fun applyToBitmap(bitmap: Bitmap): Bitmap = gradient.applyToBitmap(bitmap)
+    override fun applyToPixels(pixels: IntArray, width: Int, height: Int): IntArray =
+        gradient.applyToPixels(pixels, width, height)
     override val label: String get() = "Gradient Map"
 }
 
@@ -158,6 +191,8 @@ data class BlackAndWhiteAdj(
 ) : LayerAdjustment {
     override fun isIdentity(): Boolean = bw.isIdentity()
     override fun applyToBitmap(bitmap: Bitmap): Bitmap = bw.applyToBitmap(bitmap)
+    override fun applyToPixels(pixels: IntArray, width: Int, height: Int): IntArray =
+        bw.applyToPixels(pixels, width, height)
     override val label: String get() = "Black & White"
 }
 

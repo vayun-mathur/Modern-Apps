@@ -329,13 +329,22 @@ class LayerCompositor {
             if (layer.adjustment.isIdentity()) {
                 null
             } else {
-                val source = bitmapFromInts(backdrop, w, h)
-                val adjusted = layer.adjustment.applyToBitmap(source)
-                val out = IntArray(w * h)
-                adjusted.getPixels(out, 0, w, 0, 0, w, h)
-                if (adjusted !== source) adjusted.recycleSafely()
-                source.recycleSafely()
-                out
+                // Zero-copy path: apply the adjustment directly to a copy of
+                // the backdrop (the copy is the layer's source buffer, kept
+                // separate because blending still needs the original backdrop
+                // per pixel). Only adjustments with no pixel-identical array
+                // path (null result, e.g. vignette) fall back to the bitmap
+                // round-trip below.
+                val working = backdrop.copyOf()
+                layer.adjustment.applyToPixels(working, w, h) ?: run {
+                    val source = bitmapFromInts(backdrop, w, h)
+                    val adjusted = layer.adjustment.applyToBitmap(source)
+                    val out = IntArray(w * h)
+                    adjusted.getPixels(out, 0, w, 0, 0, w, h)
+                    if (adjusted !== source) adjusted.recycleSafely()
+                    source.recycleSafely()
+                    out
+                }
             }
         }
         is TextLayer -> renderTextPixels(layer, document, w, h)

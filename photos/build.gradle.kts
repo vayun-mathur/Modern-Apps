@@ -52,6 +52,7 @@ rustNativeTests {
     nativeClasses.addAll(
         listOf(
             "com.vayunmathur.photos.data.AdjustmentBitmapsRealTest",
+            "com.vayunmathur.photos.data.AdjustmentPixelsEqualityTest",
             "com.vayunmathur.photos.data.PhotosSlice1DataPass3Test",
             "com.vayunmathur.photos.util.PhotosCovC2CompositorTest",
             "com.vayunmathur.photos.util.PhotosCovC2IndexingTest",

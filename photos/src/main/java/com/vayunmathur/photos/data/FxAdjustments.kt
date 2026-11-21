@@ -8,6 +8,8 @@ data class FilterBlurAdj(val blur: FilterBlur = FilterBlur()) : LayerAdjustment 
     override fun isIdentity(): Boolean = blur.isIdentity()
     override val label: String get() = "Blur"
     override fun applyToBitmap(bitmap: Bitmap): Bitmap = blur.applyToBitmap(bitmap)
+    override fun applyToPixels(pixels: IntArray, width: Int, height: Int): IntArray =
+        blur.applyToPixels(pixels, width, height)
 }
 
 /** Immutable value describing unsharp adj; carries mask. */
@@ -15,6 +17,8 @@ data class UnsharpAdj(val mask: UnsharpMask = UnsharpMask()) : LayerAdjustment {
     override fun isIdentity(): Boolean = mask.isIdentity()
     override val label: String get() = "Sharpen"
     override fun applyToBitmap(bitmap: Bitmap): Bitmap = mask.applyToBitmap(bitmap)
+    override fun applyToPixels(pixels: IntArray, width: Int, height: Int): IntArray =
+        mask.applyToPixels(pixels, width, height)
 }
 
 /** Immutable value describing noise adj; carries noise. */
@@ -22,6 +26,8 @@ data class NoiseAdj(val noise: NoiseParams = NoiseParams()) : LayerAdjustment {
     override fun isIdentity(): Boolean = noise.isIdentity()
     override val label: String get() = "Noise"
     override fun applyToBitmap(bitmap: Bitmap): Bitmap = noise.applyToBitmap(bitmap)
+    override fun applyToPixels(pixels: IntArray, width: Int, height: Int): IntArray =
+        noise.applyToPixels(pixels, width, height)
 }
 
 /** Immutable value describing stylize adj; carries stylize. */
@@ -29,4 +35,6 @@ data class StylizeAdj(val stylize: StylizeParams = StylizeParams()) : LayerAdjus
     override fun isIdentity(): Boolean = stylize.isIdentity()
     override val label: String get() = "Stylize"
     override fun applyToBitmap(bitmap: Bitmap): Bitmap = stylize.applyToBitmap(bitmap)
+    override fun applyToPixels(pixels: IntArray, width: Int, height: Int): IntArray =
+        stylize.applyToPixels(pixels, width, height)
 }

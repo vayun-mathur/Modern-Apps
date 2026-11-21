@@ -17,7 +17,8 @@ data class GradientMapAdjustment(val stops: List<GradientStop> = emptyList()) {
     fun isIdentity(): Boolean = stops.size < 2
 }
 
-fun GradientMapAdjustment.applyToBitmap(bitmap: Bitmap): Bitmap {
+/** Zero-copy entry point: applies the gradient map in place to [pixels] and returns it. */
+fun GradientMapAdjustment.applyToPixels(pixels: IntArray, width: Int, height: Int): IntArray {
     val sorted = stops.sortedBy { it.position }
     val lut = IntArray(GRADIENT_LUT_SIZE)
     for (v in 0..CHANNEL_MAX) {
@@ -25,21 +26,30 @@ fun GradientMapAdjustment.applyToBitmap(bitmap: Bitmap): Bitmap {
         lut[v] = colorAt(sorted, t)
     }
 
-    return bitmap.copy(Bitmap.Config.ARGB_8888, true).apply {
-        mapPixels { p ->
-            val a = (p ushr 24) and 0xFF
-            val r = (p ushr 16) and 0xFF
-            val g = (p ushr 8) and 0xFF
-            val b = p and 0xFF
+    for (i in pixels.indices) {
+        val p = pixels[i]
+        val a = (p ushr 24) and 0xFF
+        val r = (p ushr 16) and 0xFF
+        val g = (p ushr 8) and 0xFF
+        val b = p and 0xFF
 
-            val lum = (0.299f * r + 0.587f * g + 0.114f * b).toInt().coerceIn(0, 255)
-            val c = lut[lum]
-            val nr = (c ushr 16) and 0xFF
-            val ng = (c ushr 8) and 0xFF
-            val nb = c and 0xFF
-            (a shl ALPHA_SHIFT) or (nr shl RED_SHIFT) or (ng shl GREEN_SHIFT) or nb
-        }
+        val lum = (0.299f * r + 0.587f * g + 0.114f * b).toInt().coerceIn(0, 255)
+        val c = lut[lum]
+        val nr = (c ushr 16) and 0xFF
+        val ng = (c ushr 8) and 0xFF
+        val nb = c and 0xFF
+        pixels[i] = (a shl ALPHA_SHIFT) or (nr shl RED_SHIFT) or (ng shl GREEN_SHIFT) or nb
     }
+    return pixels
+}
+
+fun GradientMapAdjustment.applyToBitmap(bitmap: Bitmap): Bitmap {
+    val result = bitmap.copy(Bitmap.Config.ARGB_8888, true)
+    val pixels = IntArray(result.width * result.height)
+    result.getPixels(pixels, 0, result.width, 0, 0, result.width, result.height)
+    applyToPixels(pixels, result.width, result.height)
+    result.setPixels(pixels, 0, result.width, 0, 0, result.width, result.height)
+    return result
 }
 
 private fun colorAt(sorted: List<GradientStop>, t: Float): Int {

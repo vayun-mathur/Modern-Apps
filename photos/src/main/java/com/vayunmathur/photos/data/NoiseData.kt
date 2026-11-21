@@ -19,15 +19,10 @@ data class NoiseParams(
     fun isIdentity(): Boolean = amount == 0f
 }
 
-fun NoiseParams.applyToBitmap(bitmap: Bitmap): Bitmap {
-    val w = bitmap.width
-    val h = bitmap.height
-    val pixels = IntArray(w * h)
-    bitmap.getPixels(pixels, 0, w, 0, 0, w, h)
-
+/** Zero-copy entry point: applies noise in place to [pixels] and returns it. */
+fun NoiseParams.applyToPixels(pixels: IntArray, width: Int, height: Int): IntArray {
     val intensity = (amount / PERCENT_DIVISOR * NOISE_SCALE).toInt()
     val random = kotlin.random.Random(NOISE_SEED)
-    val output = IntArray(w * h)
 
     for (i in pixels.indices) {
         val p = pixels[i]
@@ -50,10 +45,18 @@ fun NoiseParams.applyToBitmap(bitmap: Bitmap): Bitmap {
             b = (origB + random.nextInt(-intensity, intensity + 1)).coerceIn(0, CHANNEL_MAX)
         }
 
-        output[i] = (a shl ALPHA_SHIFT) or (r shl RED_SHIFT) or (g shl GREEN_SHIFT) or b
+        pixels[i] = (a shl ALPHA_SHIFT) or (r shl RED_SHIFT) or (g shl GREEN_SHIFT) or b
     }
+    return pixels
+}
 
+fun NoiseParams.applyToBitmap(bitmap: Bitmap): Bitmap {
+    val w = bitmap.width
+    val h = bitmap.height
+    val pixels = IntArray(w * h)
+    bitmap.getPixels(pixels, 0, w, 0, 0, w, h)
+    applyToPixels(pixels, w, h)
     val result = createBitmap(w, h)
-    result.setPixels(output, 0, w, 0, 0, w, h)
+    result.setPixels(pixels, 0, w, 0, 0, w, h)
     return result
 }
