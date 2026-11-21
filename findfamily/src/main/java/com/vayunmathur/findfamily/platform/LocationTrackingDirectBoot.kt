@@ -16,6 +16,7 @@ import com.vayunmathur.findfamily.data.Coord
 import com.vayunmathur.findfamily.data.DirectBootStore
 import com.vayunmathur.findfamily.data.InboundSpool
 import com.vayunmathur.findfamily.data.LocationValue
+import com.vayunmathur.findfamily.data.OwnFixStamps
 import com.vayunmathur.findfamily.platform.keepAliveTick
 import com.vayunmathur.findfamily.platform.refreshFixCeiling
 import com.vayunmathur.library.util.DataStoreUtils
@@ -60,6 +61,7 @@ internal fun LocationTrackingService.startDirectBootTracking() {
             Log.status(LocationTrackingService.TAG_DIRECT_BOOT, "identity unavailable from the mirror; staying idle")
             return@launch
         }
+        OwnFixStamps.seedFromStore(ctx)
 
         withContext(Dispatchers.Main) {
             registerSensors()
@@ -162,6 +164,9 @@ internal suspend fun LocationTrackingService.publishDirectBoot(targets: List<Dir
         location.accuracy,
         Clock.System.now(),
         battery,
+        // Pre-unlock fixes are own fixes too: hybrid reportedAt from the same
+        // device-protected high-water the unlocked path uses (OwnFixStamps).
+        reportedAt = OwnFixStamps.next(this@publishDirectBoot),
     )
     val locSummary = "${location.latitude},${location.longitude} acc=${location.accuracy}"
     Log.dev(

@@ -13,6 +13,7 @@ import com.vayunmathur.findfamily.data.Coord
 import com.vayunmathur.findfamily.data.DirectBootStore
 import com.vayunmathur.findfamily.data.LocationSource
 import com.vayunmathur.findfamily.data.LocationValue
+import com.vayunmathur.findfamily.data.OwnFixStamps
 import com.vayunmathur.findfamily.network.Networking
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -239,7 +240,10 @@ object FinalLocationReporter {
             location.accuracy,
             measuredAt(location, now),
             battery,
-            reportedAt = now,
+            // Hybrid stamp, not wall `now`: a parting report minted after a
+            // backwards clock correction must still sort after every heartbeat
+            // this device sent, or receivers drop it as stale (OwnFixStamps).
+            reportedAt = OwnFixStamps.next(context),
             source = source,
         )
         Log.status(TAG, "$source: reporting a fix ${now - value.timestamp} old to ${targets.size} peer(s)")

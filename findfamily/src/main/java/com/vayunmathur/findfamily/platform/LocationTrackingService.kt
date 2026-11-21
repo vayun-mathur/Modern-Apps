@@ -50,6 +50,7 @@ import com.vayunmathur.findfamily.data.DirectBootStore
 import com.vayunmathur.findfamily.data.FindFamilyRepository
 import com.vayunmathur.findfamily.data.LocationSource
 import com.vayunmathur.findfamily.data.LocationValue
+import com.vayunmathur.findfamily.data.OwnFixStamps
 import com.vayunmathur.findfamily.data.RequestStatus
 import com.vayunmathur.findfamily.data.TemporaryLink
 import com.vayunmathur.findfamily.data.User
@@ -399,6 +400,7 @@ class LocationTrackingService : Service(), SensorEventListener {
                     DataStoreUtils.getInstance(this@LocationTrackingService),
                     getString(R.string.me_label)
                 )
+                OwnFixStamps.seedFromStore(this@LocationTrackingService)
 
                 // Hoist the UWB ranging session into this foreground service
                 // so we can auto-accept incoming Find Nearby (UWB) requests

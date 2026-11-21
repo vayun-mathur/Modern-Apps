@@ -7,6 +7,7 @@ import com.vayunmathur.library.log.Log
 import com.vayunmathur.findfamily.data.Coord
 import com.vayunmathur.findfamily.data.DirectBootStore
 import com.vayunmathur.findfamily.data.LocationValue
+import com.vayunmathur.findfamily.data.OwnFixStamps
 import com.vayunmathur.findfamily.data.User
 import com.vayunmathur.findfamily.data.RequestStatus
 import com.vayunmathur.findfamily.data.havershine
@@ -94,8 +95,12 @@ private suspend fun LocationTrackingService.upsertSelfLocation(
         // card read 0 forever, however fast they were actually moving.
         if (location.hasSpeed()) location.speed else 0f,
         location.accuracy,
+        // timestamp (measuredAt) unchanged; only reportedAt is hybrid-stamped
+        // (see OwnFixStamps) so a backwards clock correction cannot make this
+        // heartbeat arrive stale against our own high-water at receivers.
         now,
-        bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY).toFloat()
+        bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY).toFloat(),
+        reportedAt = OwnFixStamps.next(this@upsertSelfLocation),
     )
     Log.debug("FF-Heartbeat", "upsert local LocationValue for self")
     repository.upsertLocation(locationValue)
