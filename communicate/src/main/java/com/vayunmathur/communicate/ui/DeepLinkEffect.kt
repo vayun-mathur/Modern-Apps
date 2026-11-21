@@ -6,6 +6,7 @@ import androidx.compose.ui.res.stringResource
 import com.vayunmathur.communicate.R
 import com.vayunmathur.communicate.Route
 import com.vayunmathur.communicate.intents.DeepLink
+import com.vayunmathur.communicate.intents.PendingShare
 import com.vayunmathur.library.util.NavBackStack
 
 /** Deep links open the conversation they name, including links arriving at a running instance. */
@@ -27,8 +28,13 @@ fun DeepLinkEffect(
                     subscriptionId = link.subscriptionId,
                     isGroup = link.isGroup,
                     groupTitle = link.groupTitle,
+                    sharedText = link.body,
+                    sharedAttachmentUris = link.sharedAttachmentUris,
                 ),
             )
+            // No conversation chosen yet: stay on the list and seed whichever
+            // thread the user opens next (consumed in CommunicateNavGraph).
+            is DeepLink.SharePicker -> PendingShare.store(link)
             is DeepLink.UnsupportedGroupInvite ->
                 com.vayunmathur.library.util.AppMessages.show(groupUnsupportedMessage)
             null -> Unit

@@ -263,7 +263,35 @@ fun MessagesScreen(onOpenThread: (SmsThread) -> Unit, onOpenAccounts: () -> Unit
                     // loading flash on every return from a thread). The
                     // denied->granted transition still shows LoadingState first
                     // because this content is newly composed (initialValue=null).
-                    value = withContext(Dispatchers.IO) { CommunicateRepository.loadSmsThreadsMerged(context) }
+                    value = withContext(Dispatchers.IO) {
+                        val rows = CommunicateRepository.loadSmsThreadsMerged(context)
+                        // Direct Share targets follow the conversation list: the list
+                        // reloads on resume / delete / the 15s poll above, so republishing
+                        // here (newest-first, capped inside) keeps the share sheet's
+                        // direct-share row on the current top conversations.
+                        com.vayunmathur.communicate.notifications.ConversationSpace.publishShareTargets(
+                            context,
+                            rows.map { thread ->
+                                com.vayunmathur.communicate.notifications.ConversationTarget(
+                                    line = thread.line,
+                                    address = thread.address,
+                                    remoteId = thread.remoteId,
+                                    threadId = thread.threadId,
+                                    isGroup = thread.isGroup,
+                                    title = if (thread.isGroup) {
+                                        thread.groupTitle ?: thread.displayName
+                                    } else {
+                                        null
+                                    },
+                                    personName = thread.displayName
+                                        ?: thread.groupTitle
+                                        ?: thread.address,
+                                    subscriptionId = thread.subscriptionId,
+                                )
+                            },
+                        )
+                        rows
+                    }
                 }
 
                 when (val rows = threads.value) {

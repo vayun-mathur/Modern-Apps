@@ -14,6 +14,8 @@
         android:protectionLevel="signature" />
 
     <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <!-- ContactPlatformRows publishing (WhatsApp/Signal reachability rows). -->
+    <uses-permission android:name="android.permission.WRITE_CONTACTS" />
     <uses-permission android:name="android.permission.CALL_PHONE" />
     <uses-permission android:name="android.permission.READ_CALL_LOG" />
     <!-- Voicemail tab mark-read/delete via the VoicemailContract provider. -->
@@ -126,6 +128,29 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Direct Share: the chooser delivers ACTION_SEND / SEND_MULTIPLE to the
+                 activity named by the <share-target> in @xml/shortcuts, with
+                 EXTRA_SHORTCUT_ID naming the conversation shortcut tapped. The same
+                 filters also make Communicate a regular share target; DeepLinks
+                 routes both (a picker share is held until a thread is opened). -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+                <data android:mimeType="image/*" />
+                <data android:mimeType="video/*" />
+                <data android:mimeType="application/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="image/*" />
+                <data android:mimeType="video/*" />
+                <data android:mimeType="application/*" />
+            </intent-filter>
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
             <intent-filter>
                 <action android:name="android.intent.action.APPLICATION_PREFERENCES" />
                 <category android:name="android.intent.category.DEFAULT" />

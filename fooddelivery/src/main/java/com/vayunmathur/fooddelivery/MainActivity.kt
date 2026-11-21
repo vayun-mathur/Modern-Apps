@@ -1,13 +1,8 @@
 package com.vayunmathur.fooddelivery
 
-import android.Manifest
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.os.Build
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
-import androidx.core.content.ContextCompat
 import com.stripe.android.PaymentConfiguration
 import com.vayunmathur.fooddelivery.platform.AppInit
 import com.vayunmathur.fooddelivery.platform.emailVerificationOrNull
@@ -34,9 +29,6 @@ class MainActivity : MaActivity() {
 
     private val verifyEmail = mutableStateOf<Route.EmailVerification?>(null)
 
-    private val requestNotificationPermission =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
-
         /** Holds the Stripe publishable key used to initialise payments. */
     companion object {
         private const val STRIPE_PUBLISHABLE_KEY =
@@ -51,7 +43,8 @@ class MainActivity : MaActivity() {
         openRestaurantId.value = intent.restaurantIdOrNull()
         openCheckout.value = intent.isCheckoutDeepLink()
         verifyEmail.value = intent.emailVerificationOrNull()
-        requestNotificationPermissionIfNeeded()
+        // No notification ask here: it moved to order confirmation in
+        // CheckoutScreen, where order-tracking notifications become relevant.
         // The TLS trust bundle and the saved auth token are warmed up off the main thread by
         // AppInit, so nothing here touches the network or disk.
 
@@ -75,10 +68,4 @@ class MainActivity : MaActivity() {
         intent.emailVerificationOrNull()?.let { verifyEmail.value = it }
     }
 
-    private fun requestNotificationPermissionIfNeeded() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
-        val granted = ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
-            PackageManager.PERMISSION_GRANTED
-        if (!granted) requestNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-    }
 }

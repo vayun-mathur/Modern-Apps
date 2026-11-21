@@ -57,6 +57,17 @@ object ConversationSpace {
 
     private const val CONVERSATION_CATEGORY = "com.google.android.category.CONVERSATIONS"
 
+    /**
+     * Direct Share category. Must match the `<category>` of the `<share-target>` in
+     * `res/xml/shortcuts.xml`: a dynamic shortcut only appears in the system share
+     * sheet's direct-share row when it carries this category, and tapping it launches
+     * `MainActivity` (the share target) with the share intent.
+     */
+    const val SHARE_TARGET_CATEGORY = "com.vayunmathur.communicate.category.DIRECT_SHARE"
+
+    /** How many top conversations are published as Direct Share targets. */
+    const val MAX_SHARE_TARGETS = 4
+
     // One notification per conversation, under the same tag/id: re-posting it
     // updates the shade entry in place rather than stacking N entries. Since
     // this change the re-post carries every still-unread message in its
@@ -112,7 +123,12 @@ object ConversationSpace {
             .build()
 
     /** Publish/refresh the long-lived shortcut backing [target]; returns its id. */
-    fun pushShortcut(context: Context, target: ConversationTarget): String {
+    fun pushShortcut(
+        context: Context,
+        target: ConversationTarget,
+        shareTarget: Boolean = false,
+        rank: Int = 0,
+    ): String {
         val id = shortcutId(target)
         val label = (target.title ?: target.personName).ifBlank { context.getString(R.string.app_name) }
         val intent = putExtras(
@@ -121,16 +137,57 @@ object ConversationSpace {
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP),
             target,
         )
+        val categories = if (shareTarget) {
+            setOf(CONVERSATION_CATEGORY, SHARE_TARGET_CATEGORY)
+        } else {
+            setOf(CONVERSATION_CATEGORY)
+        }
         val shortcut = ShortcutInfoCompat.Builder(context, id)
             .setLongLived(true)
             .setShortLabel(label)
             .setIntent(intent)
             .setPerson(person(context, target))
-            .setCategories(setOf(CONVERSATION_CATEGORY))
+            .setCategories(categories)
+            .setLocusId(LocusIdCompat(id))
+            .setRank(rank)
             .setIcon(IconCompat.createWithResource(context, R.mipmap.ic_launcher))
             .build()
         runCatching { ShortcutManagerCompat.pushDynamicShortcut(context, shortcut) }
         return id
+    }
+
+    /**
+     * Publish the top [MAX_SHARE_TARGETS] conversations (callers pass them newest-first,
+     * as `loadSmsThreadsMerged` returns them) as Direct Share targets, reusing the same
+     * shortcut ids / locus ids as the conversation shortcuts so the share sheet, the
+     * notifications and the bubbles all name the same conversation.
+     *
+     * Refreshed whenever the conversation list reloads. A conversation that falls out of
+     * the top four is demoted back to a plain conversation shortcut (kept, so its
+     * notification/bubble keep working); one that is gone entirely is removed.
+     */
+    fun publishShareTargets(context: Context, targets: List<ConversationTarget>) {
+        val top = targets.distinctBy { shortcutId(it) }.take(MAX_SHARE_TARGETS)
+        top.forEachIndexed { index, target ->
+            pushShortcut(context, target, shareTarget = true, rank = index)
+        }
+        val topIds = top.mapTo(HashSet()) { shortcutId(it) }
+        runCatching {
+            val byId = targets.associateBy { shortcutId(it) }
+            ShortcutManagerCompat.getDynamicShortcuts(context)
+                .filter { shortcut ->
+                    shortcut.categories?.contains(SHARE_TARGET_CATEGORY) == true &&
+                        shortcut.id !in topIds
+                }
+                .forEach { stale ->
+                    val target = byId[stale.id]
+                    if (target != null) {
+                        pushShortcut(context, target, shareTarget = false)
+                    } else {
+                        ShortcutManagerCompat.removeLongLivedShortcuts(context, listOf(stale.id))
+                    }
+                }
+        }
     }
 
     /** Remove the shortcut for [target] (e.g. when a conversation is deleted). */

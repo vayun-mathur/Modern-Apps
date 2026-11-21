@@ -39,6 +39,9 @@ fun EntryProviderScope<Route>.coreEntries(backStack: NavBackStack<Route>) {
     entry<Route.Messages>(metadata = ListPage() + SiblingPage()) {
         MessagesScreen(
             onOpenThread = { thread ->
+                // A picker share (regular share target, no conversation chosen)
+                // seeds the first thread opened after it; consume so later opens are plain.
+                val pendingShare = com.vayunmathur.communicate.intents.PendingShare.consume()
                 val route = Route.Conversation(
                     threadId = thread.threadId,
                     address = thread.address,
@@ -48,6 +51,8 @@ fun EntryProviderScope<Route>.coreEntries(backStack: NavBackStack<Route>) {
                     isGroup = thread.isGroup,
                     participants = thread.participants,
                     groupTitle = thread.groupTitle,
+                    sharedText = pendingShare?.body,
+                    sharedAttachmentUris = pendingShare?.sharedAttachmentUris.orEmpty(),
                 )
                 // Re-tapping another thread replaces the detail instead of stacking
                 // Conversation on Conversation.
@@ -223,6 +228,8 @@ fun EntryProviderScope<Route>.conversationEntries(backStack: NavBackStack<Route>
             isGroup = route.isGroup,
             participants = route.participants,
             groupTitle = route.groupTitle,
+            initialDraft = route.sharedText.orEmpty(),
+            initialAttachmentUris = route.sharedAttachmentUris,
             onBack = { backStack.pop() },
             onOpenRcsVerify = { peer -> backStack.add(Route.RcsVerify(peer)) },
             onOpenRcsGroupMembers = { cid -> backStack.add(Route.RcsGroupMembers(cid)) },

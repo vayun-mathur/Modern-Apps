@@ -1,5 +1,12 @@
 package com.vayunmathur.fooddelivery.ui
 
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import com.vayunmathur.library.log.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -74,6 +81,25 @@ fun CheckoutScreen(
     var error by remember { mutableStateOf<String?>(null) }
     var orderSuccess by remember { mutableStateOf(false) }
     var checkoutResponse by remember { mutableStateOf<CheckoutResponse?>(null) }
+    // Contextual notification ask (todo/files pattern): only when an order is
+    // confirmed and tracking starts, ask once and persist that we asked.
+    val notificationsLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) {}
+    LaunchedEffect(orderSuccess) {
+        if (orderSuccess && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val prefs = context.getSharedPreferences("fooddelivery_prefs", Context.MODE_PRIVATE)
+            if (!prefs.getBoolean("has_asked_notifications", false)) {
+                prefs.edit().putBoolean("has_asked_notifications", true).apply()
+                if (ContextCompat.checkSelfPermission(
+                        context, Manifest.permission.POST_NOTIFICATIONS,
+                    ) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    notificationsLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }
+        }
+    }
 
     var promoCode by remember { mutableStateOf("") }
     var customer by remember { mutableStateOf<Customer?>(null) }

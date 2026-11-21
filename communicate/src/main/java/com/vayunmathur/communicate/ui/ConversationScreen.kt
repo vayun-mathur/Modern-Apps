@@ -1,9 +1,13 @@
 package com.vayunmathur.communicate.ui
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -49,6 +53,9 @@ fun ConversationScreen(
     isGroup: Boolean = false,
     participants: List<String> = emptyList(),
     groupTitle: String? = null,
+    /** Shared text/attachments seeding the composer (Direct Share); empty for a plain open. */
+    initialDraft: String = "",
+    initialAttachmentUris: List<String> = emptyList(),
     onBack: () -> Unit,
     onOpenRcsVerify: (String) -> Unit = {}, onOpenRcsGroupMembers: (String) -> Unit = {},
 ) {
@@ -60,8 +67,50 @@ fun ConversationScreen(
     val pollSendFailedMessage = stringResource(R.string.poll_send_failed)
     val safetyNumberFailedMessage = stringResource(R.string.signal_safety_number_accept_failed)
     val scope = rememberCoroutineScope()
-    var draft by remember(threadId) { mutableStateOf("") }
-    var selectedAttachments by remember(threadId) { mutableStateOf<List<CommunicateAttachment>>(emptyList()) }
+    // Contextual notification ask (todo/files pattern: system request only at first
+    // use, never on first frame): after the first successful send the user has shown
+    // messages matter to them, so ask once there and persist that we asked.
+    val notificationsLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) {}
+    val askNotificationsOnce = remember(context) {
+        {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                val prefs = context.getSharedPreferences(
+                    "communicate_notifications", Context.MODE_PRIVATE,
+                )
+                if (!prefs.getBoolean("has_asked_notifications", false)) {
+                    prefs.edit().putBoolean("has_asked_notifications", true).apply()
+                    if (ContextCompat.checkSelfPermission(
+                            context, Manifest.permission.POST_NOTIFICATIONS,
+                        ) != PackageManager.PERMISSION_GRANTED
+                    ) {
+                        notificationsLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    }
+                }
+            }
+        }
+    }
+    var draft by remember(threadId, initialDraft) { mutableStateOf(initialDraft) }
+    var selectedAttachments by remember(threadId, initialAttachmentUris) {
+        mutableStateOf(
+            initialAttachmentUris.mapNotNull { uriString ->
+                runCatching {
+                    val uri = android.net.Uri.parse(uriString)
+                    runCatching {
+                        context.contentResolver.takePersistableUriPermission(
+                            uri, Intent.FLAG_GRANT_READ_URI_PERMISSION,
+                        )
+                    }
+                    CommunicateAttachment(
+                        contentUri = uriString,
+                        mimeType = context.contentResolver.getType(uri) ?: "application/octet-stream",
+                        fileName = displayNameOf(context, uri),
+                    )
+                }.getOrNull()
+            },
+        )
+    }
     // Bumped after a send to re-fetch the thread.
     var refresh by remember(threadId) { mutableIntStateOf(0) }
     val lineChoices = rememberLineChoices()
@@ -244,6 +293,7 @@ fun ConversationScreen(
                             participants = if (isGroup) participants else emptyList(),
                         )
                         if (ok) {
+                            askNotificationsOnce()
                             // Clear only what was sent; anything the user
                             // typed or attached while sending survives.
                             if (draft == sentDraft) draft = ""

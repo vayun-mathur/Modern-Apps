@@ -1,13 +1,8 @@
 package com.vayunmathur.taxi
 
-import android.Manifest
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.os.Build
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
-import androidx.core.content.ContextCompat
 import com.vayunmathur.library.image.ImageLoader
 import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.library.network.TrustBundle
@@ -37,9 +32,6 @@ class MainActivity : MaActivity() {
     // into the running UI.
     private val bookingTrip = mutableStateOf<BookingTrip?>(null)
 
-    private val requestNotificationPermission =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
-
     override fun onCreateBeforeContent() {
         NetworkClient.init(this, TrustBundle.STANDARD)
         // Driver photos load over HTTP(S) through the shared image pipeline;
@@ -52,7 +44,8 @@ class MainActivity : MaActivity() {
 
         trackRideId.value = intent.trackRideIdOrNull()
         bookingTrip.value = intent.bookingTripOrNull()
-        requestNotificationPermissionIfNeeded()
+        // No notification ask here: it moved to booking confirmation in
+        // LyftBookingFlow, where ride-tracking notifications become relevant.
     }
 
     @Composable
@@ -65,13 +58,6 @@ class MainActivity : MaActivity() {
         setIntent(intent)
         intent.trackRideIdOrNull()?.let { trackRideId.value = it }
         intent.bookingTripOrNull()?.let { bookingTrip.value = it }
-    }
-
-    private fun requestNotificationPermissionIfNeeded() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
-        val granted = ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
-            PackageManager.PERMISSION_GRANTED
-        if (!granted) requestNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 
     private fun Intent.trackRideIdOrNull(): String? =

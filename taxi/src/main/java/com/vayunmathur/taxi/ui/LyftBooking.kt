@@ -1,5 +1,11 @@
 package com.vayunmathur.taxi.ui
 
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -25,6 +31,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import com.vayunmathur.library.ui.AlertDialog
 import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.MaterialTheme
@@ -80,6 +87,25 @@ fun LyftBookingFlow(
     val scope = rememberCoroutineScope()
     val provider = remember { LyftProvider(context.applicationContext) }
     var step by remember { mutableStateOf<Step>(Step.LoadingPayments) }
+    // Contextual notification ask (todo/files pattern): only when a booking is
+    // confirmed and ride tracking starts, ask once and persist that we asked.
+    val notificationsLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) {}
+    LaunchedEffect(step) {
+        if (step is Step.Created && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val prefs = context.getSharedPreferences("taxi_notifications", Context.MODE_PRIVATE)
+            if (!prefs.getBoolean("has_asked_notifications", false)) {
+                prefs.edit().putBoolean("has_asked_notifications", true).apply()
+                if (ContextCompat.checkSelfPermission(
+                        context, Manifest.permission.POST_NOTIFICATIONS,
+                    ) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    notificationsLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }
+        }
+    }
     val noPaymentMessage = stringResource(R.string.booking_no_payment)
     val connectPromptMessage = stringResource(R.string.connect_prompt, "Lyft")
 

@@ -22,6 +22,18 @@ sealed interface DeepLink {
         val isGroup: Boolean = false,
         val groupTitle: String? = null,
         val subscriptionId: Int? = null,
+        /** URIs shared into this conversation (Direct Share with a stream), as strings. */
+        val sharedAttachmentUris: List<String> = emptyList(),
+    ) : DeepLink
+
+    /**
+     * A share with no conversation chosen yet (Communicate picked as the regular
+     * share target, not a Direct Share conversation). Held in [PendingShare] until
+     * the user opens a thread from the list, which then seeds its composer.
+     */
+    data class SharePicker(
+        val body: String? = null,
+        val sharedAttachmentUris: List<String> = emptyList(),
     ) : DeepLink
 
     /** A group invite we can't join yet, but shouldn't silently swallow either. */
@@ -39,13 +51,70 @@ object DeepLinks {
     fun parse(intent: Intent?): DeepLink? {
         val intent = intent ?: return null
         // A tap on a conversation notification / shortcut carries the thread in extras, not a URI.
-        fromConversationExtras(intent)?.let { return it }
+        // A Direct Share tap is the same shortcut intent plus the shared content, so
+        // seed the composer from the share extras when they are present.
+        fromConversationExtras(intent)?.let { conversation ->
+            return conversation.copy(
+                body = intent.getStringExtra(Intent.EXTRA_TEXT) ?: conversation.body,
+                sharedAttachmentUris = sharedAttachmentUris(intent),
+            )
+        }
+        if (intent.action == Intent.ACTION_SEND || intent.action == Intent.ACTION_SEND_MULTIPLE) {
+            val body = intent.getStringExtra(Intent.EXTRA_TEXT)
+            val uris = sharedAttachmentUris(intent)
+            // Direct Share without the shortcut's own extras: the chooser only
+            // guarantees EXTRA_SHORTCUT_ID (`<line>:<remoteId|threadId|address>`,
+            // ConversationSpace.shortcutId), so rebuild the best conversation it names.
+            intent.getStringExtra(Intent.EXTRA_SHORTCUT_ID)
+                ?.let { fromShortcutId(it, body, uris) }
+                ?.let { return it }
+            return DeepLink.SharePicker(body = body, sharedAttachmentUris = uris)
+        }
         val data = intent.data ?: return null
         return when (intent.action) {
             Intent.ACTION_VIEW, Intent.ACTION_SENDTO, Intent.ACTION_DIAL, Intent.ACTION_CALL ->
                 fromUri(data, intent.getStringExtra(Intent.EXTRA_TEXT))
             else -> null
         }
+    }
+
+    /** Stream URIs carried by a SEND / SEND_MULTIPLE intent, as strings. */
+    private fun sharedAttachmentUris(intent: Intent): List<String> = runCatching {
+        when (intent.action) {
+            Intent.ACTION_SEND -> listOfNotNull(
+                @Suppress("DEPRECATION")
+                (intent.getParcelableExtra(Intent.EXTRA_STREAM) as? Uri)?.toString(),
+            )
+            Intent.ACTION_SEND_MULTIPLE -> {
+                @Suppress("DEPRECATION")
+                intent.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)
+                    ?.filterIsInstance<Uri>()
+                    ?.map { it.toString() }
+                    .orEmpty()
+            }
+            else -> emptyList()
+        }
+    }.getOrDefault(emptyList())
+
+    /** Inverse of `ConversationSpace.shortcutId` for a Direct Share tap. */
+    private fun fromShortcutId(
+        shortcutId: String,
+        body: String?,
+        uris: List<String>,
+    ): DeepLink.Conversation? {
+        val lineName = shortcutId.substringBefore(':', "")
+        val key = shortcutId.substringAfter(':', "")
+        if (lineName.isEmpty() || key.isEmpty()) return null
+        val line = runCatching { CommunicateLine.valueOf(lineName) }.getOrNull() ?: return null
+        val threadId = key.toLongOrNull()
+        return DeepLink.Conversation(
+            address = if (threadId != null) "" else key,
+            line = line,
+            body = body,
+            remoteId = if (threadId != null) null else key,
+            threadId = threadId ?: -1L,
+            sharedAttachmentUris = uris,
+        )
     }
 
     private fun fromConversationExtras(intent: Intent): DeepLink.Conversation? {

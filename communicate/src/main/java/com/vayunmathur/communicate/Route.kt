@@ -93,5 +93,9 @@ sealed interface Route : NavKey {
         val isGroup: Boolean = false,
         val participants: List<String> = emptyList(),
         val groupTitle: String? = null,
+        /** Shared text seeding the composer (Direct Share / picker share); null for a plain open. */
+        val sharedText: String? = null,
+        /** Shared stream URIs seeding the composer attachments, as strings. */
+        val sharedAttachmentUris: List<String> = emptyList(),
     ) : Route
 }

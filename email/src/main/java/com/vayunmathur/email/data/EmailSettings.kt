@@ -40,10 +40,22 @@ class EmailSettings private constructor(context: Context) {
         _loadRemoteImages.value = enabled
     }
 
+    private val _hasAskedNotifications =
+        MutableStateFlow(prefs.getBoolean(KEY_HAS_ASKED_NOTIFICATIONS, false))
+
+    /** Whether the one-time contextual notification ask has already fired. */
+    val hasAskedNotifications: StateFlow<Boolean> = _hasAskedNotifications.asStateFlow()
+
+    fun setHasAskedNotifications() {
+        prefs.edit { putBoolean(KEY_HAS_ASKED_NOTIFICATIONS, true) }
+        _hasAskedNotifications.value = true
+    }
+
     /** Holds preference keys and defaults for email settings. */
     companion object {
         private const val PREFS = "email_settings"
         private const val KEY_LOAD_REMOTE_IMAGES = "load_remote_images"
+        private const val KEY_HAS_ASKED_NOTIFICATIONS = "has_asked_notifications"
 
         @Volatile
         private var instance: EmailSettings? = null
