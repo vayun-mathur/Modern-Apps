@@ -103,7 +103,7 @@ internal fun CallDuration(connectedAtMs: Long) {
 
 /** Decline and answer, weighted equally but coloured oppositely so they cannot be confused. */
 @Composable
-internal fun IncomingControls() {
+internal fun IncomingControls(onAnswer: () -> Unit = { InAppCallRegistry.answer() }) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceEvenly,
@@ -120,7 +120,7 @@ internal fun IncomingControls() {
             container = MaterialTheme.colorScheme.primary,
             content = MaterialTheme.colorScheme.onPrimary,
             size = PRIMARY_ACTION,
-            onClick = { InAppCallRegistry.answer() },
+            onClick = onAnswer,
         ) { IconCall(tint = it) }
     }
 }
@@ -135,6 +135,7 @@ internal fun OngoingControls(
     keypadShown: Boolean,
     onToggleKeypad: () -> Unit,
     onToggleScreenShare: () -> Unit,
+    onToggleVideo: () -> Unit = { InAppCallRegistry.toggleVideo() },
 ) {
     val caps = state.capabilities
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -171,7 +172,7 @@ internal fun OngoingControls(
                 CallToggle(
                     label = stringResource(R.string.call_video),
                     active = state.localVideoEnabled,
-                    onClick = { InAppCallRegistry.toggleVideo() },
+                    onClick = onToggleVideo,
                 ) { tint ->
                     if (state.localVideoEnabled) IconVideoCamera(tint = tint) else IconCameraOff(tint = tint)
                 }

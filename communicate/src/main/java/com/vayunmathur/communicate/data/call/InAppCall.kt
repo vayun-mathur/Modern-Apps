@@ -1,5 +1,6 @@
 package com.vayunmathur.communicate.data.call
 
+import android.Manifest
 import com.vayunmathur.communicate.data.CommunicateLine
 import com.vayunmathur.library.log.Log
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,6 +28,28 @@ data class CallCapabilities(
         val AudioAndVideo = CallCapabilities(video = true, screenShare = true)
         val AudioAndKeypad = CallCapabilities(dtmf = true)
     }
+}
+
+/**
+ * Whether this line captures call media in-app (WebRTC/SIP) and so dead-ends without a runtime
+ * permission. SIM calls are captured by Telecom/the carrier stack, which needs no RECORD_AUDIO
+ * from this app, and RCS has no call path at all — neither is permission-gated at call start.
+ */
+fun CommunicateLine.requiresInAppCallPermissions(): Boolean = when (this) {
+    CommunicateLine.GoogleVoice,
+    CommunicateLine.WhatsApp,
+    CommunicateLine.Signal,
+    -> true
+    CommunicateLine.Sim,
+    CommunicateLine.Rcs,
+    -> false
+}
+
+/** Runtime permissions a call on an in-app media line needs before any media is captured. */
+fun inAppCallPermissions(video: Boolean): List<String> = if (video) {
+    listOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO)
+} else {
+    listOf(Manifest.permission.RECORD_AUDIO)
 }
 
 /** Phases an in-app VoIP call moves through, shared by every line that isn't handled by the SIM. */

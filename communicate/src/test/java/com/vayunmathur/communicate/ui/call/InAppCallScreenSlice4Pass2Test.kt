@@ -6,6 +6,9 @@ import androidx.compose.ui.test.hasContentDescriptionExactly
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import android.Manifest
+import androidx.test.core.app.ApplicationProvider
+import org.robolectric.Shadows.shadowOf
 import com.vayunmathur.communicate.data.CommunicateLine
 import com.vayunmathur.communicate.data.call.CallCapabilities
 import com.vayunmathur.communicate.data.call.InAppCallController
@@ -73,6 +76,10 @@ class InAppCallScreenSlice4Pass2Test {
 
     @Test
     fun incomingScreenShowsPeerAndAnswerDeclineWork() {
+        // Granted up front: answering a Signal call is a call start, so it is
+        // permission-gated (see the denied case below).
+        shadowOf(ApplicationProvider.getApplicationContext<android.app.Application>())
+            .grantPermissions(Manifest.permission.RECORD_AUDIO)
         startCall(incoming = true)
         var closed = 0
         rule.setContent { InAppCallScreen(onClose = { closed++ }) }
@@ -81,6 +88,19 @@ class InAppCallScreenSlice4Pass2Test {
         rule.waitForIdle()
         assertEquals(listOf("answer"), actions.toList())
         assertEquals(0, closed)
+    }
+
+    @Test
+    fun incomingAnswerWithoutMicrophonePermissionDoesNotAnswer() {
+        shadowOf(ApplicationProvider.getApplicationContext<android.app.Application>())
+            .denyPermissions(Manifest.permission.RECORD_AUDIO)
+        startCall(incoming = true)
+        rule.setContent { InAppCallScreen(onClose = {}) }
+        rule.onNode(hasClickAction() and hasContentDescriptionExactly("Call")).performClick()
+        rule.waitForIdle()
+        // Denied (no grant, no answering activity in Robolectric): the pending
+        // answer is dropped, so the call is never answered without permission.
+        assertEquals(emptyList<String>(), actions.toList())
     }
 
     @Test

@@ -20,6 +20,7 @@ import com.vayunmathur.communicate.R
 import com.vayunmathur.communicate.data.CommunicateLine
 import com.vayunmathur.communicate.data.CommunicateRepository
 import com.vayunmathur.communicate.data.SmsThread
+import com.vayunmathur.communicate.data.call.requiresInAppCallPermissions
 import com.vayunmathur.communicate.data.canPlaceCall
 import com.vayunmathur.communicate.data.canPlaceGroupCall
 import com.vayunmathur.communicate.data.canPlaceVideoCall
@@ -110,6 +111,16 @@ internal fun ConversationActions(
     val rcsEncryptedStartedMessage = stringResource(R.string.rcs_encrypted_started)
     val rcsEncryptedFailedMessage = stringResource(R.string.rcs_encrypted_failed)
     val scope = rememberCoroutineScope()
+    val callAudioRationale = stringResource(R.string.permission_call_audio_message)
+    val callVideoRationale = stringResource(R.string.permission_call_video_message)
+    val callAudioDenied = stringResource(R.string.call_not_started_no_audio_permission)
+    val callVideoDenied = stringResource(R.string.call_not_started_no_video_permission)
+    // In-app media lines (Google Voice / WhatsApp / Signal) capture mic/camera in-process, so a
+    // call must not start until that permission is granted; Telecom (SIM) calls need none of it.
+    val startCallWithPermission = rememberInAppCallPermissionStarter(
+        onRationale = { video -> AppMessages.show(if (video) callVideoRationale else callAudioRationale) },
+        onDenied = { video -> AppMessages.show(if (video) callVideoDenied else callAudioDenied) },
+    )
     var showDeleteConfirm by remember { mutableStateOf(false) }
     if (showDeleteConfirm) {
         com.vayunmathur.library.ui.ConfirmDialog(
@@ -150,31 +161,27 @@ internal fun ConversationActions(
     val canCall = address.isNotBlank() && CommunicateRepository.canPlaceCall(line) &&
         (!isGroup || CommunicateRepository.canPlaceGroupCall(line))
     if (canCall) {
-        IconButton(onClick = {
-            scope.launch {
-                val placed = CommunicateRepository.placeCallForLine(
-                    context = context,
-                    line = line,
-                    address = address,
-                    remoteId = remoteId,
-                )
-                if (!placed) AppMessages.show(callFailedMessage)
-            }
-        }) { com.vayunmathur.library.ui.IconCall() }
-        // Only the in-app WebRTC lines can carry video; Telecom lines cannot.
-        if (CommunicateRepository.canPlaceVideoCall(line)) {
-            IconButton(onClick = {
+        fun placeCall(video: Boolean) {
+            val start: () -> Unit = {
                 scope.launch {
                     val placed = CommunicateRepository.placeCallForLine(
                         context = context,
                         line = line,
                         address = address,
                         remoteId = remoteId,
-                        video = true,
+                        video = video,
                     )
                     if (!placed) AppMessages.show(callFailedMessage)
                 }
-            }) { com.vayunmathur.library.ui.IconVideoCamera() }
+            }
+            if (line.requiresInAppCallPermissions()) startCallWithPermission(video, start) else start()
+        }
+        IconButton(onClick = { placeCall(video = false) }) { com.vayunmathur.library.ui.IconCall() }
+        // Only the in-app WebRTC lines can carry video; Telecom lines cannot.
+        if (CommunicateRepository.canPlaceVideoCall(line)) {
+            IconButton(onClick = { placeCall(video = true) }) {
+                com.vayunmathur.library.ui.IconVideoCamera()
+            }
         }
     }
     if (line == CommunicateLine.GoogleVoice && remoteId != null) {

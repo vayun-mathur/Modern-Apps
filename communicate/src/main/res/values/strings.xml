@@ -36,6 +36,12 @@
     <string name="delete_voicemail_message">This will remove this voicemail from your inbox.</string>
     <string name="permission_voicemail_message">Allow Call log access to show your visual voicemails.</string>
     <string name="permission_write_call_log_message">Allow call-log write access to mark voicemails read and delete them.</string>
+    <!-- Rationale shown (messenger) when a call start triggers a microphone / camera+microphone request. -->
+    <string name="permission_call_audio_message">Allow microphone access so the other person can hear you.</string>
+    <string name="permission_call_video_message">Allow camera and microphone access so the other person can see and hear you.</string>
+    <!-- Messenger explanation when that request is denied: the call is not started/answered. -->
+    <string name="call_not_started_no_audio_permission">Call not started: allow microphone access to make or answer calls.</string>
+    <string name="call_not_started_no_video_permission">Video call not started: allow camera and microphone access to make or answer video calls.</string>
     <string name="new_message">New message</string>
     <string name="phone_number">Phone number</string>
     <!-- Long-press 1 with no carrier voicemail pilot stored (issue #899). -->

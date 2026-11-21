@@ -21,13 +21,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.vayunmathur.communicate.R
 import com.vayunmathur.communicate.data.call.CallCapabilities
 import com.vayunmathur.communicate.data.call.InAppCallPhase
 import com.vayunmathur.communicate.data.call.InAppCallRegistry
+import com.vayunmathur.communicate.data.call.requiresInAppCallPermissions
+import com.vayunmathur.communicate.ui.rememberInAppCallPermissionStarter
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Spacing
 import com.vayunmathur.library.ui.Surface
 import com.vayunmathur.library.ui.scrim
+import com.vayunmathur.library.util.AppMessages
 import kotlinx.coroutines.delay
 
 /**
@@ -56,6 +61,33 @@ fun InAppCallScreen(onClose: () -> Unit) {
         }
     }
     val context = LocalContext.current
+    val callAudioRationale = stringResource(R.string.permission_call_audio_message)
+    val callVideoRationale = stringResource(R.string.permission_call_video_message)
+    val callAudioDenied = stringResource(R.string.call_not_started_no_audio_permission)
+    val callVideoDenied = stringResource(R.string.call_not_started_no_video_permission)
+    // Answering (or turning the camera on) is a call start for the in-app media lines: do not
+    // capture mic/camera until permission is granted. Denial leaves the call ringing / video off
+    // and explains why via the messenger. SIM (Telecom) calls need no such permission.
+    val startCallWithPermission = rememberInAppCallPermissionStarter(
+        onRationale = { video -> AppMessages.show(if (video) callVideoRationale else callAudioRationale) },
+        onDenied = { video -> AppMessages.show(if (video) callVideoDenied else callAudioDenied) },
+    )
+    fun gatedAnswer() {
+        val answer = { InAppCallRegistry.answer() }
+        if (state.line?.requiresInAppCallPermissions() == true) {
+            startCallWithPermission(state.isVideo, answer)
+        } else {
+            answer()
+        }
+    }
+    fun gatedToggleVideo() {
+        // Turning video off never needs permission; turning it on is a video-call start.
+        if (state.localVideoEnabled || state.line?.requiresInAppCallPermissions() != true) {
+            InAppCallRegistry.toggleVideo()
+        } else {
+            startCallWithPermission(true) { InAppCallRegistry.toggleVideo() }
+        }
+    }
 
     // A terminal state is held briefly so the outcome is readable, then dismissed.
     LaunchedEffect(state.phase) {
@@ -98,12 +130,13 @@ fun InAppCallScreen(onClose: () -> Unit) {
                 }
 
                 when (state.phase) {
-                    InAppCallPhase.Incoming -> IncomingControls()
+                    InAppCallPhase.Incoming -> IncomingControls(onAnswer = ::gatedAnswer)
                     InAppCallPhase.Ended -> Unit
                     else -> OngoingControls(
                         state = state,
                         keypadShown = showKeypad,
                         onToggleKeypad = { showKeypad = !showKeypad },
+                        onToggleVideo = ::gatedToggleVideo,
                         onToggleScreenShare = {
                             if (state.screenSharing) {
                                 InAppCallRegistry.setScreenShare(false, null)
