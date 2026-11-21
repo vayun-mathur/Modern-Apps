@@ -63,6 +63,42 @@ class NotesRepositoryTest {
         assertNull(repo.getBySyncId("del-a"))
     }
 
+    @Test fun purgeExpiredTombstonesKeepsRecentAndLivePurgesOld() = runTest {
+        val now = 1_800_000_000_000L
+        val day = 24L * 60 * 60 * 1000
+        // Live rows are never purged, however old.
+        repo.upsertRaw(Note(title = "live-old", content = "", syncId = "gc-live", updatedAt = now - 200 * day))
+        // Recent tombstone (inside the horizon) and one exactly at the
+        // cutoff are kept: only strictly-older tombstones are purged.
+        repo.upsertRaw(Note(title = "recent", content = "", syncId = "gc-recent", updatedAt = now - 10 * day, deleted = true))
+        repo.upsertRaw(
+            Note(
+                title = "at-cutoff", content = "", syncId = "gc-cutoff",
+                updatedAt = NotesRepository.tombstoneCutoff(now), deleted = true,
+            ),
+        )
+        repo.upsertRaw(Note(title = "old", content = "", syncId = "gc-old", updatedAt = now - 91 * day, deleted = true))
+        repo.upsertSnapshot(SyncSnapshot("gc-old", SyncSnapshot.KIND_NOTE, "h-old", 1, 2, 3))
+        repo.upsertSnapshot(SyncSnapshot("gc-recent", SyncSnapshot.KIND_NOTE, "h-recent", 1, 2, 3))
+
+        assertEquals(1, repo.purgeExpiredTombstones(now))
+
+        assertEquals("live-old", repo.getBySyncId("gc-live")?.title)
+        assertTrue(repo.getBySyncId("gc-recent")!!.deleted)
+        assertTrue(repo.getBySyncId("gc-cutoff")!!.deleted)
+        assertNull(repo.getBySyncId("gc-old"))
+        // The expired tombstone's baseline snapshot goes with it; the
+        // recent tombstone's snapshot is kept.
+        assertEquals(listOf("gc-recent"), repo.getAllSnapshots().map { it.syncId })
+        // A second run at the same instant is a no-op.
+        assertEquals(0, repo.purgeExpiredTombstones(now))
+    }
+
+    @Test fun tombstoneRetentionIsNinetyDays() {
+        assertEquals(90L * 24 * 60 * 60 * 1000, NotesRepository.TOMBSTONE_RETENTION_MS)
+        assertEquals(1_000L - NotesRepository.TOMBSTONE_RETENTION_MS, NotesRepository.tombstoneCutoff(1_000L))
+    }
+
     @Test fun updatedSinceUpsertAllAndSnapshots() = runTest {
         repo.upsertAllRaw(listOf(
             Note(title = "old", content = "", syncId = "u1", updatedAt = 10),

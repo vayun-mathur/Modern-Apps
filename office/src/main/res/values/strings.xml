@@ -385,6 +385,12 @@
     <string name="table">Table</string>
     <!-- OfficeBottomBar: Action delete row. Verb phrase. -->
     <string name="delete_row">Delete row</string>
+    <!-- OnlineTab: Action delete online document. Verb phrase. -->
+    <string name="delete_document">Delete document</string>
+    <!-- OnlineTab: Delete confirmation body. %1$s=document title. -->
+    <string name="delete_document_message">Delete “%1$s” for everyone it is shared with? This cannot be undone.</string>
+    <!-- OnlineTab: Delete confirmation body for a document shared with you. %1$s=document title. -->
+    <string name="remove_document_message">Remove “%1$s” from your documents? It will stay available to everyone else.</string>
     <!-- OfficeBottomBar: Number format General -->
     <string name="general">General</string>
     <!-- OfficeBottomBar: Number format Integer -->

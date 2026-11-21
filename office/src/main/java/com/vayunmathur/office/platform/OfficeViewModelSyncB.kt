@@ -151,6 +151,9 @@ fun OfficeViewModel.refreshOnline() {
             val ds = DataStoreUtils.getInstance(getApplication())
             val res = pullInboxInvites(ds) ?: return@runCatching
             mergeRequests(ds, res)
+            // Honour owner-signed delete tombstones for indexed docs before
+            // anything below can re-list them.
+            sweepDeletedDocs(ds)
             ds.setLong("officeInboxCursor", res.seq.toLong())
             // Pick up any owner rename for docs we already have (network done outside the lock).
             refreshTitles(ds)
@@ -165,8 +168,13 @@ internal suspend fun OfficeViewModel.pullInboxInvites(ds: DataStoreUtils): Offic
     if (res.invites.isEmpty()) return res
     indexMutex.withLock {
         val index = loadIndex(ds).associateBy { it.docId }.toMutableMap()
+        // A tombstoned doc stays deleted: a replayed/stale invite must not
+        // re-add it to the index.
+        val deleted = loadTombstones(ds).map { it.docId }.toSet()
         for (inv in res.invites) {
-            if (!index.containsKey(inv.docId)) index[inv.docId] = officeDocMetaFromInvite(inv)
+            if (inv.docId !in deleted && !index.containsKey(inv.docId)) {
+                index[inv.docId] = officeDocMetaFromInvite(inv)
+            }
         }
         saveIndex(ds, index.values.toList())
     }
@@ -249,6 +257,9 @@ internal fun OfficeViewModel.parseFlat(flat: String): OdfDocument? {
  */
 internal suspend fun OfficeViewModel.syncDoc(docId: String, key: ByteArray) = syncMutex.withLock {
     val ds = DataStoreUtils.getInstance(getApplication())
+    // Deleted docs stay deleted: never pull (or push) for a tombstoned doc,
+    // so ops from a peer that has not seen the delete cannot resurrect it.
+    if (isDocTombstoned(ds, docId)) return@withLock
     val tree = currentTree ?: (loadTree(ds, docId) ?: DocumentTreeCrdt(OfficeSync.deviceId)).also { currentTree = it }
     val cursor = ds.getLong("crdtCursor:$docId")?.toInt() ?: 0
     val localXml = exportFlat()
@@ -464,6 +475,21 @@ fun OfficeViewModel.openOnlineDocument(meta: OfficeDocMeta) {
             // Resolve the current content key (honors key rotations / read-revocation).
             val (epoch, key) = fetchCurrentKey(meta.docId, inviteKey, currentOwnerKey)
             currentEpoch = epoch
+            // Deleted docs stay deleted: a locally tombstoned doc, or a
+            // verified owner tombstone on the relay, blocks the open before
+            // any doc ops are pulled — a stale peer's op log must not
+            // rebuild a deleted document.
+            val remoteTombstone = runCatching {
+                fetchDocDelete(meta.docId, key, currentOwnerKey)
+            }.getOrNull()
+            if (remoteTombstone != null) applyDocTombstone(ds, remoteTombstone)
+            if (remoteTombstone != null || isDocTombstoned(ds, meta.docId)) {
+                withContext(Dispatchers.Main) {
+                    stateMutable.value =
+                        ViewState.Error("This document was deleted, so it can no longer be opened.")
+                }
+                return@runCatching
+            }
             val crdt = loadTree(ds, meta.docId) ?: DocumentTreeCrdt(OfficeSync.deviceId)
             // Refresh the (owner-signed) roster so op role-checks are correct before applying.
             runCatching { fetchMembers(meta.docId, key, currentOwnerKey) }

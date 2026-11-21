@@ -63,6 +63,37 @@ class NotesRepository private constructor(context: Context) :
     /** Removes every note (including tombstones). Used when a relay vault is purged. */
     suspend fun purge() = dao.deleteAll()
 
+    /**
+     * Garbage-collects deleted-note tombstones older than
+     * [TOMBSTONE_RETENTION_MS], plus their sync-baseline snapshots. Returns
+     * how many tombstone rows were purged.
+     *
+     * Why 90 days is a safe horizon: the tombstone row is only the
+     * *pre-push* proof of a delete. The sync driver (everysync's
+     * `driveMerge`) pulls the FULL relay log from 0 on every cycle and
+     * folds it latest-wins per syncId, so a fresh peer — and a peer
+     * returning after a long offline stretch — re-fetches the
+     * `deleted=true` envelope from the append-only relay no matter what
+     * this table holds. Periodic sync runs at least every 15 minutes, so
+     * 90 days leaves thousands of cycles for the deleting device to get
+     * one successful push in; after that push the local row is redundant.
+     * The accepted residual risk is a device that deletes while offline
+     * and then gets no successful sync for over 90 days: its unpushed
+     * tombstone can be purged here and the still-live relay copy pulled
+     * back. [Note.updatedAt] is a hybrid stamp, so a row carrying a
+     * future-skewed stamp is kept longer — the safe direction.
+     *
+     * Runs opportunistically at app start (see MainActivity), matching
+     * this app's existing start-up migration scheduling; notes has no
+     * sync worker of its own (sync lives in the everysync app, which
+     * reaches this store through the relay ContentProvider).
+     */
+    suspend fun purgeExpiredTombstones(nowMs: Long = System.currentTimeMillis()): Int {
+        val cutoff = tombstoneCutoff(nowMs)
+        snapshotDao.deleteForTombstonesOlderThan(cutoff)
+        return dao.purgeTombstonesOlderThan(cutoff)
+    }
+
     suspend fun getAllSnapshots(): List<SyncSnapshot> = snapshotDao.getAll()
     suspend fun upsertSnapshot(snapshot: SyncSnapshot) = snapshotDao.upsert(snapshot)
     suspend fun deleteSnapshotBySyncId(syncId: String) = snapshotDao.deleteBySyncId(syncId)
@@ -115,6 +146,12 @@ class NotesRepository private constructor(context: Context) :
     /** Process-wide singleton access to NotesRepository. */
     companion object {
         private const val LEGACY_DB_NAME = "passwords-db"
+
+        /** How long a deleted-note tombstone is kept before GC (see [purgeExpiredTombstones]). */
+        const val TOMBSTONE_RETENTION_MS: Long = 90L * 24 * 60 * 60 * 1000
+
+        /** Tombstones with a stamp strictly before this instant are expired at [nowMs]. */
+        fun tombstoneCutoff(nowMs: Long): Long = nowMs - TOMBSTONE_RETENTION_MS
 
         @Volatile private var instance: NotesRepository? = null
         fun get(context: Context): NotesRepository =

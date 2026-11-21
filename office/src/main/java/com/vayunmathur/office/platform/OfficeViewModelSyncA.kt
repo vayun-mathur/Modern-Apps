@@ -130,6 +130,7 @@ internal fun OfficeViewModel.startLive(docId: String, key: ByteArray) {
             kotlinx.coroutines.delay(LIVE_POLL_MS)
             runCatching { syncDoc(docId, key) }
             runCatching { pollTitle(docId, key) } // pick up an owner rename ~live
+            runCatching { pollDocDelete(docId, key) } // pick up an owner delete ~live
         }
     }
     // Presence upkeep: clear a peer's "typing…" a few seconds after they stop, and drop the whole
@@ -174,6 +175,9 @@ internal fun OfficeViewModel.handleLive(raw: String, docId: String, key: ByteArr
 
 /** Merges locally-pending edits plus incoming live ops into the CRDT (caller holds [syncMutex]). */
 internal suspend fun OfficeViewModel.applyLiveActions(msg: OfficeSync.LiveMsg, docId: String, key: ByteArray) {
+    // A tombstoned doc ignores live ops: a peer that has not seen the
+    // delete yet must not resurrect it through the live channel either.
+    if (isDocTombstoned(DataStoreUtils.getInstance(getApplication()), docId)) return
     val tree = currentTree ?: return
     val startVersion = editVersion
     val localXml = exportFlat()

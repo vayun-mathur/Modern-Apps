@@ -43,6 +43,7 @@ import com.vayunmathur.library.ui.DropdownMenuItem
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.ExternalIntents
 import com.vayunmathur.library.ui.IconButton
+import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.IconRefresh
 import com.vayunmathur.library.ui.IconShare
 import com.vayunmathur.library.ui.ListItem
@@ -58,6 +59,7 @@ import com.vayunmathur.office.platform.OfficeMember
 import com.vayunmathur.office.platform.OfficeRoles
 import com.vayunmathur.office.platform.OfficeViewModel
 import com.vayunmathur.office.platform.approveJoinRequest
+import com.vayunmathur.office.platform.deleteOnlineDocument
 import com.vayunmathur.office.platform.denyRequest
 import com.vayunmathur.office.platform.enableOnlineSharing
 import com.vayunmathur.office.platform.initSync
@@ -241,6 +243,7 @@ private fun OnlineDocCard(
     context: android.content.Context,
     onOpenDoc: (OfficeDocMeta) -> Unit,
 ) {
+    var confirmDelete by remember { mutableStateOf(false) }
     Card(Modifier.fillMaxWidth().clickable { onOpenDoc(meta) }) {
         ListItem(
             content = { Text(meta.title) },
@@ -254,14 +257,43 @@ private fun OnlineDocCard(
                 )
             },
             trailingContent = {
-                // Owners can share a tappable invite link (public ids only).
-                if (meta.owner) IconButton(onClick = {
-                    ExternalIntents.shareText(
-                        context,
-                        viewModel.shareLinkFor(meta.docId),
-                        context.getString(R.string.share_link_chooser))
-                }) { IconShare() }
+                Row {
+                    // Owners can share a tappable invite link (public ids only).
+                    if (meta.owner) IconButton(onClick = {
+                        ExternalIntents.shareText(
+                            context,
+                            viewModel.shareLinkFor(meta.docId),
+                            context.getString(R.string.share_link_chooser))
+                    }) { IconShare() }
+                    IconButton(onClick = { confirmDelete = true }) { IconDelete() }
+                }
             }
+        )
+    }
+    if (confirmDelete) {
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text(stringResource(R.string.delete_document)) },
+            text = {
+                Text(
+                    stringResource(
+                        if (meta.owner) R.string.delete_document_message
+                        else R.string.remove_document_message,
+                        meta.title,
+                    ),
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmDelete = false
+                    viewModel.deleteOnlineDocument(meta.docId)
+                }) { Text(stringResource(R.string.delete_document)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmDelete = false }) {
+                    Text(stringResource(UiR.string.cancel))
+                }
+            },
         )
     }
 }

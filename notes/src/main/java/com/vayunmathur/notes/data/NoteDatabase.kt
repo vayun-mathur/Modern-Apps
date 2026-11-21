@@ -73,6 +73,14 @@ abstract class NoteDao {
     @Query("DELETE FROM Note")
     abstract suspend fun deleteAll()
 
+    /**
+     * Hard-removes tombstones older than [cutoffMillis] (see
+     * [NotesRepository.purgeExpiredTombstones] for the horizon reasoning).
+     * Live rows are never touched, however old they are.
+     */
+    @Query("DELETE FROM Note WHERE deleted = 1 AND updatedAt < :cutoffMillis")
+    abstract suspend fun purgeTombstonesOlderThan(cutoffMillis: Long): Int
+
     /** Local batch write (list reorder, legacy import): bumps updatedAt like [upsert]. */
     suspend fun upsertAll(values: List<Note>) {
         val now = nextStamp()
@@ -95,6 +103,18 @@ interface NoteSyncSnapshotDao {
 
     @Query("DELETE FROM SyncSnapshot WHERE syncId = :syncId")
     suspend fun deleteBySyncId(syncId: String)
+
+    /**
+     * Drops baseline snapshots for tombstones expired at [cutoffMillis], so
+     * purging a tombstone does not leave its snapshot row behind. Must run
+     * before the tombstone rows themselves are deleted (it finds them via
+     * the Note table).
+     */
+    @Query(
+        "DELETE FROM SyncSnapshot WHERE syncId IN " +
+            "(SELECT syncId FROM Note WHERE deleted = 1 AND updatedAt < :cutoffMillis)",
+    )
+    suspend fun deleteForTombstonesOlderThan(cutoffMillis: Long): Int
 
     @Query("DELETE FROM SyncSnapshot")
     suspend fun deleteAll()

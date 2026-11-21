@@ -46,6 +46,11 @@ class MainActivity : MaActivity() {
                 notesRepository.migrateImageReferences(renames)
                 NoteImageStore.pruneMigratedSources(applicationContext, renames)
             }
+            // Opportunistic tombstone GC at app start (same IO/start-up slot
+            // as the migrations above; notes has no sync worker of its own).
+            // Tombstones are hidden from every list, so this never changes
+            // what the first frame shows.
+            notesRepository.purgeExpiredTombstones()
             withContext(Dispatchers.Main) {
                 handleIntent(intent)
                 ready = true
