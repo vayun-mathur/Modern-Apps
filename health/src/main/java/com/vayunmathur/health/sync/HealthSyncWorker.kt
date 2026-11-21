@@ -48,6 +48,24 @@ import com.vayunmathur.health.data.CLASSES
 import com.vayunmathur.health.data.HealthRepository
 import com.vayunmathur.health.data.Record
 import com.vayunmathur.health.data.RecordType
+import com.vayunmathur.health.data.storedBloodGlucoseRecord
+import com.vayunmathur.health.data.storedBloodPressureRecord
+import com.vayunmathur.health.data.storedBodyFatRecord
+import com.vayunmathur.health.data.storedBodyWaterMassRecord
+import com.vayunmathur.health.data.storedBoneMassRecord
+import com.vayunmathur.health.data.storedHeightRecord
+import com.vayunmathur.health.data.storedHydrationRecord
+import com.vayunmathur.health.data.storedLeanBodyMassRecord
+import com.vayunmathur.health.data.storedOxygenSaturationRecord
+import com.vayunmathur.health.data.storedSkinTemperatureRecord
+import com.vayunmathur.health.data.storedWeightRecord
+import com.vayunmathur.health.domain.CelsiusDelta
+import com.vayunmathur.health.domain.Kilograms
+import com.vayunmathur.health.domain.Liters
+import com.vayunmathur.health.domain.Meters
+import com.vayunmathur.health.domain.MilligramsPerDeciliter
+import com.vayunmathur.health.domain.MillimetersOfMercury
+import com.vayunmathur.health.domain.Percent
 import com.vayunmathur.health.platform.HealthConnectAvailability
 import com.vayunmathur.health.platform.HealthConnectSetup
 import com.vayunmathur.library.util.DataStoreUtils
@@ -285,31 +303,25 @@ private fun androidx.health.connect.client.records.Record.toVitalsRecord(): List
         is RespiratoryRateRecord -> simpleRecord(
             RecordType.RespiratoryRate, this.time, this.time, this.rate, "Respiratory Rate"
         )
-        is OxygenSaturationRecord -> simpleRecord(
-            RecordType.OxygenSaturation,
-            this.time,
-            this.time,
-            this.percentage.value,
-            "Oxygen Saturation",
-        )
-        is BloodPressureRecord -> listOf(
-            Record(
-                this.metadata.id,
-                0,
-                RecordType.BloodPressure,
-                this.time,
-                this.time,
-                this.systolic.inMillimetersOfMercury,
-                this.diastolic.inMillimetersOfMercury,
-                metadata = "Blood Pressure",
+        is OxygenSaturationRecord -> listOf(
+            storedOxygenSaturationRecord(
+                this.metadata.id, this.time, Percent(this.percentage.value)
             )
         )
-        is BloodGlucoseRecord -> simpleRecord(
-            RecordType.BloodGlucose,
-            this.time,
-            this.time,
-            this.level.inMilligramsPerDeciliter,
-            "Blood Glucose",
+        is BloodPressureRecord -> listOf(
+            storedBloodPressureRecord(
+                this.metadata.id,
+                this.time,
+                MillimetersOfMercury(this.systolic.inMillimetersOfMercury),
+                MillimetersOfMercury(this.diastolic.inMillimetersOfMercury),
+            )
+        )
+        is BloodGlucoseRecord -> listOf(
+            storedBloodGlucoseRecord(
+                this.metadata.id,
+                this.time,
+                MilligramsPerDeciliter(this.level.inMilligramsPerDeciliter),
+            )
         )
         is Vo2MaxRecord -> simpleRecord(
             RecordType.Vo2Max,
@@ -337,44 +349,30 @@ private fun HeartRateRecord.toHeartRateRecords(): List<Record> =
 
 private fun SkinTemperatureRecord.toSkinTemperatureRecords(): List<Record> =
     this.deltas.mapIndexed { idx, delta ->
-        Record(
-            this.metadata.id,
-            idx,
-            RecordType.SkinTemperature,
-            delta.time,
-            delta.time,
-            delta.delta.inCelsius,
-            metadata = "Skin Temperature",
+        storedSkinTemperatureRecord(
+            this.metadata.id, idx, delta.time, CelsiusDelta(delta.delta.inCelsius)
         )
     }
 
 private fun androidx.health.connect.client.records.Record.toBodyRecord(): List<Record> =
     when (this) {
-        is WeightRecord -> simpleRecord(
-            RecordType.Weight, this.time, this.time, this.weight.inKilograms, "Weight"
+        is WeightRecord -> listOf(
+            storedWeightRecord(this.metadata.id, this.time, Kilograms(this.weight.inKilograms))
         )
-        is HeightRecord -> simpleRecord(
-            RecordType.Height, this.time, this.time, this.height.inMeters, "Height"
+        is HeightRecord -> listOf(
+            storedHeightRecord(this.metadata.id, this.time, Meters(this.height.inMeters))
         )
-        is BodyFatRecord -> simpleRecord(
-            RecordType.BodyFat, this.time, this.time, this.percentage.value, "Body Fat"
+        is BodyFatRecord -> listOf(
+            storedBodyFatRecord(this.metadata.id, this.time, Percent(this.percentage.value))
         )
-        is LeanBodyMassRecord -> simpleRecord(
-            RecordType.LeanBodyMass,
-            this.time,
-            this.time,
-            this.mass.inKilograms,
-            "Lean Body Mass",
+        is LeanBodyMassRecord -> listOf(
+            storedLeanBodyMassRecord(this.metadata.id, this.time, Kilograms(this.mass.inKilograms))
         )
-        is BoneMassRecord -> simpleRecord(
-            RecordType.BoneMass, this.time, this.time, this.mass.inKilograms, "Bone Mass"
+        is BoneMassRecord -> listOf(
+            storedBoneMassRecord(this.metadata.id, this.time, Kilograms(this.mass.inKilograms))
         )
-        is BodyWaterMassRecord -> simpleRecord(
-            RecordType.BodyWaterMass,
-            this.time,
-            this.time,
-            this.mass.inKilograms,
-            "Body Water Mass",
+        is BodyWaterMassRecord -> listOf(
+            storedBodyWaterMassRecord(this.metadata.id, this.time, Kilograms(this.mass.inKilograms))
         )
         else -> throw IllegalArgumentException("Unsupported body record type")
     }
@@ -388,6 +386,10 @@ private fun androidx.health.connect.client.records.Record.simpleRecord(
     metadata: String,
 ): List<Record> = listOf(Record(this.metadata.id, 0, type, start, end, value, metadata = metadata))
 
+// The Sleep/Mindfulness/Exercise/Nutrition builders below construct Record directly:
+// they are not unit-sensitive scalars (durations and payload data; Nutrition's
+// per-field units are NutritionStoredUnits). Unit-sensitive scalars must instead go
+// through the TypedRecords factories — see data/TypedRecords.kt.
 private fun SleepSessionRecord.toSleepRecord(): List<Record> {
     val stages = this.stages.map { stage ->
         SleepStage(stage.startTime.toEpochMilli(), stage.endTime.toEpochMilli(), stage.stage)
@@ -467,14 +469,8 @@ private fun ExerciseSessionRecord.toExerciseRecord(): List<Record> {
 }
 
 private fun HydrationRecord.toHydrationRecord(): List<Record> = listOf(
-    Record(
-        this.metadata.id,
-        0,
-        RecordType.Hydration,
-        this.startTime,
-        this.endTime,
-        this.volume.inLiters,
-        metadata = "Hydration",
+    storedHydrationRecord(
+        this.metadata.id, this.startTime, this.endTime, Liters(this.volume.inLiters)
     )
 )
 

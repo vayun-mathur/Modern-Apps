@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import com.vayunmathur.health.R
 import com.vayunmathur.health.data.Ingredient
 import com.vayunmathur.health.data.Recipe
+import com.vayunmathur.health.domain.Liters
 import com.vayunmathur.health.platform.HealthViewModel
 import java.time.Instant
 
@@ -105,7 +106,7 @@ fun LogHydrationDialog(viewModel: HealthViewModel, initialTime: Instant? = null,
                         onClick = {
                             if (quantity != null) {
                                 val time = initialTime ?: Instant.now()
-                                viewModel.logHydration(quantity * selectedUnit.toLiters, time)
+                                viewModel.logHydration(Liters(quantity * selectedUnit.toLiters), time)
                                 onDismiss()
                             }
                         }

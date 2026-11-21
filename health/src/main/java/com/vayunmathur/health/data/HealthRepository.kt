@@ -1,7 +1,13 @@
 package com.vayunmathur.health.data
 
 import android.content.Context
+import com.vayunmathur.health.domain.Centimeters
+import com.vayunmathur.health.domain.Kilograms
+import com.vayunmathur.health.domain.Liters
+import com.vayunmathur.health.domain.Meters
+import com.vayunmathur.health.domain.Percent
 import com.vayunmathur.library.room.RoomRepository
+import java.time.Instant
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -72,6 +78,43 @@ class HealthRepository private constructor(context: Context) :
 
     suspend fun upsert(records: List<Record>) = dao.upsert(records)
     suspend fun deleteByIds(ids: List<String>) = dao.deleteByIds(ids)
+
+    // ------------------------------------------------------------------
+    // Typed write seam — unit-sensitive logging entry points.
+    //
+    // These are the repository boundary for the types whose stored unit is a
+    // physical quantity (see RecordType.storedUnit): callers hand over a typed
+    // value (Kilograms, Meters/Centimeters, Percent, Liters) and the record is
+    // built by the TypedRecords factories, so the canonical stored double is
+    // produced in exactly one place. Prefer these over building a Record by
+    // hand for these types; the plain upsert above stays for the
+    // non-unit-sensitive types, payload records and test fixtures.
+    // ------------------------------------------------------------------
+
+    suspend fun upsertWeight(id: String, time: Instant, weight: Kilograms) =
+        upsert(listOf(storedWeightRecord(id, time, weight)))
+
+    suspend fun upsertHeight(id: String, time: Instant, height: Meters) =
+        upsert(listOf(storedHeightRecord(id, time, height)))
+
+    /** Height as entered/displayed (cm): stored as metres via [Centimeters.toMeters]. */
+    suspend fun upsertHeight(id: String, time: Instant, height: Centimeters) =
+        upsert(listOf(storedHeightRecord(id, time, height)))
+
+    suspend fun upsertBodyFat(id: String, time: Instant, bodyFat: Percent) =
+        upsert(listOf(storedBodyFatRecord(id, time, bodyFat)))
+
+    suspend fun upsertLeanBodyMass(id: String, time: Instant, mass: Kilograms) =
+        upsert(listOf(storedLeanBodyMassRecord(id, time, mass)))
+
+    suspend fun upsertBoneMass(id: String, time: Instant, mass: Kilograms) =
+        upsert(listOf(storedBoneMassRecord(id, time, mass)))
+
+    suspend fun upsertBodyWaterMass(id: String, time: Instant, mass: Kilograms) =
+        upsert(listOf(storedBodyWaterMassRecord(id, time, mass)))
+
+    suspend fun upsertHydration(id: String, start: Instant, end: Instant, volume: Liters) =
+        upsert(listOf(storedHydrationRecord(id, start, end, volume)))
 
     // Ingredients / Recipes
     suspend fun insertIngredient(ingredient: Ingredient) = dao.insertIngredient(ingredient)

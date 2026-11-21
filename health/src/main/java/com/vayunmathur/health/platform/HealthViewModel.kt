@@ -28,6 +28,18 @@ import com.vayunmathur.health.data.RecipeIngredient
 import com.vayunmathur.health.data.Record
 import com.vayunmathur.health.data.RecordType
 import com.vayunmathur.health.data.ServingUnit
+import com.vayunmathur.health.data.storedBodyFatRecord
+import com.vayunmathur.health.data.storedBodyWaterMassRecord
+import com.vayunmathur.health.data.storedBoneMassRecord
+import com.vayunmathur.health.data.storedHeightRecord
+import com.vayunmathur.health.data.storedHydrationRecord
+import com.vayunmathur.health.data.storedLeanBodyMassRecord
+import com.vayunmathur.health.data.storedWeightRecord
+import com.vayunmathur.health.domain.Centimeters
+import com.vayunmathur.health.domain.Kilograms
+import com.vayunmathur.health.domain.Liters
+import com.vayunmathur.health.domain.Meters
+import com.vayunmathur.health.domain.Percent
 import com.vayunmathur.health.ui.HealthMetricConfig
 import com.vayunmathur.health.ui.HistoryItem
 import com.vayunmathur.health.ui.MetricDashboardData
@@ -272,25 +284,68 @@ class HealthViewModel(
         viewModelScope.launch { HealthAPI.deleteRecord(record) }
     }
 
-    fun logHydration(liters: Double, time: java.time.Instant) {
+    /** Stores [record] in Room, mirrors it to Health Connect, and refreshes the body metrics. */
+    private fun logStoredRecord(record: Record, refreshBodyMetrics: Boolean = true) {
         viewModelScope.launch {
-            val record = Record(
-                id = Uuid.random().toString(),
-                index = 0,
-                type = RecordType.Hydration,
-                startTime = time,
-                endTime = time,
-                value = liters,
-                metadata = "Hydration",
-            )
             repository.upsert(listOf(record))
             HealthAPI.writeHealthRecord(record)
+            if (refreshBodyMetrics) loadMainPageMetrics()
         }
     }
 
+    /** Logs hydration as a typed volume: stored litres, mirrored as litres. */
+    fun logHydration(volume: Liters, time: java.time.Instant) {
+        logStoredRecord(
+            storedHydrationRecord(Uuid.random().toString(), time, time, volume),
+            refreshBodyMetrics = false,
+        )
+    }
+
+    @Deprecated(
+        "Bare doubles carry no unit; log a typed value instead (Liters for hydration, " +
+            "Kilograms/Meters/Centimeters/Percent for body metrics) so the stored unit is checked. " +
+            "See the typed write seam in data/TypedRecords.kt.",
+    )
+    fun logHydration(liters: Double, time: java.time.Instant) = logHydration(Liters(liters), time)
+
+    /** Logs weight as a typed mass: stored kilograms, mirrored as kilograms. */
+    fun logWeight(weight: Kilograms, time: java.time.Instant) =
+        logStoredRecord(storedWeightRecord(Uuid.random().toString(), time, weight, RecordType.Weight.name))
+
+    /** Logs height as a typed length: stored metres, mirrored as metres. */
+    fun logHeight(height: Meters, time: java.time.Instant) =
+        logStoredRecord(storedHeightRecord(Uuid.random().toString(), time, height, RecordType.Height.name))
+
+    /** Logs height as entered/displayed (cm): the cm→m conversion is [Centimeters.toMeters]. */
+    fun logHeight(height: Centimeters, time: java.time.Instant) = logHeight(height.toMeters(), time)
+
+    /** Logs body fat as a typed percent: stored 0–100, mirrored as a percentage. */
+    fun logBodyFat(bodyFat: Percent, time: java.time.Instant) =
+        logStoredRecord(storedBodyFatRecord(Uuid.random().toString(), time, bodyFat, RecordType.BodyFat.name))
+
+    /** Logs lean body mass as a typed mass: stored kilograms. */
+    fun logLeanBodyMass(mass: Kilograms, time: java.time.Instant) = logStoredRecord(
+        storedLeanBodyMassRecord(Uuid.random().toString(), time, mass, RecordType.LeanBodyMass.name)
+    )
+
+    /** Logs bone mass as a typed mass: stored kilograms. */
+    fun logBoneMass(mass: Kilograms, time: java.time.Instant) =
+        logStoredRecord(storedBoneMassRecord(Uuid.random().toString(), time, mass, RecordType.BoneMass.name))
+
+    /** Logs body water mass as a typed mass: stored kilograms. */
+    fun logBodyWaterMass(mass: Kilograms, time: java.time.Instant) = logStoredRecord(
+        storedBodyWaterMassRecord(Uuid.random().toString(), time, mass, RecordType.BodyWaterMass.name)
+    )
+
+    @Deprecated(
+        "Bare doubles carry no unit; log a typed value instead (Kilograms, Meters, " +
+            "Centimeters or Percent via logWeight/logHeight/logBodyFat/...) so the stored " +
+            "unit is checked. See the typed write seam in data/TypedRecords.kt. This overload " +
+            "keeps its original semantics: [value] is already in the stored unit.",
+    )
     fun logBodyMetric(type: RecordType, value: Double, time: java.time.Instant) {
-        viewModelScope.launch {
-            val record = Record(
+        logStoredRecord(
+            Record(
                 id = Uuid.random().toString(),
                 index = 0,
                 type = type,
@@ -299,10 +354,7 @@ class HealthViewModel(
                 value = value,
                 metadata = type.name,
             )
-            repository.upsert(listOf(record))
-            HealthAPI.writeHealthRecord(record)
-            loadMainPageMetrics()
-        }
+        )
     }
 
     /** Type representing log meal target. */
@@ -335,6 +387,9 @@ class HealthViewModel(
                 is LogMealTarget.FromRecipe -> target.name
                 is LogMealTarget.FromIngredient -> target.ingredient.displayName
             }
+            // Nutrition is a payload record, not a unit-sensitive scalar (value is
+            // kilocalories; per-field units are NutritionStoredUnits), so it keeps
+            // direct construction. Unit-sensitive scalars go through TypedRecords.
             val record = Record(
                 id = Uuid.random().toString(),
                 index = 0,

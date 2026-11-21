@@ -144,7 +144,10 @@ object HealthAPI {
         }
     }
 
-    private fun nutritionRecord(record: Record): NutritionRecord? {
+    // The builders below are internal (not private) as the export half of the typed
+    // seam: UnitSafetyRoundTripTest feeds their output back through the Health
+    // Connect import to prove HC -> Room -> HC round-trips per mirrored type.
+    internal fun nutritionRecord(record: Record): NutritionRecord? {
         val nd = record.nutritionData ?: return null
         val startInstant = record.startTime
         val endInstant = record.endTime
@@ -199,7 +202,7 @@ object HealthAPI {
         )
     }
 
-    private fun hydrationRecord(record: Record): HydrationRecord {
+    internal fun hydrationRecord(record: Record): HydrationRecord {
         val startInstant = record.startTime
         val endInstant = record.endTime
         return HydrationRecord(
@@ -207,51 +210,51 @@ object HealthAPI {
             startZoneOffset = systemOffsetAt(startInstant),
             endTime = endInstant,
             endZoneOffset = systemOffsetAt(endInstant),
-            volume = Volume.liters(record.value),
+            volume = Volume.liters(record.storedHydration().value),
             metadata = Metadata.manualEntry(clientRecordId = record.id),
         )
     }
 
-    private fun weightRecord(record: Record): WeightRecord = WeightRecord(
+    internal fun weightRecord(record: Record): WeightRecord = WeightRecord(
         time = record.startTime,
         zoneOffset = systemOffsetAt(record.startTime),
-        weight = Mass.kilograms(record.value),
+        weight = Mass.kilograms(record.storedWeight().value),
         metadata = Metadata.manualEntry(clientRecordId = record.id),
     )
 
-    private fun heightRecord(record: Record): HeightRecord = HeightRecord(
+    internal fun heightRecord(record: Record): HeightRecord = HeightRecord(
         time = record.startTime,
         zoneOffset = systemOffsetAt(record.startTime),
-        height = Length.meters(record.value),
+        height = Length.meters(record.storedHeight().value),
         metadata = Metadata.manualEntry(clientRecordId = record.id),
     )
 
-    private fun bodyFatRecord(record: Record): BodyFatRecord = BodyFatRecord(
+    internal fun bodyFatRecord(record: Record): BodyFatRecord = BodyFatRecord(
         time = record.startTime,
         zoneOffset = systemOffsetAt(record.startTime),
-        percentage = Percentage(record.value),
+        percentage = Percentage(record.storedBodyFat().value),
         metadata = Metadata.manualEntry(clientRecordId = record.id),
     )
 
-    private fun leanBodyMassRecord(record: Record): LeanBodyMassRecord = LeanBodyMassRecord(
+    internal fun leanBodyMassRecord(record: Record): LeanBodyMassRecord = LeanBodyMassRecord(
         time = record.startTime,
         zoneOffset = systemOffsetAt(record.startTime),
-        mass = Mass.kilograms(record.value),
+        mass = Mass.kilograms(record.storedLeanBodyMass().value),
         metadata = Metadata.manualEntry(clientRecordId = record.id),
     )
 
-    private fun boneMassRecord(record: Record): BoneMassRecord = BoneMassRecord(
+    internal fun boneMassRecord(record: Record): BoneMassRecord = BoneMassRecord(
         time = record.startTime,
         zoneOffset = systemOffsetAt(record.startTime),
-        mass = Mass.kilograms(record.value),
+        mass = Mass.kilograms(record.storedBoneMass().value),
         metadata = Metadata.manualEntry(clientRecordId = record.id),
     )
 
-    private fun bodyWaterMassRecord(record: Record): BodyWaterMassRecord =
+    internal fun bodyWaterMassRecord(record: Record): BodyWaterMassRecord =
         BodyWaterMassRecord(
             time = record.startTime,
             zoneOffset = systemOffsetAt(record.startTime),
-            mass = Mass.kilograms(record.value),
+            mass = Mass.kilograms(record.storedBodyWaterMass().value),
             metadata = Metadata.manualEntry(clientRecordId = record.id),
         )
 

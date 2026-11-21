@@ -17,13 +17,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import com.vayunmathur.health.R
+import com.vayunmathur.health.domain.Centimeters
+import com.vayunmathur.health.domain.Kilograms
+import com.vayunmathur.health.domain.Percent
 import com.vayunmathur.health.platform.HealthViewModel
 import java.time.Instant
 
 /**
  * Simple single-value logger for a body composition metric (weight, height, body fat, etc.).
- * The entered value is in [HealthMetricConfig.unit]; height is converted from cm to meters
- * before storage to match how records are persisted.
+ * The entered value is in [HealthMetricConfig.unit] and is handed to the typed logging
+ * seam as that unit: height is entered in centimetres and the centimetres→metres
+ * conversion (the stored unit) happens inside [Centimeters.toMeters] — there is
+ * deliberately no arithmetic on the raw double here.
  */
 @Composable
 fun LogBodyMetricDialog(
@@ -54,9 +59,22 @@ fun LogBodyMetricDialog(
                 enabled = isValid,
                 onClick = {
                     if (value != null) {
-                        val storedValue =
-                            if (config == HealthMetricConfig.HEIGHT) value / 100.0 else value
-                        viewModel.logBodyMetric(config.recordType, storedValue, Instant.now())
+                        // Typed seam: the entered unit is stated in the type, and the
+                        // cm→m height conversion lives in Centimeters.toMeters().
+                        when (config) {
+                            HealthMetricConfig.HEIGHT -> viewModel.logHeight(Centimeters(value), Instant.now())
+                            HealthMetricConfig.WEIGHT -> viewModel.logWeight(Kilograms(value), Instant.now())
+                            HealthMetricConfig.BODY_FAT -> viewModel.logBodyFat(Percent(value), Instant.now())
+                            HealthMetricConfig.LEAN_BODY_MASS ->
+                                viewModel.logLeanBodyMass(Kilograms(value), Instant.now())
+                            HealthMetricConfig.BONE_MASS -> viewModel.logBoneMass(Kilograms(value), Instant.now())
+                            HealthMetricConfig.BODY_WATER_MASS ->
+                                viewModel.logBodyWaterMass(Kilograms(value), Instant.now())
+                            else -> {
+                                @Suppress("DEPRECATION")
+                                viewModel.logBodyMetric(config.recordType, value, Instant.now())
+                            }
+                        }
                         onDismiss()
                     }
                 },
