@@ -6,6 +6,8 @@ import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import com.vayunmathur.camera.domain.FrameDiffSample
+import com.vayunmathur.camera.domain.LumaPlaneMath
+import com.vayunmathur.camera.domain.PlaneView
 import com.vayunmathur.camera.domain.SceneMotionMath
 import com.vayunmathur.library.log.Log
 
@@ -36,29 +38,47 @@ class VideoMotionAnalyzer(
     private var previousGrid: FloatArray? = null
     private var previousGridWidth = 0
 
+    /**
+     * Plane-based entry point shared by the CameraX analyzer below and the
+     * Camera2 ImageReader analysis source: same cadence, same grid, same
+     * diff — the logic is not forked per pipeline.
+     */
+    fun onYPlane(plane: PlaneView) {
+        val nowMs = SystemClock.elapsedRealtime()
+        if (nowMs - lastSampleAtMs < VIDEO_MOTION_SAMPLE_INTERVAL_MS) return
+        lastSampleAtMs = nowMs
+        val (grid, gridWidth) = LumaPlaneMath.grid(plane) ?: return
+        val previous = previousGrid
+        previousGrid = grid
+        if (previous == null || previous.size != grid.size || previousGridWidth != gridWidth) {
+            previousGridWidth = gridWidth
+            return // first frame of a (re)bind: no diff to take yet
+        }
+        previousGridWidth = gridWidth
+        SceneMotionMath.sample(previous, grid, gridWidth)?.let { sample ->
+            try {
+                onSample(sample)
+            } catch (e: IllegalStateException) {
+                Log.error("VideoMotion", "onSample callback threw", e)
+            } catch (e: IllegalArgumentException) {
+                Log.error("VideoMotion", "onSample callback threw", e)
+            }
+        }
+    }
+
     @OptIn(ExperimentalGetImage::class)
     override fun analyze(imageProxy: ImageProxy) {
         try {
-            val nowMs = SystemClock.elapsedRealtime()
-            if (nowMs - lastSampleAtMs < VIDEO_MOTION_SAMPLE_INTERVAL_MS) return
-            lastSampleAtMs = nowMs
-            val (grid, gridWidth) = readLuminanceGrid(imageProxy) ?: return
-            val previous = previousGrid
-            previousGrid = grid
-            if (previous == null || previous.size != grid.size || previousGridWidth != gridWidth) {
-                previousGridWidth = gridWidth
-                return // first frame of a (re)bind: no diff to take yet
-            }
-            previousGridWidth = gridWidth
-            SceneMotionMath.sample(previous, grid, gridWidth)?.let { sample ->
-                try {
-                    onSample(sample)
-                } catch (e: IllegalStateException) {
-                    Log.error("VideoMotion", "onSample callback threw", e)
-                } catch (e: IllegalArgumentException) {
-                    Log.error("VideoMotion", "onSample callback threw", e)
-                }
-            }
+            val plane = imageProxy.planes.firstOrNull() ?: return
+            onYPlane(
+                PlaneView(
+                    buffer = plane.buffer.duplicate(),
+                    rowStride = plane.rowStride,
+                    pixelStride = plane.pixelStride,
+                    width = imageProxy.width,
+                    height = imageProxy.height,
+                )
+            )
         } catch (e: IllegalStateException) {
             Log.error("VideoMotion", "VideoMotionAnalyzer analyze() threw", e)
         } catch (e: IllegalArgumentException) {
@@ -72,18 +92,6 @@ class VideoMotionAnalyzer(
         }
     }
 
-    /**
-     * Downsamples plane 0 (Y) to a grid of at most [VIDEO_MOTION_GRID_MAX_SIDE]
-     * samples per side. Returns the grid and its width, or null when unreadable.
-     */
-    @OptIn(ExperimentalGetImage::class)
-    private fun readLuminanceGrid(imageProxy: ImageProxy): Pair<FloatArray, Int>? {
-        val plane = imageProxy.planes.firstOrNull() ?: return null
-        return sampleYPlaneGrid(
-            plane.buffer.duplicate(), plane.rowStride, plane.pixelStride,
-            imageProxy.width, imageProxy.height,
-        )
-    }
 }
 
 /**
@@ -91,6 +99,10 @@ class VideoMotionAnalyzer(
  * per side. Shared by the CameraX [VideoMotionAnalyzer] and the Camera2 custom
  * path's ImageReader analysis surface, so both pipelines feed the estimator the
  * same signal. Returns the grid and its width, or null when unreadable.
+ *
+ * Delegates to [LumaPlaneMath] — the single definition of this sampling —
+ * so the Camera2 [com.vayunmathur.camera.domain.PlaneView] entry point and
+ * this buffer entry point can never drift apart.
  */
 internal fun sampleYPlaneGrid(
     buffer: java.nio.ByteBuffer,
@@ -98,25 +110,4 @@ internal fun sampleYPlaneGrid(
     pixelStride: Int,
     width: Int,
     height: Int,
-): Pair<FloatArray, Int>? {
-    if (width <= 0 || height <= 0) return null
-    val strideX = maxOf(1, width / VIDEO_MOTION_GRID_MAX_SIDE)
-    val strideY = maxOf(1, height / VIDEO_MOTION_GRID_MAX_SIDE)
-    val gridWidth = (width + strideX - 1) / strideX
-    val gridHeight = (height + strideY - 1) / strideY
-    val grid = FloatArray(gridWidth * gridHeight)
-    var out = 0
-    var y = 0
-    while (y < height) {
-        val rowStart = y * rowStride
-        var x = 0
-        while (x < width) {
-            val index = rowStart + x * pixelStride
-            if (index >= buffer.limit()) return null
-            grid[out++] = (buffer.get(index).toInt() and 0xFF).toFloat()
-            x += strideX
-        }
-        y += strideY
-    }
-    return grid to gridWidth
-}
+): Pair<FloatArray, Int>? = LumaPlaneMath.grid(buffer, rowStride, pixelStride, width, height)

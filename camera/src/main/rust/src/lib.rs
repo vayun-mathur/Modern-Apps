@@ -20,6 +20,7 @@ mod blend;
 mod stitch;
 mod night;
 mod avif;
+mod luma;
 
 use imgbuf::Rgba;
 use std::collections::HashMap;

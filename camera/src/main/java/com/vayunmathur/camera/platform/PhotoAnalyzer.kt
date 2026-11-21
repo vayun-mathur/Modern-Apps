@@ -14,6 +14,8 @@ import com.google.zxing.MultiFormatReader
 import com.google.zxing.NotFoundException
 import com.google.zxing.PlanarYUVLuminanceSource
 import com.google.zxing.common.HybridBinarizer
+import com.vayunmathur.camera.domain.LumaPlaneMath
+import com.vayunmathur.camera.domain.PlaneView
 
 /**
  * Combined PHOTO-stream analyzer. The ImageAnalysis use case can only host one analyzer, so this
@@ -27,10 +29,6 @@ import com.google.zxing.common.HybridBinarizer
  * When [onMotionFrame] is supplied it also emits a copy of each frame (bitmap + timestamp +
  * rotation) so the ViewModel can maintain a Motion-Photo ring buffer off this same stream.
  */
-/** Y-plane subsample stride (px) and unsigned-byte mask for luminance sampling. */
-private const val LUMA_STRIDE_PX = 16
-private const val CHANNEL_MASK = 0xFF
-
 /**
  * Minimum gap between full ZXing decode attempts (ms). A held QR code still
  * resolves within a fraction of a second, while the analysis thread stops
@@ -69,15 +67,35 @@ class PhotoAnalyzer(
     private var lastDecodeAtMs = 0L
     private var lastMotionAtMs = 0L
 
+    /**
+     * Plane-based entry point shared by the CameraX analyzer below and the
+     * Camera2 ImageReader analysis source: luma sampling only, read straight
+     * from the plane buffer with no byte copy and no bitmap conversion. QR
+     * and Motion-Photo copies deliberately have no plane entry point this
+     * phase (see AnalysisSourcePolicy) and stay on the CameraX path.
+     */
+    fun onYPlane(plane: PlaneView) {
+        val avg = LumaPlaneMath.mean(plane) ?: return
+        try {
+            onLuminance(avg.toFloat())
+        } catch (e: IllegalStateException) {
+            Log.error("NightPreview", "PhotoAnalyzer onLuminance callback threw (was hidden)", e)
+        } catch (e: IllegalArgumentException) {
+            Log.error("NightPreview", "PhotoAnalyzer onLuminance callback threw (was hidden)", e)
+        }
+    }
+
     @OptIn(ExperimentalGetImage::class)
     override fun analyze(imageProxy: ImageProxy) {
         val startMs = System.currentTimeMillis()
         try {
-            val frame = readYPlane(imageProxy) ?: return
             // Luminance stays per-frame: it is a cheap strided sum and the
             // night-mode debounce counts frames, so skipping here would
-            // silently retune its engage/disengage timing.
-            sampleLuminance(frame, imageProxy, startMs)
+            // silently retune its engage/disengage timing. It now reads the
+            // plane buffer in place (no ByteArray copy); only the cadence-
+            // gated QR decode below still copies, because ZXing needs a
+            // contiguous byte array.
+            sampleLuminance(imageProxy, startMs)
             // The two expensive ops — the YUV->RGB conversion for the
             // Motion-Photo ring buffer and the full-frame ZXing decode — run
             // at a capped cadence instead of on every frame. Unthrottled they
@@ -91,6 +109,13 @@ class PhotoAnalyzer(
             }
             if (nowMs - lastDecodeAtMs >= QR_DECODE_INTERVAL_MS) {
                 lastDecodeAtMs = nowMs
+                // ZXing needs a contiguous byte array, so this copy stays —
+                // but only on a decode tick, not on every frame.
+                val frame = readYPlane(imageProxy)
+                if (frame == null) {
+                    closeQuietly(imageProxy, "Y plane unreadable")
+                    return
+                }
                 decodeQr(frame, imageProxy, startMs)
             } else {
                 // decodeQr() closes the frame in its finally; on a skipped
@@ -124,7 +149,7 @@ class PhotoAnalyzer(
     private fun readYPlane(imageProxy: ImageProxy): YFrame? {
         val plane = imageProxy.planes[0]
         val rowStride = plane.rowStride
-        val buffer = plane.buffer
+        val buffer = plane.buffer.duplicate()
         val bytes = ByteArray(buffer.remaining())
         try {
             buffer.get(bytes)
@@ -142,43 +167,31 @@ class PhotoAnalyzer(
 
     /** Samples average luminance over a strided subsample and forwards it. */
     @OptIn(ExperimentalGetImage::class)
-    private fun sampleLuminance(frame: YFrame, imageProxy: ImageProxy, startMs: Long) {
-        // Average luminance over a strided subsample of the Y plane (kept cheap).
-        var sum = 0L
-        var count = 0
-        var i = 0
-        try {
-            while (i < frame.bytes.size) {
-                sum += (frame.bytes[i].toInt() and CHANNEL_MASK)
-                count++
-                i += LUMA_STRIDE_PX
-            }
-        } catch (e: ArithmeticException) {
-            Log.error("NightPreview", "PhotoAnalyzer luma loop threw (hidden)", e)
+    private fun sampleLuminance(imageProxy: ImageProxy, startMs: Long) {
+        val plane = imageProxy.planes.firstOrNull()
+        if (plane == null) {
+            Log.status("NightPreview", "PhotoAnalyzer no Y plane – preview may be black?")
+            return
         }
-        if (count > 0) {
-            val avg = sum.toFloat() / count
+        val view = PlaneView(
+            buffer = plane.buffer.duplicate(),
+            rowStride = plane.rowStride,
+            pixelStride = plane.pixelStride,
+            width = imageProxy.width,
+            height = imageProxy.height,
+        )
+        val avg = LumaPlaneMath.mean(view)
+        if (avg != null) {
             Log.dev(
                 "NightPreview",
-                "PhotoAnalyzer luma avg=$avg sum=$sum count=$count bytesSize=${frame.bytes.size} " +
-                    "width=${imageProxy.width} height=${imageProxy.height} rowStride=${frame.rowStride} " +
-                    "timestamp=${imageProxy.imageInfo.timestamp} " +
+                "PhotoAnalyzer luma avg=$avg width=${imageProxy.width} height=${imageProxy.height} " +
+                    "rowStride=${plane.rowStride} timestamp=${imageProxy.imageInfo.timestamp} " +
                     "rot=${imageProxy.imageInfo.rotationDegrees} " +
                     "took=${System.currentTimeMillis() - startMs}ms"
             )
-            try {
-                onLuminance(avg)
-            } catch (e: IllegalStateException) {
-                Log.error("NightPreview", "PhotoAnalyzer onLuminance callback threw (was hidden)", e)
-            } catch (e: IllegalArgumentException) {
-                Log.error("NightPreview", "PhotoAnalyzer onLuminance callback threw (was hidden)", e)
-            }
+            onYPlane(view)
         } else {
-            Log.status(
-                "NightPreview",
-                "PhotoAnalyzer count=0, no luma callback – preview may be black? " +
-                    "bytesSize=${frame.bytes.size}"
-            )
+            Log.status("NightPreview", "PhotoAnalyzer no luma samples – preview may be black?")
         }
     }
 

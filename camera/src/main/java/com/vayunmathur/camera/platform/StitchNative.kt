@@ -1,6 +1,10 @@
 package com.vayunmathur.camera.platform
 
+import com.vayunmathur.camera.domain.LumaPlaneMath
+import com.vayunmathur.camera.domain.LumaStats
+import com.vayunmathur.camera.domain.PlaneView
 import com.vayunmathur.library.log.NativeLoader
+import java.nio.ByteBuffer
 
 
 /**
@@ -55,4 +59,58 @@ object StitchNative {
      * Callers must check [isAvailable] first and fall back to JPEG on null.
      */
     external fun encodeAvif(rgba: ByteArray, width: Int, height: Int, quality: Float, speed: Int): ByteArray?
+
+    // --- Zero-copy luma on-ramp (Camera2 migration Phase 3) ---
+
+    /**
+     * Luma statistics from a *direct* Y-plane [buffer], read in place by
+     * Rust — no bytes cross JNI. Returns
+     * `[mean, gridWidth, gridHeight, grid...]`, or null for a non-direct /
+     * unreadable buffer, in which case [lumaStats] falls back to the
+     * identical Kotlin computation in [LumaPlaneMath]. This is the on-ramp
+     * for moving the night-hysteresis / motion math native later; today
+     * callers consume the same [LumaStats] either way.
+     */
+    external fun lumaStatsFromYPlane(
+        buffer: ByteBuffer,
+        width: Int,
+        height: Int,
+        rowStride: Int,
+        pixelStride: Int,
+    ): FloatArray?
+
+    /**
+     * [LumaStats] for [plane]: native when the buffer is direct and the
+     * library is loaded, the Kotlin fallback otherwise. Both implement the
+     * one contract in [LumaPlaneMath]; parity is proven on synthetic
+     * buffers in `LumaStatsNativeTest`.
+     */
+    fun lumaStats(plane: PlaneView): LumaStats? {
+        if (isAvailable && plane.buffer.isDirect) {
+            val encoded = try {
+                lumaStatsFromYPlane(
+                    plane.buffer, plane.width, plane.height, plane.rowStride, plane.pixelStride,
+                )
+            } catch (e: UnsatisfiedLinkError) {
+                null
+            }
+            decodeLumaStats(encoded)?.let { return it }
+        }
+        return LumaPlaneMath.stats(plane)
+    }
+}
+
+/** Decodes the `[mean, gridWidth, gridHeight, grid...]` native encoding. */
+internal fun decodeLumaStats(encoded: FloatArray?): LumaStats? {
+    if (encoded == null || encoded.size < 3) return null
+    val gridWidth = encoded[1].toInt()
+    val gridHeight = encoded[2].toInt()
+    if (gridWidth <= 0 || gridHeight <= 0) return null
+    if (encoded.size != 3 + gridWidth * gridHeight) return null
+    return LumaStats(
+        mean = encoded[0].toDouble(),
+        grid = encoded.copyOfRange(3, encoded.size),
+        gridWidth = gridWidth,
+        gridHeight = gridHeight,
+    )
 }
