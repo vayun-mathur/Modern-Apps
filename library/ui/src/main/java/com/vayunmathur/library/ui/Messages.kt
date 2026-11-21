@@ -36,8 +36,9 @@ class Messenger internal constructor(
     fun show(
         message: String,
         actionLabel: String? = null,
-        duration: SnackbarDuration =
-            if (actionLabel == null) SnackbarDuration.Short else SnackbarDuration.Long,
+        // Long even without an action: Short can vanish before TalkBack
+        // finishes reading the message aloud.
+        duration: SnackbarDuration = SnackbarDuration.Long,
         onAction: (() -> Unit)? = null,
     ) {
         val host = host ?: return

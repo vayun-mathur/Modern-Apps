@@ -67,6 +67,8 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.Dp
@@ -341,9 +343,11 @@ fun Scaffold(
                     // navigation bar (same rule as BottomAppBar in
                     // MaterialComponentsExtra.kt). Summing would float the
                     // snackbar a nav-bar's height above the keys.
-                    modifier = Modifier.padding(
-                        WindowInsets.navigationBars.union(WindowInsets.ime).asPaddingValues(),
-                    ),
+                    modifier = Modifier
+                        .padding(
+                            WindowInsets.navigationBars.union(WindowInsets.ime).asPaddingValues(),
+                        )
+                        .semantics { liveRegion = LiveRegionMode.Polite },
                 )
             }
         } ?: {}
@@ -760,7 +764,10 @@ fun TextField(
 // --- Snackbar ---
 @Composable
 fun SnackbarHost(hostState: SnackbarHostState, modifier: Modifier = Modifier) =
-    androidx.compose.material3.SnackbarHost(hostState = hostState, modifier = modifier)
+    androidx.compose.material3.SnackbarHost(
+        hostState = hostState,
+        modifier = modifier.semantics { liveRegion = LiveRegionMode.Polite },
+    )
 
 // --- Menus ---
 @Composable

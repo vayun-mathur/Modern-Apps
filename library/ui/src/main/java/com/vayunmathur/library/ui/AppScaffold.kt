@@ -9,6 +9,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.NavKey
 
@@ -71,7 +73,7 @@ fun AppScaffold(
     containerColor: Color = MaterialTheme.colorScheme.background,
     content: @Composable (PaddingValues) -> Unit,
 ) = AppScaffold(
-    title = { Text(title) },
+    title = { Text(title, modifier = Modifier.semantics { heading() }) },
     modifier = modifier,
     subtitle = subtitle?.let { text -> { Text(text) } },
     onNavigateBack = onNavigateBack,

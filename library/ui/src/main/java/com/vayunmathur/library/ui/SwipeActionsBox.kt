@@ -15,6 +15,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntOffset
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -38,6 +41,11 @@ enum class SwipeActionSide { None, StartToEnd, EndToStart }
  * [onEndToStart] fires on a completed leftward swipe (e.g. delete — the caller
  * typically removes the row), [onStartToEnd] on a rightward swipe (e.g. mark
  * read — snaps back). [background] renders behind the content for the active side.
+ *
+ * [accessibilityActions] are the TalkBack-accessible equivalents of the swipe
+ * gestures (same pattern as `TodoListRow`): swipe itself is undiscoverable and
+ * unusable without vision, so callers mirror each swipe action here. Empty by
+ * default — existing rows keep their current semantics until wired.
  */
 @Composable
 fun SwipeActionsBox(
@@ -48,6 +56,7 @@ fun SwipeActionsBox(
     onEndToStart: () -> Unit = {},
     horizontalBias: Float = 2.5f,
     thresholdFraction: Float = 0.4f,
+    accessibilityActions: List<CustomAccessibilityAction> = emptyList(),
     background: @Composable (SwipeActionSide) -> Unit = {},
     content: @Composable () -> Unit,
 ) {
@@ -58,6 +67,15 @@ fun SwipeActionsBox(
     Box(
         modifier
             .fillMaxWidth()
+            .then(
+                if (accessibilityActions.isNotEmpty()) {
+                    Modifier.semantics(mergeDescendants = true) {
+                        customActions = accessibilityActions
+                    }
+                } else {
+                    Modifier
+                },
+            )
             .onSizeChanged { widthPx = it.width.toFloat() }
             .pointerInput(enableStartToEnd, enableEndToStart) {
                 val touchSlop = viewConfiguration.touchSlop
