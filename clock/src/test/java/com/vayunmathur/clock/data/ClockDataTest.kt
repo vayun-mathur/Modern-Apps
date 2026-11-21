@@ -102,8 +102,28 @@ class ClockDataTest {
 
     @Test
     fun migrationsDeclared() {
-        assertEquals(2, ClockDatabase.migrations.size)
-        assertEquals(listOf(1 to 2, 2 to 3), ClockDatabase.migrations.map { it.startVersion to it.endVersion })
+        assertEquals(3, ClockDatabase.migrations.size)
+        assertEquals(
+            listOf(1 to 2, 2 to 3, 3 to 4),
+            ClockDatabase.migrations.map { it.startVersion to it.endVersion },
+        )
+    }
+
+    @Test
+    fun timerStartedStoresMonotonicAnchorAndStoppedClearsIt() {
+        val paused = timer()
+        assertEquals(null, paused.remainingStartElapsedRealtime)
+        val running = paused.started(monoNowMs = 123_000L)
+        assertEquals(123_000L, running.remainingStartElapsedRealtime)
+        // Wall jumps +1h while only 10s of monotonic time passes: stopping
+        // must bank the monotonic delta, not the wall delta.
+        val stopped = running.stopped(
+            wallNow = running.remainingStartTime + 1.minutes * 60,
+            monoNowMs = 133_000L,
+        )
+        assertFalse(stopped.isRunning)
+        assertEquals(null, stopped.remainingStartElapsedRealtime)
+        assertTrue(stopped.remainingLength > 4.minutes)
     }
 
 }

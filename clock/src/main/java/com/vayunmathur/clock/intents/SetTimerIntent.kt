@@ -28,6 +28,7 @@ class SetTimerIntent : AssistantIntent<SetTimerData, Unit>(
             remainingStartTime = Clock.System.now(),
             remainingLength = length,
             totalLength = length,
+            remainingStartElapsedRealtime = com.vayunmathur.clock.platform.DualTimeBase.elapsedRealtimeMs(),
         )
         val repository = ClockRepository.get(this)
         val id = repository.upsertTimer(timer)

@@ -27,16 +27,21 @@ class StopwatchActionReceiver : BroadcastReceiver() {
                         val isRunning = ds.getBoolean(KEY_STOPWATCH_RUNNING, false)
                         val totalMs = ds.getLong(KEY_STOPWATCH_TOTAL) ?: 0L
                         val startMs = ds.getLong(KEY_STOPWATCH_START) ?: 0L
-                        
+                        val startMonoMs = (ds.getLong(KEY_STOPWATCH_START_MONO) ?: 0L).takeIf { it > 0L }
+
                         if (isRunning) {
-                            // Pause: add elapsed time to total
-                            val now = Clock.System.now().toEpochMilliseconds()
-                            val elapsed = now - startMs
+                            // Pause: add elapsed time to total (dual base)
+                            val elapsed = DualTimeBase.elapsedMs(
+                                startMs, startMonoMs,
+                                Clock.System.now().toEpochMilliseconds(),
+                                DualTimeBase.elapsedRealtimeMs(),
+                            )
                             ds.setLong(KEY_STOPWATCH_TOTAL, totalMs + elapsed)
                             ds.setBoolean(KEY_STOPWATCH_RUNNING, false)
                         } else {
-                            // Resume: set start time to now
+                            // Resume: set both anchors to now
                             ds.setLong(KEY_STOPWATCH_START, Clock.System.now().toEpochMilliseconds())
+                            ds.setLong(KEY_STOPWATCH_START_MONO, DualTimeBase.elapsedRealtimeMs())
                             ds.setBoolean(KEY_STOPWATCH_RUNNING, true)
                         }
                         // Update notification
@@ -45,12 +50,16 @@ class StopwatchActionReceiver : BroadcastReceiver() {
                     ACTION_LAP -> {
                         val isRunning = ds.getBoolean(KEY_STOPWATCH_RUNNING, false)
                         if (!isRunning) return@launch
-                        
+
                         val totalMs = ds.getLong(KEY_STOPWATCH_TOTAL) ?: 0L
                         val startMs = ds.getLong(KEY_STOPWATCH_START) ?: 0L
-                        val now = Clock.System.now().toEpochMilliseconds()
-                        val currentTotal = totalMs + (now - startMs)
-                        
+                        val startMonoMs = (ds.getLong(KEY_STOPWATCH_START_MONO) ?: 0L).takeIf { it > 0L }
+                        val currentTotal = DualTimeBase.stopwatchElapsedMs(
+                            totalMs, startMs, startMonoMs,
+                            Clock.System.now().toEpochMilliseconds(),
+                            DualTimeBase.elapsedRealtimeMs(),
+                        )
+
                         val lapsStr = ds.getString(KEY_STOPWATCH_LAPS) ?: ""
                         val newLapsStr = if (lapsStr.isEmpty()) currentTotal.toString() else "$lapsStr,$currentTotal"
                         ds.setString(KEY_STOPWATCH_LAPS, newLapsStr)
@@ -81,6 +90,8 @@ class StopwatchActionReceiver : BroadcastReceiver() {
         const val KEY_STOPWATCH_RUNNING = "stopwatch_running"
         const val KEY_STOPWATCH_TOTAL = "stopwatch_total_ms"
         const val KEY_STOPWATCH_START = "stopwatch_start_ms"
+        /** Monotonic (`elapsedRealtime`) anchor paired with [KEY_STOPWATCH_START]; 0 = none stored. */
+        const val KEY_STOPWATCH_START_MONO = "stopwatch_start_elapsed_realtime_ms"
         const val KEY_STOPWATCH_LAPS = "stopwatch_laps"
         const val STOPWATCH_NOTIFICATION_ID = 9001
     }

@@ -47,7 +47,7 @@ import kotlin.time.Duration.Companion.seconds
 
 @Composable
 fun TimerCard(timer: Timer, now: kotlin.time.Instant, actions: TimerActions) {
-    val realRemainingTime = remember(timer, now) { timerRemaining(timer, now) }
+    val realRemainingTime = remember(timer, now) { timerRemaining(timer, now, com.vayunmathur.clock.platform.DualTimeBase.elapsedRealtimeMs()) }
     val isCompleted = realRemainingTime == Duration.ZERO && !timer.isRunning
     val stateLabel = when {
         isCompleted -> "Completed"

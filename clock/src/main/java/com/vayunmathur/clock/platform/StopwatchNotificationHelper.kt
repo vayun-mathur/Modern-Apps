@@ -19,6 +19,8 @@ object StopwatchNotificationHelper {
         val isRunning = ds.getBoolean(StopwatchActionReceiver.KEY_STOPWATCH_RUNNING, false)
         val totalMs = ds.getLong(StopwatchActionReceiver.KEY_STOPWATCH_TOTAL) ?: 0L
         val startMs = ds.getLong(StopwatchActionReceiver.KEY_STOPWATCH_START) ?: 0L
+        val startMonoMs = (ds.getLong(StopwatchActionReceiver.KEY_STOPWATCH_START_MONO) ?: 0L)
+            .takeIf { it > 0L }
 
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
@@ -28,15 +30,19 @@ object StopwatchNotificationHelper {
             return
         }
 
-        val contentText = formatElapsed(isRunning, totalMs, startMs)
+        val contentText = formatElapsed(isRunning, totalMs, startMs, startMonoMs)
         val builder = baseBuilder(context, contentText)
         addActions(context, builder, isRunning)
         nm.notify(StopwatchActionReceiver.STOPWATCH_NOTIFICATION_ID, builder.build())
     }
 
-    private fun formatElapsed(isRunning: Boolean, totalMs: Long, startMs: Long): String {
+    private fun formatElapsed(isRunning: Boolean, totalMs: Long, startMs: Long, startMonoMs: Long?): String {
         val elapsedMs = if (isRunning) {
-            totalMs + (Clock.System.now().toEpochMilliseconds() - startMs)
+            DualTimeBase.stopwatchElapsedMs(
+                totalMs, startMs, startMonoMs,
+                Clock.System.now().toEpochMilliseconds(),
+                DualTimeBase.elapsedRealtimeMs(),
+            )
         } else {
             totalMs
         }

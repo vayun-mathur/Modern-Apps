@@ -143,6 +143,8 @@ class ClockViewModel(
 
     private val _stopwatchTotal = MutableStateFlow(Duration.ZERO)
     private val _stopwatchStart = MutableStateFlow(Clock.System.now())
+    /** Monotonic anchor paired with [_stopwatchStart]; null = none stored / unusable. */
+    private val _stopwatchStartMono = MutableStateFlow<Long?>(null)
 
     private val _lapTimes = MutableStateFlow<List<Duration>>(emptyList())
     val lapTimes: StateFlow<List<Duration>> = _lapTimes.asStateFlow()
@@ -161,16 +163,38 @@ class ClockViewModel(
                 ds.booleanFlow(StopwatchActionReceiver.KEY_STOPWATCH_RUNNING, false),
                 ds.longFlow(StopwatchActionReceiver.KEY_STOPWATCH_TOTAL, 0L),
                 ds.longFlow(StopwatchActionReceiver.KEY_STOPWATCH_START, 0L),
+                ds.longFlow(StopwatchActionReceiver.KEY_STOPWATCH_START_MONO, 0L),
                 ds.stringFlow(StopwatchActionReceiver.KEY_STOPWATCH_LAPS),
-            ) { isRunning, totalMs, startMs, lapsStr ->
+            ) { isRunning, totalMs, startMs, startMonoMs, lapsStr ->
+                val storedMono = startMonoMs.takeIf { it > 0L }
+                val wallNowMs = Clock.System.now().toEpochMilliseconds()
+                val monoNowMs = DualTimeBase.elapsedRealtimeMs()
+                // Reboot detection: the stored monotonic anchor is ahead of
+                // the (reset) monotonic clock, so it can never measure this
+                // run again. Bank the wall-base elapsed into the total and
+                // re-anchor both bases at now; counting then stays monotonic
+                // instead of falling back to the jumpable wall clock until
+                // uptime happens to pass the pre-reboot anchor.
+                val rebased = isRunning && startMs > 0L &&
+                    storedMono != null && !DualTimeBase.isMonotonicUsable(storedMono, monoNowMs)
+                if (rebased) {
+                    _stopwatchTotal.value = DualTimeBase.stopwatchElapsedMs(
+                        totalMs, startMs, storedMono, wallNowMs, monoNowMs,
+                    ).milliseconds
+                    _stopwatchStart.value = Instant.fromEpochMilliseconds(wallNowMs)
+                    _stopwatchStartMono.value = monoNowMs
+                } else {
+                    _stopwatchTotal.value = totalMs.milliseconds
+                    _stopwatchStart.value =
+                        if (startMs > 0) Instant.fromEpochMilliseconds(startMs) else Clock.System.now()
+                    _stopwatchStartMono.value = storedMono
+                }
                 _stopwatchRunning.value = isRunning
-                _stopwatchTotal.value = totalMs.milliseconds
-                _stopwatchStart.value =
-                    if (startMs > 0) Instant.fromEpochMilliseconds(startMs) else Clock.System.now()
                 _lapTimes.value = lapsStr
                     .takeIf { it.isNotEmpty() }
                     ?.split(",")?.mapNotNull { it.toLongOrNull()?.milliseconds }
                     .orEmpty()
+                if (rebased) persistStopwatchState()
             }.collect {}
         }
     }
@@ -192,11 +216,13 @@ class ClockViewModel(
         val running = _stopwatchRunning.value
         val totalMs = _stopwatchTotal.value.inWholeMilliseconds
         val startMs = _stopwatchStart.value.toEpochMilliseconds()
+        val startMonoMs = _stopwatchStartMono.value ?: 0L
         val lapsStr = _lapTimes.value.joinToString(",") { it.inWholeMilliseconds.toString() }
         viewModelScope.launch(persistDispatcher) {
             ds.setBoolean(StopwatchActionReceiver.KEY_STOPWATCH_RUNNING, running)
             ds.setLong(StopwatchActionReceiver.KEY_STOPWATCH_TOTAL, totalMs)
             ds.setLong(StopwatchActionReceiver.KEY_STOPWATCH_START, startMs)
+            ds.setLong(StopwatchActionReceiver.KEY_STOPWATCH_START_MONO, startMonoMs)
             ds.setString(StopwatchActionReceiver.KEY_STOPWATCH_LAPS, lapsStr)
         }
     }
@@ -210,9 +236,20 @@ class ClockViewModel(
         _stopwatchRunning,
         _stopwatchTotal,
         _stopwatchStart,
+        _stopwatchStartMono,
         now,
-    ) { running, total, start, instant ->
-        if (running) (instant - start) + total else total
+    ) { running, total, start, startMono, instant ->
+        if (running) {
+            DualTimeBase.stopwatchElapsedMs(
+                total.inWholeMilliseconds,
+                start.toEpochMilliseconds(),
+                startMono,
+                instant.toEpochMilliseconds(),
+                DualTimeBase.elapsedRealtimeMs(),
+            ).milliseconds
+        } else {
+            total
+        }
     }.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
@@ -222,10 +259,17 @@ class ClockViewModel(
     override fun toggleStopwatch() {
         val ctx = getApplication<Application>()
         if (_stopwatchRunning.value) {
-            _stopwatchTotal.value = _stopwatchTotal.value + (Clock.System.now() - _stopwatchStart.value)
+            _stopwatchTotal.value = DualTimeBase.stopwatchElapsedMs(
+                _stopwatchTotal.value.inWholeMilliseconds,
+                _stopwatchStart.value.toEpochMilliseconds(),
+                _stopwatchStartMono.value,
+                Clock.System.now().toEpochMilliseconds(),
+                DualTimeBase.elapsedRealtimeMs(),
+            ).milliseconds
             _stopwatchRunning.value = false
         } else {
             _stopwatchStart.value = Clock.System.now()
+            _stopwatchStartMono.value = DualTimeBase.elapsedRealtimeMs()
             _stopwatchRunning.value = true
         }
         persistStopwatchState()
@@ -236,6 +280,7 @@ class ClockViewModel(
         val ctx = getApplication<Application>()
         _stopwatchRunning.value = false
         _stopwatchTotal.value = Duration.ZERO
+        _stopwatchStartMono.value = null
         _lapTimes.value = emptyList()
         persistStopwatchState()
         StopwatchNotificationHelper.updateNotification(ctx)
@@ -297,6 +342,7 @@ class ClockViewModel(
                         Clock.System.now(),
                         length.seconds,
                         length.seconds,
+                        remainingStartElapsedRealtime = DualTimeBase.elapsedRealtimeMs(),
                     )
                     val ctx = getApplication<Application>()
                     viewModelScope.launch(Dispatchers.IO) {

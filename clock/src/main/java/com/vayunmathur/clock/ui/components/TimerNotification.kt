@@ -35,8 +35,25 @@ fun sendTimerNotification(context: Context, timer: Timer, isStarting: Boolean) {
         return
     }
 
-    val remaining = if (timer.isRunning) timer.remainingLength - (Clock.System.now() - timer.remainingStartTime) else timer.remainingLength
+    val monoNowMs = com.vayunmathur.clock.platform.DualTimeBase.elapsedRealtimeMs()
+    val remaining = com.vayunmathur.clock.platform.timerRemaining(timer, Clock.System.now(), monoNowMs)
+    // Wall-clock end for the notification chronometer (it renders a wall time).
     val endTimestamp = System.currentTimeMillis() + remaining.inWholeMilliseconds
+    // Countdown expiry is a duration, not a wall appointment: arm it on the
+    // monotonic base when that anchor is usable so a wall jump cannot fire
+    // it early/late. Unusable (legacy row / reboot) -> wall RTC trigger.
+    val monoTriggerMs = if (timer.isRunning) {
+        com.vayunmathur.clock.platform.DualTimeBase.timerTriggerElapsedMs(
+            monoNowMs.takeIf {
+                com.vayunmathur.clock.platform.DualTimeBase.isMonotonicUsable(
+                    timer.remainingStartElapsedRealtime, it,
+                )
+            },
+            remaining.inWholeMilliseconds,
+        )
+    } else {
+        null
+    }
 
     val pauseIntent = PendingIntent.getBroadcast(context, notificationId + 1, Intent(context, com.vayunmathur.clock.platform.TimerActionReceiver::class.java).apply { action = com.vayunmathur.clock.platform.TimerActionReceiver.ACTION_PAUSE; putExtra("timer_id", timer.id) }, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     val resumeIntent = PendingIntent.getBroadcast(context, notificationId + 2, Intent(context, com.vayunmathur.clock.platform.TimerActionReceiver::class.java).apply { action = com.vayunmathur.clock.platform.TimerActionReceiver.ACTION_RESUME; putExtra("timer_id", timer.id) }, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
@@ -63,13 +80,21 @@ fun sendTimerNotification(context: Context, timer: Timer, isStarting: Boolean) {
 
     nm.notify(notificationId, builder.build())
     try {
-        am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, endTimestamp, pendingAlarm)
+        if (monoTriggerMs != null) {
+            am.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, monoTriggerMs, pendingAlarm)
+        } else {
+            am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, endTimestamp, pendingAlarm)
+        }
     } catch (e: SecurityException) {
         // Exact-alarm special access revoked after the first-launch gate:
         // callers include Compose click handlers and the assistant-intent
         // path, where this throw crashed the app. An inexact while-idle
         // alarm still finishes the timer, just without exact timing.
         Log.error("TimerNotification", "Timer ${timer.id}: exact alarm denied; falling back to inexact", e)
-        am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, endTimestamp, pendingAlarm)
+        if (monoTriggerMs != null) {
+            am.setAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, monoTriggerMs, pendingAlarm)
+        } else {
+            am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, endTimestamp, pendingAlarm)
+        }
     }
 }

@@ -30,7 +30,7 @@ fun TimerPage(clockViewModel: ClockViewModel) {
     val actions = remember(clockViewModel, context) {
         object : TimerActions {
             override fun start(duration: Duration, name: String) {
-                val timer = Timer(true, name, Clock.System.now(), duration, duration)
+                val timer = Timer(true, name, Clock.System.now(), duration, duration, remainingStartElapsedRealtime = com.vayunmathur.clock.platform.DualTimeBase.elapsedRealtimeMs())
                 clockViewModel.upsert(timer) { sendTimerNotification(context, timer.copy(id = it), true) }
             }
             override fun delete(timer: Timer) { sendTimerNotification(context, timer, false); clockViewModel.delete(timer) }
@@ -40,13 +40,13 @@ fun TimerPage(clockViewModel: ClockViewModel) {
                 if (timer.isRunning) sendTimerNotification(context, updated, true)
             }
             override fun reset(timer: Timer) {
-                clockViewModel.upsert(timer.copy(isRunning = false, remainingLength = timer.totalLength, remainingStartTime = Clock.System.now()))
+                clockViewModel.upsert(timer.copy(isRunning = false, remainingLength = timer.totalLength, remainingStartTime = Clock.System.now(), remainingStartElapsedRealtime = null))
                 sendTimerNotification(context, timer, false)
             }
             override fun toggle(timer: Timer) {
                 when {
                     !timer.isRunning && timer.remainingLength <= Duration.ZERO -> {
-                        val restarted = timer.copy(isRunning = true, remainingLength = timer.totalLength, remainingStartTime = Clock.System.now())
+                        val restarted = timer.started().copy(remainingLength = timer.totalLength)
                         clockViewModel.upsert(restarted); sendTimerNotification(context, restarted, true)
                     }
                     timer.isRunning -> { clockViewModel.upsert(timer.stopped()); sendTimerNotification(context, timer, false) }

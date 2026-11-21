@@ -62,6 +62,7 @@ class TimerReceiver : BroadcastReceiver() {
                         isRunning = false,
                         remainingLength = Duration.ZERO,
                         remainingStartTime = Clock.System.now(),
+                        remainingStartElapsedRealtime = null,
                     )
                     repository.upsertTimer(completed)
                 } catch (e: Exception) {

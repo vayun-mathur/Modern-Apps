@@ -18,9 +18,10 @@ import kotlin.time.Duration
  * meaning what the database says: after a reboot (AlarmManager is wiped),
  * and after the timezone or the wall clock changes (AlarmManager entries are
  * absolute epoch millis, so a 07:00 alarm computed in the old zone would
- * otherwise fire at 07:00-old-zone in the new one). Timers need no such
- * handling for time changes — their end is a duration from a stored instant,
- * which a zone change does not move.
+ * otherwise fire at 07:00-old-zone in the new one). Timers are durations
+ * measured on the dual (prefer-monotonic) base in `restoreTimers`, so a
+ * zone/wall change does not move their end either; that pass exists for
+ * reboot, where AlarmManager is wiped and the monotonic base resets.
  */
 class BootReceiver : BroadcastReceiver() {
     // Broad catch is deliberate: onReceive must not throw, and Room throws
@@ -111,8 +112,22 @@ class BootReceiver : BroadcastReceiver() {
         repository.getAllTimers().filter { it.isRunning }.forEach { timer ->
             // One bad timer must not take the others down with it.
             runCatching {
-                if (timerRemaining(timer, now) > Duration.ZERO) {
-                    sendTimerNotification(context, timer, true)
+                val monoNowMs = DualTimeBase.elapsedRealtimeMs()
+                // Dual base: monotonic when the anchor survived (a timezone /
+                // wall change does not reboot the monotonic clock), wall after
+                // a reboot (where the powered-off span should count).
+                val remaining = timerRemaining(timer, now, monoNowMs)
+                if (remaining > Duration.ZERO) {
+                    // Re-anchor both bases at the restore moment with the
+                    // banked remaining, so a stale pre-reboot monotonic anchor
+                    // does not leave every future read on the wall base.
+                    val rebased = timer.copy(
+                        remainingLength = remaining,
+                        remainingStartTime = now,
+                        remainingStartElapsedRealtime = monoNowMs,
+                    )
+                    repository.upsertTimer(rebased)
+                    sendTimerNotification(context, rebased, true)
                     timersRearmed++
                 } else {
                     repository.upsertTimer(
@@ -120,6 +135,7 @@ class BootReceiver : BroadcastReceiver() {
                             isRunning = false,
                             remainingLength = Duration.ZERO,
                             remainingStartTime = now,
+                            remainingStartElapsedRealtime = null,
                         )
                     )
                     // TimerReceiver posts the "time's up" notification and re-writes

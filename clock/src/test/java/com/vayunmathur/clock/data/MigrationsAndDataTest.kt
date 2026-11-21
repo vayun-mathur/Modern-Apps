@@ -50,10 +50,11 @@ class MigrationsAndDataTest {
     }
 
     @Test fun migrationsApplyTheirSqlInOrder() { kotlinx.coroutines.runBlocking {
-        assertEquals(2, ClockDatabase.migrations.size)
+        assertEquals(3, ClockDatabase.migrations.size)
         val recording = RecordingConnection()
         ClockDatabase.migrations[0].migrate(recording.connection)
         ClockDatabase.migrations[1].migrate(recording.connection)
+        ClockDatabase.migrations[2].migrate(recording.connection)
         assertEquals(
             listOf(
                 "ALTER TABLE Alarm ADD COLUMN ringtoneUri TEXT",
@@ -61,6 +62,7 @@ class MigrationsAndDataTest {
                 "ALTER TABLE Alarm ADD COLUMN snoozeMinutes INTEGER NOT NULL DEFAULT 5",
                 "ALTER TABLE Alarm ADD COLUMN gradualVolumeSeconds INTEGER NOT NULL DEFAULT 0",
                 "ALTER TABLE Alarm ADD COLUMN snoozedUntil INTEGER",
+                "ALTER TABLE Timer ADD COLUMN remainingStartElapsedRealtime INTEGER",
             ),
             recording.sql,
         )

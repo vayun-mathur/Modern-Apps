@@ -17,9 +17,19 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.datetime.LocalTime
 import kotlin.time.Clock
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Instant
 
-/** A persisted countdown timer, with its remaining length measured from [remainingStartTime] while running. */
+/**
+ * A persisted countdown timer, with its remaining length measured from the
+ * dual anchors while running: [remainingStartTime] is the wall-clock anchor
+ * and [remainingStartElapsedRealtime] the monotonic (`elapsedRealtime`)
+ * anchor taken at the same moment. Remaining time is measured on the
+ * monotonic base when that anchor is still usable (immune to wall-clock /
+ * timezone jumps) and on the wall base after a reboot resets the monotonic
+ * clock (see `platform/DualTimeBase`). Null monotonic anchor = a row written
+ * before the dual base existed (or written paused): wall base only.
+ */
 @Entity
 data class Timer(
     var isRunning: Boolean,
@@ -27,21 +37,38 @@ data class Timer(
     var remainingStartTime: Instant,
     var remainingLength: Duration,
     var totalLength: Duration,
+    var remainingStartElapsedRealtime: Long? = null,
     @PrimaryKey(autoGenerate = true)
     override var id: Long = 0,
 ): DatabaseItem {
-    fun stopped(): Timer {
-        val now = Clock.System.now()
+    fun stopped(
+        wallNow: Instant = Clock.System.now(),
+        monoNowMs: Long? = com.vayunmathur.clock.platform.DualTimeBase.elapsedRealtimeMs(),
+    ): Timer {
         // Pausing after the finish line (e.g. the finish broadcast is still
         // in flight) must not persist a negative remaining length; the
         // notification pause path already clamps, this one did not.
-        val remainingTime = (remainingLength - (now - remainingStartTime)).coerceAtLeast(Duration.ZERO)
-        return copy(isRunning = false, remainingLength = remainingTime)
+        val remainingMs = com.vayunmathur.clock.platform.DualTimeBase.timerRemainingMs(
+            remainingLength.inWholeMilliseconds,
+            remainingStartTime.toEpochMilliseconds(),
+            remainingStartElapsedRealtime,
+            wallNow.toEpochMilliseconds(),
+            monoNowMs,
+        )
+        return copy(
+            isRunning = false,
+            remainingLength = remainingMs.milliseconds,
+            remainingStartElapsedRealtime = null,
+        )
     }
-    fun started(): Timer {
-        val now = Clock.System.now()
-        return copy(isRunning = true, remainingStartTime = now)
-    }
+    fun started(
+        wallNow: Instant = Clock.System.now(),
+        monoNowMs: Long? = com.vayunmathur.clock.platform.DualTimeBase.elapsedRealtimeMs(),
+    ): Timer = copy(
+        isRunning = true,
+        remainingStartTime = wallNow,
+        remainingStartElapsedRealtime = monoNowMs,
+    )
 }
 
 /** A persisted alarm; [days] is a weekday bitmask with bit 0 as Sunday. */
@@ -105,7 +132,7 @@ interface AlarmDao {
 
 /** Room database holding the clock app's timers and alarms. */
 @ColumnTypeConverters(DefaultConverters::class)
-@Database(entities = [Timer::class, Alarm::class], version = 3, exportSchema = true)
+@Database(entities = [Timer::class, Alarm::class], version = 4, exportSchema = true)
 abstract class ClockDatabase: RoomDatabase() {
     abstract fun timerDao(): TimerDao
     abstract fun alarmDao(): AlarmDao
@@ -121,6 +148,12 @@ abstract class ClockDatabase: RoomDatabase() {
             },
             Migration(2, 3) {
                 it.execSQL("ALTER TABLE Alarm ADD COLUMN snoozedUntil INTEGER")
+            },
+            Migration(3, 4) {
+                // Dual time base: monotonic anchor for running timers.
+                // Nullable: pre-existing rows have no monotonic anchor and
+                // keep measuring on the wall base until next started().
+                it.execSQL("ALTER TABLE Timer ADD COLUMN remainingStartElapsedRealtime INTEGER")
             },
         )
     }

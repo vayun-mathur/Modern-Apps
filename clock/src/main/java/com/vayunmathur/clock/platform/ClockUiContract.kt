@@ -5,6 +5,7 @@ import com.vayunmathur.clock.data.Timer
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Instant
 
 /**
@@ -86,14 +87,26 @@ interface TimerActions {
     }
 }
 
-/** Remaining duration for [timer] at instant [now], clamped to >= 0. */
-fun timerRemaining(timer: Timer, now: Instant): Duration {
-    val raw = if (timer.isRunning) {
-        timer.remainingLength - (now - timer.remainingStartTime)
-    } else {
-        timer.remainingLength
-    }
-    return raw.coerceAtLeast(Duration.ZERO)
+/** Remaining duration for [timer] at instant [now], clamped to >= 0. Wall base only. */
+fun timerRemaining(timer: Timer, now: Instant): Duration =
+    timerRemaining(timer, now, null)
+
+/**
+ * Remaining duration for [timer] at wall instant [now] with monotonic reading
+ * [elapsedRealtimeMs], clamped to >= 0. While running, the dual base prefers
+ * the timer's monotonic anchor (immune to wall/timezone jumps) and falls back
+ * to the wall anchor when that anchor is unusable (e.g. after a reboot).
+ */
+fun timerRemaining(timer: Timer, now: Instant, elapsedRealtimeMs: Long?): Duration {
+    if (!timer.isRunning) return timer.remainingLength.coerceAtLeast(Duration.ZERO)
+    val remainingMs = DualTimeBase.timerRemainingMs(
+        timer.remainingLength.inWholeMilliseconds,
+        timer.remainingStartTime.toEpochMilliseconds(),
+        timer.remainingStartElapsedRealtime,
+        now.toEpochMilliseconds(),
+        elapsedRealtimeMs,
+    )
+    return remainingMs.milliseconds
 }
 
 /** Everything the stopwatch tab draws. */

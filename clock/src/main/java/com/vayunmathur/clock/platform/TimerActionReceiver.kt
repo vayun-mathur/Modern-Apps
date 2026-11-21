@@ -16,7 +16,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlin.time.Clock
-import kotlin.time.Duration
 
 /** Handles timer notification actions (pause, resume, cancel, reset) against persisted timers. */
 class TimerActionReceiver : BroadcastReceiver() {
@@ -57,17 +56,8 @@ class TimerActionReceiver : BroadcastReceiver() {
     ) {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        // Pause the timer: calculate remaining, update DB, cancel alarm and notification
-        val now = Clock.System.now()
-        val remaining = if (timer.isRunning) {
-            timer.remainingLength - (now - timer.remainingStartTime)
-        } else {
-            timer.remainingLength
-        }
-        val pausedTimer = timer.copy(
-            isRunning = false,
-            remainingLength = remaining.coerceAtLeast(Duration.ZERO),
-        )
+        // Pause the timer: bank dual-base remaining, update DB, cancel alarm and notification
+        val pausedTimer = if (timer.isRunning) timer.stopped() else timer.copy(remainingStartElapsedRealtime = null)
         repository.upsertTimer(pausedTimer)
         cancelAlarm(context, am, timer)
         nm.cancel(timer.id.hashCode())
@@ -78,8 +68,8 @@ class TimerActionReceiver : BroadcastReceiver() {
         repository: ClockRepository,
         timer: Timer,
     ) {
-        // Resume the timer: update DB with new start time, reschedule notification
-        val resumedTimer = timer.copy(isRunning = true, remainingStartTime = Clock.System.now())
+        // Resume the timer: update DB with fresh dual anchors, reschedule notification
+        val resumedTimer = timer.started()
         repository.upsertTimer(resumedTimer)
         com.vayunmathur.clock.ui.components.sendTimerNotification(
             context,
@@ -112,7 +102,8 @@ class TimerActionReceiver : BroadcastReceiver() {
         val resetTimer = timer.copy(
             isRunning = false,
             remainingLength = timer.totalLength,
-            remainingStartTime = Clock.System.now()
+            remainingStartTime = Clock.System.now(),
+            remainingStartElapsedRealtime = null,
         )
         repository.upsertTimer(resetTimer)
         cancelAlarm(context, am, timer)

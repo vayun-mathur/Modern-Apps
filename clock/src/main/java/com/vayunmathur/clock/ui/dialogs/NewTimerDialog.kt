@@ -118,7 +118,7 @@ fun NewTimerDialog(
                     
                     if (h > 0 || m > 0 || s > 0) {
                         val duration = h.hours + m.minutes + s.seconds
-                        val timer = Timer(true, name, Clock.System.now(), duration, duration)
+                        val timer = Timer(true, name, Clock.System.now(), duration, duration, remainingStartElapsedRealtime = com.vayunmathur.clock.platform.DualTimeBase.elapsedRealtimeMs())
                         clockViewModel.upsert(timer) {
                             sendTimerNotification(context, timer.copy(id = it), true)
                         }

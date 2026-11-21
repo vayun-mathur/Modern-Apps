@@ -112,6 +112,13 @@ class ReceiversDeepTest {
         StopwatchActionReceiver().onReceive(ctx, Intent(StopwatchActionReceiver.ACTION_TOGGLE))
         await("running") { ds.getBoolean(StopwatchActionReceiver.KEY_STOPWATCH_RUNNING, false) }
         Thread.sleep(150)
+        // Robolectric's monotonic clock is tied to its paused scheduler and
+        // does not advance over Thread.sleep, so backdate the stored
+        // monotonic anchor to simulate 200ms of real elapsed time.
+        ds.setLong(
+            StopwatchActionReceiver.KEY_STOPWATCH_START_MONO,
+            DualTimeBase.elapsedRealtimeMs() - 200L,
+        )
         // Toggling again pauses and banks the elapsed total.
         StopwatchActionReceiver().onReceive(ctx, Intent(StopwatchActionReceiver.ACTION_TOGGLE))
         await("paused with banked total") {
