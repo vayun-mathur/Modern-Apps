@@ -1,5 +1,6 @@
 package com.vayunmathur.camera.platform.camera2
 
+import android.graphics.ImageFormat
 import android.view.Surface
 
 /**
@@ -11,6 +12,13 @@ import android.view.Surface
  * Phase 4a adds a JPEG `ImageReader` as a second output (when the lens
  * reports JPEG sizes) and [capture] for plain single stills; see
  * [StillCapturePlanner] and [StillEnginePolicy].
+ *
+ * The depth phase adds an optional YUV reprocess ring (third output,
+ * [ReprocessRingConfig]): while streaming the ring holds the newest
+ * already-exposed frames; [captureFromRing] serves a shutter from one
+ * of them — reprocessed through `ImageWriter` on a reprocessable
+ * session when the facade reports YUV reprocessing, direct-encoded
+ * otherwise — with no AE-convergence wait or fresh exposure.
  *
  * Threading: every public method posts onto the executor; every driver
  * callback arrives on the executor and is generation-checked through
@@ -31,6 +39,7 @@ class Camera2Session(
     private val snapshot: LensCharacteristicsSnapshot,
     private val stateMachine: SessionStateMachine = SessionStateMachine(),
     private val listener: Listener? = null,
+    private val ringConfig: ReprocessRingConfig = ReprocessRingConfig.DISABLED,
 ) {
 
     /** Session lifecycle notifications; all fire on the executor thread. */
@@ -55,6 +64,11 @@ class Camera2Session(
     private var previewSize: FrameSize? = null
     private var stillOutput: StillOutput? = null
     private var stillSize: FrameSize? = null
+    private var ringOutput: RingOutput? = null
+    private var ringSize: FrameSize? = null
+    private val ring = ReprocessRing<RingHeldFrame>(ringConfig.capacity)
+    private var latestPreviewTimestampNs: Long? = null
+    private val previewMetas = LinkedHashMap<Long, RawStillMetadata>()
     private var pendingStill: PendingStill? = null
     private var displayRotationDegrees: Int = 0
     private var controls: Camera2ControlState = Camera2ControlState.DEFAULT
@@ -195,6 +209,120 @@ class Camera2Session(
     /** True when a JPEG output exists (see [StillEnginePolicy]). */
     val hasJpegOutput: Boolean get() = stillOutput != null
 
+    /** True when the YUV ring output is configured (see [StillEnginePolicy]). */
+    val hasRingOutput: Boolean get() = ringOutput != null
+
+    /** The ring size configured at [open], or null when unavailable. */
+    fun currentRingSize(): FrameSize? = ringSize
+
+    /** Frames currently held in the ring. */
+    val ringFrameCount: Int get() = ring.size
+
+    /** Ring frames evicted (oldest dropped) since [open]. */
+    val ringEvictedFrames: Long get() = ring.evictedFrames
+
+    /** Facade-reported YUV reprocess support for this lens. */
+    val reprocessSupported: Boolean get() = snapshot.supportsYuvRingReprocess
+
+    /**
+     * Takes one still from the ring: picks the exposure-complete frame
+     * nearest [shutterTimestampNs] (or the latest preview timestamp when
+     * null), then either reprocesses it on the reprocessable session or
+     * direct-encodes it, delivering through the same [StillCallback]
+     * shape as [capture]. A ring miss (empty / nothing fully exposed)
+     * and a runtime reprocess refusal both fall back to the regular
+     * still capture — the shutter is never lost to the ring.
+     */
+    fun captureFromRing(
+        callback: StillCallback,
+        shutterTimestampNs: Long? = null,
+        displayRotationDegrees: Int? = null,
+        mirrored: Boolean = false,
+    ) {
+        executor.execute {
+            val session = captureSession
+            when {
+                stateMachine.state != SessionState.STREAMING || session == null ->
+                    callback.onStillFailed("ring capture requires a streaming session")
+                ringOutput == null ->
+                    callback.onStillFailed("no YUV ring output on this session")
+                pendingStill != null ->
+                    callback.onStillFailed("a still capture is already in flight")
+                else -> {
+                    val shutter = shutterTimestampNs
+                        ?: latestPreviewTimestampNs
+                        ?: ring.metas().maxOfOrNull { it.sensorTimestampNs }
+                    val selection = shutter?.let { ring.select(it) }
+                    if (selection !is RingSelection.Hit) {
+                        // No already-exposed frame: take a fresh still.
+                        startStillCapture(callback, displayRotationDegrees, mirrored)
+                        return@execute
+                    }
+                    val held = ring.remove(selection.meta.sensorTimestampNs)
+                    if (held == null) {
+                        startStillCapture(callback, displayRotationDegrees, mirrored)
+                        return@execute
+                    }
+                    val params = StillCapturePlanner.resolve(
+                        state = controls,
+                        snapshot = snapshot,
+                        displayRotationDegrees = displayRotationDegrees
+                            ?: this@Camera2Session.displayRotationDegrees,
+                        mirrored = mirrored,
+                    )
+                    val output = stillOutput
+                    val reprocessed = output != null && snapshot.supportsYuvRingReprocess &&
+                        runCatching {
+                            val pending = PendingStill(params, callback)
+                            pendingStill = pending
+                            val started = session.captureReprocess(
+                                params, output.surface, held,
+                                object : StillResultCallback {
+                                    override fun onCompleted(metadata: RawStillMetadata) =
+                                        onStillResult(pending, metadata)
+
+                                    override fun onFailed(message: String) =
+                                        failPending(pending, message)
+                                },
+                            )
+                            if (!started && pendingStill === pending) pendingStill = null
+                            started
+                        }.getOrDefault(false)
+                    if (reprocessed) {
+                        // ImageWriter owns the held image from here.
+                        return@execute
+                    }
+                    // Direct fallback: encode the already-exposed frame.
+                    val jpeg = held.encodeJpeg()
+                    // The ring's copy carries preview-result patches;
+                    // the held frame's own meta may predate them.
+                    val meta = selection.meta
+                    held.close()
+                    if (jpeg == null) {
+                        startStillCapture(callback, displayRotationDegrees, mirrored)
+                        return@execute
+                    }
+                    callback.onStillCaptured(
+                        CapturedStill(
+                            jpegBytes = jpeg,
+                            jpegWidth = meta.width,
+                            jpegHeight = meta.height,
+                            metadata = StillMetadataMapper.map(
+                                RawStillMetadata(
+                                    sensorTimestampNs = meta.sensorTimestampNs,
+                                    exposureTimeNs = meta.exposureTimeNs,
+                                    iso = meta.iso,
+                                    frameNumber = meta.frameNumber,
+                                ),
+                                params.jpegOrientationDegrees, params.mirrored,
+                            ),
+                        ),
+                    )
+                }
+            }
+        }
+    }
+
     /**
      * Takes one plain still: issues `TEMPLATE_STILL_CAPTURE` carrying the
      * session's current control state plus flash resolution, and delivers
@@ -218,30 +346,77 @@ class Camera2Session(
                     callback.onStillFailed("no JPEG output on this session")
                 pendingStill != null ->
                     callback.onStillFailed("a still capture is already in flight")
-                else -> {
-                    val params = StillCapturePlanner.resolve(
-                        state = controls,
-                        snapshot = snapshot,
-                        displayRotationDegrees = displayRotationDegrees
-                            ?: this@Camera2Session.displayRotationDegrees,
-                        mirrored = mirrored,
-                    )
-                    val pending = PendingStill(params, callback)
-                    pendingStill = pending
-                    runCatching {
-                        session.captureStill(params, output.surface, object : StillResultCallback {
-                            override fun onCompleted(metadata: RawStillMetadata) {
-                                onStillResult(pending, metadata)
-                            }
-
-                            override fun onFailed(message: String) {
-                                failPending(pending, message)
-                            }
-                        })
-                    }.onFailure { failPending(pending, "captureStill failed: ${it.message}") }
-                }
+                else -> startStillCapture(callback, displayRotationDegrees, mirrored)
             }
         }
+    }
+
+    /** Regular TEMPLATE_STILL_CAPTURE path (capture + ring-miss fallback). */
+    private fun startStillCapture(
+        callback: StillCallback,
+        displayRotationDegrees: Int?,
+        mirrored: Boolean,
+    ) {
+        val session = captureSession ?: run {
+            callback.onStillFailed("still capture requires a streaming session")
+            return
+        }
+        val output = stillOutput ?: run {
+            callback.onStillFailed("no JPEG output on this session")
+            return
+        }
+        if (pendingStill != null) {
+            callback.onStillFailed("a still capture is already in flight")
+            return
+        }
+        val params = StillCapturePlanner.resolve(
+            state = controls,
+            snapshot = snapshot,
+            displayRotationDegrees = displayRotationDegrees
+                ?: this@Camera2Session.displayRotationDegrees,
+            mirrored = mirrored,
+        )
+        val pending = PendingStill(params, callback)
+        pendingStill = pending
+        runCatching {
+            session.captureStill(params, output.surface, object : StillResultCallback {
+                override fun onCompleted(metadata: RawStillMetadata) {
+                    onStillResult(pending, metadata)
+                }
+
+                override fun onFailed(message: String) {
+                    failPending(pending, message)
+                }
+            })
+        }.onFailure { failPending(pending, "captureStill failed: ${it.message}") }
+    }
+
+    private fun onRingFrame(frame: RingHeldFrame) {
+        try {
+            executor.execute {
+                val evicted = ring.offer(frame.meta, frame)
+                evicted?.close()
+                // The preview result may have arrived before this image.
+                previewMetas[frame.meta.sensorTimestampNs]?.let { raw ->
+                    ring.attachMetadata(
+                        frame.meta.sensorTimestampNs, raw.exposureTimeNs,
+                        raw.frameNumber, raw.aeState, raw.iso,
+                    )
+                }
+            }
+        } catch (e: java.util.concurrent.RejectedExecutionException) {
+            frame.close()
+        }
+    }
+
+    private fun onPreviewResult(raw: RawStillMetadata) {
+        val timestamp = raw.sensorTimestampNs ?: return
+        latestPreviewTimestampNs = timestamp
+        previewMetas[timestamp] = raw
+        while (previewMetas.size > PREVIEW_META_CAP) {
+            previewMetas.remove(previewMetas.keys.first())
+        }
+        ring.attachMetadata(timestamp, raw.exposureTimeNs, raw.frameNumber, raw.aeState, raw.iso)
     }
 
     private fun onStillResult(pending: PendingStill, metadata: RawStillMetadata) {
@@ -319,6 +494,11 @@ class Camera2Session(
             runCatching { stillOutput?.close() }
             stillOutput = null
             stillSize = null
+            runCatching { ringOutput?.close() }
+            ringOutput = null
+            ringSize = null
+            ring.drainAll().forEach { runCatching { it.close() } }
+            previewMetas.clear()
             runCatching { device?.close() }
             device = null
             previewSurface = null
@@ -337,8 +517,16 @@ class Camera2Session(
         val surface = previewSurface ?: return
         if (stateMachine.state != SessionState.STREAMING) return
         val params = Camera2Controls.resolve(controls, snapshot)
-        runCatching { session.setRepeatingPreview(params, surface) }
-            .onFailure { reportError("setRepeatingPreview failed: ${it.message}") }
+        val targets = listOfNotNull(surface, ringOutput?.surface)
+        runCatching {
+            session.setRepeatingStreaming(params, targets, PreviewResultCallback { raw ->
+                try {
+                    executor.execute { onPreviewResult(raw) }
+                } catch (e: java.util.concurrent.RejectedExecutionException) {
+                    // Session is gone; preview metadata no longer matters.
+                }
+            })
+        }.onFailure { reportError("setRepeatingPreview failed: ${it.message}") }
     }
 
     private fun configureSession(opened: DeviceHandle, gen: Long) {
@@ -357,12 +545,36 @@ class Camera2Session(
         }
         stillOutput = output
         stillSize = if (output != null) jpegSize else null
-        val surfaces = listOfNotNull(surface, output?.surface)
+        // Third output: the YUV ring, only when this session was built
+        // with the ring enabled. Failure degrades to no-ring (the
+        // policy then excludes the ring path, capture stays Phase 4a).
+        val selectedRingSize = if (ringConfig.enabled) {
+            StreamSelection.selectRingSize(snapshot)
+        } else {
+            null
+        }
+        val createdRing = selectedRingSize?.let { size ->
+            runCatching { driver.createRingOutput(size) }.getOrNull()?.also { created ->
+                created.setListener(RingFrameListener { frame -> onRingFrame(frame) })
+            }
+        }
+        ringOutput = createdRing
+        ringSize = if (createdRing != null) selectedRingSize else null
+        val surfaces = listOfNotNull(surface, output?.surface, createdRing?.surface)
+        val callback = SessionCallbackImpl(gen)
         runCatching {
-            opened.createCaptureSession(
-                surfaces,
-                SessionCallbackImpl(gen),
-            )
+            if (createdRing != null && snapshot.supportsYuvRingReprocess) {
+                opened.createReprocessableCaptureSession(
+                    ReprocessInputConfig(
+                        selectedRingSize.width, selectedRingSize.height,
+                        ImageFormat.YUV_420_888,
+                    ),
+                    surfaces,
+                    callback,
+                )
+            } else {
+                opened.createCaptureSession(surfaces, callback)
+            }
         }.onFailure {
             dispatch(gen, SessionEvent.CONFIGURE_FAILED)
             reportError("createCaptureSession failed: ${it.message}")
@@ -387,6 +599,10 @@ class Camera2Session(
 
     private fun reportError(message: String) {
         listener?.onError(message)
+    }
+
+    private companion object {
+        const val PREVIEW_META_CAP: Int = 16
     }
 
     private inner class DeviceCallbackImpl(

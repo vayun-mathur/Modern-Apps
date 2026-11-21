@@ -18,6 +18,8 @@ import com.vayunmathur.camera.platform.camera2.Camera2Session
 import com.vayunmathur.camera.platform.camera2.CharacteristicsFacade
 import com.vayunmathur.camera.platform.camera2.FrameSize
 import com.vayunmathur.camera.platform.camera2.PreviewSurfaceBridge
+import com.vayunmathur.camera.platform.camera2.ReprocessRingConfig
+import com.vayunmathur.camera.platform.camera2.ReprocessRingGate
 import com.vayunmathur.camera.platform.camera2.PreviewSurfaceEvent
 import com.vayunmathur.library.log.Log
 
@@ -103,6 +105,7 @@ private class Camera2PreviewSession(context: Context, private val cameraId: Stri
             driver = driver,
             executor = executor,
             snapshot = facade.snapshot,
+            ringConfig = ReprocessRingConfig(enabled = ReprocessRingGate.ENABLED),
             listener = object : Camera2Session.Listener {
                 override fun onError(message: String) {
                     Log.status("Camera2Preview", message)

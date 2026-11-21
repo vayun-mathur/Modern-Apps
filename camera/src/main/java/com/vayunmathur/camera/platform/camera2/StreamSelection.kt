@@ -127,6 +127,26 @@ object StreamSelection {
         supportedJpegSizes(snapshot)
             .maxWithOrNull(compareBy({ it.area }, { it.width }, { it.height }))
 
+    /** Supported YUV_420_888 sizes in facade order (empty = no ring). */
+    fun supportedYuvSizes(snapshot: LensCharacteristicsSnapshot): List<FrameSize> =
+        snapshot.streamConfig.sizesFor(ImageFormat.YUV_420_888)
+            .map { FrameSize.from(it) }.distinct()
+
+    /**
+     * The ring size: the largest advertised reprocess-input size that is
+     * also a YUV output (the only size a reprocess request can honestly
+     * consume), else the largest YUV output. Null when the lens reports
+     * no YUV sizes — no ring output is configured then.
+     */
+    fun selectRingSize(snapshot: LensCharacteristicsSnapshot): FrameSize? {
+        val yuv = supportedYuvSizes(snapshot)
+        if (yuv.isEmpty()) return null
+        val inputSizes = snapshot.reprocessInputSizes.map { FrameSize.from(it) }
+        val reprocessable = yuv.filter { it in inputSizes }
+        val pool = if (reprocessable.isNotEmpty()) reprocessable else yuv
+        return pool.maxWithOrNull(compareBy({ it.area }, { it.width }, { it.height }))
+    }
+
     /** The rejection for [requested], or null when a size can be selected. */
     fun rejectionFor(
         requested: FrameSize,

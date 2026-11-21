@@ -3,7 +3,13 @@ package com.vayunmathur.camera.platform.camera2
 import com.vayunmathur.camera.platform.CameraMode
 
 /** Which engine takes a still. */
-enum class StillEngine { CAMERAX, CAMERA2 }
+enum class StillEngine {
+    CAMERAX,
+    CAMERA2,
+
+    /** Camera2 ZSL ring: an already-exposed YUV frame, reprocessed or direct-encoded. */
+    CAMERA2_RING,
+}
 
 /**
  * Inputs to the still-engine selection rule. Every flag that describes a
@@ -25,6 +31,12 @@ data class StillEngineInput(
     val captureForResult: Boolean = false,
     /** Press-and-hold burst (a sequence, not a plain single capture). */
     val burst: Boolean = false,
+    /** Depth-phase ring gate (compile-time [ReprocessRingGate] AND runtime). */
+    val ringEnabled: Boolean = false,
+    /** Facade snapshot reports YUV reprocessing for this lens. */
+    val reprocessSupported: Boolean = false,
+    /** A YUV ring output is configured and holding frames on the session. */
+    val hasRingOutput: Boolean = false,
 )
 
 /**
@@ -38,16 +50,50 @@ data class StillEngineInput(
  * - processed captures (warmth/shadows bake, portrait bokeh) — Phase 4a
  *   does not re-encode through those pipelines from Camera2 bytes
  * - Motion Photo, burst, and capture-for-result
- * - RAW, reprocess/ZSL-ring captures: no such output is configured on the
- *   Camera2 session in this phase at all
+ * - RAW captures: no RAW output is configured in this phase (the ring is
+ *   structured so a RAW10 ring could slot in beside the YUV one later)
+ *
+ * Ring extension (depth phase): [StillEngine.CAMERA2_RING] is selected
+ * only when [StillEngineInput.ringEnabled] is on, the facade reports YUV
+ * reprocessing, a ring output exists, and every plain-single-photo rule
+ * above already passes. Everything else stays exactly as today. The
+ * direct-encode fallback in `Camera2Session.captureFromRing` covers a
+ * runtime reprocess failure after this policy has passed (facade said
+ * supported, the writer/session refused) — it is not a second route in.
  */
 object StillEnginePolicy {
 
-    fun select(input: StillEngineInput): StillEngine =
-        if (exclusionReason(input) == null) StillEngine.CAMERA2 else StillEngine.CAMERAX
+    fun select(input: StillEngineInput): StillEngine = when {
+        ringExclusionReason(input) == null -> StillEngine.CAMERA2_RING
+        exclusionReason(input) == null -> StillEngine.CAMERA2
+        else -> StillEngine.CAMERAX
+    }
 
-    /** True when this shot should be taken on the Camera2 session. */
-    fun usesCamera2(input: StillEngineInput): Boolean = select(input) == StillEngine.CAMERA2
+    /** True when this shot should be taken on the Camera2 session (any path). */
+    fun usesCamera2(input: StillEngineInput): Boolean = select(input) != StillEngine.CAMERAX
+
+    /** True when this shot should be served from the reprocess ZSL ring. */
+    fun usesRing(input: StillEngineInput): Boolean = select(input) == StillEngine.CAMERA2_RING
+
+    /** Why [input] cannot use the ring, or null when it can. */
+    fun ringExclusionReason(input: StillEngineInput): String? = when {
+        !input.ringEnabled -> "reprocess ring gate off"
+        !input.reprocessSupported -> "YUV reprocessing not supported for this lens"
+        !input.hasRingOutput -> "no YUV ring output on the Camera2 session"
+        exclusionReason(input) != null -> exclusionReason(input)
+        else -> null
+    }
+
+    /** Why HAL reprocessing cannot run for [input], or null when it can. */
+    fun reprocessExclusionReason(input: StillEngineInput): String? = when {
+        ringExclusionReason(input) != null -> ringExclusionReason(input)
+        !input.reprocessSupported -> "YUV reprocessing not supported for this lens"
+        else -> null
+    }
+
+    /** True when the ring frame should go through ImageWriter reprocessing. */
+    fun usesReprocess(input: StillEngineInput): Boolean =
+        reprocessExclusionReason(input) == null
 
     /** Why [input] cannot use Camera2, or null when it can. */
     fun exclusionReason(input: StillEngineInput): String? = when {

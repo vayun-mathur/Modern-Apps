@@ -159,6 +159,12 @@ data class LensCharacteristicsSnapshot(
      * goes through `SCALER_CROP_REGION` instead.
      */
     val supportsZoomRatioKey: Boolean = false,
+    /**
+     * Input sizes for reprocessing (`StreamConfigurationMap.getInputSizes`),
+     * keyed by input format. Empty when never read (fake snapshots may
+     * omit it — reprocess support then falls back to the capability bit).
+     */
+    val reprocessInputSizesByFormat: Map<Int, List<Size>> = emptyMap(),
 ) {
     val lensFacing: LensFacing? = when (lensFacingRaw) {
         CameraMetadata.LENS_FACING_BACK -> LensFacing.BACK
@@ -170,8 +176,39 @@ data class LensCharacteristicsSnapshot(
     val supportsRaw: Boolean
         get() = CameraMetadata.REQUEST_AVAILABLE_CAPABILITIES_RAW in availableCapabilities
     val supportsReprocess: Boolean
-        get() = CameraMetadata.REQUEST_AVAILABLE_CAPABILITIES_YUV_REPROCESSING in availableCapabilities ||
-            CameraMetadata.REQUEST_AVAILABLE_CAPABILITIES_PRIVATE_REPROCESSING in availableCapabilities
+        get() = supportsYuvReprocessing || supportsPrivateReprocessing
+    /** `YUV_REPROCESSING` capability: a YUV ring frame can be reprocessed. */
+    val supportsYuvReprocessing: Boolean
+        get() = CameraMetadata.REQUEST_AVAILABLE_CAPABILITIES_YUV_REPROCESSING in
+            availableCapabilities
+    /** `PRIVATE_REPROCESSING` capability (PRIVATE input, not our YUV ring). */
+    val supportsPrivateReprocessing: Boolean
+        get() = CameraMetadata.REQUEST_AVAILABLE_CAPABILITIES_PRIVATE_REPROCESSING in
+            availableCapabilities
+    /**
+     * The reprocess input format for this lens, or null when unsupported.
+     * YUV is preferred (it is the ring format); PRIVATE is reported so a
+     * future PRIVATE ring can use it, but the YUV ring cannot queue to it.
+     */
+    val reprocessInputFormat: Int?
+        get() = when {
+            supportsYuvReprocessing &&
+                (reprocessInputSizesByFormat.isEmpty() ||
+                    ImageFormat.YUV_420_888 in reprocessInputSizesByFormat) ->
+                ImageFormat.YUV_420_888
+            supportsPrivateReprocessing &&
+                (reprocessInputSizesByFormat.isEmpty() ||
+                    ImageFormat.PRIVATE in reprocessInputSizesByFormat) ->
+                ImageFormat.PRIVATE
+            else -> null
+        }
+    /** Advertised input sizes for [reprocessInputFormat] (empty if unread). */
+    val reprocessInputSizes: List<Size>
+        get() = reprocessInputFormat?.let { reprocessInputSizesByFormat[it].orEmpty() }
+            .orEmpty()
+    /** True when the YUV ring can honestly reprocess on this lens. */
+    val supportsYuvRingReprocess: Boolean
+        get() = reprocessInputFormat == ImageFormat.YUV_420_888
     val supportsManualSensor: Boolean
         get() = CameraMetadata.REQUEST_AVAILABLE_CAPABILITIES_MANUAL_SENSOR in availableCapabilities
     /** True when the HAL offers `CONSTRAINED_HIGH_SPEED_VIDEO` (Phase 5). */
@@ -231,6 +268,7 @@ class CharacteristicsFacade private constructor(
             highSpeedVideoSizes: List<Size> = emptyList(),
             highSpeedFpsRangesBySize: Map<Size, List<Range<Int>>> = emptyMap(),
             extensionSupport: Map<Int, ExtensionModeSupport> = emptyMap(),
+            reprocessInputSizesByFormat: Map<Int, List<Size>> = emptyMap(),
         ): CharacteristicsFacade = fromSnapshot(
             LensCharacteristicsSnapshot(
                 cameraId = cameraId,
@@ -262,6 +300,7 @@ class CharacteristicsFacade private constructor(
                 highSpeedVideoSizes = highSpeedVideoSizes,
                 highSpeedFpsRangesBySize = highSpeedFpsRangesBySize,
                 extensionSupport = extensionSupport,
+                reprocessInputSizesByFormat = reprocessInputSizesByFormat,
             ),
         )
 
@@ -304,6 +343,12 @@ class CharacteristicsFacade private constructor(
             val highSpeedSizes = runCatching {
                 streamMap?.highSpeedVideoSizes?.toList().orEmpty()
             }.getOrDefault(emptyList())
+            val reprocessInputSizes = runCatching {
+                streamMap?.inputFormats?.associateWith { format ->
+                    runCatching { streamMap.getInputSizes(format)?.toList().orEmpty() }
+                        .getOrDefault(emptyList())
+                }.orEmpty()
+            }.getOrDefault(emptyMap())
             val highSpeedRanges = highSpeedSizes.associateWith { size ->
                 runCatching {
                     streamMap?.getHighSpeedVideoFpsRangesFor(size)?.toList().orEmpty()
@@ -348,6 +393,7 @@ class CharacteristicsFacade private constructor(
                     highSpeedVideoSizes = highSpeedSizes,
                     highSpeedFpsRangesBySize = highSpeedRanges,
                     extensionSupport = extensionSupport,
+                    reprocessInputSizesByFormat = reprocessInputSizes,
                 ),
             )
         }

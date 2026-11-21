@@ -12,6 +12,7 @@ import com.vayunmathur.camera.domain.StillFormat
 import com.vayunmathur.camera.platform.camera2.Camera2Session
 import com.vayunmathur.camera.platform.camera2.CapturedStill
 import com.vayunmathur.camera.platform.camera2.StillEngineInput
+import com.vayunmathur.camera.platform.camera2.ReprocessRingGate
 import com.vayunmathur.camera.platform.camera2.StillEnginePolicy
 import com.vayunmathur.library.log.Log
 import kotlinx.coroutines.Dispatchers
@@ -73,16 +74,20 @@ internal fun CameraViewModel.tryCaptureCamera2Still(): Boolean {
         captureForResult = captureForResult,
         burst = burstActiveMutable.value,
     )
-    if (!StillEnginePolicy.usesCamera2(input)) return false
+    // Depth-phase ring inputs: gate + facade reprocess + live ring output.
+    val ringInput = input.copy(
+        ringEnabled = ReprocessRingGate.ENABLED && camera2PreviewEnabledMutable.value,
+        reprocessSupported = session.reprocessSupported,
+        hasRingOutput = session.hasRingOutput,
+    )
+    if (!StillEnginePolicy.usesCamera2(ringInput)) return false
 
     // Flash setting is the one control the preview effects do not push;
     // zoom/torch/EV/metering already live on the session.
     session.setFlashSetting(flashModeMutable.value.toFlashSetting())
     val mirrored = mirrorCaptures
     emitShutterFeedback()
-    session.capture(
-        mirrored = mirrored,
-        callback = object : Camera2Session.StillCallback {
+    val stillCallback = object : Camera2Session.StillCallback {
             override fun onStillCaptured(still: CapturedStill) {
                 viewModelScope.launch {
                     val uri = withContext(Dispatchers.IO) {
@@ -99,8 +104,15 @@ internal fun CameraViewModel.tryCaptureCamera2Still(): Boolean {
                 Log.status("Camera2Still", "capture failed: $message")
                 isCapturingMutable.value = false
             }
-        },
-    )
+        }
+    // Ring first when the policy selects it; its runtime fallback to a
+    // regular still lives inside captureFromRing. Night captures never
+    // reach here (policy excludes the night route, Phase 6 is separate).
+    if (StillEnginePolicy.usesRing(ringInput)) {
+        session.captureFromRing(callback = stillCallback, mirrored = mirrored)
+    } else {
+        session.capture(mirrored = mirrored, callback = stillCallback)
+    }
     return true
 }
 

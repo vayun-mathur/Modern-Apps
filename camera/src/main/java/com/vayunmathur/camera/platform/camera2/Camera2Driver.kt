@@ -44,6 +44,14 @@ interface DeviceCallback {
     fun onError(errorCode: Int)
 }
 
+/** Callbacks for preview `CaptureResult`s (ring metadata pairing). */
+fun interface PreviewResultCallback {
+    fun onPreviewResult(metadata: RawStillMetadata)
+}
+
+/** Input stream config for a reprocessable session (the ring format). */
+data class ReprocessInputConfig(val width: Int, val height: Int, val format: Int)
+
 /** Callbacks for one [DeviceHandle.createCaptureSession] call. */
 interface CaptureSessionCallback {
     fun onConfigured(session: CaptureSessionHandle)
@@ -84,6 +92,19 @@ interface DeviceHandle {
         callback.onConfigureFailed()
     }
 
+    /**
+     * Creates a reprocessable session whose input is [input] (the ring
+     * reader). The default fails the configure: silently substituting a
+     * regular session would let a "reprocess" request consume nothing.
+     */
+    fun createReprocessableCaptureSession(
+        input: ReprocessInputConfig,
+        surfaces: List<Surface>,
+        callback: CaptureSessionCallback,
+    ) {
+        callback.onConfigureFailed()
+    }
+
     fun close()
 }
 
@@ -107,6 +128,35 @@ interface CaptureSessionHandle {
     fun captureStill(params: ResolvedStillParams, stillTarget: Surface, callback: StillResultCallback)
 
     /**
+     * Streaming request over [targets] (preview first, ring second when
+     * present) with per-frame results for ring metadata pairing. The
+     * default keeps the single-target behaviour and drops results.
+     */
+    fun setRepeatingStreaming(
+        params: ResolvedRequestParams,
+        targets: List<Surface>,
+        callback: PreviewResultCallback?,
+    ) {
+        if (targets.isNotEmpty()) setRepeatingPreview(params, targets.first())
+    }
+
+    /** True when this session was created as reprocessable. */
+    val isReprocessable: Boolean get() = false
+
+    /**
+     * Reprocesses [frame] (a held ring image) into [stillTarget] with a
+     * TEMPLATE_STILL_CAPTURE reprocess request via `ImageWriter`.
+     * Returns false when this session cannot reprocess — the caller
+     * then falls back to direct encode of the same frame.
+     */
+    fun captureReprocess(
+        params: ResolvedStillParams,
+        stillTarget: Surface,
+        frame: RingHeldFrame,
+        callback: StillResultCallback,
+    ): Boolean = false
+
+    /**
      * Issues [params] as the TEMPLATE_RECORD repeating burst on [targets]
      * (encoder surface first, preview second) of a constrained high-speed
      * session. Only valid on a session created via
@@ -126,6 +176,9 @@ interface Camera2Driver {
 
     /** Creates the JPEG still output for [size], or null when unavailable. */
     fun createStillOutput(size: FrameSize): StillOutput?
+
+    /** Creates the YUV ring output for [size]; null when unavailable. */
+    fun createRingOutput(size: FrameSize): RingOutput? = null
 }
 
 /** Converts a pure [SensorRect] into the HAL's `Rect`. */
@@ -254,6 +307,9 @@ class AndroidCamera2Driver(
     override fun createStillOutput(size: FrameSize): StillOutput? =
         runCatching { JpegStillOutput(size.width, size.height, handler = handler) }.getOrNull()
 
+    override fun createRingOutput(size: FrameSize): RingOutput? =
+        runCatching { YuvRingOutput(size.width, size.height, handler = handler) }.getOrNull()
+
     @SuppressLint("MissingPermission")
     override fun openCamera(cameraId: String, callback: DeviceCallback) {
         manager.openCamera(
@@ -311,6 +367,52 @@ private class AndroidDeviceHandle(
         } else {
             @Suppress("DEPRECATION")
             device.createCaptureSession(surfaces, stateCallback, handler)
+        }
+    }
+
+    override fun createReprocessableCaptureSession(
+        input: ReprocessInputConfig,
+        surfaces: List<Surface>,
+        callback: CaptureSessionCallback,
+    ) {
+        val stateCallback = object : CameraCaptureSession.StateCallback() {
+            override fun onConfigured(session: CameraCaptureSession) =
+                callback.onConfigured(
+                    AndroidCaptureSessionHandle(
+                        device, session, handler,
+                        inputSurface = runCatching { session.inputSurface }.getOrNull(),
+                    ),
+                )
+
+            override fun onConfigureFailed(session: CameraCaptureSession) =
+                callback.onConfigureFailed()
+
+            override fun onClosed(session: CameraCaptureSession) = callback.onClosed()
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            val outputs = surfaces.map { OutputConfiguration(it) }
+            val config = SessionConfiguration(
+                SessionConfiguration.SESSION_REGULAR,
+                outputs,
+                { command -> handler.post(command) },
+                stateCallback,
+            )
+            config.inputConfiguration =
+                android.hardware.camera2.params.InputConfiguration(
+                    input.width, input.height, input.format,
+                )
+            runCatching { device.createCaptureSession(config) }
+                .onFailure { callback.onConfigureFailed() }
+        } else {
+            @Suppress("DEPRECATION")
+            runCatching {
+                device.createReprocessableCaptureSession(
+                    android.hardware.camera2.params.InputConfiguration(
+                        input.width, input.height, input.format,
+                    ),
+                    surfaces, stateCallback, handler,
+                )
+            }.onFailure { callback.onConfigureFailed() }
         }
     }
 
@@ -429,12 +531,95 @@ private class AndroidCaptureSessionHandle(
     private val device: CameraDevice,
     private val session: CameraCaptureSession,
     private val handler: Handler,
+    private val inputSurface: Surface? = null,
 ) : CaptureSessionHandle {
 
+    private var imageWriter: android.media.ImageWriter? = null
+
+    // Reprocess requests are built from a frame's TotalCaptureResult
+    // (createReprocessCaptureRequest), so preview results are retained
+    // by sensor timestamp until their ring image is consumed/evicted.
+    private val previewResults = LinkedHashMap<Long, TotalCaptureResult>()
+
+    override val isReprocessable: Boolean get() = inputSurface != null
+
     override fun setRepeatingPreview(params: ResolvedRequestParams, target: Surface) {
+        setRepeatingStreaming(params, listOf(target), null)
+    }
+
+    override fun setRepeatingStreaming(
+        params: ResolvedRequestParams,
+        targets: List<Surface>,
+        callback: PreviewResultCallback?,
+    ) {
         val builder = device.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
-        builder.applyPreviewParams(params, target)
-        session.setRepeatingRequest(builder.build(), null, handler)
+        builder.applyPreviewParams(params, targets.first())
+        targets.drop(1).forEach { builder.addTarget(it) }
+        val captureCallback = if (callback == null) {
+            null
+        } else {
+            object : CameraCaptureSession.CaptureCallback() {
+                override fun onCaptureCompleted(
+                    session: CameraCaptureSession,
+                    request: CaptureRequest,
+                    result: TotalCaptureResult,
+                ) {
+                    result.get(CaptureResult.SENSOR_TIMESTAMP)?.let { ts ->
+                        previewResults[ts] = result
+                        while (previewResults.size > 16) {
+                            previewResults.remove(previewResults.keys.first())
+                        }
+                    }
+                    callback.onPreviewResult(result.toRawStillMetadata())
+                }
+            }
+        }
+        session.setRepeatingRequest(builder.build(), captureCallback, handler)
+    }
+
+    override fun captureReprocess(
+        params: ResolvedStillParams,
+        stillTarget: Surface,
+        frame: RingHeldFrame,
+        callback: StillResultCallback,
+    ): Boolean {
+        val input = inputSurface ?: return false
+        val image = frame.nativeImageForReprocess as? android.media.Image ?: return false
+        // queueInputImage transfers ownership of the ring image to the
+        // writer; the session must not close it afterwards.
+        val writer = imageWriter ?: android.media.ImageWriter.newInstance(input, 2).also {
+            imageWriter = it
+        }
+        // No retained result for this frame (evicted before use): the
+        // caller falls back to direct encode of the same image.
+        val inputResult = previewResults.remove(frame.meta.sensorTimestampNs) ?: return false
+        return runCatching {
+            val builder = device.createReprocessCaptureRequest(inputResult)
+            builder.applyStillParams(params, stillTarget)
+            writer.queueInputImage(image)
+            session.capture(
+                builder.build(),
+                object : CameraCaptureSession.CaptureCallback() {
+                    override fun onCaptureCompleted(
+                        session: CameraCaptureSession,
+                        request: CaptureRequest,
+                        result: TotalCaptureResult,
+                    ) {
+                        callback.onCompleted(result.toRawStillMetadata())
+                    }
+
+                    override fun onCaptureFailed(
+                        session: CameraCaptureSession,
+                        request: CaptureRequest,
+                        failure: android.hardware.camera2.CaptureFailure,
+                    ) {
+                        callback.onFailed("reprocess capture failed (reason ${failure.reason})")
+                    }
+                },
+                handler,
+            )
+            true
+        }.getOrDefault(false)
     }
 
     override fun setRepeatingHighSpeed(params: ResolvedHighSpeedParams, targets: List<Surface>) {
@@ -478,5 +663,9 @@ private class AndroidCaptureSessionHandle(
         )
     }
 
-    override fun close() = session.close()
+    override fun close() {
+        runCatching { imageWriter?.close() }
+        imageWriter = null
+        session.close()
+    }
 }
