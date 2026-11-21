@@ -27,6 +27,7 @@ import com.vayunmathur.findfamily.data.LocationValue
 import com.vayunmathur.findfamily.data.RequestStatus
 import com.vayunmathur.findfamily.data.User
 import com.vayunmathur.findfamily.data.Waypoint
+import com.vayunmathur.findfamily.domain.IngestSequencing
 import com.vayunmathur.findfamily.domain.UwbCancelReason
 import com.vayunmathur.findfamily.domain.UwbEnvelope
 import com.vayunmathur.findfamily.domain.UwbEnvelopeKind
@@ -47,6 +48,9 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
 @RunWith(AndroidJUnit4::class)
@@ -115,8 +119,11 @@ class LocationTrackingInboundTest {
         // Wrong pair id: dropped.
         service.processIncomingFixes(listOf(InboundFix(fix(alice), "wrong-pair")))
         assertEquals(1, repo.locationHistory(alice).first().size)
-        // Correct pair id: stored.
-        service.processIncomingFixes(listOf(InboundFix(fix(alice), "expected-pair")))
+        // Correct pair id: stored. Stamped past the clamped future fix so it
+        // is also newer under per-sender sequencing (a now-stamped fix here
+        // would be stale against the clamped high-water and dropped — that
+        // is the sequencing working, not the auth gate).
+        service.processIncomingFixes(listOf(InboundFix(fix(alice, at = future + 1.hours), "expected-pair")))
         assertEquals(2, repo.locationHistory(alice).first().size)
         // Ineligible sender (awaiting request): coordinates never stored.
         service.processIncomingFixes(listOf(InboundFix(fix(pending), null)))
@@ -250,6 +257,102 @@ class LocationTrackingInboundTest {
         assertEquals(0, replies)
         assertTrue(Shadows.shadowOf(nm).allNotifications.size > before)
         assertNotNull(UwbInbox.consumePendingRequest(88L))
+        Unit
+    }
+
+    @Test
+    fun outOfOrderArrivalKeepsNewer() = runBlocking {
+        val uid = repo.upsertUser(user("Alice"))
+        val now = Clock.System.now()
+        val newer = fix(uid, at = now - 1.minutes, coord = Coord(52.0, -0.12))
+        val older = fix(uid, at = now - 2.minutes, coord = Coord(53.0, -0.12))
+        // Across batches: the delayed older fix must not be stored at all.
+        service.processIncomingLocations(listOf(newer))
+        service.processIncomingLocations(listOf(older))
+        var stored = repo.locationHistory(uid).first()
+        assertEquals(1, stored.size)
+        assertEquals(52.0, repo.latestLocationByUser.first()[uid]?.coord?.lat)
+        // Within one batch: [new, old] folds to the new fix only.
+        val other = repo.upsertUser(user("Other"))
+        service.processIncomingLocations(listOf(
+            fix(other, at = now - 1.minutes, coord = Coord(52.0, -0.12)),
+            fix(other, at = now - 2.minutes, coord = Coord(53.0, -0.12)),
+        ))
+        stored = repo.locationHistory(other).first()
+        assertEquals(1, stored.size)
+        assertEquals(52.0, stored[0].coord.lat)
+        Unit
+    }
+
+    @Test
+    fun duplicateDeliveryIsIdempotent() = runBlocking {
+        val uid = repo.upsertUser(user("Alice"))
+        val at = Clock.System.now() - 1.minutes
+        service.processIncomingLocations(listOf(fix(uid, at = at), fix(uid, at = at)))
+        service.processIncomingLocations(listOf(fix(uid, at = at)))
+        assertEquals(1, repo.locationHistory(uid).first().size)
+        Unit
+    }
+
+    @Test
+    fun sequencingIsPerSenderIndependent() = runBlocking {
+        val alice = repo.upsertUser(user("Alice"))
+        val bob = repo.upsertUser(user("Bob"))
+        val now = Clock.System.now()
+        service.processIncomingLocations(listOf(fix(alice, at = now - 1.minutes)))
+        // Bob's first fix is older than Alice's latest: her high-water must
+        // not gate him.
+        service.processIncomingLocations(listOf(fix(bob, at = now - 1.hours)))
+        assertEquals(1, repo.locationHistory(bob).first().size)
+        // Alice's stale fix is dropped; Bob's next fix is unaffected.
+        service.processIncomingLocations(listOf(
+            fix(alice, at = now - 2.minutes),
+            fix(bob, at = now - 30.seconds),
+        ))
+        assertEquals(1, repo.locationHistory(alice).first().size)
+        assertEquals(2, repo.locationHistory(bob).first().size)
+        Unit
+    }
+
+    @Test
+    fun clockRegressionIsDroppedUntilSenderPassesHighWater() = runBlocking {
+        // Documented decision (IngestSequencing): no regression window. A
+        // sender whose clock jumps backwards is dropped until its stamps
+        // pass the stored high-water, then accepted again.
+        val uid = repo.upsertUser(user("Alice"))
+        val now = Clock.System.now()
+        service.processIncomingLocations(listOf(fix(uid, at = now - 1.minutes, coord = Coord(52.0, -0.12))))
+        service.processIncomingLocations(listOf(fix(uid, at = now - 1.hours, coord = Coord(53.0, -0.12))))
+        assertEquals(1, repo.locationHistory(uid).first().size)
+        service.processIncomingLocations(listOf(fix(uid, at = now, coord = Coord(54.0, -0.12))))
+        val stored = repo.locationHistory(uid).first()
+        assertEquals(2, stored.size)
+        assertEquals(54.0, repo.latestLocationByUser.first()[uid]?.coord?.lat)
+        Unit
+    }
+
+    @Test
+    fun equalStampTiebreakIsDeterministicAtIngest() = runBlocking {
+        // Same reportedAt + measuredAt, different payloads: the payload-hash
+        // winner is stored regardless of arrival order within the batch.
+        val at = Clock.System.now() - 1.minutes
+        fun hash(lat: Double) = IngestSequencing.payloadHash(lat, -0.12, 0f, 5f, 90f, "LIVE")
+        val winnerLat = if (hash(51.5) > hash(52.5)) 51.5 else 52.5
+        val first = repo.upsertUser(user("First"))
+        val second = repo.upsertUser(user("Second"))
+        service.processIncomingLocations(listOf(
+            fix(first, at = at, coord = Coord(51.5, -0.12)),
+            fix(first, at = at, coord = Coord(52.5, -0.12)),
+        ))
+        service.processIncomingLocations(listOf(
+            fix(second, at = at, coord = Coord(52.5, -0.12)),
+            fix(second, at = at, coord = Coord(51.5, -0.12)),
+        ))
+        for (uid in listOf(first, second)) {
+            val stored = repo.locationHistory(uid).first()
+            assertEquals(1, stored.size)
+            assertEquals(winnerLat, stored[0].coord.lat)
+        }
         Unit
     }
 

@@ -13,6 +13,7 @@ import com.vayunmathur.findfamily.data.User
 import com.vayunmathur.findfamily.data.UserKind
 import com.vayunmathur.findfamily.data.havershine
 import com.vayunmathur.findfamily.data.RequestStatus
+import com.vayunmathur.findfamily.domain.IngestSequencing
 import com.vayunmathur.findfamily.domain.NoShowPolicy
 import com.vayunmathur.findfamily.domain.PairAuth
 import com.vayunmathur.findfamily.domain.UwbCancelReason
@@ -170,6 +171,16 @@ private suspend fun LocationTrackingService.collectAuthenticatedFix(
  * `reportedAt` is clamped to receiver-now + [PairAuth.MAX_FUTURE_SKEW_SECONDS]
  * before it is stored. This device's own reports never pass through here —
  * they are stored via the heartbeat's single-row upsert with their true stamp.
+ *
+ * Per-sender sequencing (the sync-census leftover this clamp could not close):
+ * clamping bounds how far a fix may claim into the future, but says nothing
+ * about ordering — a delayed or replayed *older* fix was still stored, and
+ * this batch was then enriched as if it were the present. After clamping,
+ * each fix is folded against its sender's stored latest stamp (the per-sender
+ * high-water, advanced within the batch as fixes are accepted) under
+ * [IngestSequencing]: strictly newer is stored, anything else is dropped.
+ * The clamp runs first so the high-water a fix must beat is the effective
+ * (clamped) stamp, never the sender's raw claim.
  */
 internal suspend fun LocationTrackingService.processIncomingLocations(incoming: List<LocationValue>) {
     // A category this build cannot interpret is dropped rather than stored. Marking it is not
@@ -218,8 +229,52 @@ internal suspend fun LocationTrackingService.processIncomingLocations(incoming: 
 
     // Snapshot the previous latest-per-user BEFORE persisting the new fixes, so the
     // battery-threshold and self-waypoint comparisons below still see the prior state
-    // rather than the fix we're about to store.
+    // rather than the fix we're about to store. The same snapshot seeds the
+    // per-sender high-water marks for sequencing.
     val latestMap = repository.latestLocationsOnce().associateBy { it.userid }
+
+    // Per-sender monotonic acceptance: fold the batch against each sender's
+    // stored latest stamp, advancing the running high-water as fixes are
+    // accepted, so a batch carrying [new, old] for one sender stores only the
+    // new fix and a replayed batch stores nothing. Stale drops are logged at
+    // debug with the count — there is no metrics seam in this app, so that
+    // line is the observable. Only accepted fixes are persisted or enriched:
+    // enriching a stale fix would re-run waypoint/battery state on where the
+    // person *was*.
+    val highWater = latestMap.mapValues { it.value.fixStamp() }.toMutableMap()
+    val accepted = ArrayList<LocationValue>(locList.size)
+    // Index of each sender's latest accepted entry *from this batch*, so a
+    // fix that beats it only on the equal-stamp hash tiebreak replaces it
+    // instead of appending a second same-second row (see IngestSequencing).
+    // A win on time appends: batch history progression is kept.
+    val batchLatestIndex = HashMap<Long, Int>()
+    var staleDropped = 0
+    for (fix in locList) {
+        val stamp = fix.fixStamp()
+        val stored = highWater[fix.userid]
+        if (IngestSequencing.accepts(stamp, stored)) {
+            val batchIndex = batchLatestIndex[fix.userid]
+            if (batchIndex != null && stored != null &&
+                stamp.reportedAtSec == stored.reportedAtSec && stamp.measuredAtSec == stored.measuredAtSec
+            ) {
+                accepted[batchIndex] = fix
+            } else {
+                batchLatestIndex[fix.userid] = accepted.size
+                accepted += fix
+            }
+            highWater[fix.userid] = stamp
+        } else {
+            staleDropped++
+            Log.debug(
+                "FF-Heartbeat",
+                "dropped stale fix from ${fix.userid.toULong()} " +
+                    "(reportedAtSec=${stamp.reportedAtSec} not newer than stored)"
+            )
+        }
+    }
+    if (staleDropped > 0) {
+        Log.debug("FF-Heartbeat", "dropped $staleDropped stale fix(es) at ingest (per-sender sequencing)")
+    }
 
     // Persist the raw fixes immediately, before any enrichment. Everything after this
     // (waypoint detection, reverse-geocoding via fetchAddress, notifications) is
@@ -229,17 +284,40 @@ internal suspend fun LocationTrackingService.processIncomingLocations(incoming: 
     // enrichment step silently dropped the location, so getLatest() kept serving stale
     // fixes even across a force-stop. Writing here makes the fix durable no matter what
     // follows.
-    repository.upsertLocations(locList)
-    Log.dev("FF-Heartbeat", "upsertAll ${locList.size} locations done")
+    if (accepted.isNotEmpty()) {
+        repository.upsertLocations(accepted)
+        Log.dev("FF-Heartbeat", "upsertAll ${accepted.size} locations done")
+    }
 
     // Enrichment runs off the reader coroutine. Reverse-geocoding is a slow network
     // call, so doing it inline stalled every subsequent inbound frame until the
     // liveness timeout force-reconnected the socket. The mutex keeps batches
     // serialized, so entry/exit and low-battery alerts still fire once each.
-    serviceScope.launch {
-        enrichmentMutex.withLock { enrichIncomingLocations(locList, latestMap) }
+    if (accepted.isNotEmpty()) {
+        serviceScope.launch {
+            enrichmentMutex.withLock { enrichIncomingLocations(accepted, latestMap) }
+        }
     }
 }
+
+/**
+ * This fix's [IngestSequencing] ordering stamp (boundary mapping for the pure
+ * policy). Truncated to epoch seconds — the precision Room persists — so a
+ * candidate and a stored row read back from the database compare like with
+ * like.
+ */
+private fun LocationValue.fixStamp(): IngestSequencing.FixStamp = IngestSequencing.FixStamp(
+    reportedAtSec = reportedAt.epochSeconds,
+    measuredAtSec = timestamp.epochSeconds,
+    payloadHash = IngestSequencing.payloadHash(
+        lat = coord.lat,
+        lon = coord.lon,
+        speed = speed,
+        acc = acc,
+        battery = battery,
+        sourceName = source.name,
+    ),
+)
 
 /**
  * Best-effort follow-up to [processIncomingLocations]: recomputes waypoint
@@ -266,8 +344,12 @@ private suspend fun LocationTrackingService.enrichOneUser(
 ) {
     // Self never receives its own published location, so fall back to the latest
     // stored fix; otherwise "me" never gets its waypoint recomputed.
+    // The batch pick uses the ingest ordering stamp, not raw measurement time:
+    // a parting (shutdown/low-battery) report carries a deliberately stale fix
+    // under the freshest reportedAt, and ranking on timestamp here would undo
+    // the sequencing the batch just went through.
     val lastLoc = if (user.id == Networking.userid) latestMap[Networking.userid]
-    else locList.filter { it.userid == user.id }.maxByOrNull { it.timestamp }
+    else locList.filter { it.userid == user.id }.maxWithOrNull(compareBy { it.fixStamp() })
     lastLoc ?: return
     val lastSavedLoc = latestMap[user.id]
     maybeNotifyLowBattery(user, lastLoc, lastSavedLoc)
