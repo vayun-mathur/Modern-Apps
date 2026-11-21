@@ -16,13 +16,12 @@ import com.vayunmathur.camera.platform.startBurst
 import com.vayunmathur.camera.platform.stopBurst
 import com.vayunmathur.camera.platform.togglePauseRecording
 import com.vayunmathur.library.ui.ExternalIntents
-import com.vayunmathur.library.ui.isExpandedWidth
 import com.vayunmathur.library.util.NavBackStack
 
 /**
- * Shutter row, mode selector and bottom bar below the preview, plus their adaptive
- * side-by-side placement on wide windows. The phone stack and the wide-layout slots
- * share one set of callbacks; behavior identical to the previously inline code.
+ * Shutter row, mode selector and bottom bar below the preview. Always stacked
+ * in that order — rotating the phone never rearranges them (see
+ * [captureControlsSideBySide]); only the icons inside rotate in place.
  */
 @Composable
 internal fun CameraBottomControls(
@@ -35,7 +34,6 @@ internal fun CameraBottomControls(
 ) {
     val context = LocalContext.current
     val cameraMode = state.cameraMode
-    val expandedSide = isExpandedWidth()
 
     // A last-capture URI can be stale (image deleted) or absent (nothing shot
     // this session). Verify it still resolves, else open the gallery collection;
@@ -83,8 +81,8 @@ internal fun CameraBottomControls(
         }
     }
 
-    // Expanded windows place the shutter and mode controls side by side
-    // below the preview; short windows keep the phone stack.
+    // Never side-by-side on rotation: shutter, then modes, stacked below the
+    // preview at every device rotation.
     CameraWideLayout(
         shutter = {
             CameraShutterPane(
@@ -119,6 +117,6 @@ internal fun CameraBottomControls(
                 videoPickerEnabled = onCaptureResult == null,
             )
         },
-        sideBySide = expandedSide,
+        sideBySide = captureControlsSideBySide(state.deviceRotation),
     )
 }

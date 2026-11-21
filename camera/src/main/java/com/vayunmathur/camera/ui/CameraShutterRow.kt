@@ -101,7 +101,7 @@ internal fun ShutterRow(
                         modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(8.dp))
                     )
                 } else {
-                    IconPhotoLibrary(Modifier.size(24.dp), Color.White)
+                    IconPhotoLibrary(Modifier.size(24.dp).rotate(iconRotation), Color.White)
                 }
             }
         }

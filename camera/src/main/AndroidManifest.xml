@@ -31,10 +31,16 @@
         android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true"
         android:theme="@style/Theme.General">
+        <!-- Portrait-locked on purpose: the viewfinder layout never rotates, so
+             capture controls stay in the same place in portrait and landscape;
+             only the control icons rotate in place (OrientationEventListener in
+             CameraScreenEffects) and CameraX auto-rotation orients captures. -->
         <activity
             android:configChanges="mcc|mnc|colorMode|density|fontScale|fontWeightAdjustment|keyboard|keyboardHidden|layoutDirection|navigation|orientation|screenLayout|screenSize|smallestScreenSize|touchscreen|uiMode"
             android:name=".MainActivity"
             android:exported="true"
+            android:screenOrientation="portrait"
+            tools:ignore="LockedOrientationActivity"
             android:showWhenLocked="true"
             android:turnScreenOn="true"
             android:theme="@style/Theme.General">

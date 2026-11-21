@@ -8,13 +8,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 
 /**
- * Adaptive placement for the viewfinder control rows (shutter, mode selector,
- * bottom bar).
+ * Placement for the viewfinder control rows (shutter, mode selector, bottom bar).
  *
- * Phones stack them vertically under the preview. On wide windows they sit side
- * by side — shutter left, mode + bottom stacked right — so they stop eating the
- * preview's vertical space in landscape desktop windows. Slots only: the caller
- * passes the real rows, which capture the screen's state directly.
+ * Slots only: the caller passes the real rows and decides [sideBySide]. The
+ * camera caller always stacks them vertically (see
+ * [captureControlsSideBySide]) so rotation never rearranges the controls.
  */
 @Composable
 fun CameraWideLayout(

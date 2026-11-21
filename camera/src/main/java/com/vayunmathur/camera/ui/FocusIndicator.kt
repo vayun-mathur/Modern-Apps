@@ -31,6 +31,10 @@ private const val BRACKET_FRACTION = 0.45f
  * The composable only draws; when it appears and disappears is the caller's
  * in-screen state. Motion goes through the library helpers (`animatedDp` /
  * `animatedFloat` on [Motion] specs), never raw animation APIs.
+ *
+ * Deliberately NOT rotated with the device: the ring + corner brackets are
+ * symmetric under 90° rotations, and [point] is in preview coordinates — the
+ * ring must stay on the tapped spot, not swing around it.
  */
 @Composable
 internal fun FocusIndicator(
