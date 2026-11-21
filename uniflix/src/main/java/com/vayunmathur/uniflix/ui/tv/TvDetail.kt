@@ -39,7 +39,6 @@ import com.vayunmathur.library.tv.tvContentStart
 import com.vayunmathur.library.tv.tvFullWidth
 import com.vayunmathur.library.tv.tvGridHeader
 import com.vayunmathur.library.ui.R as UiR
-import com.vayunmathur.library.ui.friendlyErrorMessage
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.uniflix.R
 import com.vayunmathur.uniflix.data.TmdbImageUrl
@@ -159,7 +158,7 @@ private fun DetailPane(
         DetailMetaLines(detail = detail)
         state.resolveError?.let { error ->
             Text(
-                text = friendlyErrorMessage(error),
+                text = error,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
             )

@@ -9,7 +9,11 @@ sealed interface ResolutionResult {
     data object NoPluginsEnabled : ResolutionResult
 
     /** Every enabled addon failed; per-addon messages for the error badge. */
-    data class AllFailed(val errorsByAddon: Map<String, String>) : ResolutionResult
+    data class AllFailed(
+        val errorsByAddon: Map<String, String>,
+        /** The original failures, so callers can tell authored provider reasons from raw exceptions. */
+        val failuresByAddon: Map<String, Throwable> = emptyMap(),
+    ) : ResolutionResult
 }
 
 /**
@@ -33,16 +37,18 @@ class PluginRegistry(
     ): ResolutionResult {
         if (providers.isEmpty()) return ResolutionResult.NoPluginsEnabled
         val errors = linkedMapOf<String, String>()
+        val failures = linkedMapOf<String, Throwable>()
         for ((addonId, provider) in providers) {
             val source = runCatching {
                 provider.resolve(tmdbId, mediaType, season, episode, server)
             }.getOrElse {
                 errors[addonId] = it.message ?: "Unknown error"
+                failures[addonId] = it
                 null
             } ?: continue
             return ResolutionResult.Success(source, addonId)
         }
-        return ResolutionResult.AllFailed(errors)
+        return ResolutionResult.AllFailed(errors, failures)
     }
 
     suspend fun alternates(

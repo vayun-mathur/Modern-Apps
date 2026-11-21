@@ -26,7 +26,6 @@ import com.vayunmathur.library.ui.Card
 import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.DesktopMaxWidthContainer
 import com.vayunmathur.library.ui.ErrorState
-import com.vayunmathur.library.ui.friendlyErrorMessage
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.OutlinedButton
 import com.vayunmathur.library.ui.OutlinedTextField
@@ -143,7 +142,7 @@ fun DetailScreen(
                     }
                 }
                 state.resolveError?.let { error ->
-                    Text("Resolve failed: ${friendlyErrorMessage(error)}", style = MaterialTheme.typography.bodySmall)
+                    Text("Resolve failed: $error", style = MaterialTheme.typography.bodySmall)
                 }
                 state.source?.let { source ->
                     Text("Resolved: ${source.title}", style = MaterialTheme.typography.bodySmall)

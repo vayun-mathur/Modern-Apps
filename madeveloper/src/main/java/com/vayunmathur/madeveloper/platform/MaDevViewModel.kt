@@ -77,6 +77,21 @@ class MaDevViewModel(app: Application) : AndroidViewModel(app) {
         { deviceName -> DevRegistrar().register(deviceName) }
     internal var apkFetcher: suspend (String) -> Pair<Int, ByteArray> =
         { url -> NetworkClient.performRequestBytes(url) }
+    /**
+     * Maps a failed pushed install to the text stored in [PendingInstall.error].
+     *
+     * This class raises its own known conditions with `error(...)`
+     * ("Download failed: HTTP <status>", "APK hash does not match the
+     * pushed sha256"): those are authored and actionable (the hash one is
+     * security-relevant), so keep them verbatim. Every other throwable is
+     * a genuine caught exception - never surface its raw text, map it
+     * through [friendlyError] instead. (Same contract as securemail's
+     * toStateError.)
+     */
+    private fun Throwable.toStateError(): String =
+        (this as? IllegalStateException)?.message?.takeIf { it.isNotBlank() }
+            ?: getApplication<Application>().friendlyError(this)
+
     private val pairing = PairingStore(app)
     private var transport: DevSocketTransport? = null
     private var reconnectAttempt = 0
@@ -280,13 +295,13 @@ class MaDevViewModel(app: Application) : AndroidViewModel(app) {
             try {
                 val bytes = withContext(Dispatchers.IO) {
                     val (status, data) = apkFetcher(install.apkUrl)
-                    if (status !in 200..299) throw java.io.IOException("Download failed: HTTP $status")
+                    if (status !in 200..299) error("Download failed: HTTP $status")
                     data
                 }
                 val verifying = currentPending(install.pkg) ?: install
                 updatePending(DevProtocol.transition(verifying, InstallPhase.VERIFYING, 1f))
                 if (!DevProtocol.verifySha256(bytes, install.sha256)) {
-                    throw java.io.IOException("APK hash does not match the pushed sha256")
+                    error("APK hash does not match the pushed sha256")
                 }
                 val file = withContext(Dispatchers.IO) {
                     val name = "push-" + install.pkg + ".apk"
@@ -295,10 +310,12 @@ class MaDevViewModel(app: Application) : AndroidViewModel(app) {
                 val ready = DevProtocol.transition(currentPending(install.pkg) ?: install, InstallPhase.READY, 1f)
                 updatePending(ready.copy())
                 InstallNotifications.showReady(getApplication(), ready)
-            } catch (e: java.io.IOException) {
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
                 val current = currentPending(install.pkg) ?: install
                 state = state.copy(pending = state.pending.map { item ->
-                    if (item.pkg == install.pkg) item.copy(phase = InstallPhase.FAILED, error = getApplication<Application>().friendlyError(e)) else item
+                    if (item.pkg == install.pkg) item.copy(phase = InstallPhase.FAILED, error = e.toStateError()) else item
                 })
             }
         }

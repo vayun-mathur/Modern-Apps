@@ -110,7 +110,7 @@ class DetailHomeSearchComposeTest {
                     onAddNote = { _, _ -> }, onOpenDetail = {}, onOpenAddons = {})
             }
         }
-        composeRule.onNodeWithText("Detail failed to load.").assertIsDisplayed()
+        composeRule.onNodeWithText("Detail failed to load").assertIsDisplayed()
     }
 
 }

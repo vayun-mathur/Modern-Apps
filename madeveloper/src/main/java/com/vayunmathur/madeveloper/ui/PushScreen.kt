@@ -9,7 +9,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.vayunmathur.library.ui.AppScaffold
-import com.vayunmathur.library.ui.friendlyErrorMessage
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.DashboardSection
 import com.vayunmathur.library.ui.DashboardSectionDivider
@@ -98,7 +97,7 @@ fun PushScreen(state: MaDevUiState, onInstall: (String) -> Unit, onBack: () -> U
                                                 " · version " + pending.versionCode,
                                         )
                                         pending.error?.let {
-                                            Text(friendlyErrorMessage(it), color = MaterialTheme.colorScheme.error)
+                                            Text(it, color = MaterialTheme.colorScheme.error)
                                         }
                                     }
                                 },

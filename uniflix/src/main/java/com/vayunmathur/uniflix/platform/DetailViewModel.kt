@@ -8,7 +8,6 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.library.ui.friendlyError
-import com.vayunmathur.library.ui.friendlyErrorMessage
 import com.vayunmathur.library.util.AppMessages
 import com.vayunmathur.uniflix.data.AddonPrefs
 import com.vayunmathur.uniflix.data.AddonStreamProvider
@@ -138,6 +137,21 @@ class DetailViewModel(app: Application) : AndroidViewModel(app) {
     var state by mutableStateOf(DetailUiState())
         private set
 
+    /**
+     * Maps a resolve failure to the text stored in [DetailUiState.resolveError].
+     *
+     * Providers raise their known conditions with `error(...)`
+     * (AddonStreamProvider's "Addon 'X' has no streams for this title",
+     * "returned <status>: <server reason>", JsStreamProvider's wrapped
+     * reasons): those are addon/server-authored and actionable, so keep
+     * them verbatim. Every other throwable is a genuine caught exception -
+     * never surface its raw text, map it through [friendlyError] instead.
+     * (Same contract as securemail's toStateError.)
+     */
+    private fun Throwable.toStateError(): String =
+        (this as? IllegalStateException)?.message?.takeIf { it.isNotBlank() }
+            ?: getApplication<Application>().friendlyError(this)
+
     fun notesFor(tmdbId: Int, mediaType: MediaType) =
         repository.notesFor(tmdbId, mediaType.name.lowercase())
 
@@ -220,10 +234,11 @@ class DetailViewModel(app: Application) : AndroidViewModel(app) {
                     state = state.copy(resolving = false, providerMissing = true)
                 }
                 is ResolutionResult.AllFailed -> {
-                    val rawMessage = result.errorsByAddon.values.firstOrNull() ?: "Unknown error"
-                    val message = getApplication<Application>().friendlyErrorMessage(rawMessage)
+                    val failure = result.failuresByAddon.values.firstOrNull()
+                    val message = failure?.toStateError()
+                        ?: result.errorsByAddon.values.firstOrNull() ?: "Unknown error"
                     state = state.copy(resolving = false, resolveError = message)
-                    Log.error(TAG, "Stream failed to resolve: $rawMessage")
+                    Log.error(TAG, "Stream failed to resolve: ${failure?.message}")
                     AppMessages.show("Stream failed to resolve: $message")
                 }
             }

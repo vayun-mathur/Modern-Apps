@@ -34,7 +34,6 @@ import com.vayunmathur.library.tv.TvButton
 import com.vayunmathur.library.tv.TvEmptyState
 import com.vayunmathur.library.tv.TvLoading
 import com.vayunmathur.library.ui.R as UiR
-import com.vayunmathur.library.ui.friendlyErrorMessage
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.uniflix.R
 import com.vayunmathur.uniflix.domain.SubtitleTrack
@@ -220,7 +219,7 @@ fun TvWatchPage(
         }
         if (loadFailed) {
             TvEmptyState(
-                title = state.resolveError?.let { friendlyErrorMessage(it) } ?: stringResource(R.string.no_results),
+                title = state.resolveError ?: stringResource(R.string.no_results),
                 isError = true,
                 action = {
                     TvButton(

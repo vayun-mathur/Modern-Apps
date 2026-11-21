@@ -132,7 +132,7 @@ class MaDevViewModelTest {
         val viewModel = vm()
         viewModel.refresh()
         await("error shown") { viewModel.state.error != null }
-        assertTrue(viewModel.state.error!!.contains("404"), viewModel.state.error!!)
+        assertEquals("The requested content was not found.", viewModel.state.error)
         assertFalse(viewModel.state.loading)
     }
 
@@ -202,7 +202,7 @@ class MaDevViewModelTest {
         val viewModel = vm()
         viewModel.loadRepo("Modern-Apps")
         await("repo error") { viewModel.state.repoError != null }
-        assertTrue(viewModel.state.repoError!!.contains("404"))
+        assertEquals("The requested content was not found.", viewModel.state.repoError)
         assertNull(viewModel.browser("Modern-Apps"))
     }
 

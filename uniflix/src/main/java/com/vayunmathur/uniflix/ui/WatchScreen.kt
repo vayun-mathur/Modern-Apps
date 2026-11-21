@@ -38,7 +38,6 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.compose.PlayerSurface
 import androidx.media3.ui.compose.SURFACE_TYPE_TEXTURE_VIEW
 import com.vayunmathur.library.ui.Button
-import com.vayunmathur.library.ui.friendlyErrorMessage
 import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.FadeVisibility
 import com.vayunmathur.library.ui.IconButton
@@ -204,7 +203,7 @@ fun WatchScreen(
 
         if (loadFailed) {
             WatchErrorPanel(
-                message = state.resolveError?.let { friendlyErrorMessage(it) } ?: "No stream available for this title.",
+                message = state.resolveError ?: "No stream available for this title.",
                 onRetry = onRetry,
                 modifier = Modifier.align(Alignment.Center),
             )
@@ -212,7 +211,7 @@ fun WatchScreen(
 
         playerState.playerError?.let { error ->
             WatchErrorPanel(
-                message = friendlyErrorMessage(error),
+                message = error,
                 onRetry = {
                     carriedPosition = playerState.positionMs
                     retryTicket++

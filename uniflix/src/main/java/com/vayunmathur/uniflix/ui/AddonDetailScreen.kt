@@ -25,7 +25,6 @@ import com.vayunmathur.library.ui.OutlinedButton
 import com.vayunmathur.library.ui.OutlinedTextField
 import com.vayunmathur.library.ui.Switch
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.friendlyErrorMessage
 import com.vayunmathur.uniflix.platform.AddonsViewModel
 
 /**
@@ -57,7 +56,7 @@ fun AddonDetailScreen(addonDbId: Long, onBack: () -> Unit) {
                 if (entity.version.isNotBlank()) {
                     Text("Version: ${entity.version}")
                 }
-                entity.lastError?.let { Text("Last error: ${friendlyErrorMessage(it)}") }
+                entity.lastError?.let { Text("Last error: $it") }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,

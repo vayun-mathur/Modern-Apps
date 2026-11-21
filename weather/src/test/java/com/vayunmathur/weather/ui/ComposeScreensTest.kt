@@ -93,7 +93,8 @@ class ComposeScreensTest {
                 onOpenMap = { _, _ -> },
             )
         }
-        rule.onNodeWithText("Boom").assertIsDisplayed()
+        rule.onNodeWithText("Could not load forecast").assertIsDisplayed()
+        rule.onNodeWithText("Something went wrong. Try again.").assertIsDisplayed()
     }
 
     @Test fun forecastColumnSelected() {

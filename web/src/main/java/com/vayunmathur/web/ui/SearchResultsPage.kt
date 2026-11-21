@@ -27,7 +27,6 @@ import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.DesktopMaxWidthContainer
 import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.ui.friendlyError
-import com.vayunmathur.library.ui.friendlyErrorMessage
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Tab
@@ -209,7 +208,7 @@ private fun SearchErrorState(
         if (message.isNotBlank()) {
             Spacer(Modifier.height(8.dp))
             Text(
-                friendlyErrorMessage(message),
+                message,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 3,

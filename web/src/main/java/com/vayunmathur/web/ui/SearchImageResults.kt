@@ -35,7 +35,6 @@ import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.ui.friendlyError
-import com.vayunmathur.library.ui.friendlyErrorMessage
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.OutlinedButton
 import com.vayunmathur.library.ui.Text
@@ -157,7 +156,7 @@ private fun SearchImageErrorState(
         if (message.isNotBlank()) {
             Spacer(Modifier.height(8.dp))
             Text(
-                friendlyErrorMessage(message),
+                message,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 3,
