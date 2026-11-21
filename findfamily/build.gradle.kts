@@ -16,6 +16,99 @@ android {
     }
 }
 
+// Only the classes below actually load a native library: they execute a
+// path that touches the Rust pairing/PQC crypto in :library:e2ee-p2p
+// (libe2ee_pqc via Pqc / PqcIdentity, reached through Networking's
+// generatePqc* / seal / sign / verify helpers, TrackerProtocol.sealReport,
+// CreateLinkIntent's link keygen, or TrackerBinder's tracker keygen), or
+// they call Networking.init / initDirectBoot, whose PqcIdentity.loadOrCreate
+// mints the identity through the same JNI bridge on a fresh store. Tests
+// that merely call the pure SecurityCode / InviteFingerprint helpers, use
+// fake keypair mints (PoweredOffRecoveryTest), or hit the fail-closed
+// no-session branches never load the library and stay in the main task.
+// Quarantine the loaders and the shared-JVM polluters below into
+// testDevUnitTestNative (forkEvery = 1); the remaining classes batch
+// 20-per-JVM in testDevUnitTest, which depends on the quarantine task so
+// the usual invocation still runs everything.
+rustNativeTests {
+    nativeClasses.addAll(
+        listOf(
+            "com.vayunmathur.findfamily.Y3FinalReportTest",
+            "com.vayunmathur.findfamily.intents.AssistantIntentsRealRepoTest",
+            "com.vayunmathur.findfamily.platform.FixCeilingAlarmTest",
+            "com.vayunmathur.findfamily.platform.PoweredOffBeaconArmTest",
+            "com.vayunmathur.findfamily.platform.PoweredOffBeaconRealRepoTest",
+            "com.vayunmathur.findfamily.platform.UwbHandshakeSdk36Test",
+            "com.vayunmathur.findfamily.tracker.BleFailClosedTest",
+            "com.vayunmathur.findfamily.ui.MainPageChromeRealRepoTest",
+            "com.vayunmathur.findfamily.ui.dialogs.DialogsRealRepoInteractionsTest",
+            "com.vayunmathur.findfamily.util.CrowdFindingRealRepoTest",
+            "com.vayunmathur.findfamily.util.FindFamilyViewModelStatesRealTest",
+            "com.vayunmathur.findfamily.util.InboundEnrichRealRepoTest",
+            "com.vayunmathur.findfamily.util.LocationTrackingHeartbeatTest",
+            "com.vayunmathur.findfamily.util.NetworkingCodecTest",
+            "com.vayunmathur.findfamily.util.NetworkingDirectBootBootstrapTest",
+            "com.vayunmathur.findfamily.util.NetworkingDirectBootTest",
+            "com.vayunmathur.findfamily.util.NetworkingFramesRealRepoTest",
+            "com.vayunmathur.findfamily.util.NetworkingLiveSessionTest",
+            "com.vayunmathur.findfamily.util.NetworkingOfflineTest",
+            "com.vayunmathur.findfamily.util.NetworkingOutboundSpoolTest",
+            "com.vayunmathur.findfamily.util.NetworkingUwbAndBackupTest",
+        )
+    )
+    // Shared-JVM polluters keep forkEvery = 1 in the same companion task:
+    // DataStoreUtils is a process-wide singleton whose init eagerly
+    // collects the preferences DataStore, and FindFamilyViewModel turns
+    // its (and the repository's) flows into viewModelScope collectors
+    // (several SharingStarted.WhileSubscribed / Eagerly) that are never
+    // cleared when the test never calls onCleared; persisted DataStore
+    // state also leaks into classes expecting defaults. Same hazard for
+    // tests that drive the UwbSessionManager process-wide StateFlow
+    // singleton. Audit rule: any test instantiating FindFamilyViewModel
+    // (or launching MainActivity, which builds one), using
+    // DataStoreUtils.getInstance / a TrackerStore over it directly, or
+    // driving UwbSessionManager.init/start belongs here. The same rule
+    // covers indirect DataStore drivers: LocationServiceController's
+    // persisted flags are DataStoreUtils-backed, and its flow collectors
+    // leaked into a sibling class (UncaughtExceptionsBeforeTest) and its
+    // persisted flags broke the defaults-first assertions when
+    // PlatformServicesTest and MapAndControllerTest shared a JVM.
+    // The LocationTrackingService lifecycle drivers (Y3TrackingService /
+    // TrackingServiceLifecycle / LocationTrackingLifecycleReal) also
+    // belong here: startTracking/onStartCommand launch the service's
+    // scope loops, which outlive the sandbox that created them. Same
+    // evidence for LocationTrackingInboundTest: batched, its
+    // processIncomingLocations Dispatchers.IO enrich job outlived the
+    // test's closed in-memory Room database and surfaced as
+    // UncaughtExceptionsBeforeTest ("Database is closed" at
+    // FindFamilyRepository.updateLocationMeta) in whichever batched
+    // runTest class ran next in the JVM. All other classes batch.
+    isolatedClasses.addAll(
+        listOf(
+            "com.vayunmathur.findfamily.MainActivityRealLaunchTest",
+            "com.vayunmathur.findfamily.Y3TrackingServiceTest",
+            "com.vayunmathur.findfamily.platform.PlatformServicesTest",
+            "com.vayunmathur.findfamily.platform.UwbSessionManagerSdk36Test",
+            "com.vayunmathur.findfamily.service.TilesBootAndChannelsTest",
+            "com.vayunmathur.findfamily.ui.DialogsWithVmTest",
+            "com.vayunmathur.findfamily.ui.FirstRunSheetTest",
+            "com.vayunmathur.findfamily.ui.MainPageActionsRealRepoTest",
+            "com.vayunmathur.findfamily.ui.MainPageNavigationRealRepoTest",
+            "com.vayunmathur.findfamily.util.CrowdFindingAndControllerTest",
+            "com.vayunmathur.findfamily.util.DirectBootAndStoresRealTest",
+            "com.vayunmathur.findfamily.util.FindFamilyViewModelDbTest",
+            "com.vayunmathur.findfamily.util.FindFamilyViewModelProbeTest",
+            "com.vayunmathur.findfamily.util.FindFamilyViewModelRealRepoTest",
+            "com.vayunmathur.findfamily.util.LocationTrackingInboundTest",
+            "com.vayunmathur.findfamily.util.LocationTrackingLifecycleRealTest",
+            "com.vayunmathur.findfamily.util.MapAndControllerTest",
+            "com.vayunmathur.findfamily.util.PlatformAndUwbStateTest",
+            "com.vayunmathur.findfamily.util.TrackingServiceLifecycleTest",
+            "com.vayunmathur.findfamily.util.UwbSessionManagerRealRepoTest",
+        )
+    )
+}
+
 dependencies {
 
     // HTTP + JSON
