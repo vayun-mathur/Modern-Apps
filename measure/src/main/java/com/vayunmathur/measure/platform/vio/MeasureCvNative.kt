@@ -4,6 +4,7 @@ import com.vayunmathur.library.log.NativeLoader
 
 import com.vayunmathur.measure.domain.Pose3
 import com.vayunmathur.measure.domain.Vec3
+import java.nio.ByteBuffer
 
 /** One tracked correspondence, in pixels: previous -> current. [id] is stable for the feature's life. */
 data class CvPair(
@@ -66,7 +67,34 @@ object MeasureCvNative {
         rowStride: Int,
     ): CvFrameFlow? {
         if (!available || handle == 0L) return null
-        val raw = nativeProcessFrame(handle, yPlane, width, height, rowStride)
+        return parseFlow(nativeProcessFrame(handle, yPlane, width, height, rowStride))
+    }
+
+    /**
+     * Direct-buffer twin of the [ByteArray] overload: a direct [yPlane] (the
+     * CameraX Y plane) is de-strided natively from its own address, with no
+     * Kotlin copy. A heap buffer, or one whose position is not the plane
+     * start, falls back to the [ByteArray] path so correctness does not
+     * depend on buffer provenance. The buffer is only read during this
+     * synchronous call, so the caller may close its frame afterwards.
+     */
+    fun processFrame(
+        handle: Long,
+        yPlane: ByteBuffer,
+        width: Int,
+        height: Int,
+        rowStride: Int,
+    ): CvFrameFlow? {
+        if (!available || handle == 0L) return null
+        if (!yPlane.isDirect || yPlane.position() != 0) {
+            val copy = ByteArray(yPlane.remaining())
+            yPlane.duplicate().get(copy)
+            return processFrame(handle, copy, width, height, rowStride)
+        }
+        return parseFlow(nativeProcessFrameDirect(handle, yPlane, width, height, rowStride))
+    }
+
+    private fun parseFlow(raw: DoubleArray): CvFrameFlow? {
         if (raw.size < HEADER_SIZE) return null
         val pairCount = raw[0].toInt()
         val pose = if (raw[1] != 0.0) {
@@ -118,6 +146,14 @@ object MeasureCvNative {
     private external fun nativeProcessFrame(
         handle: Long,
         yPlane: ByteArray,
+        width: Int,
+        height: Int,
+        rowStride: Int,
+    ): DoubleArray
+
+    private external fun nativeProcessFrameDirect(
+        handle: Long,
+        yPlane: ByteBuffer,
         width: Int,
         height: Int,
         rowStride: Int,

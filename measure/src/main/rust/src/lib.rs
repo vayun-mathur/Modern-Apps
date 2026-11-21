@@ -76,6 +76,10 @@ struct Intrinsics {
 pub struct CvSession {
     intr: Intrinsics,
     prev_gray: Option<Gray>,
+    /// Retained scratch for the strided/direct path: refilled in place each
+    /// frame, then swapped with `prev_gray` (the old previous frame becomes
+    /// the next scratch), so the incoming frame needs no per-frame allocation.
+    incoming_gray: Option<Gray>,
     prev_points: Vec<(u64, f32, f32)>,
     next_id: u64,
 }
@@ -85,6 +89,7 @@ impl CvSession {
         CvSession {
             intr: Intrinsics { fx, fy, cx, cy },
             prev_gray: None,
+            incoming_gray: None,
             prev_points: Vec::new(),
             next_id: 1,
         }
@@ -92,6 +97,7 @@ impl CvSession {
 
     pub fn reset(&mut self) {
         self.prev_gray = None;
+        self.incoming_gray = None;
         self.prev_points = Vec::new();
         self.next_id = 1;
     }
@@ -103,10 +109,42 @@ impl CvSession {
     }
 
     pub fn process_frame(&mut self, gray: &Gray) -> FrameFlow {
+        self.process_frame_owned(gray.clone())
+    }
+
+    /// Process one frame handed over as a strided luminance plane (e.g. a
+    /// direct `ByteBuffer` from CameraX): de-stride straight into the retained
+    /// incoming buffer, with no per-frame `Vec` for the incoming frame.
+    /// `None` when the plane is too short or the stride cannot hold a row.
+    pub fn process_frame_strided(
+        &mut self,
+        src: &[u8],
+        width: usize,
+        height: usize,
+        row_stride: usize,
+    ) -> Option<FrameFlow> {
+        if width == 0 || height == 0 || row_stride < width {
+            return None;
+        }
+        if src.len() < row_stride * (height - 1) + width {
+            return None;
+        }
+        let mut gray = self
+            .incoming_gray
+            .take()
+            .unwrap_or_else(|| Gray::new(width, height));
+        destride_into(src, width, height, row_stride, &mut gray);
+        Some(self.process_frame_owned(gray))
+    }
+
+    fn process_frame_owned(&mut self, gray: Gray) -> FrameFlow {
         let prev_gray = match self.prev_gray.take() {
             Some(p) if p.w == gray.w && p.h == gray.h => p,
-            _ => {
-                let pts = corners::detect(gray);
+            other => {
+                if let Some(old) = other {
+                    self.incoming_gray = Some(old);
+                }
+                let pts = corners::detect(&gray);
                 let count = pts.len();
                 self.prev_points = pts
                     .into_iter()
@@ -116,7 +154,7 @@ impl CvSession {
                         (id, x, y)
                     })
                     .collect();
-                self.prev_gray = Some(gray.clone());
+                self.prev_gray = Some(gray);
                 return FrameFlow {
                     first_frame: true,
                     pairs: Vec::new(),
@@ -131,7 +169,7 @@ impl CvSession {
         };
 
         let prev_pyr = Pyramid::build(&prev_gray, PYRAMID_LEVELS);
-        let curr_pyr = Pyramid::build(gray, PYRAMID_LEVELS);
+        let curr_pyr = Pyramid::build(&gray, PYRAMID_LEVELS);
         let prev_xy: Vec<(f32, f32)> =
             self.prev_points.iter().map(|&(_, x, y)| (x, y)).collect();
         let forward = klt::track(&prev_pyr, &curr_pyr, &prev_xy);
@@ -197,7 +235,7 @@ impl CvSession {
             .map(|p| (p.id, p.curr.0 as f32, p.curr.1 as f32))
             .collect();
         if next_points.len() < corners::MAX_CORNERS / 2 {
-            for pt in corners::detect(gray) {
+            for pt in corners::detect(&gray) {
                 if next_points
                     .iter()
                     .all(|&(_, x, y)| (x - pt.0).powi(2) + (y - pt.1).powi(2) >= 100.0)
@@ -212,7 +250,10 @@ impl CvSession {
         }
         let point_count = next_points.len();
         self.prev_points = next_points;
-        self.prev_gray = Some(gray.clone());
+        // The current frame becomes the previous frame with no copy; the old
+        // previous buffer is retained as the next incoming scratch.
+        self.incoming_gray = Some(prev_gray);
+        self.prev_gray = Some(gray);
         FrameFlow {
             first_frame: false,
             pairs,
@@ -233,159 +274,24 @@ impl CvSession {
     }
 }
 
-// Not cfg-gated to Android: the host build must export the same JNI symbols
-// or the Kotlin bridge's availability check lies in JVM tests.
-mod jni_bindings {
-    use crate::CvSession;
-    use jni::objects::{JByteArray, JClass};
-    use jni::sys::{jdouble, jdoubleArray, jlong};
-    use jni::{Env, EnvUnowned};
-    use std::collections::HashMap;
-    use std::sync::{Mutex, OnceLock};
-    use vision_core::imgbuf::Gray;
-
-    /// Sessions are held behind a handle rather than a raw pointer so a stale
-    /// handle from Kotlin is a lookup miss instead of a use-after-free.
-    fn sessions() -> &'static Mutex<HashMap<i64, CvSession>> {
-        static S: OnceLock<Mutex<HashMap<i64, CvSession>>> = OnceLock::new();
-        S.get_or_init(|| Mutex::new(HashMap::new()))
+/// Copy a strided luminance plane into [dst], dropping row padding.
+/// [dst] keeps its allocation when the size is unchanged. Callers validate
+/// `stride >= width` and that [src] holds `stride * (height - 1) + width` bytes.
+pub fn destride_into(src: &[u8], width: usize, height: usize, row_stride: usize, dst: &mut Gray) {
+    if dst.w != width || dst.h != height {
+        dst.w = width;
+        dst.h = height;
+        dst.px.resize(width * height, 0);
     }
-
-    fn next_handle() -> i64 {
-        static N: OnceLock<Mutex<i64>> = OnceLock::new();
-        let m = N.get_or_init(|| Mutex::new(0));
-        let mut g = m.lock().unwrap();
-        *g += 1;
-        *g
+    if row_stride == width {
+        dst.px.copy_from_slice(&src[..width * height]);
+        return;
     }
-
-    #[no_mangle]
-    pub extern "system" fn Java_com_vayunmathur_measure_platform_vio_MeasureCvNative_nativeCreateSession(
-        _env: EnvUnowned,
-        _class: JClass,
-        fx: jdouble,
-        fy: jdouble,
-        cx: jdouble,
-        cy: jdouble,
-    ) -> jlong {
-        if !(fx.is_finite() && fy.is_finite() && fx > 1.0 && fy > 1.0) {
-            return 0;
-        }
-        let h = next_handle();
-        sessions().lock().unwrap().insert(h, CvSession::new(fx, fy, cx, cy));
-        h
-    }
-
-    #[no_mangle]
-    pub extern "system" fn Java_com_vayunmathur_measure_platform_vio_MeasureCvNative_nativeDestroySession(
-        _env: EnvUnowned,
-        _class: JClass,
-        handle: jlong,
-    ) {
-        sessions().lock().unwrap().remove(&handle);
-    }
-
-    #[no_mangle]
-    pub extern "system" fn Java_com_vayunmathur_measure_platform_vio_MeasureCvNative_nativeReset(
-        _env: EnvUnowned,
-        _class: JClass,
-        handle: jlong,
-    ) {
-        if let Some(s) = sessions().lock().unwrap().get_mut(&handle) {
-            s.reset();
-        }
-    }
-
-    /// Feed one luminance plane; `row_stride` is honoured so the caller can
-    /// pass the CameraX Y plane straight through without repacking it.
-    ///
-    /// Returns `[pairCount, poseFlag, firstFlag, pointCount, R(9), t(3),
-    /// then prevX, prevY, currX, currY per pair]`; empty for a bad handle.
-    #[no_mangle]
-    #[allow(clippy::too_many_arguments)]
-    pub extern "system" fn Java_com_vayunmathur_measure_platform_vio_MeasureCvNative_nativeProcessFrame<'l>(
-        mut env: EnvUnowned<'l>,
-        _class: JClass<'l>,
-        handle: jlong,
-        y_plane: JByteArray<'l>,
-        width: jni::sys::jint,
-        height: jni::sys::jint,
-        row_stride: jni::sys::jint,
-    ) -> jdoubleArray {
-        env.with_env(|env| -> jni::errors::Result<jdoubleArray> {
-            let (w, h, stride) = (width as usize, height as usize, row_stride as usize);
-            if w == 0 || h == 0 || stride < w {
-                return Ok(make_double_array(env, &[]));
-            }
-            let len = match y_plane.len(env) {
-                Ok(l) => l,
-                Err(_) => return Ok(make_double_array(env, &[])),
-            };
-            if len < stride * (h - 1) + w {
-                return Ok(make_double_array(env, &[]));
-            }
-            let mut buf = vec![0i8; len];
-            if y_plane.get_region(env, 0, &mut buf).is_err() {
-                return Ok(make_double_array(env, &[]));
-            }
-            let mut gray = Gray::new(w, h);
-            for row in 0..h {
-                let src = row * stride;
-                let dst = row * w;
-                for col in 0..w {
-                    gray.px[dst + col] = buf[src + col] as u8;
-                }
-            }
-            let mut guard = sessions().lock().unwrap();
-            let vals: Vec<f64> = match guard.get_mut(&handle) {
-                Some(s) => {
-                    let flow = s.process_frame(&gray);
-                    let mut v = Vec::with_capacity(16 + flow.pairs.len() * 4);
-                    v.push(flow.pairs.len() as f64);
-                    v.push(if flow.pose.is_some() { 1.0 } else { 0.0 });
-                    v.push(if flow.first_frame { 1.0 } else { 0.0 });
-                    v.push(flow.point_count as f64);
-                    match &flow.pose {
-                        Some(p) => {
-                            for row in 0..3 {
-                                for col in 0..3 {
-                                    v.push(p.r[(row, col)]);
-                                }
-                            }
-                            v.push(p.t[0]);
-                            v.push(p.t[1]);
-                            v.push(p.t[2]);
-                        }
-                        None => v.extend(std::iter::repeat_n(0.0, 12)),
-                    }
-                    v.push(flow.seeded as f64);
-                    v.push(flow.forward_ok as f64);
-                    v.push(flow.fb_survivors as f64);
-                    v.push(flow.ransac_inliers as f64);
-                    for pair in &flow.pairs {
-                        v.push(pair.id as f64);
-                        v.push(pair.prev.0);
-                        v.push(pair.prev.1);
-                        v.push(pair.curr.0);
-                        v.push(pair.curr.1);
-                    }
-                    v
-                }
-                None => Vec::new(),
-            };
-            Ok(make_double_array(env, &vals))
-        })
-        .resolve::<jni::errors::LogErrorAndDefault>()
-    }
-
-    fn make_double_array(env: &mut Env, vals: &[f64]) -> jdoubleArray {
-        let arr = match env.new_double_array(vals.len()) {
-            Ok(a) => a,
-            Err(_) => return std::ptr::null_mut(),
-        };
-        if !vals.is_empty() && arr.set_region(env, 0, vals).is_err() {
-            return std::ptr::null_mut();
-        }
-        arr.into_raw()
+    for row in 0..height {
+        let src_off = row * row_stride;
+        let dst_off = row * width;
+        dst.px[dst_off..dst_off + width].copy_from_slice(&src[src_off..src_off + width]);
     }
 }
+
+mod jni_bindings;

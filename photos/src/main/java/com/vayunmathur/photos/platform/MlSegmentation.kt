@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.os.Handler
 import android.os.Looper
 import com.vayunmathur.library.log.Log
+import com.vayunmathur.library.ml.SegmentationMask
 import com.vayunmathur.library.ml.SubjectSegmenter
 import com.vayunmathur.photos.data.Selection
 
@@ -50,24 +51,39 @@ private const val FEATHER_RADIUS = 1.5f
  */
 private val segLock = Any()
 
-private fun runSegmenter(context: Context, bitmap: Bitmap): Selection? {
-    // Cap the returned mask resolution for speed/memory; the model runs at its
-    // fixed input size and we upsample the saliency map to this.
-    val maxDim = 512
-    val scale = minOf(1f, maxDim.toFloat() / maxOf(bitmap.width, bitmap.height))
-    val w = (bitmap.width * scale).toInt().coerceAtLeast(1)
-    val h = (bitmap.height * scale).toInt().coerceAtLeast(1)
+/** Longest side handed to the segmenter, and of the returned mask. */
+internal const val SEGMENTATION_MAX_DIM = 512
 
-    val result = synchronized(segLock) {
-        SubjectSegmenter(context.applicationContext).use { seg ->
-            if (!seg.isAvailable) {
-                Log.error("MlSegmentation", "U\u00b2-Net unavailable; see the ModelRunner log tag")
-                return null
-            }
-            // HARDWARE and unknown bitmap configs are handled inside SubjectSegmenter,
-            // which has to deal with them anyway to call getPixels.
-            seg.segment(bitmap)
-        }
+/** Size of the capped segmentation input / selection grid for a [width] x [height] source. */
+internal fun segmentationInputSize(width: Int, height: Int, maxDim: Int = SEGMENTATION_MAX_DIM): Pair<Int, Int> {
+    val scale = minOf(1f, maxDim.toFloat() / maxOf(width, height))
+    return (width * scale).toInt().coerceAtLeast(1) to (height * scale).toInt().coerceAtLeast(1)
+}
+
+/**
+ * [bitmap] downscaled to the [SEGMENTATION_MAX_DIM] cap, or [bitmap] itself when
+ * it already fits. The caller owns a returned copy and must recycle it.
+ */
+internal fun downscaleForSegmentation(bitmap: Bitmap, maxDim: Int = SEGMENTATION_MAX_DIM): Bitmap {
+    val (w, h) = segmentationInputSize(bitmap.width, bitmap.height, maxDim)
+    return if (w == bitmap.width && h == bitmap.height) bitmap else Bitmap.createScaledBitmap(bitmap, w, h, true)
+}
+
+/**
+ * Run [segment] over the capped input and upsample its mask to the capped grid.
+ * Split from [runSegmenter] so tests can capture the bitmap handed to the segmenter.
+ */
+internal fun runSegmentation(bitmap: Bitmap, segment: (Bitmap) -> SegmentationMask?): Selection? {
+    // Cap the input and the returned mask resolution for speed/memory; the model
+    // runs at its fixed (<=320) input size and downscales whatever it is given,
+    // so handing it the full-size bitmap only pays for pixel copies the model
+    // then throws away (its native path materialises the whole bitmap first).
+    val (w, h) = segmentationInputSize(bitmap.width, bitmap.height)
+    val input = downscaleForSegmentation(bitmap)
+    val result = try {
+        segment(input)
+    } finally {
+        if (input !== bitmap) input.recycle()
     } ?: return null
 
     val sw = result.width
@@ -95,4 +111,19 @@ private fun runSegmenter(context: Context, bitmap: Bitmap): Selection? {
     }
 
     return Selection(mask, w, h).applyFeather(FEATHER_RADIUS)
+}
+
+private fun runSegmenter(context: Context, bitmap: Bitmap): Selection? {
+    synchronized(segLock) {
+        return SubjectSegmenter(context.applicationContext).use { seg ->
+            if (!seg.isAvailable) {
+                Log.error("MlSegmentation", "U²-Net unavailable; see the ModelRunner log tag")
+                null
+            } else {
+                // HARDWARE and unknown bitmap configs are handled inside SubjectSegmenter,
+                // which has to deal with them anyway to call getPixels.
+                runSegmentation(bitmap) { seg.segment(it) }
+            }
+        }
+    }
 }

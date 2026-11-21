@@ -171,7 +171,6 @@ internal class VioFrameAnalyzer(
     private var engine: VioEngine? = engine
     private var engineCreationTried = false
 
-    private var buffer: ByteArray? = null
     private var lastFrameNs = 0L
     private var frameIntervalNs = 0L
     private var frameCount = 0L
@@ -204,14 +203,14 @@ internal class VioFrameAnalyzer(
             if (imu.isNotEmpty()) eng.pushImu(imu)
 
             val plane = image.planes[0]
-            val src = plane.buffer
-            val needed = src.remaining()
-            val dst = buffer?.takeIf { it.size >= needed } ?: ByteArray(needed).also { buffer = it }
-            src.get(dst, 0, needed)
 
             val tNs = image.imageInfo.timestamp
+            // Hand the Y plane's direct buffer straight to the engine: it is
+            // de-strided natively, with no per-frame Kotlin copy of the plane.
+            // The image is only closed in the finally block, after this
+            // synchronous call has returned.
             val result = eng.processFrame(
-                yPlane = dst,
+                yPlane = plane.buffer,
                 width = image.width,
                 height = image.height,
                 rowStride = plane.rowStride,

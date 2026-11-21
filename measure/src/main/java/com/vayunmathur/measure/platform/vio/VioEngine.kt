@@ -19,6 +19,7 @@ import com.vayunmathur.measure.domain.solveCameraCentre
 import com.vayunmathur.measure.domain.triangulate
 import com.vayunmathur.measure.platform.Intrinsics
 import com.vayunmathur.library.log.Log
+import java.nio.ByteBuffer
 import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.sqrt
@@ -206,6 +207,33 @@ class VioEngine(
     ): VioFrameResult {
         framesSeen++
         val flow = MeasureCvNative.processFrame(nativeHandle, yPlane, width, height, rowStride)
+        return processFlow(flow, width, height, rowStride, timestampNs)
+    }
+
+    /**
+     * Direct-buffer overload: the CameraX Y plane is de-strided natively
+     * from its own address, with no per-frame Kotlin copy of the plane.
+     */
+    fun processFrame(
+        yPlane: ByteBuffer,
+        width: Int,
+        height: Int,
+        rowStride: Int,
+        timestampNs: Long,
+    ): VioFrameResult {
+        framesSeen++
+        val flow = MeasureCvNative.processFrame(nativeHandle, yPlane, width, height, rowStride)
+        return processFlow(flow, width, height, rowStride, timestampNs)
+    }
+
+    private fun processFlow(
+        flowOrNull: CvFrameFlow?,
+        width: Int,
+        height: Int,
+        rowStride: Int,
+        timestampNs: Long,
+    ): VioFrameResult {
+        val flow = flowOrNull
             ?: run {
                 if (framesSeen % 30 == 1) Log.dev(TAG, "frame=$framesSeen native=null handle=$nativeHandle avail=$available")
                 return trackingFailure(0)

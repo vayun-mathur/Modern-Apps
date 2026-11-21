@@ -181,6 +181,92 @@ fn tiny_frames_never_track_and_never_panic() {
     assert!(f2.pose.is_none());
 }
 
+// --- Strided / direct-buffer path -------------------------------------------------
+
+/// Pack [gray] into a padded plane: `pad` junk bytes after every row.
+fn padded(gray: &Gray, pad: usize) -> (Vec<u8>, usize) {
+    let stride = gray.w + pad;
+    let mut out = vec![0xEEu8; stride * gray.h];
+    for y in 0..gray.h {
+        out[y * stride..y * stride + gray.w]
+            .copy_from_slice(&gray.px[y * gray.w..(y + 1) * gray.w]);
+    }
+    (out, stride)
+}
+
+#[test]
+fn destride_drops_row_padding_and_ignores_the_junk_bytes() {
+    // Hand-computed: 4x3 image, stride 7, padding filled with 0xEE.
+    let mut src = Vec::new();
+    for row in 0..3u8 {
+        src.extend_from_slice(&[row * 10 + 1, row * 10 + 2, row * 10 + 3, row * 10 + 4]);
+        src.extend_from_slice(&[0xEE, 0xEE, 0xEE]);
+    }
+    let mut dst = Gray::new(1, 1);
+    destride_into(&src, 4, 3, 7, &mut dst);
+    assert_eq!((dst.w, dst.h), (4, 3));
+    assert_eq!(dst.px, vec![1, 2, 3, 4, 11, 12, 13, 14, 21, 22, 23, 24]);
+    // A tight plane (stride == width) round-trips too, reusing the buffer.
+    let tight: Vec<u8> = (0..12).collect();
+    destride_into(&tight, 4, 3, 4, &mut dst);
+    assert_eq!(dst.px, tight);
+}
+
+#[test]
+fn strided_path_matches_the_byte_array_path_frame_for_frame() {
+    let f1 = aperiodic(320, 240, 0, 0);
+    let f2 = aperiodic(320, 240, 3, 1);
+    let (p1, stride1) = padded(&f1, 17);
+    let (p2, stride2) = padded(&f2, 17);
+    assert_eq!(stride1, 337);
+
+    let mut via_array = CvSession::new(300.0, 300.0, 160.0, 120.0);
+    let a1 = via_array.process_frame(&f1);
+    let a2 = via_array.process_frame(&f2);
+
+    let mut via_strided = CvSession::new(300.0, 300.0, 160.0, 120.0);
+    let b1 = via_strided
+        .process_frame_strided(&p1, f1.w, f1.h, stride1)
+        .expect("padded first frame");
+    let b2 = via_strided
+        .process_frame_strided(&p2, f2.w, f2.h, stride2)
+        .expect("padded second frame");
+
+    assert_eq!(b1.first_frame, a1.first_frame);
+    assert_eq!(b1.point_count, a1.point_count);
+    assert_eq!(b2.first_frame, a2.first_frame);
+    assert_eq!(b2.point_count, a2.point_count);
+    assert_eq!(b2.seeded, a2.seeded);
+    assert_eq!(b2.forward_ok, a2.forward_ok);
+    assert_eq!(b2.fb_survivors, a2.fb_survivors);
+    assert_eq!(b2.ransac_inliers, a2.ransac_inliers);
+    assert_eq!(b2.pairs, a2.pairs, "tracked pairs must be identical");
+    assert_eq!(b2.pose.is_some(), a2.pose.is_some());
+    if let (Some(pa), Some(pb)) = (&a2.pose, &b2.pose) {
+        for i in 0..3 {
+            assert_eq!(pa.t[i], pb.t[i]);
+            for j in 0..3 {
+                assert_eq!(pa.r[(i, j)], pb.r[(i, j)]);
+            }
+        }
+    }
+    assert!(b2.pairs.len() >= 15, "strided path tracked {}", b2.pairs.len());
+}
+
+#[test]
+fn strided_path_rejects_short_or_malformed_planes() {
+    let mut s = CvSession::new(300.0, 300.0, 160.0, 120.0);
+    assert!(s.process_frame_strided(&[0u8; 10], 320, 240, 320).is_none());
+    assert!(s.process_frame_strided(&[0u8; 4096], 320, 240, 100).is_none(), "stride < width");
+    assert!(s.process_frame_strided(&[0u8; 4096], 0, 240, 320).is_none());
+    // Rejection must not poison the session: a valid frame still seeds.
+    let f = aperiodic(320, 240, 0, 0);
+    let (p, stride) = padded(&f, 5);
+    let flow = s.process_frame_strided(&p, f.w, f.h, stride).unwrap();
+    assert!(flow.first_frame);
+    assert!(flow.point_count > 50);
+}
+
 #[test]
 fn reset_clears_points_so_the_next_frame_reseeds_from_scratch() {
     let mut s = CvSession::new(300.0, 300.0, 160.0, 120.0);
