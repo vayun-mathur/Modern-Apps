@@ -454,6 +454,30 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch { prefs.setShowMinimap(enabled) }
     }
 
+    /**
+     * Resets the editor settings to their defaults, in memory (so the open
+     * settings screen and editor redraw at once) and persisted via
+     * [EditorPrefs.resetAll], which preserves git credentials — the
+     * Keystore-sealed token included — and workspace/user data.
+     */
+    fun resetAllSettings() {
+        softWrap = false
+        fontSizeState.intValue = EditorPrefs.DEFAULT_FONT_SIZE
+        tabWidthState.intValue = EditorPrefs.DEFAULT_TAB_WIDTH
+        themeModeState.value = EditorPrefs.THEME_SYSTEM
+        autoIndentState.value = true
+        autoCloseBracketsState.value = true
+        autoSaveState.value = false
+        trimTrailingOnSaveState.value = false
+        finalNewlineOnSaveState.value = false
+        editorThemeState.value = EditorThemes.DEFAULT
+        experimentalEditorState.value = false
+        showWhitespaceState.value = false
+        showIndentGuidesState.value = false
+        showMinimapState.value = false
+        viewModelScope.launch { prefs.resetAll() }
+    }
+
     // ---- Find & replace (via EditorEditActions) ----
 
     /** Commits a find/replace edit to [tab] as one undo step, bypassing smart input. */

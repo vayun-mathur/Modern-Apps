@@ -31,6 +31,7 @@ fun SettingsPage(backStack: NavBackStack<Route>, viewModel: TodoViewModel) {
             override fun setDefaultView(view: TodoView) = viewModel.updateSettings { setDefaultView(view) }
             override fun setDefaultSort(sort: SortMode) = viewModel.updateSettings { setDefaultSort(sort) }
             override fun setShowCompleted(show: Boolean) = viewModel.updateSettings { setShowCompleted(show) }
+            override fun resetDefaults() = viewModel.updateSettings { resetAll() }
         },
         extraSections = {
             ReminderSettingsSection(

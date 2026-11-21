@@ -21,6 +21,7 @@ import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.IconClearNight
 import com.vayunmathur.library.ui.IconStar
 import com.vayunmathur.library.ui.IconVolumeUp
+import com.vayunmathur.library.ui.ResetDefaultsRow
 import com.vayunmathur.library.ui.SettingsSection
 import com.vayunmathur.library.ui.SettingsSelectRow
 import com.vayunmathur.library.ui.SettingsSwitchRow
@@ -139,6 +140,10 @@ fun MapSettingsPage(backStack: NavBackStack<Route>, viewModel: MapSettingsViewMo
                     onCheckedChange = { viewModel.setMapAutoUpdate(it) },
                     leadingContent = { IconStar() },
                 )
+            }
+
+            SettingsSection {
+                ResetDefaultsRow(onReset = { viewModel.resetAll() })
             }
         }
     }

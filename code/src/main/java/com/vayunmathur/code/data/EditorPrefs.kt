@@ -241,6 +241,39 @@ class EditorPrefs(context: Context) {
         appContext.editorDataStore.edit { it[GIT_AUTHOR_EMAIL_KEY] = value }
     }
 
+    /**
+     * Clears only the non-secret editor settings keys, so every settings
+     * flow above falls back to its default (soft-wrap off, font size
+     * [DEFAULT_FONT_SIZE], tab width [DEFAULT_TAB_WIDTH], theme system,
+     * auto-indent / auto-close on, the rest off, editor theme default).
+     *
+     * Excluded, and preserved untouched:
+     * - `git_token` — the Keystore-sealed secret; reset must never read,
+     *   clear or rewrite it (nor the other git credentials / author
+     *   identity keys, `git_username`, `git_author_name`,
+     *   `git_author_email`, which are credentials, not editor settings);
+     * - workspace / user data keys: `folder_path`, `session_*`,
+     *   `recent_files`, `user_snippets`, `fold_state`.
+     */
+    suspend fun resetAll() {
+        appContext.editorDataStore.edit { prefs ->
+            prefs.remove(SOFT_WRAP_KEY)
+            prefs.remove(FONT_SIZE_KEY)
+            prefs.remove(TAB_WIDTH_KEY)
+            prefs.remove(THEME_MODE_KEY)
+            prefs.remove(AUTO_INDENT_KEY)
+            prefs.remove(AUTO_CLOSE_KEY)
+            prefs.remove(AUTO_SAVE_KEY)
+            prefs.remove(TRIM_TRAILING_KEY)
+            prefs.remove(FINAL_NEWLINE_KEY)
+            prefs.remove(EXPERIMENTAL_EDITOR_KEY)
+            prefs.remove(SHOW_WHITESPACE_KEY)
+            prefs.remove(SHOW_INDENT_GUIDES_KEY)
+            prefs.remove(SHOW_MINIMAP_KEY)
+            prefs.remove(EDITOR_THEME_KEY)
+        }
+    }
+
     /** Editor preference defaults and DataStore keys. */
     companion object {
         private const val KEY_ALIAS = "code_git_token_key"

@@ -18,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.util.sharedText
@@ -153,6 +154,44 @@ fun SettingsSwitchRow(
             Switch(checked = checked, onCheckedChange = null, enabled = enabled)
         },
     )
+}
+
+/**
+ * The reset-to-defaults row, for the bottom of a settings screen.
+ *
+ * Shows the shared reset row; tapping it asks for confirmation with the
+ * shared [ConfirmDialog] (the AlertDialog pattern every destructive action
+ * uses) and only then calls [onReset]. The caller owns what "defaults" means
+ * for its app — this row deliberately knows no preference keys, so an app
+ * can exclude secrets or user data from its reset without this component
+ * needing to know.
+ */
+@Composable
+fun ResetDefaultsRow(
+    onReset: () -> Unit,
+    modifier: Modifier = Modifier,
+    supportingText: String? = null,
+    enabled: Boolean = true,
+) {
+    var showConfirm by remember { mutableStateOf(false) }
+    SettingsRow(
+        title = stringResource(R.string.reset),
+        modifier = modifier,
+        supportingText = supportingText,
+        enabled = enabled,
+        onClick = { showConfirm = true },
+    )
+    if (showConfirm) {
+        ConfirmDialog(
+            title = stringResource(R.string.reset),
+            message = stringResource(R.string.reset_defaults_message),
+            confirmLabel = stringResource(R.string.reset),
+            dismissLabel = stringResource(R.string.cancel),
+            destructive = true,
+            onConfirm = onReset,
+            onDismiss = { showConfirm = false },
+        )
+    }
 }
 
 /**

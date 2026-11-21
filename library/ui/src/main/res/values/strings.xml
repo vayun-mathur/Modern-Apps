@@ -90,6 +90,8 @@
     <string name="play">Play</string>
     <!-- Shared across every app. Reset to defaults. Verb, keep short. -->
     <string name="reset">Reset</string>
+    <!-- Shared across every app. ResetDefaultsRow confirmation body: every setting goes back to its default. -->
+    <string name="reset_defaults_message">All settings will go back to their defaults.</string>
     <!-- Shared across every app. Apply pending changes. Verb, keep short. -->
     <string name="apply">Apply</string>
     <!-- Shared across every app. Next step or item. Keep short. -->

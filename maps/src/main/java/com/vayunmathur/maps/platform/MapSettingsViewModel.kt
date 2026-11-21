@@ -97,6 +97,22 @@ class MapSettingsViewModel(application: Application) : AndroidViewModel(applicat
             else MapOverlayWorker.cancelAuto(context)
         }
 
+    /**
+     * Resets every setting to its [MapPreferences] default (see
+     * [MapPreferences.resetAll] for what is preserved). The default
+     * auto-update value is on, so the periodic chain is re-armed here, as
+     * [setMapAutoUpdate] does.
+     */
+    fun resetAll() =
+        launch {
+            MapPreferences.resetAll(ds)
+            if (MapPreferences.DEFAULT_MAP_AUTO_UPDATE) {
+                MapOverlayWorker.scheduleAuto(getApplication<Application>().applicationContext)
+            } else {
+                MapOverlayWorker.cancelAuto(getApplication<Application>().applicationContext)
+            }
+        }
+
     /** Ensure the periodic chain matches the persisted toggle (call on start). */
     fun syncAutoUpdateSchedule() {
         val context = getApplication<Application>().applicationContext

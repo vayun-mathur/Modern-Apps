@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import com.vayunmathur.library.ui.DetailScaffold
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
+import com.vayunmathur.library.ui.ResetDefaultsRow
 import com.vayunmathur.library.ui.SettingsDivider
 import com.vayunmathur.library.ui.SettingsSection
 import com.vayunmathur.library.ui.SettingsSelectRow
@@ -27,6 +28,7 @@ interface SettingsActions {
     fun setDefaultView(view: TodoView) {}
     fun setDefaultSort(sort: SortMode) {}
     fun setShowCompleted(show: Boolean) {}
+    fun resetDefaults() {}
 }
 
 /**
@@ -73,6 +75,9 @@ fun SettingsScreen(
         extraSections()
         SettingsSection(title = stringResource(R.string.settings_data)) {
             dataSection()
+        }
+        SettingsSection {
+            ResetDefaultsRow(onReset = actions::resetDefaults)
         }
     }
 }

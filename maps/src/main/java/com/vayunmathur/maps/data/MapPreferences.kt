@@ -1,4 +1,5 @@
 package com.vayunmathur.maps.data
+import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.maps.platform.MapOverlayWorker
 import com.vayunmathur.maps.service.NavigationService
 
@@ -56,6 +57,31 @@ object MapPreferences {
     const val DEFAULT_LAYER_SAFETY = false
     const val DEFAULT_LAYER_TRANSIT = false
     const val DEFAULT_GOOGLE_SERVICES = false
+    const val DEFAULT_THEME_MODE = "system"
+
+    /**
+     * Re-seeds every user-facing setting above to its default.
+     *
+     * Values are written explicitly rather than removed: the settings and
+     * layer flows are `mapNotNull` flows, so deleting a key would emit
+     * nothing and the screens would keep showing the old value.
+     *
+     * Preserves, by design: [KEY_LAST_LON]/[KEY_LAST_LAT] (last known
+     * position, not a setting), [KEY_GOOGLE_CONSENT_ASKED] (so reset does
+     * not re-trigger the first-launch consent dialog), and every
+     * non-settings key in the same store (map-overlay state, saved data).
+     */
+    suspend fun resetAll(store: DataStoreUtils) {
+        store.setString(KEY_THEME_MODE, DEFAULT_THEME_MODE)
+        store.setBoolean(KEY_VOICE_GUIDANCE, DEFAULT_VOICE_GUIDANCE)
+        store.setBoolean(KEY_GLOBE, DEFAULT_GLOBE)
+        store.setBoolean(KEY_MAP_AUTO_UPDATE, DEFAULT_MAP_AUTO_UPDATE)
+        store.setBoolean(KEY_LAYER_TRAFFIC, DEFAULT_LAYER_TRAFFIC)
+        store.setBoolean(KEY_LAYER_SATELLITE, DEFAULT_LAYER_SATELLITE)
+        store.setBoolean(KEY_LAYER_SAFETY, DEFAULT_LAYER_SAFETY)
+        store.setBoolean(KEY_LAYER_TRANSIT, DEFAULT_LAYER_TRANSIT)
+        store.setBoolean(KEY_GOOGLE_SERVICES, DEFAULT_GOOGLE_SERVICES)
+    }
 }
 
 /** App theme selection persisted under [MapPreferences.KEY_THEME_MODE]. */

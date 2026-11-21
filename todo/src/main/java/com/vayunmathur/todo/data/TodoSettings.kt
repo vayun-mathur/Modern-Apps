@@ -37,6 +37,24 @@ class TodoSettings(context: Context) {
     suspend fun setCalendarMirror(value: Boolean) = store.setBoolean(KEY_CALENDAR_MIRROR, value)
     suspend fun markSynced(at: Long = System.currentTimeMillis()) = store.setLongIfGreater(KEY_LAST_SYNC, at)
 
+    /**
+     * Re-seeds every user-facing setting to its default (the values the
+     * flows above fall back to). Written explicitly rather than removed:
+     * the string flows are `mapNotNull` flows, so deleting a key would
+     * emit nothing and the screen would keep showing the old value.
+     *
+     * Preserves [KEY_LAST_SYNC]: that is sync bookkeeping, not a setting.
+     * Tasks, lists and every other key in the shared store are untouched.
+     */
+    suspend fun resetAll() {
+        setDefaultView(TodoView.Today)
+        setDefaultSort(SortMode.MANUAL)
+        setShowCompleted(true)
+        setDigestEnabled(false)
+        setDigestMinutes(DEFAULT_DIGEST_MINUTES)
+        setCalendarMirror(false)
+    }
+
     suspend fun digestEnabledNow(): Boolean = digestEnabled.first()
     suspend fun digestMinutesNow(): Long = digestMinutes.first()
     suspend fun calendarMirrorNow(): Boolean = calendarMirror.first()

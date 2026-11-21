@@ -30,6 +30,7 @@ import com.vayunmathur.library.ui.AlertDialog
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.RadioButton
+import com.vayunmathur.library.ui.ResetDefaultsRow
 import com.vayunmathur.library.ui.SettingsDivider
 import com.vayunmathur.library.ui.SettingsRow
 import com.vayunmathur.library.ui.SettingsSection
@@ -169,6 +170,10 @@ fun SettingsPage(viewModel: EditorViewModel, backStack: NavBackStack<Route>) {
                     supportingText = viewModel.userSnippets.size.toString(),
                     onClick = { backStack.add(Route.Snippets) },
                 )
+            }
+
+            SettingsSection {
+                ResetDefaultsRow(onReset = viewModel::resetAllSettings)
             }
         }
     }
