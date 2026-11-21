@@ -125,11 +125,29 @@ class WireWriter(
         data: ByteArray = ByteArray(2 * 2 * 4),
     ) = prim(4).apply {
         ctm.forEach { f32(it) }
-        i32(w); i32(h); u8(format)
+        // wire.rs emits a producer-side raw raster (format 0, RGBA8888) as
+        // format 2 with each pixel rewritten as an ARGB word (B,G,R,A
+        // bytes); JPEG passes through. Mirror that here, as this writer is
+        // a transcription of the serializer, not of the parser.
+        val emittedFormat = if (format == 0) 2 else format
+        val emittedData = if (format == 0) {
+            val out = ByteArray(data.size)
+            var p = 0
+            while (p + 4 <= data.size) {
+                out[p] = data[p + 2]; out[p + 1] = data[p + 1]
+                out[p + 2] = data[p]; out[p + 3] = data[p + 3]
+                p += 4
+            }
+            for (i in p until data.size) out[i] = data[i]
+            out
+        } else {
+            data
+        }
+        i32(w); i32(h); u8(emittedFormat)
         if (version >= 9) f32(alpha)
         if (version >= 10) u8(blend)
         if (version >= 11) u8(if (interpolate) 1 else 0)
-        i32(data.size); bytes(data)
+        i32(emittedData.size); bytes(emittedData)
     }
 
     fun imageTiled(

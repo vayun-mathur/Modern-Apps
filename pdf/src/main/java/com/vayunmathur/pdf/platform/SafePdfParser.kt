@@ -462,4 +462,7 @@ object SafePdfParser {
 
     internal fun decodeBitmap(w: Int, h: Int, format: Int, data: ByteArray): android.graphics.Bitmap? =
         SafePdfImages.decodeBitmap(w, h, format, data)
+
+    internal fun decodeBitmap(w: Int, h: Int, format: Int, data: ByteBuffer): android.graphics.Bitmap? =
+        SafePdfImages.decodeBitmap(w, h, format, data)
 }

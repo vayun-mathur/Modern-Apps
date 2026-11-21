@@ -65,6 +65,10 @@ pub(crate) const TRANSFER_LUT_SIZE: usize = 256;
 /// assert that. Rust only emits this for non-overlapping patterns, because a periodic
 /// repeat cannot express §8.7.3.1 overlap; see `images::rasterize_pattern_cell`.
 const TAG_IMAGE_TILED: u8 = 14;
+/// Wire format byte for a raw raster as little-endian ARGB words (tag 4 only;
+/// tag 14 carries no format byte and stays RGBA8888). Twin of
+/// `SafePdfImages.FORMAT_ARGB_WORDS` in Kotlin.
+const FORMAT_ARGB_WORDS: u8 = 2;
 
 const PATHOP_MOVE: u8 = 0;
 const PATHOP_LINE: u8 = 1;
@@ -100,7 +104,7 @@ fn truncate_str_safe(s: &str, max_bytes: usize) -> &str {
 ///   1 Text:   f32 x, f32 y, f32 size, u32 argb, u16 len, [utf8], u8 hasStroke, u32 strokeArgb, f32 strokeWidth, u8 renderMode (v4), u8 blend (v5), f32 advance (v7), u8 fontFlags (v8: bit0 bold bit1 italic, bits2-3 family 0=sans 1=serif 2=mono, bit4 outline-drawn), f32 hScale (v8)
 ///   2 Fill:   u32 argb, u8 evenOdd, u16 nContours, [u16 nPts, [f32 x,y]...]... (v6), u8 blend (v5)
 ///   3 Stroke: u32 argb, f32 width, u8 nDash, [f32 dash]..., f32 phase, u8 cap, u8 join, f32 miter, u16 nPts, [f32 x, f32 y]..., u8 blend (v5)
-///   4 Image:  6×f32 ctm, u32 w, u32 h, u8 format, f32 alpha (v9), u8 blend (v10), u8 interpolate (v11, NOT emitted while VERSION is 10), u32 len, [bytes] (format 0=RGBA8888, 1=JPEG)
+///   4 Image:  6×f32 ctm, u32 w, u32 h, u8 format, f32 alpha (v9), u8 blend (v10), u8 interpolate (v11, NOT emitted while VERSION is 10), u32 len, [bytes] (format 1=JPEG, 2=raw ARGB words — little-endian, i.e. B,G,R,A bytes in memory, exactly Android's ARGB_8888 layout so the consumer can `copyPixelsFromBuffer` with no swizzle; format 0=RGBA8888 is the legacy layout the serializer no longer emits for this arm, kept decodable on the consumer side)
 ///   5 ClipPush: u8 evenOdd, u16 nPts, [f32 x,y]..., u16 nPathOps, [u8 kind, coords]...  (path-ops section is v4)
 ///              path-op kinds: 0 Move(2f32) 1 Line(2f32) 2 Cubic(6f32) 3 Close(0)
 ///
@@ -218,7 +222,15 @@ pub fn serialize(page: &PageData) -> Vec<u8> {
                 }
                 buf.extend_from_slice(&w.to_le_bytes());
                 buf.extend_from_slice(&h.to_le_bytes());
-                buf.push(*format);
+                // Raw rasters (the producer's format 0, RGBA8888) are emitted
+                // as format 2, ARGB words: writing B,G,R,A per pixel here —
+                // inside the copy this serializer already makes into the wire
+                // buffer — lets the consumer move the payload straight into
+                // an ARGB_8888 Bitmap via copyPixelsFromBuffer instead of a
+                // per-pixel RGBA->ARGB loop over an IntArray. No extra pass
+                // or allocation: the bytes are written once, in final order.
+                // JPEG (1) and anything else pass through untouched.
+                buf.push(if *format == 0 { FORMAT_ARGB_WORDS } else { *format });
                 // FIX #10: previously `alpha: _` was ignored, causing opaque rendering for transparent images.
                 // V9 now serializes per-image alpha (from SMask or alpha_fill).
                 buf.extend_from_slice(&alpha.to_le_bytes()); // v9
@@ -241,7 +253,22 @@ pub fn serialize(page: &PageData) -> Vec<u8> {
                     data_slice
                 };
                 buf.extend_from_slice(&final_len.to_le_bytes());
-                buf.extend_from_slice(final_slice);
+                if *format == 0 {
+                    // RGBA -> ARGB word (B,G,R,A bytes) per pixel, written
+                    // in place of the plain copy above. A trailing partial
+                    // pixel (a truncated producer buffer) is passed through
+                    // as-is; the consumer's length check rejects it.
+                    let mut chunks = final_slice.chunks_exact(4);
+                    for px in &mut chunks {
+                        buf.push(px[2]);
+                        buf.push(px[1]);
+                        buf.push(px[0]);
+                        buf.push(px[3]);
+                    }
+                    buf.extend_from_slice(chunks.remainder());
+                } else {
+                    buf.extend_from_slice(final_slice);
+                }
             }
             Prim::ImageTiled { ctm, w, h, data, xstep, ystep, i0, j0, nx, ny, alpha, blend } => {
                 buf.push(TAG_IMAGE_TILED);

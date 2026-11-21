@@ -129,6 +129,20 @@ class CaptureCropComposeTest {
         rule.waitForIdle()
     }
 
+    @Test fun subcroppedThumbnailVariantsUseSizedDecode() {
+        val uri = pngUri("sub-thumb.png")
+        rule.setContent {
+            DynamicTheme {
+                androidx.compose.foundation.layout.Column {
+                    // Capture-list thumbnails: sized decode, not full-res.
+                    SubcroppedImage(CapturedImage(uri, quadrilateral = Quadrilateral.default()), thumbnailSizePx = 40)
+                    SubcroppedImage(CapturedImage(uri, cropRect = Rect(0f, 0f, 0.5f, 0.5f)), thumbnailSizePx = 40)
+                }
+            }
+        }
+        rule.waitForIdle()
+    }
+
     @Test fun pageScrollerShowsPageCount() {
         val scroll = SafePdfScrollState().apply { viewportSize = IntSize(612, 800); pageCount = 4 }
         val zoom = SafePdfZoomState()

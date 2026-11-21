@@ -80,9 +80,15 @@ private suspend fun renderImagePage(
         val pageBitmap = createBitmap(targetWidth, targetHeight)
         val pageCanvas = Canvas(pageBitmap)
         pageCanvas.drawColor(Color.WHITE)
-        drawCropped(bitmap, capturedImage, pageCanvas, targetWidth, targetHeight, pageSize.scale)
+        // Warp and scan filter are applied in this single draw onto the
+        // page canvas: previously the warp materialised a second
+        // page-sized bitmap and the filter then copied the page bitmap
+        // onto itself through the ColorMatrix.
+        drawCropped(
+            bitmap, capturedImage, pageCanvas, targetWidth, targetHeight, pageSize.scale,
+            scanFilterPaint(filter),
+        )
         bitmap.recycle()
-        applyScanFilter(pageBitmap, filter)
 
         val pageInfo = PdfDocument.PageInfo.Builder(targetWidth, targetHeight, index + 1).create()
         val page = pdfDocument.startPage(pageInfo)
@@ -138,21 +144,20 @@ private fun pageSize(bitmap: Bitmap, capturedImage: CapturedImage): PageSize {
     return PageSize(targetWidth, targetHeight, scale)
 }
 
-private fun drawCropped(
+internal fun drawCropped(
     bitmap: Bitmap,
     capturedImage: CapturedImage,
     pageCanvas: Canvas,
     targetWidth: Int,
     targetHeight: Int,
     drawScale: Float,
+    paint: Paint? = null,
 ) {
     val crop = capturedImage.cropRect
     val quadrilateral = capturedImage.quadrilateral
     when {
         quadrilateral != null -> {
-            val warped = warpQuadToBitmap(bitmap, quadrilateral, targetWidth, targetHeight)
-            pageCanvas.drawBitmap(warped, 0f, 0f, null)
-            warped.recycle()
+            drawWarped(bitmap, quadrilateral, targetWidth, targetHeight, pageCanvas, paint)
         }
         crop != null -> {
             val srcRect = android.graphics.Rect(
@@ -162,32 +167,73 @@ private fun drawCropped(
                 (crop.bottom * bitmap.height).roundToInt(),
             )
             val dst = android.graphics.Rect(0, 0, targetWidth, targetHeight)
-            pageCanvas.drawBitmap(bitmap, srcRect, dst, null)
+            pageCanvas.drawBitmap(bitmap, srcRect, dst, paint)
         }
         else -> {
             val matrix = Matrix()
             matrix.postScale(drawScale, drawScale)
-            pageCanvas.drawBitmap(bitmap, matrix, null)
+            pageCanvas.drawBitmap(bitmap, matrix, paint)
         }
     }
 }
 
-/** Apply a scan [filter] to [bmp] in place (via a filtered self-copy). */
-private fun applyScanFilter(bmp: Bitmap, filter: ScanFilter) {
-    if (filter == ScanFilter.NONE) return
+/**
+ * Perspective-warp [quad] out of [src] straight onto [pageCanvas] with the
+ * poly-to-poly matrix, optionally through [paint]'s scan filter. Falls back
+ * to a 1:1 bounding-box blit when the matrix is degenerate, matching the
+ * geometry [warpQuadToBitmap]'s fallback produces. No intermediate bitmap.
+ */
+internal fun drawWarped(
+    src: Bitmap,
+    quad: Quadrilateral,
+    width: Int,
+    height: Int,
+    pageCanvas: Canvas,
+    paint: Paint? = null,
+) {
+    val targetWidth = width.coerceAtLeast(1)
+    val targetHeight = height.coerceAtLeast(1)
+    val srcPoints = quad.toSrcPoints(src.width, src.height)
+    val dstPoints = floatArrayOf(
+        0f, 0f,
+        targetWidth.toFloat(), 0f,
+        targetWidth.toFloat(), targetHeight.toFloat(),
+        0f, targetHeight.toFloat()
+    )
+    val matrix = Matrix()
+    if (matrix.setPolyToPoly(srcPoints, 0, dstPoints, 0, QUAD_POINTS)) {
+        pageCanvas.drawBitmap(src, matrix, paint)
+    } else {
+        val bounds = quad.toBoundingRect()
+        val left = (bounds.left * src.width).roundToInt().coerceIn(0, src.width - 1)
+        val top = (bounds.top * src.height).roundToInt().coerceIn(0, src.height - 1)
+        val w = targetWidth.coerceAtMost(src.width - left)
+        val h = targetHeight.coerceAtMost(src.height - top)
+        val srcRect = android.graphics.Rect(left, top, left + w, top + h)
+        val dstRect = android.graphics.Rect(0, 0, w, h)
+        pageCanvas.drawBitmap(src, srcRect, dstRect, paint)
+    }
+}
+
+/**
+ * The scan [filter] as a draw-time paint, or null for [ScanFilter.NONE].
+ * Applied by the draw onto the page canvas instead of by copying the
+ * finished page bitmap onto itself through the same [ColorMatrix]; the
+ * white page background is a fixed point of every matrix here, so not
+ * filtering it changes nothing.
+ */
+internal fun scanFilterPaint(filter: ScanFilter): Paint? {
+    if (filter == ScanFilter.NONE) return null
     val matrix = when (filter) {
         ScanFilter.GRAYSCALE, ScanFilter.BW -> ColorMatrix().apply { setSaturation(0f) }
         ScanFilter.CONTRAST -> ColorMatrix(CONTRAST_MATRIX)
-        ScanFilter.NONE -> return
+        ScanFilter.NONE -> return null
     }
     if (filter == ScanFilter.BW) {
         // Strong contrast after desaturation approximates a bilevel scan.
         matrix.postConcat(ColorMatrix(BW_MATRIX))
     }
-    val copy = bmp.copy(Bitmap.Config.ARGB_8888, false)
-    val paint = Paint().apply { colorFilter = ColorMatrixColorFilter(matrix) }
-    Canvas(bmp).drawBitmap(copy, 0f, 0f, paint)
-    copy.recycle()
+    return Paint().apply { colorFilter = ColorMatrixColorFilter(matrix) }
 }
 
 private val CONTRAST_MATRIX = floatArrayOf(

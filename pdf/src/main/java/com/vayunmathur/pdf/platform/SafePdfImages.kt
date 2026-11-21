@@ -1,5 +1,6 @@
 package com.vayunmathur.pdf.platform
 import com.vayunmathur.library.log.Log
+import java.nio.ByteBuffer
 
 /**
  * The raster half of [SafePdfParser]: image payload decoding and its budgets.
@@ -71,18 +72,33 @@ object SafePdfImages {
         return s
     }
 
-    /** Decode an image payload: format 1 = JPEG bytes, 0 = raw RGBA8888. */
-    internal fun decodeBitmap(w: Int, h: Int, format: Int, data: ByteArray): android.graphics.Bitmap? {
+    /**
+     * Decode an image payload: format 1 = JPEG bytes, 0 = raw RGBA8888
+     * (legacy wire layout), 2 = raw ARGB words (see [FORMAT_ARGB_WORDS]).
+     */
+    internal fun decodeBitmap(w: Int, h: Int, format: Int, data: ByteArray): android.graphics.Bitmap? =
+        decodeBitmap(w, h, format, ByteBuffer.wrap(data))
+
+    /**
+     * Buffer form of [decodeBitmap]. [data]'s remaining bytes are the payload;
+     * its position is left unchanged. The format-2 arm consumes the payload as
+     * a slice of this buffer (see [decodeArgbWords]), so a page-sized wire
+     * buffer is never copied per image. The JPEG arm may copy only when the
+     * buffer has no accessible backing array — compressed bytes, not pixels.
+     */
+    internal fun decodeBitmap(w: Int, h: Int, format: Int, data: ByteBuffer): android.graphics.Bitmap? {
         if (badDimensions(w, h)) return null
-        // The pixel budget is per format. The raw branch below allocates `w*h` ints before it
-        // can do anything, so it must be refused outright — and Rust decimates that path, so
-        // an oversized raw image is a contract violation rather than ordinary input. A JPEG
-        // commits nothing until the decoder runs and is scaled down there instead.
+        // The pixel budget is per format. The raw branch used to allocate
+        // `w*h` ints before it could do anything, so it must be refused
+        // outright — and Rust decimates that path, so an oversized raw image
+        // is a contract violation rather than ordinary input. A JPEG commits
+        // nothing until the decoder runs and is scaled down there instead.
         if (format != FORMAT_JPEG && w.toLong() * h.toLong() > MAX_IMAGE_PIXELS) return null
         return try {
             when (format) {
                 FORMAT_JPEG -> decodeJpeg(w, h, data)
-                FORMAT_RAW -> decodeRaw(w, h, data)
+                FORMAT_RAW -> decodeRgba(w, h, data)
+                FORMAT_ARGB_WORDS -> decodeArgbWords(w, h, data)
                 else -> {
                     // Rust returns no image at all for a format it could not produce, so an
                     // unknown format here is a wire mismatch, not a failed decode to paper over.
@@ -93,15 +109,24 @@ object SafePdfImages {
         } catch (expected: IllegalArgumentException) {
             Log.status("SafePdfParser", "decodeBitmap failed w=$w h=$h format=$format", expected)
             null
+        } catch (expected: NullPointerException) {
+            // The stub android.jar's Bitmap.createBitmap(w, h, config)
+            // returns null (the int-array overload the old raw path used is
+            // a platform type and simply propagated that null). Off-device
+            // this is the "no bitmap" outcome the parser already handles;
+            // on a device createBitmap does not return null.
+            Log.status("SafePdfParser", "decodeBitmap failed w=$w h=$h format=$format", expected)
+            null
         } catch (expected: OutOfMemoryError) {
             Log.status("SafePdfParser", "decodeBitmap OOM w=$w h=$h format=$format", expected)
             null
         }
     }
 
-    private fun decodeJpeg(w: Int, h: Int, data: ByteArray): android.graphics.Bitmap? {
-        if (data.size > MAX_IMAGE_DATA_BYTES) {
-            Log.status("SafePdfParser", "JPEG too large ${data.size}")
+    private fun decodeJpeg(w: Int, h: Int, data: ByteBuffer): android.graphics.Bitmap? {
+        val len = data.remaining()
+        if (len > MAX_IMAGE_DATA_BYTES) {
+            Log.status("SafePdfParser", "JPEG too large $len")
             return null
         }
         // Subsample instead of dropping. Rust hands the JPEG over at full
@@ -110,20 +135,67 @@ object SafePdfImages {
         // full size, so a 20 MP photo would commit ~80 MB of ARGB_8888.
         val opts = android.graphics.BitmapFactory.Options()
         opts.inSampleSize = sampleSizeFor(w, h)
-        return android.graphics.BitmapFactory.decodeByteArray(data, 0, data.size, opts)
+        return if (data.hasArray()) {
+            android.graphics.BitmapFactory.decodeByteArray(
+                data.array(), data.arrayOffset() + data.position(), len, opts
+            )
+        } else {
+            val bytes = ByteArray(len)
+            data.duplicate().get(bytes)
+            android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)
+        }
     }
 
-    private fun decodeRaw(w: Int, h: Int, data: ByteArray): android.graphics.Bitmap? {
-        if (data.size < w * h * BYTES_PER_PIXEL) return null
+    /**
+     * Format 2: raw ARGB words -> ARGB_8888 bitmap with no per-pixel loop
+     * and no intermediate pixel array.
+     *
+     * Before (format 0, the only raw layout): wire bytes -> per-image
+     * `ByteArray` -> `IntArray(w*h)` (one RGBA->ARGB iteration per pixel)
+     * -> bitmap: at the 16 MP cap that is 64 MB + 64 MB transient on top of
+     * the 64 MB bitmap. Android stores ARGB_8888 pixels as little-endian
+     * ARGB words (B,G,R,A bytes in memory), which the wire's RGBA8888 bytes
+     * are NOT — a plain [android.graphics.Bitmap.copyPixelsFromBuffer] over
+     * RGBA swaps R and B (pinned by `SafePdfImagesZeroCopyTest`). So the
+     * Rust serializer now emits format 2: each pixel as an ARGB word, which
+     * is byte-for-byte the bitmap's in-memory layout. The caller hands a
+     * slice/view of the already-materialised wire buffer; we allocate only
+     * the bitmap and let `copyPixelsFromBuffer` move the bytes.
+     */
+    private fun decodeArgbWords(w: Int, h: Int, data: ByteBuffer): android.graphics.Bitmap? {
+        if (data.remaining().toLong() < w.toLong() * h * BYTES_PER_PIXEL) return null
+        val bitmap = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888)
+        // The wire carries straight (unpremultiplied) alpha, while a bitmap's
+        // storage is premultiplied by default: copying the bytes in without
+        // this flag would have draw/getPixel un-premultiply them a second
+        // time and brighten every translucent pixel. The flag relabels the
+        // storage without converting it, so drawing premultiplies once,
+        // exactly as the int-array path did.
+        bitmap.setPremultiplied(false)
+        // copyPixelsFromBuffer consumes from the buffer's position, so hand
+        // it a duplicate: the caller's position must stay where the next
+        // primitive starts being measured from.
+        bitmap.copyPixelsFromBuffer(data.duplicate())
+        return bitmap
+    }
+
+    /**
+     * Format 0 (legacy RGBA8888, no longer emitted by the in-repo Rust
+     * serializer) and tiling-pattern cells, whose tag carries no format
+     * byte to signal the new layout with. Kept so older buffers still
+     * decode; pattern cells are small, and this is not the embedded-image
+     * path the 16 MP budget applies to.
+     */
+    private fun decodeRgba(w: Int, h: Int, data: ByteBuffer): android.graphics.Bitmap? {
+        if (data.remaining().toLong() < w.toLong() * h * BYTES_PER_PIXEL) return null
         val pixels = IntArray(w * h)
-        var p = 0
+        val view = data.duplicate()
         for (i in pixels.indices) {
-            val r = data[p].toInt() and CHANNEL_MASK
-            val g = data[p + GREEN_OFF].toInt() and CHANNEL_MASK
-            val b = data[p + BLUE_OFF].toInt() and CHANNEL_MASK
-            val a = data[p + ALPHA_OFF].toInt() and CHANNEL_MASK
+            val r = view.get().toInt() and CHANNEL_MASK
+            val g = view.get().toInt() and CHANNEL_MASK
+            val b = view.get().toInt() and CHANNEL_MASK
+            val a = view.get().toInt() and CHANNEL_MASK
             pixels[i] = (a shl ALPHA_SHIFT) or (r shl RED_SHIFT) or (g shl GREEN_SHIFT) or b
-            p += BYTES_PER_PIXEL
         }
         return android.graphics.Bitmap.createBitmap(
             pixels, w, h, android.graphics.Bitmap.Config.ARGB_8888
@@ -132,11 +204,11 @@ object SafePdfImages {
 
     private const val FORMAT_JPEG = 1
     private const val FORMAT_RAW = 0
+
+    /** Raw pixels as little-endian ARGB words (B,G,R,A bytes in memory). */
+    internal const val FORMAT_ARGB_WORDS = 2
     private const val CHANNEL_MASK = 0xFF
-    private const val BYTES_PER_PIXEL = 4
-    private const val GREEN_OFF = 1
-    private const val BLUE_OFF = 2
-    private const val ALPHA_OFF = 3
+    private const val BYTES_PER_PIXEL = 4L
     private const val ALPHA_SHIFT = 24
     private const val RED_SHIFT = 16
     private const val GREEN_SHIFT = 8

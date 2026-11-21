@@ -42,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -183,6 +184,9 @@ fun CapturePdfScreen(
                     modifier = Modifier.height(100.dp)
                 ) {
                     val lazyListState = rememberLazyListState()
+                    // List items are 80 dp: decode thumbnails at that size,
+                    // never at the captured photo's full resolution.
+                    val thumbnailSizePx = with(LocalDensity.current) { 80.dp.roundToPx() }
                     val state = rememberReorderableLazyListState(lazyListState) { from, to ->
                         if (to.index >= images.size || from.index >= images.size) return@rememberReorderableLazyListState
                         viewModel.moveCapturedImage(from.index, to.index)
@@ -211,7 +215,8 @@ fun CapturePdfScreen(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     SubcroppedImage(
-                                        image = img
+                                        image = img,
+                                        thumbnailSizePx = thumbnailSizePx
                                     )
                                 }
                             }

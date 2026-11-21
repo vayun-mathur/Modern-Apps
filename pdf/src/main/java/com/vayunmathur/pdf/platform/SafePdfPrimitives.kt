@@ -274,9 +274,10 @@ internal class PrimitiveDecoder(
             buf.position(buf.position() + len)
             return
         }
-        val data = ByteArray(len)
-        buf.get(data)
-        val bmp = SafePdfParser.decodeBitmap(w, h, format, data)
+        // Slice, do not copy: the payload stays a view of the page buffer
+        // and the raw decoder moves it straight into the bitmap.
+        val bmp = SafePdfParser.decodeBitmap(w, h, format, payloadSlice(buf, len))
+        buf.position(buf.position() + len)
         out.add(PdfPrimitive.Image(ctm, bmp, imgAlpha, imgBlend, imgInterpolate))
     }
 
@@ -398,10 +399,9 @@ internal class PrimitiveDecoder(
             buf.position(buf.position() + len)
             return
         }
-        val data = ByteArray(len)
-        buf.get(data)
         // Format 0: the cell is always raw RGBA8888, so there is no format byte.
-        val bmp = SafePdfParser.decodeBitmap(w, h, 0, data)
+        val bmp = SafePdfParser.decodeBitmap(w, h, 0, payloadSlice(buf, len))
+        buf.position(buf.position() + len)
         // The lattice extent only sizes the filled region — a REPEAT shader tiles
         // infinitely — so an absurd count costs nothing to draw, but clamp it so it
         // cannot produce non-finite path coordinates.
@@ -426,6 +426,13 @@ internal class PrimitiveDecoder(
 
     private fun requireBytes(buf: ByteBuffer, count: Int, message: String) {
         if (buf.remaining() < count) throw IllegalArgumentException(message)
+    }
+
+    /** The next [len] bytes as a view of [buf]; does not advance [buf]. */
+    private fun payloadSlice(buf: ByteBuffer, len: Int): ByteBuffer {
+        val view = buf.duplicate()
+        view.limit(view.position() + len)
+        return view.slice()
     }
 
     companion object {

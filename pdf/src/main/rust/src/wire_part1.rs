@@ -423,6 +423,41 @@ mod tests {
         );
     }
 
+    /// Raw rasters leave the serializer as format 2 (ARGB words, B,G,R,A
+    /// bytes) so the Kotlin consumer can `copyPixelsFromBuffer` them with
+    /// no per-pixel swizzle; JPEG payloads are untouched. The byte count
+    /// does not change — only the format byte and the channel order.
+    #[test]
+    fn raw_images_are_emitted_as_argb_words_and_jpeg_is_untouched() {
+        let image_page = |format: u8, data: Vec<u8>| PageData {
+            width: 10.0,
+            height: 10.0,
+            prims: vec![Prim::Image {
+                ctm: [1.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+                w: 1,
+                h: 1,
+                format,
+                data,
+                alpha: 1.0,
+                blend: BlendMode::Normal,
+            }],
+        };
+        // Payload offset: header (20) + tag (1) + ctm (24) + w/h (8).
+        fn payload_at<'a>(buf: &'a [u8]) -> (u8, &'a [u8]) {
+            let format_at = HEADER_LEN + 1 + 24 + 8;
+            (buf[format_at], &buf[format_at + 1 + 4 + 1 + 4..])
+        }
+        // RGBA red pixel (255,0,0,255) -> ARGB word bytes B,G,R,A.
+        let raw_buf = serialize(&image_page(0, vec![255, 0, 0, 255]));
+        let (format, payload) = payload_at(&raw_buf);
+        assert_eq!(format, FORMAT_ARGB_WORDS);
+        assert_eq!(payload, &[0, 0, 255, 255]);
+        let jpeg_buf = serialize(&image_page(1, vec![9, 8, 7, 6]));
+        let (format, payload) = payload_at(&jpeg_buf);
+        assert_eq!(format, 1);
+        assert_eq!(payload, &[9, 8, 7, 6]);
+    }
+
     /// A version bump only means something if the payload changes with it, and the reverse
     /// is just as fatal. Pin the emitted Image payload to the exact v10 field list so that
     /// bumping WIRE_VERSION without writing the v11 interpolate byte — or writing the byte

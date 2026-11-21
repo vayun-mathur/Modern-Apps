@@ -21,8 +21,11 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import com.vayunmathur.library.image.ImageRequest
+import com.vayunmathur.library.image.Size as ImageSize
 import com.vayunmathur.library.image.compose.AsyncImage
 import com.vayunmathur.library.image.compose.AsyncImageState
+import com.vayunmathur.library.image.decoders.BitmapDecoder
 import com.vayunmathur.pdf.data.CapturedImage
 import com.vayunmathur.pdf.data.Quadrilateral
 import com.vayunmathur.pdf.platform.warpQuadToBitmap
@@ -30,16 +33,23 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
 
+/**
+ * [thumbnailSizePx] is the capture list's hint: when set, the source is
+ * decoded at that size (library/image's sized decode) instead of full
+ * resolution, so an 80 dp list item never materialises the full photo.
+ * Null (the main preview) keeps the full-resolution decode.
+ */
 @Composable
 fun SubcroppedImage(
     image: CapturedImage,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    thumbnailSizePx: Int? = null
 ) {
     val quad = image.quadrilateral
     if (quad != null) {
-        PerspectiveCroppedImage(image, quad, modifier)
+        PerspectiveCroppedImage(image, quad, modifier, thumbnailSizePx)
     } else {
-        BoundingBoxCroppedImage(image, modifier)
+        BoundingBoxCroppedImage(image, modifier, thumbnailSizePx)
     }
 }
 
@@ -47,18 +57,33 @@ fun SubcroppedImage(
 private fun PerspectiveCroppedImage(
     image: CapturedImage,
     quad: Quadrilateral,
-    modifier: Modifier
+    modifier: Modifier,
+    thumbnailSizePx: Int? = null
 ) {
     val context = LocalContext.current
-    var croppedBitmap by remember(image.uri, quad) { mutableStateOf<Bitmap?>(null) }
+    var croppedBitmap by remember(image.uri, quad, thumbnailSizePx) { mutableStateOf<Bitmap?>(null) }
 
-    LaunchedEffect(image.uri, quad) {
+    LaunchedEffect(image.uri, quad, thumbnailSizePx) {
         withContext(Dispatchers.Default) {
             try {
-                val source = ImageDecoder.createSource(context.contentResolver, image.uri)
-                val bitmap = ImageDecoder.decodeBitmap(source) { decoder, _, _ ->
-                    decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
-                    decoder.isMutableRequired = false
+                val bitmap = if (thumbnailSizePx != null) {
+                    // Sized decode from library/image: ImageDecoder samples
+                    // inside the decoder, so the full-res bitmap never exists.
+                    val request = ImageRequest.Builder(context)
+                        .data(image.uri)
+                        .size(ImageSize(thumbnailSizePx, thumbnailSizePx))
+                        .build()
+                    BitmapDecoder.decode(
+                        ImageDecoder.createSource(context.contentResolver, image.uri),
+                        request,
+                        allowHardware = false,
+                    ) ?: return@withContext
+                } else {
+                    val source = ImageDecoder.createSource(context.contentResolver, image.uri)
+                    ImageDecoder.decodeBitmap(source) { decoder, _, _ ->
+                        decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+                        decoder.isMutableRequired = false
+                    }
                 }
 
                 val bounds = quad.toBoundingRect()
@@ -85,9 +110,23 @@ private fun PerspectiveCroppedImage(
 @Composable
 private fun BoundingBoxCroppedImage(
     image: CapturedImage,
-    modifier: Modifier
+    modifier: Modifier,
+    thumbnailSizePx: Int? = null
 ) {
+    val context = LocalContext.current
     var painterSize by remember(image.uri) { mutableStateOf<Size?>(null) }
+    // Explicit sized request for list thumbnails; a plain Uri otherwise
+    // (AsyncImage then derives its decode size from the layout constraints).
+    val model: Any = remember(image.uri, thumbnailSizePx, context) {
+        if (thumbnailSizePx != null) {
+            ImageRequest.Builder(context)
+                .data(image.uri)
+                .size(ImageSize(thumbnailSizePx, thumbnailSizePx))
+                .build()
+        } else {
+            image.uri
+        }
+    }
 
     val crop = image.cropRect ?: Rect(0f, 0f, 1f, 1f)
     val finalModifier = painterSize?.takeIf { it.width > 0f && it.height > 0f }?.let { size ->
@@ -96,7 +135,7 @@ private fun BoundingBoxCroppedImage(
 
     Box(finalModifier.clipToBounds()) {
         AsyncImage(
-            model = image.uri,
+            model = model,
             contentDescription = null,
             onState = { state ->
                 if (state is AsyncImageState.Success) {
