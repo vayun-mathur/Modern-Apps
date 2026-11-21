@@ -88,20 +88,21 @@ internal object HealthChartData {
 
     internal suspend fun queryChartPairs(
         config: HealthMetricConfig,
+        repository: HealthRepository,
         startTime: kotlin.time.Instant,
         endTimeNow: kotlin.time.Instant,
         periodType: HealthAPI.PeriodType,
         periodType2: HealthAPI.PeriodType,
     ): Pair<List<Tuple3<Long, Double, Double>>, List<Tuple3<Long, Double, Double>>> {
         val rawPairs = if (config.isLineChart) {
-            HealthAPI.getListOfAverages(config.recordType, startTime, endTimeNow, periodType)
+            HealthAPI.getListOfAverages(repository, config.recordType, startTime, endTimeNow, periodType)
         } else {
-            HealthAPI.getListOfSums(config.recordType, startTime, endTimeNow, periodType)
+            HealthAPI.getListOfSums(repository, config.recordType, startTime, endTimeNow, periodType)
         }
         val rawPairsHistory = if (config.isLineChart) {
-            HealthAPI.getListOfAverages(config.recordType, startTime, endTimeNow, periodType2)
+            HealthAPI.getListOfAverages(repository, config.recordType, startTime, endTimeNow, periodType2)
         } else {
-            HealthAPI.getListOfSums(config.recordType, startTime, endTimeNow, periodType2)
+            HealthAPI.getListOfSums(repository, config.recordType, startTime, endTimeNow, periodType2)
         }
         // Height is stored in meters but its config/goal/unit are centimeters
         // (175 cm); every other metric stores in its display unit already.
@@ -301,10 +302,11 @@ internal object HealthChartData {
 
     /** Last night's sleep in minutes, or null when the latest record is older than that. */
     internal suspend fun lastNightSleepMinutes(
+        repository: HealthRepository,
         lookback: java.time.Duration,
         hoursToMinutes: Long,
     ): Long? =
-        HealthAPI.lastRecord(RecordType.Sleep)?.let { record ->
+        repository.getLastRecord(RecordType.Sleep)?.let { record ->
             val todayStart = java.time.LocalDate.now()
                 .atStartOfDay(java.time.ZoneId.systemDefault()).toInstant()
             if (record.endTime.isAfter(todayStart.minus(lookback))) {

@@ -40,7 +40,7 @@ object HealthAPI {
     private var repository: HealthRepository? = null
 
     /** Backward-compatible accessor — callers that read `HealthAPI.db` still compile. */
-    val db get() = repository!!.database
+    val db get() = repo().database
 
     fun init(healthConnectClient: HealthConnectClient, context: Context, repository: HealthRepository) {
         this.healthConnectClient = healthConnectClient
@@ -59,7 +59,10 @@ object HealthAPI {
         preferences = context.getSharedPreferences("sync", Context.MODE_PRIVATE)
     }
 
-    private fun repo(): HealthRepository = repository!!
+    private fun repo(): HealthRepository = checkNotNull(repository) {
+        "HealthAPI used before init: the host must call init/initLocal first " +
+            "(MainActivity does this in onCreateBeforeContent)."
+    }
 
     suspend fun lastRecord(recordType: RecordType): Record? {
         return repo().getLastRecord(recordType)
@@ -330,22 +333,45 @@ object HealthAPI {
             startTime: Instant,
             endTime: Instant,
             period: PeriodType
-    ): List<Tuple3<Long, Double, Double>> = aggregateByPeriod(
-        recordType, startTime, endTime, period,
-        dailyQuery = { t, s, e -> repo().getDailyAvgs(t, s, e) },
-        hourlyQuery = { t, s, e -> repo().getHourlyAvgs(t, s, e) },
-        combine = ::combineForAverages,
-    )
+    ): List<Tuple3<Long, Double, Double>> =
+        getListOfAverages(repo(), recordType, startTime, endTime, period)
 
     suspend fun getListOfSums(
             recordType: RecordType,
             startTime: Instant,
             endTime: Instant,
             period: PeriodType
+    ): List<Tuple3<Long, Double, Double>> =
+        getListOfSums(repo(), recordType, startTime, endTime, period)
+
+    /**
+     * Repository-taking forms: pure Room reads, so callers that already hold
+     * a [HealthRepository] (the ViewModel, chart math) use theirs instead of
+     * requiring this singleton to be initialised first.
+     */
+    internal suspend fun getListOfAverages(
+            repository: HealthRepository,
+            recordType: RecordType,
+            startTime: Instant,
+            endTime: Instant,
+            period: PeriodType
     ): List<Tuple3<Long, Double, Double>> = aggregateByPeriod(
         recordType, startTime, endTime, period,
-        dailyQuery = { t, s, e -> repo().getDailySums(t, s, e) },
-        hourlyQuery = { t, s, e -> repo().getHourlySums(t, s, e) },
+        dailyQuery = { t, s, e -> repository.getDailyAvgs(t, s, e) },
+        hourlyQuery = { t, s, e -> repository.getHourlyAvgs(t, s, e) },
+        combine = ::combineForAverages,
+    )
+
+    internal suspend fun getListOfSums(
+            repository: HealthRepository,
+            recordType: RecordType,
+            startTime: Instant,
+            endTime: Instant,
+            period: PeriodType
+    ): List<Tuple3<Long, Double, Double>> = aggregateByPeriod(
+        recordType, startTime, endTime, period,
+        dailyQuery = { t, s, e -> repository.getDailySums(t, s, e) },
+        hourlyQuery = { t, s, e -> repository.getHourlySums(t, s, e) },
         // Weekly/monthly buckets of daily sums must be summed, not averaged:
         // averaging reported e.g. mean daily steps as the month total.
         combine = ::combineForSums,

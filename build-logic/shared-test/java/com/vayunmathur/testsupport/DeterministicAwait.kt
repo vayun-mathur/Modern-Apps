@@ -104,7 +104,14 @@ fun ComposeContentTestRule.awaitSemantics(description: String, condition: () -> 
         condition()
     }
     idleMainLooper()
-    mainClock.scheduler.advanceUntilIdle()
+    // Bounded settle, never advanceUntilIdle(): a composition can host an
+    // infinitely self-rescheduling scheduler task (a focused text field's
+    // cursor blink, an infinite animation), and advancing until idle then
+    // never returns — the test JVM spins at 100% CPU and its whole
+    // forkEvery batch (and the Gradle task) never completes. Stepping the
+    // same bounded window as the wait above runs every timer that could
+    // still be queued without betting on the scheduler ever going idle.
+    mainClock.scheduler.advanceTimeBy(SCHEDULER_ADVANCE_SECONDS.seconds)
     idleMainLooper()
     check(condition()) { "terminal semantics state not reached: $description" }
 }

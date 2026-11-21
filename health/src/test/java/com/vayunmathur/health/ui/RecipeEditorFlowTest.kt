@@ -3,6 +3,7 @@ package com.vayunmathur.health.ui
 import android.app.Application
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
@@ -21,10 +22,10 @@ import com.vayunmathur.health.data.HealthAPI
 import com.vayunmathur.health.platform.HealthViewModel
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.databases
+import com.vayunmathur.testsupport.awaitSemantics
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 import kotlinx.coroutines.runBlocking
 import org.junit.Rule
 import org.junit.runner.RunWith
@@ -71,21 +72,21 @@ class RecipeEditorFlowTest {
         seedRecipe()
         val backStack = NavBackStack<Route>(arrayOf(Route.Today, Route.RecipeEditor("flow-recipe-1")))
         rule.setContent { RecipeEditorPage(backStack, vm(), "flow-recipe-1") }
-        rule.waitForIdle()
+        // The editor loads on Dispatchers.IO and publishes on Main; wait on
+        // the terminal semantics state, not on idle (idle can fire while the
+        // IO load is still in flight, and a sleep-poll spends a wall-clock
+        // budget that a loaded batched JVM cannot meet).
+        rule.awaitSemantics("recipe ingredients loaded") {
+            rule.onAllNodesWithText("Flow Rice", substring = true).fetchSemanticsNodes().isNotEmpty()
+        }
         rule.onNodeWithText("Flow Rice", substring = true).assertIsDisplayed()
         // Rename through the name field (loaded name is the field value).
         rule.onNodeWithText("Flow Bowl").performTextInput("Flow Bowl v2")
         rule.waitForIdle()
         rule.onNodeWithText("Save Recipe", substring = true).performClick()
-        rule.waitForIdle()
-        // Save completes asynchronously and pops to Today.
-        var popped = false
-        repeat(100) {
-            if (backStack.last() == Route.Today) { popped = true; return@repeat }
-            Thread.sleep(10)
-            rule.waitForIdle()
-        }
-        assertTrue(popped)
+        // Save completes asynchronously (Room writes, then a Main hop) and
+        // pops to Today: that pop is the terminal signal.
+        rule.awaitSemantics("save pops to Today") { backStack.last() == Route.Today }
         assertEquals(Route.Today, backStack.last())
     }
 
@@ -94,7 +95,9 @@ class RecipeEditorFlowTest {
         seedRecipe("2")
         val backStack = NavBackStack<Route>(arrayOf(Route.Today, Route.RecipeEditor("flow-recipe-2")))
         rule.setContent { RecipeEditorPage(backStack, vm(), "flow-recipe-2") }
-        rule.waitForIdle()
+        rule.awaitSemantics("recipe ingredients loaded") {
+            rule.onAllNodesWithText("Flow Rice", substring = true).fetchSemanticsNodes().isNotEmpty()
+        }
         rule.onNodeWithText("Flow Rice", substring = true).performClick()
         rule.waitForIdle()
         rule.onNodeWithText("Set Quantity for Flow Rice").assertExists()

@@ -215,7 +215,7 @@ class HealthChartDataTest {
         val repo = repository()
         HealthAPI.initLocal(context, repo)
         repo.deleteByIds(listOf("sleep-chart-1", "sleep-chart-old"))
-        assertNull(HealthChartData.lastNightSleepMinutes(java.time.Duration.ofHours(12), 60L))
+        assertNull(HealthChartData.lastNightSleepMinutes(repo, java.time.Duration.ofHours(12), 60L))
     }
 
     @Test
@@ -232,7 +232,7 @@ class HealthChartDataTest {
                 )
             )
         )
-        assertEquals(450L, HealthChartData.lastNightSleepMinutes(java.time.Duration.ofHours(24), 60L))
+        assertEquals(450L, HealthChartData.lastNightSleepMinutes(repo, java.time.Duration.ofHours(24), 60L))
     }
 
     @Test
@@ -249,7 +249,7 @@ class HealthChartDataTest {
                 )
             )
         )
-        assertNull(HealthChartData.lastNightSleepMinutes(java.time.Duration.ofHours(12), 60L))
+        assertNull(HealthChartData.lastNightSleepMinutes(repo, java.time.Duration.ofHours(12), 60L))
     }
 
     @Test

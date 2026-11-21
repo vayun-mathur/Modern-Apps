@@ -64,11 +64,11 @@ class HealthChartData2Test {
         ))
         val start = kotlin.time.Instant.fromEpochMilliseconds(at.toEpochMilli() - 86_400_000)
         val end = kotlin.time.Instant.fromEpochMilliseconds(at.toEpochMilli() + 86_400_000)
-        val (barPairs, _) = HealthChartData.queryChartPairs(HealthMetricConfig.STEPS, start, end, HealthAPI.PeriodType.Daily, HealthAPI.PeriodType.Daily)
+        val (barPairs, _) = HealthChartData.queryChartPairs(HealthMetricConfig.STEPS, repo(), start, end, HealthAPI.PeriodType.Daily, HealthAPI.PeriodType.Daily)
         assertTrue(barPairs.any { it.second == 1200.0 })
-        val (linePairs, _) = HealthChartData.queryChartPairs(HealthMetricConfig.HEART_RATE, start, end, HealthAPI.PeriodType.Daily, HealthAPI.PeriodType.Daily)
+        val (linePairs, _) = HealthChartData.queryChartPairs(HealthMetricConfig.HEART_RATE, repo(), start, end, HealthAPI.PeriodType.Daily, HealthAPI.PeriodType.Daily)
         assertTrue(linePairs.any { it.second == 72.0 })
-        val (bpPairs, _) = HealthChartData.queryChartPairs(HealthMetricConfig.BLOOD_PRESSURE, start, end, HealthAPI.PeriodType.Daily, HealthAPI.PeriodType.Daily)
+        val (bpPairs, _) = HealthChartData.queryChartPairs(HealthMetricConfig.BLOOD_PRESSURE, repo(), start, end, HealthAPI.PeriodType.Daily, HealthAPI.PeriodType.Daily)
         assertTrue(bpPairs.isEmpty() || bpPairs.all { it.second >= 0.0 })
     }
 

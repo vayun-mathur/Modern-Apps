@@ -173,39 +173,39 @@ class HealthViewModel(
     /** Dashboard vitals: the four Today shows plus the other point-in-time vitals. */
     private suspend fun CoroutineScope.loadVitalsMetrics() {
         launch {
-            val v = HealthAPI.lastRecord(RecordType.OxygenSaturation)?.value
+            val v = repository.getLastRecord(RecordType.OxygenSaturation)?.value
             _mainPageMetrics.update { it.copy(spo2 = v) }
         }
         launch {
-            val v = HealthAPI.lastRecord(RecordType.RespiratoryRate)?.value
+            val v = repository.getLastRecord(RecordType.RespiratoryRate)?.value
             _mainPageMetrics.update { it.copy(br = v) }
         }
         launch {
-            val v = HealthAPI.lastRecord(RecordType.HeartRateVariabilityRmssd)?.value
+            val v = repository.getLastRecord(RecordType.HeartRateVariabilityRmssd)?.value
             _mainPageMetrics.update { it.copy(hrv = v) }
         }
         launch {
-            val v = HealthAPI.lastRecord(RecordType.RestingHeartRate)?.value?.toLong()
+            val v = repository.getLastRecord(RecordType.RestingHeartRate)?.value?.toLong()
             _mainPageMetrics.update { it.copy(rhr = v) }
         }
         launch {
-            val v = HealthAPI.lastRecord(RecordType.SkinTemperature)?.value
+            val v = repository.getLastRecord(RecordType.SkinTemperature)?.value
             _mainPageMetrics.update { it.copy(skinTemp = v) }
         }
         launch {
-            val v = HealthAPI.lastRecord(RecordType.Vo2Max)?.value
+            val v = repository.getLastRecord(RecordType.Vo2Max)?.value
             _mainPageMetrics.update { it.copy(vo2Max = v) }
         }
         launch {
-            val v = HealthAPI.lastRecord(RecordType.BloodGlucose)?.value
+            val v = repository.getLastRecord(RecordType.BloodGlucose)?.value
             _mainPageMetrics.update { it.copy(bloodGlucose = v) }
         }
         launch {
-            val v = HealthAPI.lastRecord(RecordType.BloodPressure)?.let { it.value to it.secondaryValue }
+            val v = repository.getLastRecord(RecordType.BloodPressure)?.let { it.value to it.secondaryValue }
             _mainPageMetrics.update { it.copy(bloodPressure = v) }
         }
         launch {
-            val v = HealthChartData.lastNightSleepMinutes(SLEEP_LOOKBACK, MINUTES_PER_HOUR)
+            val v = HealthChartData.lastNightSleepMinutes(repository, SLEEP_LOOKBACK, MINUTES_PER_HOUR)
             _mainPageMetrics.update { it.copy(sleepMinutes = v) }
         }
     }
@@ -213,27 +213,27 @@ class HealthViewModel(
     /** Body page point-in-time metrics: height, weight and body composition. */
     private suspend fun CoroutineScope.loadBodyMetrics() {
         launch {
-            val v = HealthAPI.lastRecord(RecordType.Height)?.value
+            val v = repository.getLastRecord(RecordType.Height)?.value
             _mainPageMetrics.update { it.copy(height = v) }
         }
         launch {
-            val v = HealthAPI.lastRecord(RecordType.Weight)?.value
+            val v = repository.getLastRecord(RecordType.Weight)?.value
             _mainPageMetrics.update { it.copy(weight = v) }
         }
         launch {
-            val v = HealthAPI.lastRecord(RecordType.BodyFat)?.value
+            val v = repository.getLastRecord(RecordType.BodyFat)?.value
             _mainPageMetrics.update { it.copy(bodyFat = v) }
         }
         launch {
-            val v = HealthAPI.lastRecord(RecordType.BoneMass)?.value
+            val v = repository.getLastRecord(RecordType.BoneMass)?.value
             _mainPageMetrics.update { it.copy(boneMass = v) }
         }
         launch {
-            val v = HealthAPI.lastRecord(RecordType.LeanBodyMass)?.value
+            val v = repository.getLastRecord(RecordType.LeanBodyMass)?.value
             _mainPageMetrics.update { it.copy(leanBodyMass = v) }
         }
         launch {
-            val v = HealthAPI.lastRecord(RecordType.BodyWaterMass)?.value
+            val v = repository.getLastRecord(RecordType.BodyWaterMass)?.value
             _mainPageMetrics.update { it.copy(bodyWaterMass = v) }
         }
     }
@@ -261,7 +261,7 @@ class HealthViewModel(
             val endTimeNow = if (Clock.System.now() < endTime) Clock.System.now() else endTime
 
             val (rawPairs, rawPairsHistory) = HealthChartData.queryChartPairs(
-                config, startTime, endTimeNow, periodType, periodType2,
+                config, repository, startTime, endTimeNow, periodType, periodType2,
             )
             val (mappedChart, mappedSecondaryChart) = HealthChartData.mapChartSeries(
                 config, selectedTab, startDate, rawPairs, is24Hour(getApplication()),
