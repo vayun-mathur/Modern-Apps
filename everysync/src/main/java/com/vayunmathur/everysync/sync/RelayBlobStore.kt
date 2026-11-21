@@ -85,10 +85,10 @@ object RelayBlobStore {
         runCatching { fileFor(context, vaultId, name).delete() }
     }
 
-    fun encode(name: String, bytes: ByteArray, updatedAt: Long = System.currentTimeMillis()): String =
+    fun encode(name: String, bytes: ByteArray, updatedAt: Long = SyncStamps.next()): String =
         json.encodeToString(BlobEnvelope(name, sha256(bytes), Base64.encode(bytes), updatedAt))
 
-    fun encodeDelete(name: String, updatedAt: Long = System.currentTimeMillis()): String =
+    fun encodeDelete(name: String, updatedAt: Long = SyncStamps.next()): String =
         json.encodeToString(BlobEnvelope(name, "", "", updatedAt, true))
 
     fun decode(raw: String): BlobEnvelope? = runCatching {
@@ -136,6 +136,7 @@ object RelayBlobStore {
         items.mapNotNull { decode(it) }
             .filter { isSafeBlobName(it.name) }
             .forEach { env ->
+                SyncStamps.observe(env.updatedAt)
                 val prev = latest[env.name]
                 if (prev == null || env.updatedAt >= prev.updatedAt) latest[env.name] = env
             }
@@ -171,7 +172,7 @@ object RelayBlobStore {
         vaultId: String,
         vaultKey: ByteArray,
         blobs: List<Pair<String, ByteArray>>,
-        updatedAt: Long = System.currentTimeMillis(),
+        updatedAt: Long = SyncStamps.next(),
     ): Int? {
         if (blobs.isEmpty()) return null
         val items = blobs.map { (name, bytes) -> encode(name, bytes, updatedAt) }
@@ -182,7 +183,7 @@ object RelayBlobStore {
         vaultId: String,
         vaultKey: ByteArray,
         names: List<String>,
-        updatedAt: Long = System.currentTimeMillis(),
+        updatedAt: Long = SyncStamps.next(),
     ): Int? {
         if (names.isEmpty()) return null
         val items = names.map { encodeDelete(it, updatedAt) }

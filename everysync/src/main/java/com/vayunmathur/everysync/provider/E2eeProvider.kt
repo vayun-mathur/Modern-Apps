@@ -29,6 +29,7 @@ import com.vayunmathur.everysync.sync.RelayMerge
 import com.vayunmathur.everysync.sync.RelayPlan
 import com.vayunmathur.everysync.sync.RelaySnapshot
 import com.vayunmathur.everysync.sync.RelayStore
+import com.vayunmathur.everysync.sync.SyncStamps
 import com.vayunmathur.everysync.sync.TodoListRelayStore
 import com.vayunmathur.everysync.sync.TodoRelayStore
 import com.vayunmathur.everysync.sync.VaultKeys
@@ -301,7 +302,11 @@ class E2eeProvider : SyncProvider {
         writeRemoteStamps: (suspend (item: T, stamp: Long) -> Unit)? = null,
     ) {
         val channel = RelaySync.recordChannel(channelType, vault.vaultId)
-        val now = System.currentTimeMillis()
+        // Hybrid stamp for this cycle: advance past every remote stamp the
+        // fold is about to see, then mint a `now` that is monotonic even if
+        // the wall clock jumped backwards (see SyncStamps). The merge uses
+        // `now` for snapshot bookkeeping and hard-delete tombstone stamps.
+        SyncStamps.seedFromStore(context)
         // Full log pull (from 0): the merge needs full remote state, not a
         // delta. The pull cursor still advances so live-push paths can skip
         // re-reads; the merge itself never depends on it.
@@ -311,6 +316,9 @@ class E2eeProvider : SyncProvider {
         // would delete every baseline-present row (see RelayMerge).
         val pulled = pullRemoteOrAbort(channel, vault.key, channelType)
         val remote = pulled.items.mapNotNull { store.parseRemote(it) }
+        remote.forEach { SyncStamps.observe(kind.updatedAt(it)) }
+        val now = SyncStamps.next()
+        SyncStamps.persist(context)
         val local = readLocalOrAbort(store, channelType)
         val baseline = store.loadBaseline()
         val plan = RelayMerge.merge(kind, local, remote, baseline, now)

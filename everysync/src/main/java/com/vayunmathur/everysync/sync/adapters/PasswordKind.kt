@@ -2,6 +2,7 @@ package com.vayunmathur.everysync.sync.adapters
 
 import com.vayunmathur.everysync.data.RemotePassword
 import com.vayunmathur.everysync.sync.EntityKind
+import com.vayunmathur.everysync.sync.SyncStamps
 import com.vayunmathur.everysync.sync.relayContentHash
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -72,7 +73,7 @@ object PasswordKind : EntityKind<RemotePassword>() {
         note: String = "",
         totpSecret: String? = null,
         websites: List<String> = emptyList(),
-        updatedAt: Long = System.currentTimeMillis(),
+        updatedAt: Long = SyncStamps.next(),
     ) = RemotePassword(
         uid = uid,
         isPasskey = false,
@@ -100,7 +101,7 @@ object PasswordKind : EntityKind<RemotePassword>() {
         lastUsedTime: Long = System.currentTimeMillis(),
         signCount: Int = 0,
         linkedPasswordSyncId: String? = null,
-        updatedAt: Long = System.currentTimeMillis(),
+        updatedAt: Long = SyncStamps.next(),
     ) = RemotePassword(
         uid = uid,
         isPasskey = true,

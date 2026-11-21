@@ -12,6 +12,7 @@ import androidx.room3.migration.Migration
 import androidx.sqlite.execSQL
 import com.vayunmathur.library.util.DatabaseHelper
 import com.vayunmathur.library.util.DatabaseMigrations
+import com.vayunmathur.library.util.SyncStamp
 import kotlinx.coroutines.flow.Flow
 
 const val DB_NAME = "notes-db"
@@ -41,9 +42,23 @@ abstract class NoteDao {
     @Query("SELECT * FROM Note WHERE updatedAt > :since")
     abstract suspend fun getUpdatedSince(since: Long): List<Note>
 
+    /**
+     * Highest stamp this store has minted or observed. The rows themselves
+     * are the persisted hybrid-stamp high-water mark: a pulled remote stamp
+     * lands via [upsertRaw], so the next local stamp (see [upsert]) is
+     * automatically past it, and monotonicity survives process death with
+     * no extra column.
+     */
+    @Query("SELECT MAX(updatedAt) FROM Note")
+    abstract suspend fun maxUpdatedAt(): Long?
+
+    /** Next hybrid stamp for a local write (see [SyncStamp]). */
+    suspend fun nextStamp(): Long =
+        SyncStamp.next(maxUpdatedAt() ?: 0L, System.currentTimeMillis())
+
     /** Local write: bumps updatedAt so the change is picked up by sync. */
     suspend fun upsert(value: Note): Long =
-        upsertRaw(value.copy(updatedAt = System.currentTimeMillis()))
+        upsertRaw(value.copy(updatedAt = nextStamp()))
 
     /** Writes [value] verbatim. Only the relay sync uses this, to preserve a pulled timestamp. */
     @Upsert
@@ -59,8 +74,10 @@ abstract class NoteDao {
     abstract suspend fun deleteAll()
 
     /** Local batch write (list reorder, legacy import): bumps updatedAt like [upsert]. */
-    suspend fun upsertAll(values: List<Note>) =
-        upsertAllRaw(values.map { it.copy(updatedAt = System.currentTimeMillis()) })
+    suspend fun upsertAll(values: List<Note>) {
+        val now = nextStamp()
+        upsertAllRaw(values.map { it.copy(updatedAt = now) })
+    }
 
     /** Writes [values] verbatim. Only the relay sync uses this. */
     @Upsert

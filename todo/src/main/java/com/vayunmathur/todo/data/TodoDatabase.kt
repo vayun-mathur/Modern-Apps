@@ -10,6 +10,7 @@ import androidx.room3.Upsert
 import androidx.room3.migration.Migration
 import com.vayunmathur.library.util.DatabaseHelper
 import com.vayunmathur.library.util.DatabaseMigrations
+import com.vayunmathur.library.util.SyncStamp
 import kotlinx.coroutines.flow.Flow
 
 const val DB_NAME = "todo-db"
@@ -59,13 +60,27 @@ abstract class TodoDao {
     @Query("SELECT * FROM Todo WHERE deleted = 0 AND listSyncId = :listSyncId")
     abstract suspend fun getInList(listSyncId: String): List<Todo>
 
+    /**
+     * Highest stamp this store has minted or observed. The rows themselves
+     * are the persisted hybrid-stamp high-water mark: a pulled remote stamp
+     * lands via [upsertRaw], so the next local stamp (see [upsert]) is
+     * automatically past it, and monotonicity survives process death with
+     * no extra column.
+     */
+    @Query("SELECT MAX(updatedAt) FROM Todo")
+    abstract suspend fun maxUpdatedAt(): Long?
+
+    /** Next hybrid stamp for a local write (see [SyncStamp]). */
+    suspend fun nextStamp(): Long =
+        SyncStamp.next(maxUpdatedAt() ?: 0L, System.currentTimeMillis())
+
     /** Local write: bumps updatedAt so the change is picked up by sync. */
     suspend fun upsert(value: Todo): Long =
-        upsertRaw(value.copy(updatedAt = System.currentTimeMillis()))
+        upsertRaw(value.copy(updatedAt = nextStamp()))
 
     /** Local bulk write: bumps updatedAt on every row so reorders reach sync. */
     suspend fun upsertAll(values: List<Todo>) {
-        val now = System.currentTimeMillis()
+        val now = nextStamp()
         upsertAllRaw(values.map { it.copy(updatedAt = now) })
     }
 
@@ -105,11 +120,19 @@ abstract class TodoListDao {
     @Query("SELECT MAX(position) FROM TodoList WHERE deleted = 0")
     abstract suspend fun maxPosition(): Double?
 
+    /** Highest stamp minted/observed by the lists store (see [TodoDao.maxUpdatedAt]). */
+    @Query("SELECT MAX(updatedAt) FROM TodoList")
+    abstract suspend fun maxUpdatedAt(): Long?
+
+    /** Next hybrid stamp for a local list write (see [SyncStamp]). */
+    suspend fun nextStamp(): Long =
+        SyncStamp.next(maxUpdatedAt() ?: 0L, System.currentTimeMillis())
+
     suspend fun upsert(value: TodoList): Long =
-        upsertRaw(value.copy(updatedAt = System.currentTimeMillis()))
+        upsertRaw(value.copy(updatedAt = nextStamp()))
 
     suspend fun upsertAll(values: List<TodoList>) {
-        val now = System.currentTimeMillis()
+        val now = nextStamp()
         upsertAllRaw(values.map { it.copy(updatedAt = now) })
     }
 
