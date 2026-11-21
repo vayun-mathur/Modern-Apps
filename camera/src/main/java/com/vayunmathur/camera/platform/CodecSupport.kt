@@ -48,6 +48,36 @@ object CodecSupport {
     }
 
     /**
+     * True when some encoder for [mimeType] supports [bitrateBps] at
+     * [width]x[height]@[fps]. Used to gate the adaptive high-motion boost: the
+     * Recorder accepts any target bitrate, but requesting one outside the
+     * encoder's range only buys macro-blocking (or a failed configure).
+     */
+    fun supportsVideoBitrate(
+        mimeType: String,
+        width: Int,
+        height: Int,
+        fps: Int,
+        bitrateBps: Int,
+    ): Boolean = try {
+        val list = android.media.MediaCodecList(android.media.MediaCodecList.REGULAR_CODECS)
+        list.codecInfos.any { info ->
+            if (!info.isEncoder) return@any false
+            val caps = try {
+                info.getCapabilitiesForType(mimeType)
+            } catch (_: IllegalArgumentException) {
+                return@any false
+            }
+            val video = caps.videoCapabilities ?: return@any false
+            video.isSizeSupported(width, height) &&
+                video.getSupportedFrameRatesFor(width, height).contains(fps.toDouble()) &&
+                video.bitrateRange.contains(bitrateBps)
+        }
+    } catch (_: Exception) {
+        false
+    }
+
+    /**
      * Default recording codec (issue #757): HEVC when the Recorder supports it, else AVC.
      * AV1 hardware encoders stall on several devices, so AV1 stays opt-in via Settings.
      */

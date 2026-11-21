@@ -56,6 +56,9 @@ fun CameraViewModel.toggleHighSpeedRecording() {
 private const val COUNTDOWN_TICK_MS = 1000L
 private const val TIMELAPSE_SPEED_FACTOR = 8f
 
+/** Settle pause between teardown and rebind for an adaptive-bitrate record press. */
+private const val ADAPTIVE_REBIND_SETTLE_MS = 40L
+
 @android.annotation.SuppressLint("MissingPermission")
 internal fun CameraViewModel.startHighSpeedRecording() {
     if (isRecordingMutable.value) return
@@ -132,8 +135,80 @@ fun CameraViewModel.toggleRecording() {
 
 @android.annotation.SuppressLint("MissingPermission")
 internal fun CameraViewModel.startRecording() {
+    startRecording(allowAdaptiveRebind = true)
+}
+
+/**
+ * Starts a recording, consuming the adaptive-bitrate decision first.
+ *
+ * CameraX fixes the Recorder's target bitrate when the Recorder is built (at
+ * session bind), and there is no API to re-target it afterwards — so when the
+ * scene estimate / storage / thermal probes have moved since the bind, the
+ * honest move is one rebind *before* `prepareRecording`, never a stop/restart
+ * mid-recording. The re-decision after that rebind converges (same probes,
+ * same scene), so at most one rebind happens per press.
+ */
+@android.annotation.SuppressLint("MissingPermission")
+private fun CameraViewModel.startRecording(allowAdaptiveRebind: Boolean) {
     if (isRecordingMutable.value) return
+    if (adaptiveBitrateRebindInFlight) return
     val capture = videoCapture ?: return
+
+    val tier = boundVideoQualityTier
+    val boundBitrate = boundVideoBitrateBps
+    if (tier != null && boundBitrate != null) {
+        val decision = computeAdaptiveBitrateDecision(
+            tier, useAv1 = recordingWithAv1, useHevc = recordingWithHevc
+        )
+        if (decision.bitrateBps != boundBitrate) {
+            if (!allowAdaptiveRebind) {
+                // Already rebound once for this press and the probes still
+                // disagree (e.g. the quality probe moved): record at the
+                // bound bitrate rather than rebinding in a loop.
+                Log.status(
+                    "AdaptiveBitrate",
+                    "Decision ${decision.bitrateBps} != bound $boundBitrate after rebind; recording as bound"
+                )
+            } else {
+                adaptiveBitrateRebindInFlight = true
+                viewModelScope.launch {
+                    try {
+                        val ok = runSessionBindWithRetry {
+                            teardownSession()
+                            delay(ADAPTIVE_REBIND_SETTLE_MS)
+                            setupVideoSession()
+                        }
+                        if (!ok) {
+                            Log.error(
+                                "AdaptiveBitrate",
+                                "Adaptive rebind failed; recording not started"
+                            )
+                            // Surface the same bind-error UI (with manual retry)
+                            // the session effect uses after its retries.
+                            sessionBindFailedMutable.value = true
+                        }
+                    } finally {
+                        adaptiveBitrateRebindInFlight = false
+                    }
+                    if (videoCapture != null && !isRecordingMutable.value) {
+                        startRecording(allowAdaptiveRebind = false)
+                    }
+                }
+                return
+            }
+        } else if (decision.forcedReduction) {
+            // The one user-visible adaptive note, and only for a forced cut:
+            // scene-only savings stay silent by design.
+            val noteRes = if (
+                com.vayunmathur.camera.domain.AdaptiveReduction.LOW_STORAGE in decision.reductions
+            ) {
+                com.vayunmathur.camera.R.string.lower_bitrate_low_storage
+            } else {
+                com.vayunmathur.camera.R.string.lower_bitrate_thermal
+            }
+            com.vayunmathur.library.util.AppMessages.show(app.getString(noteRes))
+        }
+    }
 
     val timestamp = MediaStoreSaver.timestamp()
     val recordingMode = cameraModeMutable.value

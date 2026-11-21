@@ -58,6 +58,10 @@
     <string name="setting_applies_after_recording">Saved — applies after this recording</string>
     <!-- Messenger note when a mode/lens switch is tapped mid-recording and blocked -->
     <string name="switch_blocked_while_recording">Stop the recording first to switch</string>
+    <!-- One-line note at record start when low storage forced a lower recording bitrate -->
+    <string name="lower_bitrate_low_storage">Lower bitrate: low storage</string>
+    <!-- One-line note at record start when thermal throttling forced a lower recording bitrate -->
+    <string name="lower_bitrate_thermal">Lower bitrate: device is warm</string>
 
     <!-- Video codec settings (SettingsPage) -->
     <!-- SettingsPage: section header for video codec selection -->

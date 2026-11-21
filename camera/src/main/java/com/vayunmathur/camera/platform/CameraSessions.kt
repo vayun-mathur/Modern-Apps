@@ -126,6 +126,8 @@ fun CameraViewModel.teardownSession() {
     imageCapture = null
     imageAnalysis = null
     videoCapture = null
+    boundVideoBitrateBps = null
+    boundVideoQualityTier = null
     highSpeedVideoCapture = null
     cameraProvider = null
     photoSessionActiveMutable.value = false

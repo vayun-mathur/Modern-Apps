@@ -625,6 +625,30 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
     var recordingWithHevc: Boolean = false
         internal set
 
+    // --- Adaptive video bitrate (pre-recording only; see AdaptiveVideoBitratePolicy) ---
+
+    /** Smoothed scene-motion estimate fed by the video session's VideoMotionAnalyzer. */
+    internal val sceneMotionEstimator =
+        com.vayunmathur.camera.domain.SceneMotionEstimator()
+
+    /** Latest scene classification while previewing in a video mode; null until sampled. */
+    internal val sceneMotionMutable =
+        MutableStateFlow<com.vayunmathur.camera.domain.SceneMotion?>(null)
+    val sceneMotion = sceneMotionMutable.asStateFlow()
+
+    /** Last adaptive decision made (bind time or record start); kept for tests/debug. */
+    internal var lastAdaptiveBitrateDecision:
+        com.vayunmathur.camera.domain.AdaptiveBitrateDecision? = null
+
+    /** Bitrate the bound Recorder was actually built with; null outside a video session. */
+    internal var boundVideoBitrateBps: Int? = null
+
+    /** Ladder tier the bound video session resolved to. */
+    internal var boundVideoQualityTier: com.vayunmathur.camera.domain.VideoQualityTier? = null
+
+    /** True while a record press is rebinding the video session for a new bitrate. */
+    internal var adaptiveBitrateRebindInFlight: Boolean = false
+
     fun setSloMoFps(fps: Int) {
         sloMoFps = fps
     }

@@ -36,12 +36,6 @@ suspend fun CameraViewModel.setupVideoSession(): Boolean {
     }
 }
 
-/** Explicit video bitrate ladder, bits per second. */
-private const val VIDEO_BITRATE_UHD_BPS = 48_000_000
-private const val VIDEO_BITRATE_FHD_BPS = 25_000_000
-private const val VIDEO_BITRATE_HD_BPS = 12_000_000
-private const val VIDEO_BITRATE_SD_BPS = 6_000_000
-
 /** Explicit recording audio: 128 kbps stereo, for AAC and Opus alike. */
 private const val AUDIO_BITRATE_BPS = 128_000
 private const val AUDIO_CHANNEL_COUNT = 2
@@ -55,13 +49,8 @@ private const val AUDIO_CHANNEL_COUNT = 2
  * Unknown/unprobeable quality falls back to the FHD rung: high enough for
  * HD/FHD, low enough that UHD-only encoder ranges are not required.
  */
-internal fun videoBitRateForQuality(quality: Quality?): Int = when (quality) {
-    Quality.UHD -> VIDEO_BITRATE_UHD_BPS
-    Quality.FHD -> VIDEO_BITRATE_FHD_BPS
-    Quality.HD -> VIDEO_BITRATE_HD_BPS
-    Quality.SD -> VIDEO_BITRATE_SD_BPS
-    else -> VIDEO_BITRATE_FHD_BPS
-}
+internal fun videoBitRateForQuality(quality: Quality?): Int =
+    tierForQuality(quality).baseBitrateBps
 
 /** Codec/quality choices resolved off the camera info. */
 internal data class VideoChoices(
@@ -72,7 +61,7 @@ internal data class VideoChoices(
     val bestFpsRange: android.util.Range<Int>?,
     val stabilizationMode: Int?,
     val qualitySelector: QualitySelector,
-    val videoEncodingBitRate: Int = VIDEO_BITRATE_FHD_BPS,
+    val videoEncodingBitRate: Int = com.vayunmathur.camera.domain.VideoQualityTier.FHD.baseBitrateBps,
     val audioEncodingBitRate: Int = AUDIO_BITRATE_BPS,
     val audioChannelCount: Int = AUDIO_CHANNEL_COUNT
 )
@@ -91,6 +80,13 @@ internal suspend fun CameraViewModel.prepareVideoSession(): VideoSessionPrep {
     val provider = ProcessCameraProvider.awaitInstance(app)
     cameraProvider = provider
     provider.unbindAll()
+    // A fresh video entry starts the scene estimate from scratch (the first
+    // samples land within ~400 ms; until then the policy uses the rung as-is).
+    // A record-start adaptive rebind keeps the estimate it just decided from.
+    if (!adaptiveBitrateRebindInFlight) {
+        sceneMotionEstimator.reset()
+        sceneMotionMutable.value = null
+    }
 
     ensureLensesEnumerated(provider)
     val videoLens = selectedLensMutable.value
@@ -146,10 +142,16 @@ internal fun CameraViewModel.resolveVideoChoices(cameraInfo: androidx.camera.cor
     // the encoder default. The Recorder is built inside each bind rung, so a
     // device that rejects these encoding options fails that rung and the
     // existing bind ladder (HDR/snapshot x lens) walks on.
-    val videoEncodingBitRate = videoBitRateForQuality(
-        highestSupportedVideoQuality(cameraInfo, hlgSupported)
-    )
-    Log.debug("VideoSession", "Video encoding bitrate=$videoEncodingBitRate")
+    // Adaptive: the static ladder rung for the highest supported quality, scaled
+    // by the scene estimate + storage/thermal probes. This is a bind-time snapshot
+    // (the Recorder is built below and cannot be re-targeted afterwards); the
+    // record path re-decides and rebinds once before prepareRecording when the
+    // scene/probes moved since this bind. See AdaptiveVideoBitratePolicy.
+    val baseTier = tierForQuality(highestSupportedVideoQuality(cameraInfo, hlgSupported))
+    boundVideoQualityTier = baseTier
+    val videoEncodingBitRate = computeAdaptiveBitrateDecision(baseTier, useAv1, useHevc).bitrateBps
+    boundVideoBitrateBps = videoEncodingBitRate
+    Log.debug("VideoSession", "Video encoding bitrate=$videoEncodingBitRate tier=$baseTier")
     return VideoChoices(
         useAv1, useHevc, useOpus, hlgSupported, bestFpsRange, stabilizationMode,
         qualitySelector, videoEncodingBitRate = videoEncodingBitRate
@@ -192,13 +194,27 @@ internal fun CameraViewModel.bindVideoLadder(session: VideoSessionPrep) {
     var bound: Camera? = null
     var videoBoundLensId: String? = null
     var lastError: Exception? = null
-    for ((hlg, snapshot) in videoAttempts(session.choices.hlgSupported)) {
-        val rung = tryVideoRungSet(session, hlg, snapshot)
-        lastError = rung.lastError ?: lastError
-        if (rung.bound != null) {
-            videoBoundLensId = rung.lensId
-            bound = rung.bound
-            break
+    // The motion-analysis stream is an extra use case some devices cannot host
+    // alongside Preview+VideoCapture(+snapshot). Try the full ladder with it
+    // first; if every rung fails, walk the same ladder without it — video then
+    // records at the rung as-is (no scene samples), exactly the pre-adaptive
+    // behaviour, instead of losing the video session entirely.
+    for (includeAnalysis in listOf(true, false)) {
+        for ((hlg, snapshot) in videoAttempts(session.choices.hlgSupported)) {
+            val rung = tryVideoRungSet(session, hlg, snapshot, includeAnalysis)
+            lastError = rung.lastError ?: lastError
+            if (rung.bound != null) {
+                videoBoundLensId = rung.lensId
+                bound = rung.bound
+                break
+            }
+        }
+        if (bound != null) break
+        if (includeAnalysis) {
+            Log.status(
+                "VideoSession",
+                "Video bind with motion analysis failed on every rung; retrying without analysis"
+            )
         }
     }
     boundCamera = bound ?: throw (lastError ?: IllegalStateException("Video session bind failed"))
@@ -228,7 +244,8 @@ internal data class VideoRungResult(
 internal fun CameraViewModel.tryVideoRungSet(
     session: VideoSessionPrep,
     hlg: Boolean,
-    snapshot: Boolean
+    snapshot: Boolean,
+    includeAnalysis: Boolean = true
 ): VideoRungResult {
     val lensOrdered = buildList {
         if (session.videoLens != null) add(session.videoLens)
@@ -238,7 +255,7 @@ internal fun CameraViewModel.tryVideoRungSet(
     }
     var lastError: Exception? = null
     for (candidate in lensOrdered) {
-        if (tryVideoRung(session, candidate, hlg, snapshot)) {
+        if (tryVideoRung(session, candidate, hlg, snapshot, includeAnalysis)) {
             return VideoRungResult(boundCamera, candidate?.logicalCameraId, lastError)
         } else {
             lastError = videoLastError
@@ -255,7 +272,8 @@ internal fun CameraViewModel.tryVideoRung(
     session: VideoSessionPrep,
     candidate: com.vayunmathur.camera.domain.PhysicalLens?,
     hlg: Boolean,
-    snapshot: Boolean
+    snapshot: Boolean,
+    includeAnalysis: Boolean = true
 ): Boolean {
     return try {
         session.provider.unbindAll()
@@ -263,7 +281,8 @@ internal fun CameraViewModel.tryVideoRung(
             session,
             lensSelector(lensFacingMutable.value, candidate),
             hlg,
-            snapshot
+            snapshot,
+            includeAnalysis
         )
         true
     } catch (e: IllegalStateException) {
@@ -292,28 +311,60 @@ internal fun CameraViewModel.bindVideoUseCases(
     session: VideoSessionPrep,
     lensSelector: CameraSelector,
     hlg: Boolean,
-    snapshot: Boolean
+    snapshot: Boolean,
+    includeAnalysis: Boolean = true
 ): Camera {
-    val choices = session.choices
     val dynamicRange = if (hlg) androidx.camera.core.DynamicRange.HLG_10_BIT
         else androidx.camera.core.DynamicRange.SDR
     val preview = buildVideoPreview(session, dynamicRange)
     val capture = buildVideoCapture(session, dynamicRange)
-    return if (snapshot) {
+    // Motion-analysis stream for the adaptive-bitrate scene estimate. The
+    // analyzer is attached directly (not via desiredAnalyzer): the photo
+    // stream's PhotoAnalyzer must never land on this stream.
+    val analysis = if (includeAnalysis) buildVideoAnalysis() else null
+    imageAnalysis = analysis
+    val still = if (snapshot) {
         // Extra ImageCapture use case enables taking a still while recording (SDR JPEG).
         // Crop matches the still aspect ratio like the photo session, or snapshots
         // always save full-frame while the preview shows cropped.
-        val still = ImageCapture.Builder()
+        ImageCapture.Builder()
             .setFlashMode(ImageCapture.FLASH_MODE_OFF)
             .build()
-        imageCapture = still
-        still.setCropAspectRatio(currentCropAspectRatio())
-        bindSession(session.provider, session.owner, lensSelector, preview, capture, still)
+            .also {
+                imageCapture = it
+                it.setCropAspectRatio(currentCropAspectRatio())
+            }
     } else {
         imageCapture = null
-        bindSession(session.provider, session.owner, lensSelector, preview, capture)
+        null
     }
+    val useCases = listOfNotNull(preview, capture, still, analysis).toTypedArray()
+    return bindSession(session.provider, session.owner, lensSelector, *useCases)
 }
+
+/** Capped, cheap analysis stream (640x480 target) carrying only the motion estimate. */
+internal fun CameraViewModel.buildVideoAnalysis(): androidx.camera.core.ImageAnalysis {
+    val analysis = androidx.camera.core.ImageAnalysis.Builder()
+        .setBackpressureStrategy(androidx.camera.core.ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+        .setResolutionSelector(
+            androidx.camera.core.resolutionselector.ResolutionSelector.Builder()
+                .setResolutionStrategy(
+                    androidx.camera.core.resolutionselector.ResolutionStrategy(
+                        android.util.Size(VIDEO_ANALYSIS_WIDTH, VIDEO_ANALYSIS_HEIGHT),
+                        androidx.camera.core.resolutionselector.ResolutionStrategy
+                            .FALLBACK_RULE_CLOSEST_LOWER_THEN_HIGHER
+                    )
+                )
+                .build()
+        )
+        .build()
+    analysis.setAnalyzer(analysisExecutor, VideoMotionAnalyzer { onSceneMotionSample(it) })
+    return analysis
+}
+
+/** Target resolution for the video motion-analysis stream. */
+private const val VIDEO_ANALYSIS_WIDTH = 640
+private const val VIDEO_ANALYSIS_HEIGHT = 480
 
 /** Builds the video preview with the shared dynamic range + capture options. */
 internal fun CameraViewModel.buildVideoPreview(
@@ -370,6 +421,7 @@ internal fun CameraViewModel.buildVideoCapture(
 /** Records snapshot support and marks the video session active. */
 internal suspend fun CameraViewModel.finishVideoSession() {
     videoSnapshotSupportedMutable.value = imageCapture != null
+    analysisStreamActiveMutable.value = imageAnalysis != null
     boundCamera?.let { refreshCapabilities(it, boundLensIdField) }
     videoSessionActiveMutable.value = true
 }
