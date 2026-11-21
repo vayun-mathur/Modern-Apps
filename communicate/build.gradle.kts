@@ -167,6 +167,80 @@ rustNativeLib("communicate_signal", "communicate_signal")
 // (own dependency tree) with its own JNI lib.
 rustNativeLib("communicate_mls", "communicate_mls", srcDir = "src/main/rust-mls")
 
+// Only the classes below actually load a native library: they call the
+// Rust wrappers (RustSignalCrypto / RustMlsCrypto / RustWhatsAppCrypto,
+// all loading communicate_signal / communicate_mls via NativeLoader),
+// the Signal/WhatsApp/RCS E2E facades over them (SignalE2E, WhatsAppE2E,
+// RcsE2E), libsignal's native-backed protocol/zkgroup classes directly
+// (IdentityKeyPair.generate, ClientZkGroupCipher, SealedSessionCipher),
+// or the key-generation facades over those (SignalRegistrationKeys,
+// RegistrationKeys, SignalPqPreKey, WhatsAppPqPreKey,
+// RegistrationAttestation). Quarantine them into
+// testDevUnitTestNative (forkEvery = 1); the remaining classes batch
+// 20-per-JVM in testDevUnitTest, which depends on the quarantine task so
+// the usual invocation still runs everything.
+rustNativeTests {
+    nativeClasses.addAll(
+        listOf(
+            "com.vayunmathur.communicate.data.Y3MergedGvTest",
+            "com.vayunmathur.communicate.data.Y3RcsSendSuccessTest",
+            "com.vayunmathur.communicate.rcs.MlsLifecycleRcsPass3Test",
+            "com.vayunmathur.communicate.rcs.RcsSlice3E2ESupportTest",
+            "com.vayunmathur.communicate.rcs.RcsSlice3Pass2E2ETest",
+            "com.vayunmathur.communicate.rcs.RcsSlice3Pass2FakeTransportTest",
+            "com.vayunmathur.communicate.rcs.RcsSlice3Pass2UiTest",
+            "com.vayunmathur.communicate.signal.RegistrationHttpClientSignalPass3Test",
+            "com.vayunmathur.communicate.signal.RustSignalCryptoSignalPass3Test",
+            "com.vayunmathur.communicate.signal.SignalAuthAndServiceDataTest",
+            "com.vayunmathur.communicate.signal.SignalCallAndTransportParseTest",
+            "com.vayunmathur.communicate.signal.SignalCdsiTest",
+            "com.vayunmathur.communicate.signal.SignalGroupsAndSyncTest",
+            "com.vayunmathur.communicate.signal.SignalIdentitySignalPass3Test",
+            "com.vayunmathur.communicate.signal.SignalInboundPollW1Test",
+            "com.vayunmathur.communicate.signal.SignalSafetyNumberTest",
+            "com.vayunmathur.communicate.signal.SignalSealedSenderTest",
+            "com.vayunmathur.communicate.signal.SignalSlice2E2ETest",
+            "com.vayunmathur.communicate.signal.SignalSlice2InboundTest",
+            "com.vayunmathur.communicate.signal.SignalSlice2MessagingOfflineTest",
+            "com.vayunmathur.communicate.signal.SignalSlice2SealedCacheTest",
+            "com.vayunmathur.communicate.signal.Y1SignalMessagingGroupTest",
+            "com.vayunmathur.communicate.signal.Y1SignalSendPipelineTest",
+            "com.vayunmathur.communicate.signal.Y2SignalSocketRegTest",
+            "com.vayunmathur.communicate.signal.Y3SignalGroupOpsServerTest",
+            "com.vayunmathur.communicate.signal.Y3SignalPipelineServerTest",
+            "com.vayunmathur.communicate.signal.Y3SignalServerApiTest",
+            "com.vayunmathur.communicate.telephony.WelcomeJoinRcsPass3Test",
+            "com.vayunmathur.communicate.ui.Y3GroupCreatePickerTest",
+            "com.vayunmathur.communicate.whatsapp.W5Slice1AttestationTest",
+            "com.vayunmathur.communicate.whatsapp.W5Slice1MexRouterTest",
+            "com.vayunmathur.communicate.whatsapp.W5Slice1RegBundleTest",
+            "com.vayunmathur.communicate.whatsapp.WhatsAppAttestationTest",
+            "com.vayunmathur.communicate.whatsapp.WhatsAppRegistrationBadParamRegressionTest",
+            "com.vayunmathur.communicate.whatsapp.Y1WaE2eSyncTest",
+            "com.vayunmathur.communicate.whatsapp.Y1WaInboundTest",
+            "com.vayunmathur.communicate.whatsapp.Y1WaRegistrationHttpTest",
+            "com.vayunmathur.communicate.whatsapp.Y2WaSocketSendTest",
+            "com.vayunmathur.communicate.whatsapp.Y3AppStatePageTest",
+        )
+    )
+    // Shared-JVM polluters keep forkEvery = 1 in the same companion task:
+    // these touch the process-wide DataStoreUtils singleton (the
+    // datastore_default file behind GoogleVoiceSession and the line
+    // sessions) or collect its flows, so persisted DataStore state can
+    // leak into classes expecting defaults when batched. Audit rule:
+    // any test instantiating a *LineSession / GoogleVoiceSession or
+    // using DataStoreUtils.getInstance directly belongs here. All other
+    // classes batch.
+    isolatedClasses.addAll(
+        listOf(
+            "com.vayunmathur.communicate.data.SecretSealingTest",
+            "com.vayunmathur.communicate.data.Y1RepositoryLoadersTest",
+            "com.vayunmathur.communicate.googlevoice.GoogleVoiceSessionSlice4Test",
+            "com.vayunmathur.communicate.ui.Y2TopLevelScreensTest",
+        )
+    )
+}
+
 dependencies {
     // Google Voice virtual line: protojson RPCs + SIP-over-WSS transport go through
     // the repo's own Android-only HTTP/WebSocket stack (no OkHttp/Ktor).
