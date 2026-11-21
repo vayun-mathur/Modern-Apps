@@ -105,6 +105,16 @@
     <string name="encrypted_sender_parenthesized">(encrypted sender)</string>
     <!-- MessageRow: preview placeholder prompting to open an encrypted message. Verb phrase. -->
     <string name="message_open_to_decrypt">Open to decrypt</string>
+    <!-- MessageRow: accessibility action mirroring the swipe to toggle read state. Verb phrase. -->
+    <string name="action_mark_as_read">Mark as read</string>
+    <!-- MessageRow: accessibility action mirroring the swipe to toggle read state. Verb phrase. -->
+    <string name="action_mark_as_unread">Mark as unread</string>
+    <!-- MessageRow: accessibility action mirroring the swipe to move to Trash. Verb phrase. -->
+    <string name="action_move_to_trash">Move to Trash</string>
+    <!-- MessageRow: accessibility action mirroring the swipe to permanently delete in Trash. Verb phrase. -->
+    <string name="action_delete_forever">Delete forever</string>
+    <!-- OutScreen DraftRow: accessibility action mirroring the swipe to delete a draft. Verb phrase. -->
+    <string name="action_delete_draft">Delete draft</string>
 
     <!-- NavigationEntries: reply subject prefix. %1$s is the original subject. -->
     <string name="reply_subject_format">Re: %1$s</string>

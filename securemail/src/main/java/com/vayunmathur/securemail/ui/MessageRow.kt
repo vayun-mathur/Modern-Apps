@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -60,9 +61,15 @@ fun MessageRow(
     onSwipeDelete: () -> Unit,
     inTrash: Boolean,
 ) {
+    val markLabel = stringResource(if (msg.isRead) R.string.action_mark_as_unread else R.string.action_mark_as_read)
+    val deleteLabel = stringResource(if (inTrash) R.string.action_delete_forever else R.string.action_move_to_trash)
     SwipeActionsBox(
         onStartToEnd = onToggleRead,
         onEndToStart = onSwipeDelete,
+        accessibilityActions = listOf(
+            CustomAccessibilityAction(markLabel) { onToggleRead(); true },
+            CustomAccessibilityAction(deleteLabel) { onSwipeDelete(); true },
+        ),
         background = { side ->
             when (side) {
                 SwipeActionSide.StartToEnd -> Box(

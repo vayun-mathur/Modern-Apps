@@ -10,6 +10,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.health.R
 import com.vayunmathur.health.Route
@@ -231,9 +232,13 @@ fun MedicalPage(backStack: NavBackStack<Route>, viewModel: MedicalViewModel) {
                 itemCount = vaccinations.size,
             ) { index ->
                 val entry = vaccinations[index]
+                val deleteLabel = stringResource(R.string.a11y_delete_vaccination)
                 SwipeActionsBox(
                     enableStartToEnd = false,
                     onEndToStart = { pendingVaccinationDelete = entry },
+                    accessibilityActions = listOf(
+                        CustomAccessibilityAction(deleteLabel) { pendingVaccinationDelete = entry; true },
+                    ),
                 ) {
                     HealthRow(
                         headline = entry.displayName,
@@ -258,9 +263,13 @@ fun MedicalPage(backStack: NavBackStack<Route>, viewModel: MedicalViewModel) {
                 itemCount = allergies.size,
             ) { index ->
                 val entry = allergies[index]
+                val deleteLabel = stringResource(R.string.a11y_delete_allergy)
                 SwipeActionsBox(
                     enableStartToEnd = false,
                     onEndToStart = { pendingAllergyDelete = entry },
+                    accessibilityActions = listOf(
+                        CustomAccessibilityAction(deleteLabel) { pendingAllergyDelete = entry; true },
+                    ),
                 ) {
                     HealthRow(
                         headline = entry.displayName,

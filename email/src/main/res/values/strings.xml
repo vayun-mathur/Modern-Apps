@@ -128,6 +128,9 @@
         <item quantity="other"><xliff:g id="count" example="2">%1$s</xliff:g> attempts</item>
     </plurals>
 
+    <string name="action_delete">Delete</string>
+    <string name="action_mark_as_read">Mark as read</string>
+    <string name="action_mark_as_unread">Mark as unread</string>
     <string name="cd_insert_image">Insert image</string>
     <string name="normal">Normal</string>
     <string name="heading_1">Heading 1</string>

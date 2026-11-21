@@ -49,8 +49,10 @@ fun LazyItemScope.TodoListRow(
     val toggleLabel = stringResource(if (row.todo.done) R.string.action_mark_not_done else R.string.action_mark_done)
     val upLabel = stringResource(R.string.action_move_up)
     val downLabel = stringResource(R.string.action_move_down)
+    val deleteLabel = stringResource(R.string.delete)
     val a11y = buildList {
         add(CustomAccessibilityAction(toggleLabel) { handlers.onToggle(row); true })
+        add(CustomAccessibilityAction(deleteLabel) { handlers.onDelete(row); true })
         handlers.onMoveUp?.let { up -> add(CustomAccessibilityAction(upLabel) { up(row); true }) }
         handlers.onMoveDown?.let { down -> add(CustomAccessibilityAction(downLabel) { down(row); true }) }
     }

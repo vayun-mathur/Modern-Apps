@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -218,11 +219,27 @@ fun MessageListScreen(
                                 val accountBandColor = Color(accountColor(message.accountEmail))
                                 val isSelected = message.id in state.selectedUids
                                 val currentMessage by rememberUpdatedState(message)
+                                val deleteLabel = stringResource(R.string.action_delete)
+                                val markLabel = stringResource(
+                                    if (currentMessage.isRead) R.string.action_mark_as_unread else R.string.action_mark_as_read,
+                                )
                                 com.vayunmathur.library.ui.SwipeActionsBox(
                                     onEndToStart = { pendingDelete = currentMessage },
                                     onStartToEnd = {
                                         actions.markAsRead(currentMessage.accountEmail, currentMessage.folderName, currentMessage.id, !currentMessage.isRead)
                                     },
+                                    accessibilityActions = listOf(
+                                        CustomAccessibilityAction(markLabel) {
+                                            actions.markAsRead(
+                                                currentMessage.accountEmail,
+                                                currentMessage.folderName,
+                                                currentMessage.id,
+                                                !currentMessage.isRead,
+                                            )
+                                            true
+                                        },
+                                        CustomAccessibilityAction(deleteLabel) { pendingDelete = currentMessage; true },
+                                    ),
                                     background = { side ->
                                         when (side) {
                                             com.vayunmathur.library.ui.SwipeActionSide.EndToStart ->

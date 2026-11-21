@@ -300,6 +300,16 @@
     <string name="edit_vaccination">Edit vaccination</string>
     <!-- MedicalPage: Confirm deleting one medical record (vaccination, medication, allergy, condition, lab result). %1$s = record display name. Sentence -->
     <string name="delete_record_confirm">Delete the record of %1$s?</string>
+    <!-- MedicalPage: accessibility action mirroring the swipe-to-delete gesture. Verb phrase -->
+    <string name="a11y_delete_vaccination">Delete vaccination</string>
+    <!-- MedicalPage: accessibility action mirroring the swipe-to-delete gesture. Verb phrase -->
+    <string name="a11y_delete_allergy">Delete allergy</string>
+    <!-- MedicalSections: accessibility action mirroring the swipe-to-delete gesture. Verb phrase -->
+    <string name="a11y_delete_condition">Delete condition</string>
+    <!-- MedicalSections: accessibility action mirroring the swipe-to-delete gesture. Verb phrase -->
+    <string name="a11y_delete_lab_result">Delete lab result</string>
+    <!-- MedicalSections: accessibility action mirroring the swipe-to-delete gesture. Verb phrase -->
+    <string name="a11y_delete_medication">Delete medication</string>
     <!-- MedicalPage: CVX code shown under a vaccination entry. %1$s = code, e.g. 08 -->
 
     <!-- MedicalPage: Empty state when no medications are recorded. Sentence -->

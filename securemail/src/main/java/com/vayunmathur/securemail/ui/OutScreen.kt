@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.AppScaffold
@@ -153,9 +154,13 @@ private fun SectionDivider() {
 
 @Composable
 private fun DraftRow(draft: Draft, onOpen: () -> Unit, onDelete: () -> Unit) {
+    val deleteLabel = stringResource(R.string.action_delete_draft)
     SwipeActionsBox(
         enableStartToEnd = false,
         onEndToStart = onDelete,
+        accessibilityActions = listOf(
+            CustomAccessibilityAction(deleteLabel) { onDelete(); true },
+        ),
         background = { side ->
             if (side == SwipeActionSide.EndToStart) {
                 Box(Modifier.fillMaxSize().padding(horizontal = 20.dp), contentAlignment = Alignment.CenterEnd) {

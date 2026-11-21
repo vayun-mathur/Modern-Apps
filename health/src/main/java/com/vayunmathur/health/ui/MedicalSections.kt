@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.health.R
@@ -54,9 +55,13 @@ internal fun MedicalConditionsSection(
         itemCount = entries.size,
     ) { index ->
         val entry = entries[index]
+        val deleteLabel = stringResource(R.string.a11y_delete_condition)
         SwipeActionsBox(
             enableStartToEnd = false,
             onEndToStart = { onDelete(entry) },
+            accessibilityActions = listOf(
+                CustomAccessibilityAction(deleteLabel) { onDelete(entry); true },
+            ),
         ) {
             HealthRow(
                 headline = entry.displayName,
@@ -85,9 +90,13 @@ internal fun MedicalLabSection(
         itemCount = entries.size,
     ) { index ->
         val entry = entries[index]
+        val deleteLabel = stringResource(R.string.a11y_delete_lab_result)
         SwipeActionsBox(
             enableStartToEnd = false,
             onEndToStart = { onDelete(entry) },
+            accessibilityActions = listOf(
+                CustomAccessibilityAction(deleteLabel) { onDelete(entry); true },
+            ),
         ) {
             HealthRow(
                 headline = entry.displayName,
@@ -128,9 +137,13 @@ internal fun MedicalMedicationsSection(
     ) { index ->
         if (index < current.size) {
             val entry = current[index]
+            val deleteLabel = stringResource(R.string.a11y_delete_medication)
             SwipeActionsBox(
                 enableStartToEnd = false,
                 onEndToStart = { onDelete(entry) },
+                accessibilityActions = listOf(
+                    CustomAccessibilityAction(deleteLabel) { onDelete(entry); true },
+                ),
             ) {
                 HealthRow(
                     headline = listOfNotNull(
@@ -192,9 +205,13 @@ internal fun MedicalMedicationsSection(
                                 ),
                                 color = MaterialTheme.colorScheme.surfaceContainerHighest,
                             ) {
+                                val deleteLabel = stringResource(R.string.a11y_delete_medication)
                                 SwipeActionsBox(
                                     enableStartToEnd = false,
                                     onEndToStart = { onDelete(entry) },
+                                    accessibilityActions = listOf(
+                                        CustomAccessibilityAction(deleteLabel) { onDelete(entry); true },
+                                    ),
                                 ) {
                                     HealthRow(
                                         headline = listOfNotNull(
