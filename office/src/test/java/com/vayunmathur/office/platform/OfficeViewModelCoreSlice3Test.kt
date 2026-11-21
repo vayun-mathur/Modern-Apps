@@ -146,6 +146,10 @@ class OfficeViewModelCoreSlice3Test : OfficeViewModelSlice3Harness() {
         val vm2 = idleVm()
         vm2.loadSettings(app)
         assertEquals(OfficeViewModel.DocumentThemeMode.FOLLOW_SYSTEM, vm2.documentThemeMode.value)
+        // loadSettings starts the (default-on) auto-save loop on viewModelScope;
+        // cancel it, or runTest's teardown advanceUntilIdle chases the infinite
+        // while(true){delay()} loop forever (same as in `saveSettings persists and restores`).
+        vm2.setAutoSave(false)
     }
 
     @Test
