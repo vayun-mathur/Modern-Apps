@@ -162,6 +162,30 @@ internal fun SolitaireViewModel.endDragImpl(dropOffset: Offset, cardSize: IntSiz
     dragInfoInternal.value = null
 }
 
+/** Selects [sourceId] for TalkBack select-then-target play; re-selecting clears it. */
+internal fun SolitaireViewModel.selectCardImpl(sourceId: String) {
+    if (sourceRange(sourceId) == null) return
+    selectedSourceInternal.update { if (it == sourceId) null else sourceId }
+}
+
+/**
+ * Drops the accessibility-selected run onto [targetId] through the same drop handler
+ * ([flyMove] → applyDrop) a drag or tap ends in, flying from the selected card's
+ * laid-out position. An illegal target leaves state and the selection untouched.
+ */
+internal fun SolitaireViewModel.moveSelectedCardToImpl(targetId: String): Boolean {
+    val sourceId = selectedSourceInternal.value ?: return false
+    val range = sourceRange(sourceId)
+    if (range == null) {
+        selectedSourceInternal.value = null
+        return false
+    }
+    if (range.pileId == targetId) return false
+    val moved = flyMove(sourceId, targetId, range.cards, cardPositions[range.cards.first()], lastCardSize)
+    if (moved) selectedSourceInternal.value = null
+    return moved
+}
+
 /** The gesture was cancelled: the stack goes back where it came from. */
 internal fun SolitaireViewModel.cancelDragImpl() {
     dragInfoInternal.value?.let { returnCarriedCards(it) }

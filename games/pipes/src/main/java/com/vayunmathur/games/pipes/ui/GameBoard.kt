@@ -193,7 +193,14 @@ fun GameBoard(
             }
         }
     }
-    BoardCellSemantics(geometry, gameState, boardSize)
+    BoardCellSemantics(
+        geometry, gameState, boardSize,
+        activeColor = activeColor,
+        isLevelWon = isLevelWon,
+        onStartDraw = onStartDraw,
+        onExtendPath = onExtendPath,
+        onCommitDraw = onCommitDraw,
+    )
     }
 }
 

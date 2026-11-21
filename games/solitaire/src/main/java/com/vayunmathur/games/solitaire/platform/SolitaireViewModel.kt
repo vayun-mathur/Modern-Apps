@@ -74,6 +74,9 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
     internal val autoCompleteRunningInternal = MutableStateFlow(false)
     override val autoCompleteRunning: StateFlow<Boolean> = autoCompleteRunningInternal.asStateFlow()
 
+    internal val selectedSourceInternal = MutableStateFlow<String?>(null)
+    override val selectedSourceId: StateFlow<String?> = selectedSourceInternal.asStateFlow()
+
     /**
      * Last laid-out root position per card, fed by the boards. Bounded by the 52
      * unique cards; entries from a previous deal are dropped on mode switch and
@@ -236,6 +239,10 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     override fun landFlight(id: Long) = landFlightImpl(id)
+
+    override fun selectCard(sourceId: String) = selectCardImpl(sourceId)
+
+    override fun moveSelectedCardTo(targetId: String): Boolean = moveSelectedCardToImpl(targetId)
 
     /**
      * Starts a drag from [sourceId], deriving the carried cards from current state.

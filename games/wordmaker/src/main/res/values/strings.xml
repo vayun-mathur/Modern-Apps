@@ -72,6 +72,11 @@
     <!-- WordGameScreen tap mode: Accessibility description for backspace button to delete last selected letter. Noun -->
     <string name="cd_backspace">Backspace</string>
 
+    <!-- LetterChooser: TalkBack description of one letter tile on the wheel: %1$s is the letter. Noun phrase -->
+    <string name="letter_tile">Letter %1$s</string>
+    <!-- LetterChooser: TalkBack state of a letter tile already added to the word being spelled. Adjective -->
+    <string name="letter_selected">Selected</string>
+
     <!-- DefinitionDialog: Body shown when the bundled dictionary has no entry for the tapped word. Sentence -->
     <string name="no_definition_available">No definition available for this word.</string>
 </resources>

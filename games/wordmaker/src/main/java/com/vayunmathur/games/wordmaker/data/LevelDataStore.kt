@@ -55,6 +55,13 @@ class LevelDataStore(context: Context) {
 
     val tapToSpell: Flow<Boolean> = appContext.dataStore.data.map { it[TAP_TO_SPELL_KEY] ?: false }
 
+    /**
+     * The explicit Tap to Spell setting, or null when the player has never touched the
+     * toggle. Null is what lets a screen reader turn tap-to-spell on automatically
+     * without overwriting a choice the player actually made.
+     */
+    val tapToSpellPreference: Flow<Boolean?> = appContext.dataStore.data.map { it[TAP_TO_SPELL_KEY] }
+
     val wheelSpacing: Flow<WheelSpacing> = appContext.dataStore.data.map { prefs ->
         prefs[WHEEL_SPACING_KEY]?.let { runCatching { WheelSpacing.valueOf(it) }.getOrNull() }
             ?: WheelSpacing.DEFAULT

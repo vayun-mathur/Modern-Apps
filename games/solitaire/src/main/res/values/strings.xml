@@ -60,4 +60,36 @@
     <string name="card_colors_two">Two colours (traditional)</string>
     <!-- SettingsScreen: Card colour option, a colourblind-friendly deck giving each suit its own colour. Noun phrase -->
     <string name="card_colors_four">Four colours (colourblind friendly)</string>
+
+    <!-- DraggableCard: TalkBack description of a face-up card: rank name, suit name. -->
+    <string name="card_face_up">%1$s of %2$s, face up</string>
+    <!-- DraggableCard: TalkBack state of the accessibility-selected card. Adjective -->
+    <string name="card_selected">Selected</string>
+    <!-- DraggableCard: TalkBack action doing what a tap does — best legal move, foundation first. Verb phrase -->
+    <string name="card_action_auto_move">Auto-move</string>
+    <!-- DraggableCard: TalkBack action moving the card to a foundation where legal. Verb phrase -->
+    <string name="card_action_move_to_foundation">Move to foundation</string>
+    <!-- DraggableCard: TalkBack action selecting this card so another card can take it as a target. Verb phrase -->
+    <string name="card_action_select">Select card</string>
+    <!-- DraggableCard: TalkBack action clearing the accessibility selection. Verb phrase -->
+    <string name="card_action_deselect">Deselect card</string>
+    <!-- DraggableCard: TalkBack action dropping the selected card (or run) onto this card's pile. Verb phrase -->
+    <string name="card_action_move_selected_here">Move selected card here</string>
+    <string name="rank_ace">Ace</string>
+    <string name="rank_two">Two</string>
+    <string name="rank_three">Three</string>
+    <string name="rank_four">Four</string>
+    <string name="rank_five">Five</string>
+    <string name="rank_six">Six</string>
+    <string name="rank_seven">Seven</string>
+    <string name="rank_eight">Eight</string>
+    <string name="rank_nine">Nine</string>
+    <string name="rank_ten">Ten</string>
+    <string name="rank_jack">Jack</string>
+    <string name="rank_queen">Queen</string>
+    <string name="rank_king">King</string>
+    <string name="suit_hearts">Hearts</string>
+    <string name="suit_diamonds">Diamonds</string>
+    <string name="suit_spades">Spades</string>
+    <string name="suit_clubs">Clubs</string>
 </resources>

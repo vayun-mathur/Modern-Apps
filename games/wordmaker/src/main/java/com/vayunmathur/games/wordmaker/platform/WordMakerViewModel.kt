@@ -53,8 +53,14 @@ class WordMakerViewModel(application: Application) : AndroidViewModel(applicatio
     private val casualRevealedHints: StateFlow<Set<Pair<Int, Int>>> = levelDataStore.revealedHints
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
+    // Eagerly, not WhileSubscribed: the settings page now collects the nullable
+    // preference below, so nothing may be subscribed to this flow while it is read.
     val tapToSpell: StateFlow<Boolean> = levelDataStore.tapToSpell
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    /** Explicit Tap to Spell choice (null = never set); see [LevelDataStore.tapToSpellPreference]. */
+    val tapToSpellPreference: StateFlow<Boolean?> = levelDataStore.tapToSpellPreference
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     val wheelSpacing: StateFlow<WheelSpacing> = levelDataStore.wheelSpacing
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), WheelSpacing.DEFAULT)

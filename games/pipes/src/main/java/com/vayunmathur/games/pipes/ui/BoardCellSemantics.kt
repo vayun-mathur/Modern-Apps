@@ -8,8 +8,12 @@ import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import com.vayunmathur.games.pipes.R
@@ -18,26 +22,69 @@ import com.vayunmathur.games.pipes.platform.PipesGameState
 import kotlin.math.roundToInt
 
 /**
- * Invisible per-cell nodes laid over the board canvas so TalkBack can explore it: each
- * cell reads its row and column and whether it holds a dot, a pipe or nothing, naming the
- * colour by the same letter colour-blind mode draws. The nodes take no input, so touches
+ * Invisible per-cell nodes laid over the board canvas so TalkBack can explore and play it:
+ * each cell reads its row and column and whether it holds a dot, a pipe or nothing, naming
+ * the colour by the same letter colour-blind mode draws.
+ *
+ * Playing without touch mirrors a finger stroke, using the same callbacks the canvas
+ * gesture drives ([onStartDraw] on finger-down, [onExtendPath] as it enters a cell,
+ * [onCommitDraw] when it lifts): double-tapping a dot or pipe starts a stroke there,
+ * double-tapping each next cell extends it, and the "Finish pipe" action on any cell
+ * commits it. The nodes carry only semantics actions — no pointer input — so touches
  * still reach the canvas underneath.
  *
  * Positions use AbsoluteAlignment.TopLeft plus absoluteOffset: the canvas never mirrors
  * in RTL, so neither may these (a plain Box would align them to the top-right in RTL).
  */
 @Composable
-fun BoardCellSemantics(geometry: BoardGeometry, gameState: PipesGameState, boardSize: Dp) {
+fun BoardCellSemantics(
+    geometry: BoardGeometry,
+    gameState: PipesGameState,
+    boardSize: Dp,
+    activeColor: Int? = null,
+    isLevelWon: Boolean = false,
+    onStartDraw: (CellPos) -> Unit = {},
+    onExtendPath: (CellPos) -> Unit = {},
+    onCommitDraw: () -> Unit = {},
+) {
     val cellDp = with(LocalDensity.current) { geometry.cellSizePx.toDp() }
     val dots = geometry.levelData.endpoints.flatMap { ep -> ep.cells.map { it to ep.colorIndex } }.toMap()
+    val startLabel = stringResource(R.string.board_action_start_pipe)
+    val extendLabel = stringResource(R.string.board_action_extend_pipe)
+    val finishLabel = stringResource(R.string.board_action_finish_pipe)
+    val drawingLabel = stringResource(R.string.board_state_drawing)
     Box(Modifier.size(boardSize), contentAlignment = AbsoluteAlignment.TopLeft) {
         for ((cell, rect) in geometry.cellRects) {
             val description = cellDescription(cell, dots[cell], gameState.cellOwner[cell])
+            // Only a dot or an existing pipe can start a stroke — the same cells a
+            // finger-down can begin on (startDraw ignores any other cell).
+            val canStart = cell in dots || gameState.cellOwner[cell] != null
+            val drawing = activeColor != null
             Box(
                 Modifier
                     .absoluteOffset { IntOffset(rect.left.roundToInt(), rect.top.roundToInt()) }
                     .size(cellDp)
-                    .semantics { contentDescription = description }
+                    .semantics {
+                        contentDescription = description
+                        if (isLevelWon) return@semantics
+                        if (drawing) stateDescription = drawingLabel
+                        val actions = buildList {
+                            if (drawing) {
+                                add(CustomAccessibilityAction(extendLabel) { onExtendPath(cell); true })
+                                add(CustomAccessibilityAction(finishLabel) { onCommitDraw(); true })
+                            }
+                            if (canStart) {
+                                add(CustomAccessibilityAction(startLabel) { onStartDraw(cell); true })
+                            }
+                        }
+                        if (actions.isNotEmpty()) customActions = actions
+                        // Double-tap does the primary thing for the current phase:
+                        // start a stroke, or grow the open one into this cell.
+                        when {
+                            drawing -> onClick(extendLabel) { onExtendPath(cell); true }
+                            canStart -> onClick(startLabel) { onStartDraw(cell); true }
+                        }
+                    }
             )
         }
     }

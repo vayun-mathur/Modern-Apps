@@ -1,10 +1,15 @@
 package com.vayunmathur.games.wordmaker.ui
 
+import android.view.accessibility.AccessibilityManager
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import com.vayunmathur.games.wordmaker.data.CrosswordData
 import com.vayunmathur.games.wordmaker.data.GameMode
 import com.vayunmathur.games.wordmaker.platform.WordGameActions
@@ -23,7 +28,11 @@ fun WordGamePage(
 ) {
     val foundWords by viewModel.foundWords.collectAsState()
     val bonusWords by viewModel.bonusWords.collectAsState()
-    val tapToSpell by viewModel.tapToSpell.collectAsState()
+    val tapToSpellPreference by viewModel.tapToSpellPreference.collectAsState()
+    // Swipe spelling cannot be driven by a screen reader, so tap-to-spell turns on
+    // automatically while one is running — unless the player set the toggle themselves.
+    val screenReaderEnabled = rememberScreenReaderEnabled()
+    val tapToSpell = effectiveTapToSpell(tapToSpellPreference, screenReaderEnabled)
     val wheelSpacing by viewModel.wheelSpacing.collectAsState()
     val revealedHints by viewModel.revealedHints.collectAsState()
     val hintCooldownEnd by viewModel.hintCooldownEnd.collectAsState()
@@ -102,4 +111,43 @@ fun WordGamePage(
         onOpenGameCenter = onOpenGameCenter,
         onOpenSettings = onOpenSettings
     )
+}
+
+/**
+ * Whether tap-to-spell is in effect: the player's explicit setting when they have
+ * made one, otherwise on exactly while a screen reader is running. Pure, so the
+ * override rule is unit-testable without an AccessibilityManager.
+ */
+internal fun effectiveTapToSpell(manualPreference: Boolean?, screenReaderEnabled: Boolean): Boolean =
+    manualPreference ?: screenReaderEnabled
+
+/**
+ * True while a screen reader (TalkBack) is running: an accessibility service is
+ * enabled and touch exploration is on. Listens for both flipping mid-game, so
+ * turning TalkBack off returns the wheel to swipe without restarting the screen.
+ */
+@Composable
+internal fun rememberScreenReaderEnabled(): Boolean {
+    val context = LocalContext.current
+    var enabled by remember { mutableStateOf(false) }
+    DisposableEffect(context) {
+        val manager = context.getSystemService(AccessibilityManager::class.java)
+        if (manager == null) {
+            enabled = false
+            return@DisposableEffect onDispose {}
+        }
+        fun update() {
+            enabled = manager.isEnabled && manager.isTouchExplorationEnabled
+        }
+        update()
+        val stateListener = AccessibilityManager.AccessibilityStateChangeListener { update() }
+        val touchListener = AccessibilityManager.TouchExplorationStateChangeListener { update() }
+        manager.addAccessibilityStateChangeListener(stateListener)
+        manager.addTouchExplorationStateChangeListener(touchListener)
+        onDispose {
+            manager.removeAccessibilityStateChangeListener(stateListener)
+            manager.removeTouchExplorationStateChangeListener(touchListener)
+        }
+    }
+    return enabled
 }

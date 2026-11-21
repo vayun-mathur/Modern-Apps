@@ -258,6 +258,7 @@ private fun SolitaireViewModel.replayQueuedTap(tap: QueuedTap) {
 /** Drops every flight and queued tap: undo, restart, mode switch and give-up replace the board. */
 internal fun SolitaireViewModel.clearMotion() {
     flightsInternal.value = emptyList()
+    selectedSourceInternal.value = null
     queuedTaps.clear()
     dragInfoInternal.value = null
     autoCompleteFlightId = null

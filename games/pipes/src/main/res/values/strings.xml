@@ -30,4 +30,12 @@
     <string name="board_cell_pipe">Row <xliff:g id="row" example="2">%1$d</xliff:g>, column <xliff:g id="column" example="3">%2$d</xliff:g>, pipe <xliff:g id="letter" example="B">%3$s</xliff:g></string>
     <!-- GameBoard: TalkBack label of an empty board cell -->
     <string name="board_cell_empty">Row <xliff:g id="row" example="2">%1$d</xliff:g>, column <xliff:g id="column" example="3">%2$d</xliff:g>, empty</string>
+    <!-- BoardCellSemantics: TalkBack action starting a pipe stroke at this cell (same call as pressing the finger here). Verb phrase -->
+    <string name="board_action_start_pipe">Start pipe here</string>
+    <!-- BoardCellSemantics: TalkBack action extending the open pipe stroke into this cell (same call as dragging into it). Verb phrase -->
+    <string name="board_action_extend_pipe">Extend pipe here</string>
+    <!-- BoardCellSemantics: TalkBack action committing the open pipe stroke (same call as lifting the finger). Verb phrase -->
+    <string name="board_action_finish_pipe">Finish pipe</string>
+    <!-- BoardCellSemantics: TalkBack state of every cell while a pipe stroke is being built between Start and Finish. Noun phrase -->
+    <string name="board_state_drawing">Pipe in progress</string>
 </resources>

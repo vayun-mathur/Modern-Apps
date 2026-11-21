@@ -43,6 +43,10 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -246,6 +250,9 @@ fun LetterChooser(
                             // absoluteOffset, not offset: offset {} mirrors x in RTL while the
                             // trail and hit-testing work in unmirrored pointer coordinates, so an
                             // RTL swipe selected the letter opposite the one under the finger.
+                            val letterDescription = stringResource(R.string.letter_tile, chooserLetter.char.toString())
+                            val letterSelected = stringResource(R.string.letter_selected)
+                            val isTileSelected = index in selectedLettersIndices
                             SurfaceText(Modifier
                                 .align(Alignment.Center)
                                 .absoluteOffset { IntOffset(x.roundToPx(), y.roundToPx()) }
@@ -258,7 +265,18 @@ fun LetterChooser(
                                     } else if (index !in selectedLettersIndices) {
                                         selectedLettersIndices = selectedLettersIndices + index
                                     }
-                                } else Modifier),
+                                } else Modifier)
+                                // Every tile names its letter for TalkBack. In
+                                // tap-to-spell (forced on under a screen reader) this
+                                // merges with the clickable, so double-tap spells the
+                                // letter; in swipe mode it is a read-only label.
+                                .semantics {
+                                    contentDescription = letterDescription
+                                    if (isTileSelected) {
+                                        selected = true
+                                        stateDescription = letterSelected
+                                    }
+                                },
                                 CircleShape,
                                 if (index in selectedLettersIndices) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
                                 chooserLetter.char.toString(),

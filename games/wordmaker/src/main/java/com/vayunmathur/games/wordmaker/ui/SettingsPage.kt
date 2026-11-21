@@ -21,7 +21,11 @@ import com.vayunmathur.games.wordmaker.platform.WordMakerViewModel
 /** Binds [WordMakerViewModel] to the stateless [SettingsScreen]. */
 @Composable
 fun SettingsPage(viewModel: WordMakerViewModel, onBack: () -> Unit) {
-    val tapToSpell by viewModel.tapToSpell.collectAsState()
+    val tapToSpellPreference by viewModel.tapToSpellPreference.collectAsState()
+    // The switch shows the mode actually in effect (a running screen reader turns
+    // tap-to-spell on by itself); flipping it writes an explicit setting, which
+    // then overrides the automatic behaviour in effectiveTapToSpell.
+    val tapToSpell = effectiveTapToSpell(tapToSpellPreference, rememberScreenReaderEnabled())
     val wheelSpacing by viewModel.wheelSpacing.collectAsState()
     val reminderEnabled by viewModel.reminderEnabled.collectAsState()
     val reminderMinutes by viewModel.reminderMinutesOfDay.collectAsState()

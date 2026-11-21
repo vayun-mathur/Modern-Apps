@@ -36,6 +36,22 @@ interface SolitaireActions {
     val autoCompleteRunning: StateFlow<Boolean> get() = NoAutoComplete
 
     /**
+     * Source id of the card picked through the accessibility "Select card" action, or
+     * null. TalkBack play is select-then-target (a drag cannot be driven by a screen
+     * reader); selecting is an accessibility-only path and never changes drag state.
+     */
+    val selectedSourceId: StateFlow<String?> get() = NoSelection
+
+    /** Selects [sourceId] for a later [moveSelectedCardTo], or clears it when re-selected. */
+    fun selectCard(sourceId: String) {}
+
+    /**
+     * Moves the selected card (or run) onto pile [targetId] through the same drop
+     * handler a drag ends in. False — and the selection stays — when the move is illegal.
+     */
+    fun moveSelectedCardTo(targetId: String): Boolean = false
+
+    /**
      * Records where [card] was last laid out in root coordinates, so the animated
      * auto-complete can fly it from there. Positions for cards never laid out (in
      * the stock) are simply absent, and those steps apply instantly. [size] is the
@@ -87,6 +103,7 @@ interface SolitaireActions {
 private val NoDrag: StateFlow<DragInfo?> = MutableStateFlow(null)
 private val NoFlights: StateFlow<List<CardFlight>> = MutableStateFlow(emptyList())
 private val NoAutoComplete: StateFlow<Boolean> = MutableStateFlow(false)
+private val NoSelection: StateFlow<String?> = MutableStateFlow(null)
 
 /** Somewhere for a [SolitaireActions.Noop] board to register its drop zones and forget them. */
 private val DiscardedDropTargets: MutableMap<String, Rect> = mutableMapOf()
