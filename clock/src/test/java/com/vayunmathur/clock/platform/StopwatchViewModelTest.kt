@@ -10,6 +10,7 @@ import org.robolectric.RobolectricTestRunner
 import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.testsupport.awaitValueBlocking
 import com.vayunmathur.testsupport.awaitWithMainIdle
+import kotlinx.coroutines.flow.combine
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -70,10 +71,36 @@ class StopwatchViewModelTest {
         pumpUntil("paused settled") { !vm.stopwatchRunning.value }
         assertFalse(vm.stopwatchRunning.value)
 
+        // Persisted terminal state first, as a terminal signal: the
+        // pause persist must have landed both the stopped flag and the
+        // lap in DataStore before a fresh ViewModel is asked to reload
+        // them. awaitValueBlocking suspends on the DataStore flows
+        // (first{}), so it waits exactly as long as the IO takes. The
+        // looper pump below cannot substitute for this: its steps are
+        // idle+yield spins with no blocking, so on a loaded box (CI
+        // runs the whole clock suite in one JVM at dd6, and every
+        // earlier ViewModel's DataStore collector is still queued on
+        // that JVM's main looper) the step budget burns out before
+        // the persisted value reaches the fresh collector — the
+        // 'reloaded persisted state' step-bound timeout. Awaiting the
+        // running flag alone (above) was not enough: it fires on the
+        // pause persist's first edit, before its lap edit lands.
+        val ds = DataStoreUtils.getInstance(ctx)
+        awaitValueBlocking(
+            combine(
+                ds.booleanFlow(StopwatchActionReceiver.KEY_STOPWATCH_RUNNING, false),
+                ds.stringFlow(StopwatchActionReceiver.KEY_STOPWATCH_LAPS),
+            ) { isRunning, lapsStr ->
+                !isRunning && lapsStr.split(",").count { it.isNotBlank() } == 1
+            },
+        ) { it }
+
         // A fresh ViewModel sees the persisted (paused) state: its load
         // collector must have replayed the persisted lap before this is
         // a meaningful read, so wait for that terminal state (a lap the
         // fresh VM did not add itself), not a fixed number of pumps.
+        // The persisted value is already in DataStore (awaited above),
+        // so this pump only replays it through the main looper.
         val reloaded = vm()
         pumpUntil("reloaded persisted state") {
             !reloaded.stopwatchRunning.value && reloaded.lapTimes.value.size == 1
