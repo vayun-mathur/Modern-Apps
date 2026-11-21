@@ -2,6 +2,7 @@ package com.vayunmathur.shop.domain
 
 import com.vayunmathur.shop.data.CartLine
 import com.vayunmathur.shop.data.CheckoutInputs
+import com.vayunmathur.shop.data.InFlightCheckout
 import com.vayunmathur.shop.data.CheckoutPhase
 import com.vayunmathur.shop.data.NativeCheckoutState
 import com.vayunmathur.shop.data.PlacedOrder
@@ -66,6 +67,10 @@ internal class NativeCheckoutCoordinator(
     private val now: () -> Long = System::currentTimeMillis,
     private val newIntent: () -> String = { UUID.randomUUID().toString() },
     private val changed: (List<NativeCheckoutState>) -> Unit = {},
+    /** Awaited with the in-flight record BEFORE every write, and again once it resolves. */
+    private val intentSink: suspend (InFlightCheckout) -> Unit = {},
+    /** Called when a write is definitively rejected, so no in-flight record remains. */
+    private val intentDone: suspend (platformId: String, shopDomain: String) -> Unit = { _, _ -> },
 ) {
     private val states = linkedMapOf<Pair<String, String>, NativeCheckoutState>()
     private val locks = mutableMapOf<Pair<String, String>, Mutex>()
@@ -207,19 +212,52 @@ internal class NativeCheckoutCoordinator(
         previous: UcpCheckout?,
         shop: String,
         lines: List<CartLine>,
-    ): UcpCheckout? {
+    ): Pair<UcpCheckout, String>? {
         // The server builds the exact dated projection and owns the idempotency
         // ledger: a write is attempted exactly once and never auto-retried.
         // The first write carries the whole profile (name, contact and address); only
         // shipping-option choices wait until the merchant has offered them.
         val sentInputs = if (previous == null) state.inputs.copy(options = emptyMap()) else state.inputs
         val intent = newIntent()
+        // Persist the intent BEFORE the write goes out: process death from here on
+        // leaves a record the next launch reconciles instead of re-creating.
+        intentSink(
+            InFlightCheckout(
+                intent = intent,
+                platformId = key.first,
+                shopDomain = key.second,
+                storeName = lines.firstNotNullOfOrNull { it.storeName.ifBlank { null } }.orEmpty(),
+                lines = lines.map { it.copy(imageUrl = "") },
+                checkoutId = previous?.checkoutId,
+                trackingToken = previous?.trackingToken.orEmpty(),
+                status = InFlightCheckout.STATUS_INFLIGHT,
+                createdAtMs = now(),
+            ),
+        )
         val checkout = (if (previous == null) {
             gateway.create(shop, lines.toList(), sentInputs, intent)
         } else {
             gateway.update(shop, previous.checkoutId, lines.toList(), sentInputs, intent)
         }).getOrElse {
             val unsupported = (it as? ShopBackendException)?.error as? UcpError.Unsupported
+            if (unsupported != null) {
+                // A definitive rejection created nothing: no in-flight record remains.
+                intentDone(key.first, key.second)
+            } else {
+                intentSink(
+                    InFlightCheckout(
+                        intent = intent,
+                        platformId = key.first,
+                        shopDomain = key.second,
+                        storeName = lines.firstNotNullOfOrNull { it.storeName.ifBlank { null } }.orEmpty(),
+                        lines = lines.map { it.copy(imageUrl = "") },
+                        checkoutId = previous?.checkoutId,
+                        trackingToken = previous?.trackingToken.orEmpty(),
+                        status = InFlightCheckout.STATUS_UNCERTAIN,
+                        createdAtMs = now(),
+                    ),
+                )
+            }
             publish(
                 key,
                 state.copy(
@@ -243,7 +281,7 @@ internal class NativeCheckoutCoordinator(
             return null
         }
         createdAt.putIfAbsent(key, now())
-        return checkout
+        return checkout to intent
     }
 
     /** Publishes the post-write state and persists the pending-order projection. */
@@ -254,6 +292,7 @@ internal class NativeCheckoutCoordinator(
         checkout: UcpCheckout,
         lines: List<CartLine>,
         sink: PendingCheckoutSink,
+        intent: String = "",
     ) {
         val sentInputs = if (previous == null) state.inputs.copy(options = emptyMap()) else state.inputs
         val responseMatchesCart = cartMatches(checkout.submittedLines, lines)

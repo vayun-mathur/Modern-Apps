@@ -65,6 +65,9 @@ class ShopViewModel(
         private set
     var searchError by mutableStateOf<String?>(null)
         private set
+    /** Query the current [results]/[searchError] belong to; null until a search has run. */
+    var searchedQuery by mutableStateOf<String?>(null)
+        private set
     var cart by mutableStateOf<List<CartLine>>(emptyList())
         private set
     /** Store whose one-tap checkout is being prepared, as (platformId, shopDomain). */
@@ -151,6 +154,8 @@ class ShopViewModel(
         scopeDomain = null
         scopeName = null
         results = emptyList()
+        searchedQuery = null
+        searchError = null
         search()
     }
 
@@ -194,6 +199,8 @@ class ShopViewModel(
         scopeName = name
         query = scopedQuery
         results = emptyList()
+        searchedQuery = null
+        searchError = null
         navigate(Route.Search)
         focusSearchRequest++
         if (scopedQuery.isNotBlank()) search()
@@ -230,6 +237,7 @@ class ShopViewModel(
         val shop = scopeDomain
         searching = true
         searchError = null
+        searchedQuery = q
         results = emptyList()
         viewModelScope.launch {
             try {

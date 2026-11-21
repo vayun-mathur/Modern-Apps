@@ -110,7 +110,7 @@ class ShopScreensCoverage2Test {
         // flow) flips profileComplete; the gate root must reset to Search.
         setVmField(vm, "profile", ShopProfile(firstName="Ada", lastName="L", email="ada@example.com", phone="+14155550123"))
         composeRule.waitForIdle()
-        composeRule.onNodeWithText(str(R.string.no_products_found)).assertIsDisplayed()
+        composeRule.onNodeWithText(str(R.string.search_initial_title)).assertIsDisplayed()
         composeRule.onNodeWithText("Add your details to start shopping.").assertDoesNotExist()
     }
 
@@ -120,7 +120,7 @@ class ShopScreensCoverage2Test {
         setVmField(vm, "profileLoaded", true)
         composeRule.setContent { Navigation(vm) }
         composeRule.waitForIdle()
-        composeRule.onNodeWithText(str(R.string.no_products_found)).assertIsDisplayed()
+        composeRule.onNodeWithText(str(R.string.search_initial_title)).assertIsDisplayed()
         composeRule.onNodeWithText(str(R.string.cart)).assertIsDisplayed()
         // Sibling tabs are routes: tapping a tab resets the stack to that tab.
         composeRule.onNode(
@@ -142,7 +142,7 @@ class ShopScreensCoverage2Test {
             androidx.compose.ui.test.hasText(str(R.string.search)) and androidx.compose.ui.test.hasClickAction(),
         ).performClick()
         composeRule.waitForIdle()
-        composeRule.onNodeWithText(str(R.string.no_products_found)).assertIsDisplayed()
+        composeRule.onNodeWithText(str(R.string.search_initial_title)).assertIsDisplayed()
     }
 
     @Test fun navigation_ordersRequestStartsOnOrdersTab() {

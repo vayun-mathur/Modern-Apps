@@ -38,6 +38,8 @@ import com.vayunmathur.library.image.compose.AsyncImage
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Card
 import com.vayunmathur.library.ui.CircularProgressIndicator
+import com.vayunmathur.library.ui.EmptyState
+import com.vayunmathur.library.ui.ErrorState
 import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.IconClose
 import com.vayunmathur.library.ui.IconSearch
@@ -46,7 +48,7 @@ import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.SearchBarInputField
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
-import com.vayunmathur.library.ui.rememberMessenger
+import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.shop.R
 import com.vayunmathur.shop.data.UcpProduct
 import com.vayunmathur.shop.domain.MoneyFormat
@@ -63,13 +65,6 @@ fun SearchScreen(
     onProductClick: (variantId: String, platformId: String, shopDomain: String) -> Unit,
 ) {
     val context = LocalContext.current
-    val messenger = rememberMessenger()
-    LaunchedEffect(viewModel.searchError) {
-        viewModel.searchError?.let { error ->
-            messenger.show(error)
-            viewModel.dismissSearchError()
-        }
-    }
     var showLinkPrompt by rememberSaveable { mutableStateOf(LinkDefaults.shouldPrompt(context)) }
     SearchContent(
         query = viewModel.query,
@@ -78,6 +73,9 @@ fun SearchScreen(
         results = viewModel.results,
         onSearch = viewModel::search,
         onProductClick = onProductClick,
+        searchError = viewModel.searchError,
+        searchedQuery = viewModel.searchedQuery,
+        onRetry = viewModel::search,
         scopeName = viewModel.scopeName,
         onClearScope = viewModel::clearScope,
         focusRequest = viewModel.focusSearchRequest,
@@ -108,6 +106,9 @@ internal fun SearchContent(
     onClearScope: () -> Unit = {},
     focusRequest: Int = 0,
     linkPrompt: LinkPrompt? = null,
+    searchError: String? = null,
+    searchedQuery: String? = null,
+    onRetry: () -> Unit = onSearch,
 ) {
     AppScaffold(
         modifier = modifier,
@@ -129,6 +130,9 @@ internal fun SearchContent(
                 searching = searching,
                 onProductClick = onProductClick,
                 modifier = Modifier.weight(1f),
+                searchError = searchError,
+                searchedQuery = searchedQuery,
+                onRetry = onRetry,
             )
         }
     }
@@ -193,6 +197,9 @@ private fun ProductResults(
     searching: Boolean,
     onProductClick: (variantId: String, platformId: String, shopDomain: String) -> Unit,
     modifier: Modifier = Modifier,
+    searchError: String? = null,
+    searchedQuery: String? = null,
+    onRetry: () -> Unit = {},
 ) {
     if (searching) {
         Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -200,20 +207,31 @@ private fun ProductResults(
         }
         return
     }
+    // Stored error strings are already friendly (ShopViewModel.toBackendMessage):
+    // render verbatim as the message, never re-mapped through friendlyError.
+    if (searchError != null) {
+        ErrorState(
+            title = stringResource(R.string.search_failed),
+            modifier = modifier,
+            message = searchError,
+            retryLabel = stringResource(UiR.string.retry),
+            onRetry = onRetry,
+        )
+        return
+    }
     if (results.isEmpty()) {
-        Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    stringResource(R.string.no_products_found),
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    stringResource(R.string.check_connection_retry),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+        if (searchedQuery != null) {
+            EmptyState(
+                title = stringResource(R.string.no_products_found),
+                modifier = modifier,
+                message = stringResource(R.string.no_products_for_query, searchedQuery),
+            )
+        } else {
+            EmptyState(
+                title = stringResource(R.string.search_initial_title),
+                modifier = modifier,
+                message = stringResource(R.string.check_connection_retry),
+            )
         }
         return
     }

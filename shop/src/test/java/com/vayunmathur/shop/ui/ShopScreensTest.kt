@@ -88,7 +88,8 @@ class ShopScreensTest {
                 linkPrompt = LinkPrompt(onOpenSettings = { settings++ }, onDismiss = { dismissed++ }),
             )
         }
-        composeRule.onNodeWithText(str(R.string.no_products_found)).assertIsDisplayed()
+        composeRule.onNodeWithText(str(R.string.search_initial_title)).assertIsDisplayed()
+        composeRule.onNodeWithText(str(R.string.no_products_found)).assertDoesNotExist()
         composeRule.onNodeWithText("Open store links in Shop").assertIsDisplayed()
         composeRule.onNodeWithText("Open settings").performClick()
         composeRule.onNodeWithText("Not now").performClick()
@@ -115,6 +116,38 @@ class ShopScreensTest {
         assertEquals(Triple("v1", "shopify", "cool.example"), clicked)
         composeRule.onNodeWithText("Results from Cool Store").performClick()
         assertEquals(1, cleared)
+    }
+
+    @Test
+    fun searchContent_noResultsShowsEchoedQueryDistinctFromInitial() {
+        composeRule.setContent {
+            SearchContent(
+                query = "zzz", onQueryChange = {}, searching = false, results = emptyList(),
+                onSearch = {}, onProductClick = { _, _, _ -> },
+                searchedQuery = "zzz",
+            )
+        }
+        composeRule.onNodeWithText(str(R.string.no_products_found)).assertIsDisplayed()
+        composeRule.onNodeWithText("No products for \"zzz\". Try a different query.").assertIsDisplayed()
+        composeRule.onNodeWithText(str(R.string.search_initial_title)).assertDoesNotExist()
+    }
+
+    @Test
+    fun searchContent_errorShowsStoredStringVerbatimWithRetry() {
+        var retries = 0
+        composeRule.setContent {
+            SearchContent(
+                query = "shoe", onQueryChange = {}, searching = false, results = emptyList(),
+                onSearch = {}, onProductClick = { _, _, _ -> },
+                searchError = "Couldn't reach the store. Check your connection and try again.",
+                searchedQuery = "shoe", onRetry = { retries++ },
+            )
+        }
+        composeRule.onNodeWithText(str(R.string.search_failed)).assertIsDisplayed()
+        composeRule.onNodeWithText("Couldn't reach the store. Check your connection and try again.").assertIsDisplayed()
+        composeRule.onNodeWithText(str(R.string.no_products_found)).assertDoesNotExist()
+        composeRule.onNodeWithText("Retry").performClick()
+        assertEquals(1, retries)
     }
 
     @Test

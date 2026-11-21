@@ -5,6 +5,12 @@
     <string name="search_products">Search products</string>
     <string name="no_products_found">No products found</string>
     <string name="check_connection_retry">Enter a search or try a different query</string>
+    <!-- SearchScreen: initial state before any search has run -->
+    <string name="search_initial_title">Find products</string>
+    <!-- SearchScreen: no-results message echoing the submitted query. %1$s is the query -->
+    <string name="no_products_for_query">No products for \"%1$s\". Try a different query.</string>
+    <!-- SearchScreen: error state title; the stored error string is shown verbatim below it -->
+    <string name="search_failed">Search failed</string>
     <string name="cart">Cart</string>
     <string name="cart_empty">Your cart is empty</string>
     <string name="checkout">Checkout</string>

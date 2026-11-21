@@ -87,6 +87,46 @@ class DetailHomeSearchComposeTest {
         assertEquals(results[0], opened)
     }
 
+    @Test fun searchNoResultsShowsEchoedQuery() {
+        composeRule.setContent {
+            DynamicTheme {
+                SearchScreen(
+                    state = SearchUiState(query = "zzz", results = emptyList(), loading = false),
+                    onQueryChange = {},
+                    onBack = {},
+                    onOpenDetail = {})
+            }
+        }
+        composeRule.onNodeWithText("Nothing here yet.").assertIsDisplayed()
+        composeRule.onNodeWithText("No results for \"zzz\". Try a different search.").assertIsDisplayed()
+    }
+
+    @Test fun searchLoadingDoesNotShowNoResults() {
+        composeRule.setContent {
+            DynamicTheme {
+                SearchScreen(
+                    state = SearchUiState(query = "zzz", results = emptyList(), loading = true),
+                    onQueryChange = {},
+                    onBack = {},
+                    onOpenDetail = {})
+            }
+        }
+        composeRule.onNodeWithText("Nothing here yet.").assertDoesNotExist()
+    }
+
+    @Test fun searchBlankQueryDoesNotShowNoResults() {
+        composeRule.setContent {
+            DynamicTheme {
+                SearchScreen(
+                    state = SearchUiState(query = "", results = emptyList(), loading = false),
+                    onQueryChange = {},
+                    onBack = {},
+                    onOpenDetail = {})
+            }
+        }
+        composeRule.onNodeWithText("Nothing here yet.").assertDoesNotExist()
+    }
+
     @Test fun detailLoadingAndFailureStates() {
         composeRule.setContent {
             DynamicTheme {

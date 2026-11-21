@@ -11,12 +11,15 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.DesktopMaxWidthContainer
+import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.ui.OutlinedTextField
 import com.vayunmathur.library.ui.Text
+import com.vayunmathur.uniflix.R
 import com.vayunmathur.uniflix.domain.MediaItem
 import com.vayunmathur.uniflix.platform.SearchUiState
 
@@ -43,6 +46,14 @@ fun SearchScreen(
                 )
                 if (state.loading) {
                     CircularProgressIndicator()
+                    return@Column
+                }
+                if (state.query.isNotBlank() && state.results.isEmpty()) {
+                    EmptyState(
+                        title = stringResource(R.string.no_results),
+                        modifier = Modifier.weight(1f),
+                        message = stringResource(R.string.no_results_for_query, state.query),
+                    )
                     return@Column
                 }
                 LazyVerticalGrid(

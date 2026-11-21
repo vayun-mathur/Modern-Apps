@@ -27,6 +27,8 @@
     <string name="empty_list_hint">Empty — add titles from a detail page.</string>
     <string name="detail_failed">Detail failed to load.</string>
     <string name="no_results">Nothing here yet.</string>
+    <!-- SearchScreen: no-results message echoing the query. %1$s is the query -->
+    <string name="no_results_for_query">No results for \"%1$s\". Try a different search.</string>
     <string name="nothing_in_progress">Nothing in progress yet.</string>
     <string name="no_addons_title">No stream addons installed</string>
     <string name="no_addons_body">Add one to watch this title.</string>
