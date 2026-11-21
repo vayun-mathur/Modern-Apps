@@ -98,6 +98,8 @@ import com.vayunmathur.camera.platform.BokehAnalyzer
     val sessionBindRetry: Int = 0,
     /** Camera2 preview gate (default OFF); policy-gated to PHOTO in the getter below. */
     val camera2PreviewEnabled: Boolean = false,
+    /** Phase 6: a Camera2 NIGHT extension session is live (strength hides). */
+    val camera2NightSessionActive: Boolean = false,
 ) {
     var activeSetting by activeSettingState
     var maskBitmap by maskBitmapState
@@ -130,6 +132,30 @@ import com.vayunmathur.camera.platform.BokehAnalyzer
         get() = com.vayunmathur.camera.platform.camera2.PreviewEnginePolicy.usesCamera2(
             camera2PreviewEnabled, cameraMode,
         )
+
+    /**
+     * Strength indicator value to show, or null to hide it. There is no
+     * Camera2 strength flow, so on the Camera2 night path the indicator is
+     * hidden rather than faked; only the CameraX extension shows it.
+     */
+    val visibleExtensionStrength: Int?
+        get() {
+            // A strength value only ever exists on a CameraX extension bind;
+            // the policy hides it whenever the serving engine is Camera2.
+            val engine = if (camera2NightSessionActive) {
+                com.vayunmathur.camera.platform.camera2.NightEngine.CAMERA2_EXTENSION
+            } else {
+                com.vayunmathur.camera.platform.camera2.NightEngine.CAMERAX_EXTENSION
+            }
+            return if (
+                com.vayunmathur.camera.platform.camera2.ExtensionsEnginePolicy
+                    .showsExtensionStrength(engine, extensionStrength)
+            ) {
+                extensionStrength
+            } else {
+                null
+            }
+        }
 
     val previewAspectRatio get() = when {
         // The still crop only exists on the photo sessions (PHOTO/PORTRAIT ImageCapture).
@@ -207,6 +233,7 @@ internal fun rememberCameraScreenState(viewModel: CameraViewModel): CameraScreen
     val nightExtAvailable by viewModel.nightExtensionUsable.collectAsState()
     val surfaceRequest by viewModel.surfaceRequest.collectAsState()
     val camera2PreviewEnabled by viewModel.camera2PreviewEnabled.collectAsState()
+    val camera2NightSessionActive by viewModel.camera2NightSessionActive.collectAsState()
     val sessionBindFailed by viewModel.sessionBindFailed.collectAsState()
     val sessionBindRetry by viewModel.sessionBindRetry.collectAsState()
     val availableZoomLevels by viewModel.availableZoomLevels.collectAsState()
@@ -235,7 +262,7 @@ internal fun rememberCameraScreenState(viewModel: CameraViewModel): CameraScreen
         isoStops, longExposureProgress, longExposureRemaining, lowLightDetected,
         nightModeActive, extensionStrength, sloMoSupported, highSpeedActive,
         photoSessionActive, analysisStreamActive, nightExtAvailable, surfaceRequest,
-        camera2PreviewEnabled,
+        camera2PreviewEnabled, camera2NightSessionActive,
         sessionBindFailed, sessionBindRetry,
         availableZoomLevels, galleryBitmap, panoSweeping, panoStitching, panoDots,
         panoCurrentAngle, panoDirection, panoPitch,
@@ -302,6 +329,7 @@ internal fun rememberCameraScreenState(viewModel: CameraViewModel): CameraScreen
             sessionBindFailed = sessionBindFailed,
             sessionBindRetry = sessionBindRetry,
             camera2PreviewEnabled = camera2PreviewEnabled,
+            camera2NightSessionActive = camera2NightSessionActive,
         )
     }
 }

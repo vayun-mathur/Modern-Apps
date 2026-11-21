@@ -465,6 +465,10 @@ internal fun CameraViewModel.assembleAndSaveMotionPhoto(request: MotionSaveReque
  * bind (GrapheneOS/Pixel) goes straight to the working custom path instead of failing.
  */
 internal fun CameraViewModel.captureNightPhoto() {
+    // Phase 6: a gated, probed, cache-clear Camera2 extension session takes
+    // the shot first (ExtensionsEnginePolicy). With the gate off (default)
+    // this is one null/policy check and routing below is unchanged.
+    if (tryCaptureCamera2NightExtension()) return
     viewModelScope.launch {
         if (nightExtensionUsableMutable.value) {
             captureNightPhotoExtension()

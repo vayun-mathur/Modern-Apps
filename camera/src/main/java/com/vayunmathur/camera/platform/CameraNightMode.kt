@@ -94,6 +94,9 @@ fun CameraViewModel.onLuminance(avg: Float) {
     // getNightModeIndicator() is authoritative when the device supports it — skip the luminance
     // heuristic so the two don't fight. This luma path is only the fallback for devices without
     // the indicator.
+    // Phase 6: the indicator is a CameraX-only signal (there is no Camera2 equivalent), so on
+    // the Camera2 path it is never observed (nightIndicatorSupported stays false) and this luma
+    // hysteresis is the engagement trigger; see Camera2ExtensionProbe's detection contract.
     if (nightIndicatorSupported) return
     val beforeLow = lowLightDetectedMutable.value
     val beforeOff = nightModeOverriddenOffMutable.value

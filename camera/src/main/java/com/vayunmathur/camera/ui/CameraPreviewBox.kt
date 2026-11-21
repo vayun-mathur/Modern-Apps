@@ -311,7 +311,7 @@ internal fun BoxWithConstraintsScope.CameraPreviewBox(
         nightModeActive = state.nightModeActive,
         onToggleNightOverride = { viewModel.toggleNightModeOverride() },
         iconRotation = animatedRotation,
-        extensionStrength = state.extensionStrength,
+        extensionStrength = state.visibleExtensionStrength,
         photoSessionActive = state.photoSessionActive,
         analysisStreamActive = state.analysisStreamActive,
     )

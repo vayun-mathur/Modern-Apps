@@ -6,6 +6,8 @@ import android.graphics.Rect
 import android.hardware.camera2.CameraCaptureSession
 import android.hardware.camera2.CameraConstrainedHighSpeedCaptureSession
 import android.hardware.camera2.CameraDevice
+import android.hardware.camera2.CameraExtensionSession
+import android.hardware.camera2.params.ExtensionSessionConfiguration
 import android.hardware.camera2.CameraManager
 import android.hardware.camera2.CaptureRequest
 import android.hardware.camera2.CaptureResult
@@ -61,6 +63,21 @@ interface DeviceHandle {
      * would record realtime video and call it slo-mo.
      */
     fun createConstrainedHighSpeedCaptureSession(
+        surfaces: List<Surface>,
+        callback: CaptureSessionCallback,
+    ) {
+        callback.onConfigureFailed()
+    }
+
+    /**
+     * Creates an extension session (Phase 6) for [extensionMode]
+     * (`CameraExtensionCharacteristics.EXTENSION_*`) over [surfaces]
+     * (preview first, JPEG still second). The default fails the configure:
+     * silently substituting a regular session would take a plain still and
+     * call it a vendor night shot.
+     */
+    fun createExtensionCaptureSession(
+        extensionMode: Int,
         surfaces: List<Surface>,
         callback: CaptureSessionCallback,
     ) {
@@ -325,7 +342,87 @@ private class AndroidDeviceHandle(
         }
     }
 
+    override fun createExtensionCaptureSession(
+        extensionMode: Int,
+        surfaces: List<Surface>,
+        callback: CaptureSessionCallback,
+    ) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+            callback.onConfigureFailed()
+            return
+        }
+        val stateCallback = object : CameraExtensionSession.StateCallback() {
+            override fun onConfigured(session: CameraExtensionSession) =
+                callback.onConfigured(AndroidExtensionSessionHandle(device, session, handler))
+
+            override fun onConfigureFailed(session: CameraExtensionSession) =
+                callback.onConfigureFailed()
+
+            override fun onClosed(session: CameraExtensionSession) = callback.onClosed()
+        }
+        val outputs = surfaces.map { OutputConfiguration(it) }
+        val config = ExtensionSessionConfiguration(
+            extensionMode,
+            outputs,
+            { command -> handler.post(command) },
+            stateCallback,
+        )
+        runCatching { device.createExtensionSession(config) }
+            .onFailure { callback.onConfigureFailed() }
+    }
+
     override fun close() = device.close()
+}
+
+/** Real extension-session handle over a `CameraExtensionSession` (API 31+). */
+private class AndroidExtensionSessionHandle(
+    private val device: CameraDevice,
+    private val session: CameraExtensionSession,
+    private val handler: Handler,
+) : CaptureSessionHandle {
+
+    private val executor = java.util.concurrent.Executor { command -> handler.post(command) }
+
+    override fun setRepeatingPreview(params: ResolvedRequestParams, target: Surface) {
+        val builder = device.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
+        builder.applyPreviewParams(params, target)
+        session.setRepeatingRequest(builder.build(), executor, NoOpExtensionCallback)
+    }
+
+    override fun captureStill(
+        params: ResolvedStillParams,
+        stillTarget: Surface,
+        callback: StillResultCallback,
+    ) {
+        val builder = device.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE)
+        builder.applyStillParams(params, stillTarget)
+        session.capture(
+            builder.build(),
+            executor,
+            object : CameraExtensionSession.ExtensionCaptureCallback() {
+                override fun onCaptureResultAvailable(
+                    session: CameraExtensionSession,
+                    request: CaptureRequest,
+                    result: TotalCaptureResult,
+                ) {
+                    callback.onCompleted(result.toRawStillMetadata())
+                }
+
+                override fun onCaptureFailed(
+                    session: CameraExtensionSession,
+                    request: CaptureRequest,
+                ) {
+                    callback.onFailed("extension capture failed")
+                }
+            },
+        )
+    }
+
+    override fun close() {
+        runCatching { session.close() }
+    }
+
+    private object NoOpExtensionCallback : CameraExtensionSession.ExtensionCaptureCallback()
 }
 
 private class AndroidCaptureSessionHandle(

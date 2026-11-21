@@ -104,8 +104,12 @@ internal fun CameraViewModel.tryCaptureCamera2Still(): Boolean {
     return true
 }
 
-/** Saves one Camera2 still through the shared routing. Blocking: call off main. */
-private fun CameraViewModel.saveCamera2Still(still: CapturedStill): Uri? {
+/**
+ * Saves one Camera2 still through the shared routing. Blocking: call off
+ * main. Shared with the Phase-6 NIGHT extension glue so an extension JPEG
+ * lands through exactly this Phase-4a path (stamp/AVIF/MediaStore).
+ */
+internal fun CameraViewModel.saveCamera2Still(still: CapturedStill): Uri? {
     val rotation = still.metadata.rotationDegrees
     if (photoFormatMutable.value == PhotoFormat.AVIF) {
         val bitmap = BitmapFactory.decodeByteArray(still.jpegBytes, 0, still.jpegBytes.size)

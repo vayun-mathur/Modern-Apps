@@ -186,6 +186,34 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
     }
 
     /**
+     * Gate for the Camera2 NIGHT-extension path (Phase 6). Default OFF —
+     * night stays on CameraX extension / own burst and the Camera2 decision
+     * in `Camera2NightGlue` is not evaluated. In-memory only;
+     * `ExtensionsEnginePolicy` further requires a passing probe and a clear
+     * failure cache.
+     */
+    internal val camera2NightEnabledMutable = MutableStateFlow(false)
+    val camera2NightEnabled = camera2NightEnabledMutable.asStateFlow()
+
+    /** Turns the Camera2 night gate on/off (PHOTO only; see ExtensionsEnginePolicy). */
+    fun setCamera2NightEnabled(enabled: Boolean) {
+        camera2NightEnabledMutable.value = enabled
+    }
+
+    /**
+     * The live Camera2 NIGHT extension session while one is bound
+     * (Phase 6), registered by its owner; null otherwise. The night glue
+     * reads it synchronously — it is only ever set/cleared on the main
+     * thread from composition effects, like [activeCamera2Session].
+     */
+    internal var activeCamera2ExtensionSession:
+        com.vayunmathur.camera.platform.camera2.Camera2ExtensionSession? = null
+
+    /** True while a Camera2 extension session is registered (strength UI hides). */
+    internal val camera2NightSessionActiveMutable = MutableStateFlow(false)
+    val camera2NightSessionActive = camera2NightSessionActiveMutable.asStateFlow()
+
+    /**
      * The live Camera2 session while the gated preview is composed
      * (Phase 4a stills), registered by `Camera2Preview`; null otherwise.
      * The shutter glue reads it synchronously — it is only ever set/cleared

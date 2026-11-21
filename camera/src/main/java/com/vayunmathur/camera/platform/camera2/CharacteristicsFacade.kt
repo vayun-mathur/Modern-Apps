@@ -71,6 +71,25 @@ data class StreamConfigSummary(
     }
 }
 
+/**
+ * Pure-data summary of one extension mode's advertised support, read once
+ * from `CameraExtensionCharacteristics` (API 31+). [jpegSizes] /
+ * [previewSizes] are the `getExtensionSupportedSizes` lists for the JPEG
+ * still output and the `SurfaceTexture` preview output — the two outputs an
+ * `ExtensionSessionConfiguration` for this mode would carry. Latency is the
+ * `getEstimatedCaptureLatencyRangeMillis` range per JPEG size (millis, null
+ * entries omitted): an estimate for UI expectations, never a support gate.
+ */
+data class ExtensionModeSupport(
+    val mode: Int,
+    val jpegSizes: List<Size> = emptyList(),
+    val previewSizes: List<Size> = emptyList(),
+    val estimatedCaptureLatencyRangeMillisByJpegSize: Map<Size, Range<Long>> = emptyMap(),
+) {
+    fun estimatedLatencyFor(jpegSize: Size): Range<Long>? =
+        estimatedCaptureLatencyRangeMillisByJpegSize[jpegSize]
+}
+
 /** Immutable per-lens capability snapshot. Pure data; safe to pass across threads. */
 data class LensCharacteristicsSnapshot(
     val cameraId: String,
@@ -92,6 +111,14 @@ data class LensCharacteristicsSnapshot(
     val availableCapabilities: Set<Int>,
     /** Extension modes (`CameraExtensionCharacteristics.EXTENSION_*`), empty pre-API 31. */
     val availableExtensionModes: List<Int>,
+    /**
+     * Per-extension advertised sizes + estimated capture latency, keyed by
+     * extension mode. An entry exists for every mode in
+     * [availableExtensionModes] when built from the real characteristics;
+     * fake-built snapshots may carry modes without an entry (probe then
+     * reports no session-config support, never a guessed yes).
+     */
+    val extensionSupport: Map<Int, ExtensionModeSupport> = emptyMap(),
     val focalLengthsMm: List<Float>,
     val colorFilterArrangement: Int?,
     /** `SENSOR_INFO_ACTIVE_ARRAY_SIZE` width in pixels; 0 when unreadable. */
@@ -152,6 +179,9 @@ data class LensCharacteristicsSnapshot(
         get() = CameraMetadata.REQUEST_AVAILABLE_CAPABILITIES_CONSTRAINED_HIGH_SPEED_VIDEO in
             availableCapabilities
     fun hasExtension(mode: Int): Boolean = mode in availableExtensionModes
+
+    /** Advertised support for [mode], or null when never probed for it. */
+    fun extensionSupportFor(mode: Int): ExtensionModeSupport? = extensionSupport[mode]
 }
 
 /**
@@ -200,6 +230,7 @@ class CharacteristicsFacade private constructor(
             surfaceTextureSizes: List<Size> = emptyList(),
             highSpeedVideoSizes: List<Size> = emptyList(),
             highSpeedFpsRangesBySize: Map<Size, List<Range<Int>>> = emptyMap(),
+            extensionSupport: Map<Int, ExtensionModeSupport> = emptyMap(),
         ): CharacteristicsFacade = fromSnapshot(
             LensCharacteristicsSnapshot(
                 cameraId = cameraId,
@@ -230,6 +261,7 @@ class CharacteristicsFacade private constructor(
                 supportsZoomRatioKey = supportsZoomRatioKey,
                 highSpeedVideoSizes = highSpeedVideoSizes,
                 highSpeedFpsRangesBySize = highSpeedFpsRangesBySize,
+                extensionSupport = extensionSupport,
             ),
         )
 
@@ -238,6 +270,7 @@ class CharacteristicsFacade private constructor(
             cameraId: String,
             chars: CameraCharacteristics,
             availableExtensionModes: List<Int> = emptyList(),
+            extensionSupport: Map<Int, ExtensionModeSupport> = emptyMap(),
         ): CharacteristicsFacade {
             fun <T> get(key: CameraCharacteristics.Key<T>): T? =
                 runCatching { chars.get(key) }.getOrNull()
@@ -314,6 +347,7 @@ class CharacteristicsFacade private constructor(
                     supportsZoomRatioKey = zoomRatioRange != null,
                     highSpeedVideoSizes = highSpeedSizes,
                     highSpeedFpsRangesBySize = highSpeedRanges,
+                    extensionSupport = extensionSupport,
                 ),
             )
         }
@@ -325,14 +359,36 @@ class CharacteristicsFacade private constructor(
          */
         fun fromCameraManager(manager: CameraManager, cameraId: String): CharacteristicsFacade {
             val chars = manager.getCameraCharacteristics(cameraId)
-            val extensions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            var extensions: List<Int> = emptyList()
+            var support: Map<Int, ExtensionModeSupport> = emptyMap()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 runCatching {
-                    manager.getCameraExtensionCharacteristics(cameraId).supportedExtensions
-                }.getOrDefault(emptyList())
-            } else {
-                emptyList()
+                    val extChars = manager.getCameraExtensionCharacteristics(cameraId)
+                    extensions = extChars.supportedExtensions
+                    support = extensions.associateWith { mode ->
+                        val jpegSizes = runCatching {
+                            extChars.getExtensionSupportedSizes(mode, ImageFormat.JPEG)
+                        }.getOrDefault(emptyList())
+                        val previewSizes = runCatching {
+                            extChars.getExtensionSupportedSizes(
+                                mode, android.graphics.SurfaceTexture::class.java,
+                            )
+                        }.getOrDefault(emptyList())
+                        val latency = jpegSizes.mapNotNull { size ->
+                            runCatching {
+                                extChars.getEstimatedCaptureLatencyRangeMillis(
+                                    mode, size, ImageFormat.JPEG,
+                                )
+                            }.getOrNull()?.let { size to it }
+                        }.toMap()
+                        ExtensionModeSupport(mode, jpegSizes, previewSizes, latency)
+                    }
+                }.onFailure {
+                    extensions = emptyList()
+                    support = emptyMap()
+                }
             }
-            return fromCharacteristics(cameraId, chars, extensions)
+            return fromCharacteristics(cameraId, chars, extensions, support)
         }
     }
 }
