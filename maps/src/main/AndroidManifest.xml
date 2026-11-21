@@ -7,6 +7,8 @@
 
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <!-- ModelDownloadWorker (downloadservice) foreground dataSync promotion. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Live Updates (API 36 ProgressStyle promoted ongoing): install-time, no runtime prompt. -->
     <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />

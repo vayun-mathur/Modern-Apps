@@ -5,7 +5,6 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
-import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
@@ -125,16 +124,19 @@ class ModelDownloadWorker(context: Context, params: WorkerParameters) :
                 )
             )
         }
-        val foregroundInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            ForegroundInfo(
-                NOTIFICATION_ID,
-                builder.build(),
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
-            )
-        } else {
-            ForegroundInfo(NOTIFICATION_ID, builder.build())
-        }
-        return foregroundInfo
+        // Typed promotion, unconditional (minSdk 31 > API 29 where the typed
+        // ForegroundInfo constructor exists): on API 34+ the platform and
+        // WorkManager lint require the type here to match the manifest —
+        // this library's manifest declares SystemForegroundService with
+        // foregroundServiceType="dataSync" and consumers declare
+        // FOREGROUND_SERVICE_DATA_SYNC, exactly as securemail's
+        // MailSocketService pairs its typed startForeground with
+        // foregroundServiceType="dataSync".
+        return ForegroundInfo(
+            NOTIFICATION_ID,
+            builder.build(),
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
+        )
     }
 
     /** WorkManager input keys, enqueue entry points and spec decoding for [ModelDownloadWorker]. */

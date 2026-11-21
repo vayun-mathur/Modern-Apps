@@ -1,7 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- ModelDownloadWorker promotes itself via setForeground(ForegroundInfo)
+         with FOREGROUND_SERVICE_TYPE_DATA_SYNC (API 34+ requires both the
+         typed promotion and these declarations). Like INTERNET above, this
+         library declares them itself so every consumer inherits them through
+         manifest merger; consumers also declare them explicitly. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+
+    <application>
+        <!-- WorkManager's own manifest declares SystemForegroundService
+             without a foregroundServiceType; override it (merge) with the
+             dataSync type that ModelDownloadWorker passes to ForegroundInfo.
+             Without this, lint SpecifyForegroundServiceType fails in every
+             consumer (and the platform may reject the promotion). -->
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            tools:node="merge" />
+    </application>
 
 </manifest>

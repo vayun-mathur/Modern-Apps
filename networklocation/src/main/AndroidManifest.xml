@@ -16,6 +16,9 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- ModelDownloadWorker (downloadservice) foreground dataSync promotion. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <!-- ProtectedPermissions: this app ships preinstalled in /system/priv-app as the
          platform network-location provider, so the signature|privileged permission is
          granted at install; lint cannot see the system-image grant. -->
