@@ -32,14 +32,81 @@ class TvHomeBranchesTest {
 
     @BeforeTest
     fun setUp() {
+        // Hermetic offline (the TvLoadHomePlayAccrescentTest pattern):
+        // catalogue downloads fail deterministically, so the ViewModel's
+        // first-run sync fails closed instead of importing the real
+        // catalogue — and real Play clusters instead of none — on a host
+        // whose proxy happens to give the test JVM live network. Without
+        // this the "offline" assertions below depend on the host's
+        // network, not on the code.
+        com.vayunmathur.appstore.data.FDroidRepository.downloadOverride = { url, _ ->
+            throw java.io.IOException("offline test double for $url")
+        }
         val app = ApplicationProvider.getApplicationContext<Application>()
+        // The ViewModel's init reloads the enabled set from settings and
+        // overwrites the flow: persist a known set first so that read
+        // returns it instead of a previous test's persisted disabled set
+        // (the settings DataStore outlives a single test in this JVM).
+        kotlinx.coroutines.runBlocking {
+            val settings = com.vayunmathur.appstore.data.SettingsRepository(
+                app, kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO),
+            )
+            settings.setSourceEnabled(AppSource.PLAYSTORE, true)
+            settings.setSourceEnabled(AppSource.ACCRESCENT, true)
+            settings.setSourceEnabled(AppSource.MODERN_APPS, true)
+            settings.setSourceEnabled(AppSource.FDROID, false)
+            settings.setSourceEnabled(AppSource.IZZY, false)
+            settings.setSourceEnabled(AppSource.PROPRIETARY, false)
+        }
         db = Room.inMemoryDatabaseBuilder(app, AppDatabase::class.java)
             .setDriver(BundledSQLiteDriver())
             .allowMainThreadQueries()
             .build()
+        // Hermetic offline: Play dispensing fails and the Accrescent API
+        // is a dead channel, whatever network the test host has.
+        val offlinePlay = com.vayunmathur.appstore.data.play.PlayRepository(
+            app,
+            object : com.vayunmathur.appstore.data.play.AnonymousAuthRepository() {
+                override suspend fun ensureAuthData(
+                    deviceProps: java.util.Properties,
+                    dispenserUrls: List<String>,
+                ): Result<com.aurora.gplayapi.data.models.AuthData> =
+                    Result.failure(java.io.IOException("offline test double"))
+            },
+        )
+        val deadChannel = io.grpc.inprocess.InProcessChannelBuilder
+            .forName("tv-home-branches-offline").directExecutor().build()
+        val failingFetcher = object :
+            com.vayunmathur.appstore.data.accrescent.AccrescentRepoDataFetcher(app) {
+            override suspend fun fetch():
+                Result<com.vayunmathur.appstore.data.accrescent.RepoData> =
+                Result.failure(java.io.IOException("offline test double"))
+        }
         // Not closed: the ViewModel scope keeps collecting DB flows; the
         // in-memory DB dies with the Robolectric sandbox.
-        vm = TvStoreViewModel(app, db)
+        vm = TvStoreViewModel(
+            app, db,
+            playOverride = offlinePlay,
+            accrescentOverride = com.vayunmathur.appstore.data.accrescent.AccrescentRepository(
+                app, db,
+                com.vayunmathur.appstore.data.accrescent.AccrescentApi { deadChannel },
+                failingFetcher,
+            ),
+        )
+        // Start every test after the init pass, not racing it: init
+        // re-reads the enabled set, purges disabled sources' rows and
+        // runs its own loadHome, and any of those landing after a test's
+        // own setup overwrites the state the test just arranged (under
+        // CPU contention that interleave could also stall the pumped
+        // waits below for their whole step budget). isLoading starts
+        // true and only the init sync/loadHome path clears it, so this
+        // is a terminal signal, not a timing guess.
+        await("init settled") { !vm.home.value.isLoading }
+    }
+
+    @kotlin.test.AfterTest
+    fun tearDown() {
+        com.vayunmathur.appstore.data.FDroidRepository.downloadOverride = null
     }
 
     private fun await(description: String, condition: () -> Boolean) {

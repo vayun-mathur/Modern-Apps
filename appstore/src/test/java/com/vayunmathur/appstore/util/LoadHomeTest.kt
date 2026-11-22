@@ -35,6 +35,25 @@ class LoadHomeTest {
     private lateinit var db: AppDatabase
     private lateinit var vm: AppStoreViewModel
 
+    private fun seedCatalogue() = runBlocking {
+        db.cachedAppDao().upsertAll(
+            listOf(
+                UnifiedApp(
+                    packageName = "com.example.modern",
+                    source = AppSource.MODERN_APPS,
+                    name = "Modern",
+                    repoUrl = DefaultRepos.MODERN_APPS.url,
+                ).toEntity().copy(lastUpdated = 300L),
+                UnifiedApp(
+                    packageName = "com.example.fdroid",
+                    source = AppSource.FDROID,
+                    name = "Fdroid",
+                    repoUrl = DefaultRepos.FDROID.url,
+                ).toEntity().copy(lastUpdated = 200L),
+            ),
+        )
+    }
+
     @BeforeTest
     fun setUp() {
         val app = ApplicationProvider.getApplicationContext<Application>()
@@ -42,27 +61,35 @@ class LoadHomeTest {
             .setDriver(BundledSQLiteDriver())
             .allowMainThreadQueries()
             .build()
-        runBlocking {
-            db.cachedAppDao().upsertAll(
-                listOf(
-                    UnifiedApp(
-                        packageName = "com.example.modern",
-                        source = AppSource.MODERN_APPS,
-                        name = "Modern",
-                        repoUrl = DefaultRepos.MODERN_APPS.url,
-                    ).toEntity().copy(lastUpdated = 300L),
-                    UnifiedApp(
-                        packageName = "com.example.fdroid",
-                        source = AppSource.FDROID,
-                        name = "Fdroid",
-                        repoUrl = DefaultRepos.FDROID.url,
-                    ).toEntity().copy(lastUpdated = 200L),
-                ),
-            )
-        }
+        seedCatalogue()
         // Not closed: the ViewModel scope keeps collecting DB flows; the
         // in-memory DB dies with the Robolectric sandbox.
         vm = AppStoreViewModel(app, db)
+    }
+
+    /**
+     * Settle-then-reseed wrapper for the test bodies.
+     *
+     * Init re-reads the enabled set from settings (a fresh install's
+     * DEFAULT_ENABLED: MODERN_APPS + PROPRIETARY), purges every other
+     * source's cached rows — including this fixture's F-Droid row — and
+     * runs its own loadHome with that set. Racing the test's loadHome
+     * against that pass made the outcome depend on which coroutine the
+     * paused main looper happened to run first: when init landed last,
+     * the F-Droid row was purged and the home state overwritten, and
+     * the pumped waits below burned their whole step budget (~300s of
+     * parking) on a condition that could never become true again.
+     * The modern-recent section is init's terminal home signal (only
+     * its loadHome can produce it here), and re-seeding afterwards
+     * restores the row init legitimately purged — the
+     * TvStoreLoadHomeTest arrangement.
+     */
+    private fun afterInitSettled(body: () -> Unit) {
+        await("init home") {
+            vm.home.value.sections.any { it.id == "modern-recent" }
+        }
+        seedCatalogue()
+        body()
     }
 
     private fun await(description: String, condition: () -> Boolean) {
@@ -109,8 +136,10 @@ class LoadHomeTest {
     }
 
     @Test
-    fun `loadHome fills a recent row per enabled source`() = runBlocking {
-        vm.loadHome(setOf(AppSource.MODERN_APPS, AppSource.FDROID))
+    fun `loadHome fills a recent row per enabled source`() = afterInitSettled {
+        runBlocking {
+            vm.loadHome(setOf(AppSource.MODERN_APPS, AppSource.FDROID))
+        }
         await("home rows") {
             vm.home.value.sections.map { it.id }.containsAll(listOf("modern-recent", "fdroid-recent"))
         }
@@ -121,12 +150,16 @@ class LoadHomeTest {
     }
 
     @Test
-    fun `loadHome with nothing enabled clears the recent rows`() = runBlocking {
-        vm.loadHome(setOf(AppSource.MODERN_APPS))
+    fun `loadHome with nothing enabled clears the recent rows`() = afterInitSettled {
+        runBlocking {
+            vm.loadHome(setOf(AppSource.MODERN_APPS))
+        }
         await("modern row") {
             vm.home.value.sections.any { it.id == "modern-recent" }
         }
-        vm.loadHome(emptySet())
+        runBlocking {
+            vm.loadHome(emptySet())
+        }
         await("rows cleared") {
             vm.recentlyUpdatedFlow.value.isEmpty() &&
                 vm.home.value.sections.none { it.id == "modern-recent" }
