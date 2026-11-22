@@ -22,6 +22,7 @@ fun GalleryPage(
     // Untrashed rows projected off the main thread in the ViewModel
     // (galleryPhotos); filtering here used to run O(library) in composition.
     val photos by galleryViewModel.galleryPhotos.collectAsState()
+    val isLoading by galleryViewModel.galleryLoading.collectAsState()
     val albums by galleryViewModel.albums.collectAsState()
     val context = LocalContext.current
 
@@ -52,6 +53,7 @@ fun GalleryPage(
         backStack = backStack,
         state = GalleryUiState(
             photos = photos,
+            isLoading = isLoading,
             selectedIds = selectedIds,
             isRefreshing = isRefreshing,
             searchQuery = searchQuery,

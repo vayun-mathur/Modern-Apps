@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.EmptyState
+import com.vayunmathur.library.ui.LoadingIndicator
 import com.vayunmathur.library.ui.adaptiveGridCells
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.IconButton
@@ -274,7 +275,17 @@ fun GalleryScreen(
                     .padding(paddingValues)
                     .pinchToZoomColumns({ columnCount }, { columnCount = it })
             ) {
-                if (state.photos.isEmpty() && !state.isRefreshing) {
+                if (state.isLoading) {
+                    // First library emission still in flight: a wait, not an
+                    // empty library (same shape as the vault viewer / secure
+                    // folder binders: full-size box, centred indicator).
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = androidx.compose.ui.Alignment.Center,
+                    ) {
+                        LoadingIndicator()
+                    }
+                } else if (state.photos.isEmpty() && !state.isRefreshing) {
                     EmptyState(
                         title = stringResource(R.string.gallery_empty_title),
                         message = stringResource(R.string.gallery_empty_message),

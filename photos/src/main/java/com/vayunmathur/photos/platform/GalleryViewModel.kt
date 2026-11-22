@@ -32,6 +32,7 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -90,7 +91,22 @@ class GalleryViewModel(
      */
     private val allPhotosFlow: Flow<List<Photo>> = repository.getAllFlow()
 
+    /**
+     * True until the library flow's first emission, false forever after.
+     *
+     * [photos]/[galleryPhotos] start at `emptyList()` (their StateFlow
+     * initial value), which is indistinguishable from a genuinely empty
+     * library — so the binder reads this flag to show a loading indicator
+     * instead of a fake-empty grid while the first Room emission is in
+     * flight. It is only ever cleared, never re-set: once rows (or a
+     * genuine empty) have been seen, a WhileSubscribed restart replays
+     * the retained value and must not flash loading again.
+     */
+    private val _galleryLoading = MutableStateFlow(true)
+    val galleryLoading: StateFlow<Boolean> = _galleryLoading.asStateFlow()
+
     val photos: StateFlow<List<Photo>> = allPhotosFlow
+        .onEach { _galleryLoading.value = false }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /**

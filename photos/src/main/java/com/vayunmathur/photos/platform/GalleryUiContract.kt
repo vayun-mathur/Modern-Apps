@@ -19,6 +19,14 @@ import com.vayunmathur.photos.data.Photo
 /** Everything the gallery grid draws. */
 data class GalleryUiState(
     val photos: List<Photo> = emptyList(),
+    /**
+     * True while the first library emission is still in flight. An empty
+     * [photos] list is only a genuine empty library when this is false;
+     * while true the screen shows a loading indicator, never the empty
+     * state. Defaults false so previews/tests that hand rows (or a
+     * deliberate empty) directly render them as loaded.
+     */
+    val isLoading: Boolean = false,
     val selectedIds: Set<Long> = emptySet(),
     val isRefreshing: Boolean = false,
     val searchQuery: String = "",

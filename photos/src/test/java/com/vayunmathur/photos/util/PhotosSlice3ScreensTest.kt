@@ -122,6 +122,21 @@ class PhotosSlice3ScreensTest {
     }
 
     @Test
+    fun galleryLoadingShowsIndicatorNeverEmptyState() {
+        setGallery(GalleryUiState(isLoading = true))
+        // While the first library emission is in flight the fake-empty state
+        // must not render; the loading indicator takes its place instead.
+        composeRule.onNodeWithText(str(R.string.gallery_empty_title)).assertDoesNotExist()
+        composeRule.onNodeWithText(str(R.string.search_placeholder)).assertIsDisplayed()
+    }
+
+    @Test
+    fun galleryLoadedEmptyShowsEmptyState() {
+        setGallery(GalleryUiState(isLoading = false))
+        composeRule.onNodeWithText(str(R.string.gallery_empty_title)).assertIsDisplayed()
+    }
+
+    @Test
     fun galleryGridGroupsPhotosByMonth() {
         val a = photo("jan-a", 1_705_320_000_000L)
         val b = photo("feb-b", 1_707_744_000_000L)

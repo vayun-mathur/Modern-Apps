@@ -81,14 +81,9 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
             syncLibrary(
                 applicationContext, repository, lastGeneration, needsMimeBackfill,
                 DataStoreOneTimeFlag(dataStore, FAVORITES_RESCAN_DONE_KEY),
+                DataStoreOneTimeFlag(dataStore, GENERATION_RECOVERY_DONE_KEY),
             )
         }
-        
-        // Watermark before the EXIF pass: that pass can run for a long time
-        // over a backlogged library, and if the worker is stopped during it
-        // the next sync must still start from this generation instead of
-        // re-walking every change since the previous one.
-        dataStore.setLong("last_photos_generation", currentGeneration)
 
         setExifData(scanRepository, applicationContext)
 
@@ -97,6 +92,22 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         OCRWorker.enqueue(applicationContext)
         FaceWorker.enqueue(applicationContext)
         ClipWorker.enqueue(applicationContext)
+
+        // Generation watermark, written LAST and only by a generation-complete
+        // sync (see generationWatermarkAfter): a triggered sync imports only
+        // its own URIs, so advancing the watermark from one permanently skips
+        // every other change at or below the current generation — the
+        // incremental selection is GENERATION_MODIFIED > watermark, and an
+        // unchanged file never moves again. afeaa45a6 also moved this write
+        // ahead of the EXIF pass, which removed the one recovery window the
+        // old placement had: a worker stopped during that long pass used to
+        // leave the watermark untouched, so the next sync re-walked the
+        // generation. If this worker is stopped before this line, the next
+        // sync simply re-walks from the old watermark (idempotent upserts),
+        // which is the safe failure direction.
+        generationWatermarkAfter(triggeredUris.isNotEmpty(), currentGeneration)?.let {
+            dataStore.setLong("last_photos_generation", it)
+        }
 
         // Enqueue next observation
         enqueue(applicationContext)
@@ -210,10 +221,44 @@ private class DataStoreOneTimeFlag(
 internal const val FAVORITES_RESCAN_DONE_KEY = "favorites_rescan_done"
 
 /**
+ * Set once the one-time full rescan that repairs a possibly-poisoned
+ * generation watermark has run. Between afeaa45a6 and the watermark fix, a
+ * triggered sync (or a worker stopped during the EXIF pass after afeaa45a6
+ * moved the watermark ahead of it) could persist a watermark past changes
+ * no sync ever imported, and every later incremental sync then skipped
+ * them forever (`GENERATION_MODIFIED > watermark` never matches an
+ * unchanged file again). One full pass — whose selection is not
+ * generation-bounded — re-imports anything the provider still has, after
+ * which incremental sync is trustworthy again.
+ */
+internal const val GENERATION_RECOVERY_DONE_KEY = "generation_recovery_done"
+
+/** A flag that reads as already set; the default for callers that owe no recovery scan. */
+private object AlreadySetFlag : OneTimeFlag {
+    override suspend fun isSet(): Boolean = true
+    override suspend fun set() {}
+}
+
+/**
+ * The generation watermark a completed [SyncWorker] run may persist, or
+ * null to leave the stored watermark untouched.
+ *
+ * Only an untriggered (generation-complete: full or incremental over the
+ * whole provider) sync may advance it. A triggered sync imports only its
+ * triggered URIs, so it proves nothing about any other change at or below
+ * [currentGeneration]; advancing from one permanently skips those changes
+ * (see the call site in [SyncWorker.doWork]).
+ */
+internal fun generationWatermarkAfter(triggered: Boolean, currentGeneration: Long): Long? =
+    if (triggered) null else currentGeneration
+
+/**
  * The untriggered library sync: incremental from [lastGeneration], unless a
- * full scan is owed — rows still missing their mimeType, or the one-time
- * favourites rescan behind [favoritesRescan] has not run yet. The flag is set
- * only after a full scan completed, so it runs exactly once.
+ * full scan is owed — rows still missing their mimeType, the one-time
+ * favourites rescan behind [favoritesRescan] has not run yet, or the
+ * one-time generation-watermark recovery behind [generationRecovery] has
+ * not run yet. Each flag is set only after a full scan completed, so each
+ * runs exactly once.
  */
 internal suspend fun syncLibrary(
     context: Context,
@@ -221,11 +266,14 @@ internal suspend fun syncLibrary(
     lastGeneration: Long,
     needsMimeBackfill: Boolean,
     favoritesRescan: OneTimeFlag,
+    generationRecovery: OneTimeFlag = AlreadySetFlag,
 ) {
     val needsFavoritesRescan = !favoritesRescan.isSet()
-    val fullScan = needsMimeBackfill || needsFavoritesRescan
+    val needsGenerationRecovery = !generationRecovery.isSet()
+    val fullScan = needsMimeBackfill || needsFavoritesRescan || needsGenerationRecovery
     syncPhotos(context, repository, null, if (fullScan) 0L else lastGeneration)
     if (needsFavoritesRescan) favoritesRescan.set()
+    if (needsGenerationRecovery) generationRecovery.set()
 }
 
 suspend fun syncPhotos(

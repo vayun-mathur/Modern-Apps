@@ -21,6 +21,9 @@ import com.vayunmathur.photos.platform.GalleryViewModel
 import com.vayunmathur.photos.platform.ImageLoader
 import com.vayunmathur.photos.platform.PhotoScanStore
 import com.vayunmathur.photos.platform.PhotoStore
+import com.vayunmathur.photos.platform.OneTimeFlag
+import com.vayunmathur.photos.platform.generationWatermarkAfter
+import com.vayunmathur.photos.platform.syncLibrary
 import com.vayunmathur.photos.platform.syncPhotos
 import com.vayunmathur.photos.platform.workInfosOverride
 import com.vayunmathur.photos.ui.groupPhotosByMonth
@@ -125,7 +128,29 @@ class GalleryLoadProfileTest {
         override suspend fun setPersonName(id: Long, name: String?) {}
     }
 
-    private fun viewModel(store: CountingPhotoStore): GalleryViewModel {
+    /** A store whose library flow emits nothing until [gate] completes. */
+    private class GatedPhotoStore(
+        private val gate: kotlinx.coroutines.CompletableDeferred<List<Photo>>,
+    ) : PhotoStore {
+        override fun getAllFlow(): Flow<List<Photo>> =
+            kotlinx.coroutines.flow.flow { emit(gate.await()) }
+        override fun getFavoritesFlow(): Flow<List<Photo>> =
+            kotlinx.coroutines.flow.flow { emit(gate.await().filter { it.isFavorite && !it.isTrashed }) }
+        override fun getOCRCountFlow(): Flow<Int> = flowOf(0)
+        override fun getIndexTargetCountFlow(): Flow<Int> = flowOf(0)
+        override fun getClipCountFlow(): Flow<Int> = flowOf(0)
+        override fun getFaceScannedCountFlow(): Flow<Int> = flowOf(0)
+        override fun getIndexCountsFlow(): Flow<IndexCounts> = flowOf(IndexCounts())
+        override suspend fun searchPhotos(query: String): List<Photo> = emptyList()
+        override suspend fun delete(photo: Photo): Int = 0
+        override suspend fun setTrashed(id: Long) {}
+        override suspend fun setAlbum(ids: List<Long>, album: String?) {}
+        override suspend fun setFavorite(ids: List<Long>, value: Boolean) {}
+        override suspend fun getByUri(uri: String): List<Photo> = emptyList()
+        override suspend fun getAll(): List<Photo> = emptyList()
+    }
+
+    private fun viewModel(store: PhotoStore): GalleryViewModel {
         workInfosOverride = { _, _ -> flowOf(emptyList<androidx.work.WorkInfo>()) }
         return GalleryViewModel(app, store, FakeScanStore(), FakeFaceStore()).also {
             it.runSyncHook = {}
@@ -170,6 +195,60 @@ class GalleryLoadProfileTest {
         awaitValue { vm.albums.value.takeIf { it.isNotEmpty() } }
         assertEquals(1, store.allFlowCalls, "one upstream flow for photos+galleryPhotos+albums+people")
         scope.cancel()
+    }
+
+    @Test
+    fun galleryPhotosEmitUserVisibleItemsAndLoadingTransitionsToContent() {
+        val gate = kotlinx.coroutines.CompletableDeferred<List<Photo>>()
+        val vm = viewModel(GatedPhotoStore(gate))
+        val scope = CoroutineScope(Dispatchers.Default)
+        // The device path: the binder collects galleryPhotos (+ loading),
+        // not the raw photos flow, so collect exactly those two.
+        scope.launch { vm.galleryPhotos.collect {} }
+        scope.launch { vm.galleryLoading.collect {} }
+
+        // Before the first upstream emission the user-visible rows are the
+        // StateFlow initial empty list, and the model must say "loading" —
+        // not collapse into a genuine empty library.
+        assertTrue(vm.galleryPhotos.value.isEmpty())
+        assertEquals(true, awaitValue { vm.galleryLoading.value.takeIf { it } })
+
+        gate.complete(
+            listOf(
+                photo(3L, 3_000L),
+                photo(2L, 2_000L, trashed = true),
+                photo(1L, 1_000L),
+            )
+        )
+        val visible = awaitValue { vm.galleryPhotos.value.takeIf { it.size == 2 } }
+        assertEquals(listOf(3L, 1L), visible.map { it.id })
+        assertEquals(false, awaitValue { vm.galleryLoading.value.takeIf { !it } })
+        scope.cancel()
+    }
+
+    @Test
+    fun galleryLoadingClearsOnGenuinelyEmptyFirstEmission() {
+        val gate = kotlinx.coroutines.CompletableDeferred<List<Photo>>()
+        val vm = viewModel(GatedPhotoStore(gate))
+        val scope = CoroutineScope(Dispatchers.Default)
+        scope.launch { vm.galleryPhotos.collect {} }
+        scope.launch { vm.galleryLoading.collect {} }
+        assertEquals(true, awaitValue { vm.galleryLoading.value.takeIf { it } })
+        gate.complete(emptyList())
+        // An emitted empty library is a real empty (the screen may now show
+        // its empty state): loading cleared even though rows stayed empty.
+        assertEquals(false, awaitValue { vm.galleryLoading.value.takeIf { !it } })
+        assertTrue(vm.galleryPhotos.value.isEmpty())
+        scope.cancel()
+    }
+
+    @Test
+    fun triggeredSyncNeverAdvancesGenerationWatermark() {
+        // A triggered sync imports only its URIs; the watermark may only move
+        // after a generation-complete sync, else every other change at or
+        // below that generation is skipped by all later incremental syncs.
+        assertNull(generationWatermarkAfter(triggered = true, currentGeneration = 99L))
+        assertEquals(99L, generationWatermarkAfter(triggered = false, currentGeneration = 99L))
     }
 
     /** Idles the paused main looper until [read] yields a value (bounded, real time). */
@@ -307,6 +386,35 @@ class GalleryLoadProfileTest {
         // Full scan: the same absence is a deletion and is reconciled.
         syncPhotos(context, repository, null, 0L)
         assertEquals(listOf(listOf(2L)), repository.deletedBatches)
+        Unit
+    }
+
+    private class FakeFlag(initial: Boolean) : OneTimeFlag {
+        var value = initial
+        override suspend fun isSet(): Boolean = value
+        override suspend fun set() { value = true }
+    }
+
+    @Test
+    fun generationRecoveryForcesOneFullScanThenReturnsToIncremental() = runBlocking {
+        ShadowContentResolver.registerProviderInternal(MediaStore.AUTHORITY, OneRowProvider())
+        val repository = FakePhotosRepository(context).apply {
+            all = listOf(syncPhoto(1L), syncPhoto(2L))
+        }
+        val favoritesDone = FakeFlag(initial = true)
+        val recovery = FakeFlag(initial = false)
+
+        // Despite a moved generation (42), the owed recovery pass is a full
+        // scan: row 2's absence is reconciled (a poisoned watermark's missed
+        // cohort is re-walked by the un-bounded selection) and the flag set.
+        syncLibrary(context, repository, 42L, false, favoritesDone, recovery)
+        assertEquals(listOf(listOf(2L)), repository.deletedBatches)
+        assertTrue(recovery.value)
+
+        // Recovery runs once: the next library sync is incremental again.
+        repository.deletedBatches.clear()
+        syncLibrary(context, repository, 42L, false, favoritesDone, recovery)
+        assertTrue(repository.deletedBatches.isEmpty(), repository.deletedBatches.toString())
         Unit
     }
 }

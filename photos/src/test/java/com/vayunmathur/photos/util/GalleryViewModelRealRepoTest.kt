@@ -78,6 +78,8 @@ class GalleryViewModelRealRepoTest {
         CoroutineScope(Dispatchers.Default).launch { vm.faceScannedCount.collect {} },
         CoroutineScope(Dispatchers.Default).launch { vm.searchResults.collect {} },
         CoroutineScope(Dispatchers.Default).launch { vm.photos.collect {} },
+        CoroutineScope(Dispatchers.Default).launch { vm.galleryPhotos.collect {} },
+        CoroutineScope(Dispatchers.Default).launch { vm.galleryLoading.collect {} },
         CoroutineScope(Dispatchers.Default).launch { vm.albums.collect {} },
         CoroutineScope(Dispatchers.Default).launch { vm.people.collect {} },
         CoroutineScope(Dispatchers.Default).launch { vm.favorites.collect {} },
@@ -98,6 +100,11 @@ class GalleryViewModelRealRepoTest {
         // The photos flow is the raw library order (newest first, trash included);
         // trash/album filtering happens in the grouping projections below.
         await("photos loaded") { vm.photos.value.map { it.name } == listOf("trashed-one", "beach", "mountain", "city") }
+        // The user-visible grid projection (what GalleryPage collects) over
+        // the real Room flow: untrashed rows, newest first, and loading
+        // cleared by the first real emission.
+        await("gallery photos loaded") { vm.galleryPhotos.value.map { it.name } == listOf("beach", "mountain", "city") }
+        await("gallery loading cleared") { !vm.galleryLoading.value }
         await("albums grouped") { vm.albums.value.map { it.name } == listOf("Camera", "Trips") }
         val camera = vm.albums.value.first { it.name == "Camera" }
         assertEquals("beach", camera.coverPhoto.name)
