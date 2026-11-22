@@ -17,45 +17,56 @@ internal data class EncodedStill(val bytes: ByteArray, val format: StillFormat) 
 /**
  * Encodes a processed bitmap to the user's still format.
  *
- * AVIF goes through the Rust `ravif` encoder behind [StitchNative]; when
- * the native library is missing or encoding fails, this falls back to
- * JPEG bytes so a shot is never lost. Orientation must already be baked
- * into the pixels by the caller: ravif exposes no EXIF API, so AVIF
- * stills carry no orientation/GPS tags (the JPEG path stamps them via
- * `writeCaptureExif` instead).
+ * AVIF goes through the Rust `ravif` encoder behind [StitchNative];
+ * the TIFF payload in `exifTiff` is muxed in as the file's ISOBMFF
+ * Exif item (see `buildAvifExifTiff`). When the native library is
+ * missing, encoding fails, or no EXIF payload was built, this falls
+ * back to JPEG bytes so a shot is never lost — and never lands as an
+ * EXIF-less AVIF. Orientation is baked into the pixels on the AVIF
+ * path, and the payload's orientation tag accordingly reads Normal;
+ * the JPEG path leaves pixels untouched and the caller stamps
+ * orientation/GPS via `writeCaptureExif` as before.
  */
 internal object StillEncoder {
 
+    /** The still format settings currently ask for (before fallbacks). */
+    fun CameraViewModel.requestedStillFormat(): StillFormat =
+        if (photoFormatMutable.value == PhotoFormat.AVIF) StillFormat.AVIF else StillFormat.JPEG
+
     /**
      * Encoded container for [bitmap] under the current settings.
-     * [rotationDegrees] is baked into the pixels on the AVIF path (no
-     * EXIF orientation tag there); the JPEG path leaves pixels untouched
-     * and the caller stamps orientation via EXIF as before.
+     * [rotationDegrees] is baked into the pixels on the AVIF path; the
+     * JPEG path leaves pixels untouched and the caller stamps
+     * orientation via EXIF as before.
      */
-    fun CameraViewModel.encode(bitmap: Bitmap, rotationDegrees: Int = 0): EncodedStill {
-        val requested = if (photoFormatMutable.value == PhotoFormat.AVIF) {
-            StillFormat.AVIF
-        } else {
-            StillFormat.JPEG
-        }
+    fun CameraViewModel.encode(
+        bitmap: Bitmap,
+        rotationDegrees: Int = 0,
+        exifTiff: ByteArray? = null,
+    ): EncodedStill {
+        val requested = requestedStillFormat()
         val effective = StillFormatRouting.effectiveFormat(
             requested = requested,
             nativeAvailable = StitchNative.isAvailable,
             motionPhoto = false,
         )
         if (effective == StillFormat.AVIF) {
-            val upright = uprightCopy(bitmap, rotationDegrees, 0)
-            try {
-                encodeAvif(upright)?.let { return EncodedStill(it, StillFormat.AVIF) }
-            } finally {
-                if (upright !== bitmap) upright.recycle()
+            if (exifTiff == null || exifTiff.isEmpty()) {
+                Log.status("StillEncoder", "AVIF without EXIF payload; falling back to JPEG")
+            } else {
+                val upright = uprightCopy(bitmap, rotationDegrees, 0)
+                try {
+                    encodeAvif(upright, exifTiff)?.let { return EncodedStill(it, StillFormat.AVIF) }
+                } finally {
+                    if (upright !== bitmap) upright.recycle()
+                }
+                Log.status("StillEncoder", "AVIF encode failed; falling back to JPEG")
             }
-            Log.status("StillEncoder", "AVIF encode failed; falling back to JPEG")
         }
         return EncodedStill(encodeJpeg(bitmap), StillFormat.JPEG)
     }
 
-    private fun encodeAvif(bitmap: Bitmap): ByteArray? {
+    private fun encodeAvif(bitmap: Bitmap, exifTiff: ByteArray): ByteArray? {
         if (!StitchNative.isAvailable) return null
         val width = bitmap.width
         val height = bitmap.height
@@ -71,9 +82,10 @@ internal object StillEncoder {
             rgba[i * 4 + 3] = (px ushr 24 and 0xFF).toByte()
         }
         return try {
-            StitchNative.encodeAvif(
+            StitchNative.encodeAvifExif(
                 rgba, width, height,
                 StillFormatRouting.AVIF_QUALITY, StillFormatRouting.AVIF_SPEED,
+                exifTiff,
             )
         } catch (e: UnsatisfiedLinkError) {
             Log.status("StillEncoder", "AVIF native call failed; JPEG fallback", e)

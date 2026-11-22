@@ -82,6 +82,16 @@ object StitchNative {
      */
     external fun encodeAvif(rgba: ByteArray, width: Int, height: Int, quality: Float, speed: Int): ByteArray?
 
+    /**
+     * Like [encodeAvif], but muxes [exif] (a TIFF payload; empty = none)
+     * into the AVIF as its ISOBMFF Exif item. Null on any failure —
+     * including a non-TIFF payload — so callers fall back to JPEG rather
+     * than saving an EXIF-less AVIF.
+     */
+    external fun encodeAvifExif(
+        rgba: ByteArray, width: Int, height: Int, quality: Float, speed: Int, exif: ByteArray,
+    ): ByteArray?
+
     // --- Zero-copy luma on-ramp (Camera2 migration Phase 3) ---
 
     /**

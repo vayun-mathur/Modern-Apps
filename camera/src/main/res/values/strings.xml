@@ -85,7 +85,7 @@
     <string name="photo_format_jpeg_label">JPEG</string>
     <string name="photo_format_jpeg_description">Most compatible</string>
     <string name="photo_format_avif_label">AVIF</string>
-    <string name="photo_format_avif_description">Smaller files, slower to save</string>
+    <string name="photo_format_avif_description">Smaller files, slower to save; Ultra HDR and Motion Photos stay JPEG</string>
 
     <!-- Motion-Photo duration settings (SettingsPage, issue #712) -->
     <!-- SettingsPage: section header for motion-photo clip-length selection -->

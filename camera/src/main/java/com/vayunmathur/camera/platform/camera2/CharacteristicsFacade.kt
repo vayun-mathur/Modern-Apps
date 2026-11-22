@@ -189,6 +189,16 @@ data class LensCharacteristicsSnapshot(
     }
     val minZoomRatio: Float get() = zoomRatioRange?.lower ?: 1f
     val maxZoomRatio: Float get() = zoomRatioRange?.upper ?: 1f
+    /**
+     * True when the HAL advertises an Ultra HDR still output: `JPEG_R`
+     * (API 34+) with at least one size in the stream configuration map.
+     * A JPEG_R output targeted by a still capture yields a JPEG with an
+     * embedded gain map from the HAL — the same output CameraX selects
+     * via `OUTPUT_FORMAT_JPEG_ULTRA_HDR`. No extra capability bit gates
+     * JPEG_R; the advertised format/size list is the whole contract.
+     */
+    val supportsJpegR: Boolean
+        get() = streamConfig.sizesFor(ImageFormat.JPEG_R).isNotEmpty()
     val supportsRaw: Boolean
         get() = CameraMetadata.REQUEST_AVAILABLE_CAPABILITIES_RAW in availableCapabilities
     val supportsReprocess: Boolean
@@ -262,6 +272,17 @@ class CharacteristicsFacade private constructor(
     val snapshot: LensCharacteristicsSnapshot,
 ) {
     val cameraId: String get() = snapshot.cameraId
+
+    /**
+     * True when [cameraId] is this facade's lens and it advertises a
+     * JPEG_R (Ultra HDR, API 34+) still output. Pure snapshot read:
+     * false for any other camera id, never a HAL call.
+     */
+    fun ultraHdrSupportedJpegR(cameraId: String): Boolean =
+        cameraId == snapshot.cameraId && snapshot.supportsJpegR
+
+    /** This facade's own lens: see [ultraHdrSupportedJpegR]. */
+    fun ultraHdrSupportedJpegR(): Boolean = ultraHdrSupportedJpegR(snapshot.cameraId)
 
     companion object {
         /** Builds a facade from an already-materialised snapshot (tests / fakes). */

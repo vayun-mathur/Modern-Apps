@@ -9,6 +9,7 @@ import com.vayunmathur.camera.data.saveStillBytes
 import com.vayunmathur.camera.data.setLastCaptureUri
 import com.vayunmathur.camera.domain.FlashSetting
 import com.vayunmathur.camera.domain.StillFormat
+import com.vayunmathur.camera.domain.UltraHdrIntentPolicy
 import com.vayunmathur.camera.platform.camera2.Camera2Session
 import com.vayunmathur.camera.platform.camera2.CapturedStill
 import com.vayunmathur.camera.platform.camera2.StillEngineInput
@@ -108,10 +109,18 @@ internal fun CameraViewModel.tryCaptureCamera2Still(): Boolean {
     // Ring first when the policy selects it; its runtime fallback to a
     // regular still lives inside captureFromRing. Night captures never
     // reach here (policy excludes the night route, Phase 6 is separate).
+    // Ultra HDR intent mirrors CameraX exactly (see UltraHdrIntentPolicy):
+    // capability-only, no separate user setting. The ring path reprocesses
+    // to its JPEG output, so Ultra HDR applies to the direct still path;
+    // an unsupported lens falls back to plain JPEG inside the session.
+    val ultraHdrRequested = UltraHdrIntentPolicy.wantsUltraHdr(session.ultraHdrSupportedJpegR)
     if (StillEnginePolicy.usesRing(ringInput)) {
         session.captureFromRing(callback = stillCallback, mirrored = mirrored)
     } else {
-        session.capture(mirrored = mirrored, callback = stillCallback)
+        session.capture(
+            mirrored = mirrored, callback = stillCallback,
+            ultraHdrRequested = ultraHdrRequested,
+        )
     }
     return true
 }
@@ -123,11 +132,13 @@ internal fun CameraViewModel.tryCaptureCamera2Still(): Boolean {
  */
 internal fun CameraViewModel.saveCamera2Still(still: CapturedStill): Uri? {
     val rotation = still.metadata.rotationDegrees
-    if (photoFormatMutable.value == PhotoFormat.AVIF) {
+    if (photoFormatMutable.value == PhotoFormat.AVIF &&
+        !com.vayunmathur.camera.domain.StillFormatRouting.isUltraHdrJpeg(still.jpegBytes)
+    ) {
         val bitmap = BitmapFactory.decodeByteArray(still.jpegBytes, 0, still.jpegBytes.size)
             ?: return saveJpegStill(still)
         try {
-            val saved = saveProcessedStill(bitmap, rotation) ?: return null
+            val saved = saveProcessedStill(bitmap, rotation, still.jpegBytes) ?: return null
             if (saved.format == StillFormat.JPEG) {
                 // The JPEG re-encode dropped the HAL EXIF; restore it from
                 // the original frame, exactly as the processed CameraX path.

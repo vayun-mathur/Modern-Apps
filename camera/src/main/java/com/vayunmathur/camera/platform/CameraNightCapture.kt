@@ -210,7 +210,8 @@ internal fun CameraViewModel.onNightBurstDone(frames: List<Bitmap>) {
 /** Completes a successful night merge: stamps EXIF, clears state, publishes the URI. */
 internal suspend fun CameraViewModel.finishNightMerge(uri: Uri) {
     // Merged pixels are already upright/mirrored, so the orientation tag is normal.
-    // AVIF stills carry no EXIF (orientation is in the pixels); only stamp JPEG.
+    // AVIF stills already carry their Exif item from saveProcessedStill;
+    // only JPEG needs the file-level stamp here.
     val isAvif = runCatching { app.contentResolver.getType(uri) }.getOrNull() == "image/avif"
     if (!isAvif) {
         withContext(Dispatchers.IO) { writeCaptureExif(uri, null, 0) }

@@ -131,6 +131,44 @@ internal fun CameraViewModel.writeCaptureExif(
     }
 }
 
+/**
+ * Builds the TIFF payload for an AVIF Exif item from the same tag set
+ * the JPEG path stamps: [CameraViewModel.EXIF_TAGS_TO_COPY] copied from
+ * [sourceJpeg] (when there is a source frame), orientation Normal — the
+ * AVIF pixels are baked upright by `StillEncoder`, so a sensor-rotation
+ * tag would double-rotate — plus GPS when location is enabled. The tags
+ * are written onto [carrierJpeg] (a clean JPEG encode of the saved
+ * bitmap, so no stale dimension tags leak in) in a temp file, then the
+ * Exif APP1's TIFF payload is extracted for the Rust mux. Null on any
+ * failure: the caller then falls back to JPEG instead of shipping an
+ * EXIF-less AVIF. Blocking (file I/O): call off the main thread.
+ */
+internal fun CameraViewModel.buildAvifExifTiff(sourceJpeg: ByteArray?, carrierJpeg: ByteArray): ByteArray? {
+    updateLocation()
+    var tmp: java.io.File? = null
+    return try {
+        tmp = java.io.File.createTempFile("avif_exif_", ".jpg", app.cacheDir)
+        tmp.writeBytes(carrierJpeg)
+        val dest = ExifInterface(tmp.absolutePath)
+        copyExifTags(sourceJpeg?.let { ExifInterface(ByteArrayInputStream(it)) }, dest)
+        dest.setAttribute(
+            ExifInterface.TAG_ORIENTATION,
+            ExifInterface.ORIENTATION_NORMAL.toString()
+        )
+        if (locationEnabledMutable.value) lastLocation?.let { dest.setGpsInfo(it) }
+        dest.saveAttributes()
+        com.vayunmathur.camera.domain.StillFormatRouting.extractExifTiff(tmp.readBytes())
+    } catch (e: java.io.IOException) {
+        Log.status("CameraViewModel", "Failed to build AVIF EXIF payload", e)
+        null
+    } catch (e: SecurityException) {
+        Log.status("CameraViewModel", "Failed to build AVIF EXIF payload", e)
+        null
+    } finally {
+        try { tmp?.delete() } catch (_: Exception) {}
+    }
+}
+
 /** Opens [uri] for EXIF read/write and stamps orientation (+GPS +copied tags). */
 private fun CameraViewModel.writeExifAttributes(
     uri: Uri,

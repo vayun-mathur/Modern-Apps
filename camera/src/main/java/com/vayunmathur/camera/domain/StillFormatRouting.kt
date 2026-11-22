@@ -49,4 +49,82 @@ object StillFormatRouting {
     /** `IMG_<timestamp>` display name in the container's extension. */
     fun displayName(timestamp: String, format: StillFormat): String =
         "IMG_$timestamp.${extension(format)}"
+
+    /**
+     * True when a plain (unprocessed) single must leave the CameraX file
+     * path and be captured in memory instead: only an AVIF-bound still
+     * needs that (the file path can only write the HAL JPEG). JPEG, and
+     * AVIF with no native encoder (which honestly falls back to JPEG),
+     * stay on the file path so EXIF/Ultra HDR are never re-encoded away.
+     */
+    fun plainSingleNeedsInMemory(requested: StillFormat, nativeAvailable: Boolean): Boolean =
+        effectiveFormat(requested, nativeAvailable, motionPhoto = false) == StillFormat.AVIF
+
+    /**
+     * The TIFF payload of a JPEG's Exif APP1 segment (`Exif\0\0` stripped),
+     * or null when the JPEG carries none. Pure segment walk (no Android
+     * types) so it is host-testable; used to feed the AVIF Exif item.
+     */
+    fun extractExifTiff(jpeg: ByteArray): ByteArray? {
+        for ((marker, payload) in jpegHeaderSegments(jpeg)) {
+            if (marker == 0xE1 && payload.size > 6 &&
+                payload[0] == 'E'.code.toByte() && payload[1] == 'x'.code.toByte() &&
+                payload[2] == 'i'.code.toByte() && payload[3] == 'f'.code.toByte() &&
+                payload[4].toInt() == 0 && payload[5].toInt() == 0
+            ) {
+                return payload.copyOfRange(6, payload.size)
+            }
+        }
+        return null
+    }
+
+    /**
+     * True when [jpeg] is an Ultra HDR (JPEG_R) still: its header segments
+     * advertise a gain map (Adobe `hdrgm` XMP / HDRGainMap, an ISO 21496-1
+     * gain-map container item, or an MPF `MP Extension` second image).
+     * Only header segments (before SOS) are scanned, so compressed image
+     * data can never false-positive. Such stills stay JPEG_R when AVIF is
+     * selected — decoding them would discard the gain map.
+     */
+    fun isUltraHdrJpeg(jpeg: ByteArray): Boolean {
+        if (jpeg.size < 4 || jpeg[0] != 0xFF.toByte() || jpeg[1] != 0xD8.toByte()) return false
+        val needles = listOf("hdrgm", "hdr-gain-map", "HDRGainMap", "GainMap", "MP Extension")
+        for ((_, payload) in jpegHeaderSegments(jpeg)) {
+            val text = String(payload, Charsets.ISO_8859_1)
+            if (needles.any { it in text }) return true
+        }
+        return false
+    }
+
+    /**
+     * Header segments of a JPEG as (marker, payload) pairs, stopping at
+     * SOS (start of compressed data) or the first malformed segment.
+     */
+    private fun jpegHeaderSegments(jpeg: ByteArray): List<Pair<Int, ByteArray>> {
+        if (jpeg.size < 4 || jpeg[0] != 0xFF.toByte() || jpeg[1] != 0xD8.toByte()) return emptyList()
+        val out = mutableListOf<Pair<Int, ByteArray>>()
+        var pos = 2
+        while (pos + 4 <= jpeg.size) {
+            if (jpeg[pos] != 0xFF.toByte()) break
+            var markerPos = pos + 1
+            while (markerPos < jpeg.size && jpeg[markerPos] == 0xFF.toByte()) markerPos++
+            if (markerPos >= jpeg.size) break
+            val marker = jpeg[markerPos].toInt() and 0xFF
+            if (marker == 0xDA) break // SOS: compressed data follows
+            // Standalone markers (SOI/EOI/TEM/RSTn) carry no length.
+            if (marker == 0xD8 || marker == 0xD9 || marker == 0x01 || marker in 0xD0..0xD7) {
+                pos = markerPos + 1
+                continue
+            }
+            if (markerPos + 3 > jpeg.size) break
+            val length = ((jpeg[markerPos + 1].toInt() and 0xFF) shl 8) or
+                (jpeg[markerPos + 2].toInt() and 0xFF)
+            if (length < 2 || markerPos + 1 + length > jpeg.size) break
+            val payloadStart = markerPos + 3
+            val payloadEnd = markerPos + 1 + length
+            out.add(marker to jpeg.copyOfRange(payloadStart, payloadEnd))
+            pos = payloadEnd
+        }
+        return out
+    }
 }

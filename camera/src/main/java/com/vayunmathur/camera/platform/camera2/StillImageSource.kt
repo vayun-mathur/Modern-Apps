@@ -37,10 +37,12 @@ class JpegStillOutput(
     height: Int,
     maxImages: Int = DEFAULT_MAX_IMAGES,
     private val handler: Handler,
+    /** Reader format: [ImageFormat.JPEG], or [ImageFormat.JPEG_R] (API 34+) for Ultra HDR. */
+    format: Int = ImageFormat.JPEG,
 ) : StillOutput {
 
     private val reader: ImageReader =
-        ImageReader.newInstance(width, height, ImageFormat.JPEG, maxImages)
+        ImageReader.newInstance(width, height, format, maxImages)
 
     override val surface: Surface get() = reader.surface
 

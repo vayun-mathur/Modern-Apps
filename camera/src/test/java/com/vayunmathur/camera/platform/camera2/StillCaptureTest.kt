@@ -29,16 +29,18 @@ class StillCaptureTest {
         lensFacingRaw: Int? = CameraMetadata.LENS_FACING_BACK,
         sensorOrientationDegrees: Int = 90,
         jpegSizes: List<Size> = listOf(Size(4000, 3000), Size(1920, 1080)),
+        jpegRSizes: List<Size> = emptyList(),
     ): LensCharacteristicsSnapshot = CharacteristicsFacade.fromFakeMap(
         cameraId = "0",
         lensFacingRaw = lensFacingRaw,
         zoomRatioRange = Range(1f, 10f),
         hasFlashUnit = hasFlashUnit,
         exposureCompensationEvRange = Range(-4f, 4f),
-        sizesByFormat = mapOf(
-            ImageFormat.PRIVATE to listOf(Size(1280, 720)),
-            ImageFormat.JPEG to jpegSizes,
-        ),
+        sizesByFormat = buildMap {
+            put(ImageFormat.PRIVATE, listOf(Size(1280, 720)))
+            put(ImageFormat.JPEG, jpegSizes)
+            if (jpegRSizes.isNotEmpty()) put(ImageFormat.JPEG_R, jpegRSizes)
+        },
         activeArrayWidth = 4000,
         activeArrayHeight = 3000,
         sensorOrientationDegrees = sensorOrientationDegrees,
@@ -196,6 +198,7 @@ class StillCaptureTest {
 
     private class FakeSessionHandle : CaptureSessionHandle {
         val stillRequests = mutableListOf<ResolvedStillParams>()
+        val stillTargets = mutableListOf<Surface>()
         var stillCallback: StillResultCallback? = null
         var closed = false
         override fun setRepeatingPreview(params: ResolvedRequestParams, target: Surface) {}
@@ -205,6 +208,7 @@ class StillCaptureTest {
             callback: StillResultCallback,
         ) {
             stillRequests += params
+            stillTargets += stillTarget
             stillCallback = callback
         }
         override fun close() { closed = true }
@@ -228,11 +232,21 @@ class StillCaptureTest {
     private class FakeDriver(
         private val device: FakeDevice,
         private val output: FakeStillOutput?,
+        private val ultraOutput: FakeStillOutput? = null,
     ) : Camera2Driver {
+        val stillSizes = mutableListOf<FrameSize>()
+        val ultraSizes = mutableListOf<FrameSize>()
         override fun openCamera(cameraId: String, callback: DeviceCallback) {
             callback.onOpened(device)
         }
-        override fun createStillOutput(size: FrameSize): StillOutput? = output
+        override fun createStillOutput(size: FrameSize): StillOutput? {
+            stillSizes += size
+            return output
+        }
+        override fun createUltraHdrStillOutput(size: FrameSize): StillOutput? {
+            ultraSizes += size
+            return ultraOutput
+        }
     }
 
     private class RecordingStillCallback : Camera2Session.StillCallback {
@@ -259,6 +273,34 @@ class StillCaptureTest {
         executor.drain()
         assertEquals(SessionState.STREAMING, session.state)
         return session
+    }
+
+    private fun streamingUltraSession(
+        executor: Camera2Executor,
+        handle: FakeSessionHandle,
+        jpeg: FakeStillOutput?,
+        ultra: FakeStillOutput?,
+        jpegRSizes: List<Size>,
+    ): Camera2Session {
+        val device = FakeDevice(handle)
+        val driver = FakeDriver(device, jpeg, ultra)
+        val session = Camera2Session(driver, executor, snapshot(jpegRSizes = jpegRSizes))
+        session.open("0", mock(Surface::class.java), FrameSize(1280, 720))
+        executor.drain()
+        assertEquals(SessionState.STREAMING, session.state)
+        return session
+    }
+
+    private fun completeStill(
+        executor: Camera2Executor,
+        handle: FakeSessionHandle,
+        from: FakeStillOutput,
+        bytes: ByteArray,
+    ) {
+        from.emit(bytes)
+        executor.drain()
+        handle.stillCallback!!.onCompleted(RawStillMetadata(sensorTimestampNs = 99L))
+        executor.drain()
     }
 
     @Test fun sessionCapturePairsJpegAndResultIntoOneStill() {
@@ -336,6 +378,101 @@ class StillCaptureTest {
             assertEquals(1, cb.failures.size)
             assertTrue(cb.failures.single().contains("no JPEG output"))
             noJpeg.close()
+            executor.drain()
+        } finally {
+            executor.shutdown()
+        }
+    }
+
+    // -- Ultra HDR (JPEG_R) routing -------------------------------------------
+
+    @Test fun stillOutputRouterSelectsJpegROnlyWhenRequestedAndAvailable() {
+        assertEquals(
+            StillOutputTag.ULTRA_HDR_JPEG_R,
+            StillOutputRouter.select(ultraHdrRequested = true, hasUltraHdrOutput = true),
+        )
+        assertEquals(
+            StillOutputTag.JPEG,
+            StillOutputRouter.select(ultraHdrRequested = true, hasUltraHdrOutput = false),
+        )
+        assertEquals(
+            StillOutputTag.JPEG,
+            StillOutputRouter.select(ultraHdrRequested = false, hasUltraHdrOutput = true),
+        )
+        assertEquals(FrameSize(4000, 3000), StreamSelection.selectJpegRSize(snapshot(jpegRSizes = listOf(Size(1920, 1080), Size(4000, 3000)))))
+        assertNull(StreamSelection.selectJpegRSize(snapshot()))
+    }
+
+    @Test fun sessionCapturesToJpegRWhenSupportedAndRequested() {
+        val executor = Camera2Executor("StillCaptureTest-ultra")
+        try {
+            val handle = FakeSessionHandle()
+            val jpeg = FakeStillOutput()
+            val ultra = FakeStillOutput()
+            val session = streamingUltraSession(
+                executor, handle, jpeg, ultra, listOf(Size(4000, 3000)),
+            )
+            assertTrue(session.ultraHdrSupportedJpegR)
+            assertTrue(session.hasUltraHdrOutput)
+            assertEquals(FrameSize(4000, 3000), session.currentUltraHdrSize())
+            // Both still surfaces are in the configured session.
+            val callback = RecordingStillCallback()
+            session.capture(callback, ultraHdrRequested = true)
+            executor.drain()
+            assertEquals(1, handle.stillRequests.size)
+            assertEquals(ultra.surface, handle.stillTargets.single())
+            completeStill(executor, handle, ultra, byteArrayOf(7, 8))
+            assertEquals(1, callback.captured.size)
+            assertEquals(StillOutputTag.ULTRA_HDR_JPEG_R, callback.captured.single().tag)
+            assertTrue(callback.captured.single().jpegBytes.contentEquals(byteArrayOf(7, 8)))
+            assertTrue(callback.failures.isEmpty())
+            session.close()
+            executor.drain()
+            assertTrue(ultra.closed)
+        } finally {
+            executor.shutdown()
+        }
+    }
+
+    @Test fun sessionFallsBackToJpegWhenUltraRequestedButUnsupported() {
+        val executor = Camera2Executor("StillCaptureTest-ultra-fallback")
+        try {
+            val handle = FakeSessionHandle()
+            val jpeg = FakeStillOutput()
+            // No JPEG_R sizes: no Ultra HDR output is ever created.
+            val session = streamingUltraSession(executor, handle, jpeg, FakeStillOutput(), emptyList())
+            assertFalse(session.ultraHdrSupportedJpegR)
+            assertFalse(session.hasUltraHdrOutput)
+            val callback = RecordingStillCallback()
+            session.capture(callback, ultraHdrRequested = true)
+            executor.drain()
+            assertEquals(jpeg.surface, handle.stillTargets.single())
+            completeStill(executor, handle, jpeg, byteArrayOf(1))
+            assertEquals(StillOutputTag.JPEG, callback.captured.single().tag)
+            assertTrue(callback.failures.isEmpty())
+            session.close()
+            executor.drain()
+        } finally {
+            executor.shutdown()
+        }
+    }
+
+    @Test fun sessionUsesJpegWhenUltraSupportedButNotRequested() {
+        val executor = Camera2Executor("StillCaptureTest-ultra-not-requested")
+        try {
+            val handle = FakeSessionHandle()
+            val jpeg = FakeStillOutput()
+            val session = streamingUltraSession(
+                executor, handle, jpeg, FakeStillOutput(), listOf(Size(4000, 3000)),
+            )
+            assertTrue(session.hasUltraHdrOutput)
+            val callback = RecordingStillCallback()
+            session.capture(callback, ultraHdrRequested = false)
+            executor.drain()
+            assertEquals(jpeg.surface, handle.stillTargets.single())
+            completeStill(executor, handle, jpeg, byteArrayOf(2))
+            assertEquals(StillOutputTag.JPEG, callback.captured.single().tag)
+            session.close()
             executor.drain()
         } finally {
             executor.shutdown()

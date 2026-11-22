@@ -135,6 +135,38 @@ class CharacteristicsFacadeTest {
         assertTrue(s.supportsRaw)
     }
 
+    @Test fun ultraHdrSupportedJpegRFromFakeMap() {
+        val facade = CharacteristicsFacade.fromFakeMap(
+            cameraId = "2",
+            sizesByFormat = mapOf(
+                ImageFormat.JPEG to listOf(Size(4032, 3024)),
+                ImageFormat.JPEG_R to listOf(Size(4032, 3024)),
+            ),
+        )
+        assertTrue(facade.snapshot.supportsJpegR)
+        assertTrue(facade.ultraHdrSupportedJpegR("2"))
+        assertTrue(facade.ultraHdrSupportedJpegR())
+        // Another lens's support must not leak through this facade.
+        assertFalse(facade.ultraHdrSupportedJpegR("9"))
+        assertEquals(Size(4032, 3024), facade.snapshot.streamConfig.maxSizeFor(ImageFormat.JPEG_R))
+    }
+
+    @Test fun ultraHdrUnsupportedWithoutJpegRSizes() {
+        val jpegOnly = CharacteristicsFacade.fromFakeMap(
+            cameraId = "2",
+            sizesByFormat = mapOf(ImageFormat.JPEG to listOf(Size(4032, 3024))),
+        )
+        assertFalse(jpegOnly.snapshot.supportsJpegR)
+        assertFalse(jpegOnly.ultraHdrSupportedJpegR("2"))
+
+        // JPEG_R key with no sizes is not support.
+        val empty = CharacteristicsFacade.fromFakeMap(
+            cameraId = "2",
+            sizesByFormat = mapOf(ImageFormat.JPEG_R to emptyList()),
+        )
+        assertFalse(empty.ultraHdrSupportedJpegR("2"))
+    }
+
     @Test fun streamConfigSummaryFromSizesPicksLargestArea() {
         val summary = StreamConfigSummary.fromSizes(
             mapOf(ImageFormat.YUV_420_888 to listOf(Size(640, 480), Size(1280, 720), Size(320, 240))),

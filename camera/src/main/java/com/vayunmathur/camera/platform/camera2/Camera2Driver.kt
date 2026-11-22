@@ -177,6 +177,14 @@ interface Camera2Driver {
     /** Creates the JPEG still output for [size], or null when unavailable. */
     fun createStillOutput(size: FrameSize): StillOutput?
 
+    /**
+     * Creates the JPEG_R (Ultra HDR) still output for [size], or null when
+     * unavailable (pre-API 34, unsupported size, reader failure). The
+     * default is null: a fake/driver without Ultra HDR degrades still
+     * capture to the plain JPEG output, never to a failed capture.
+     */
+    fun createUltraHdrStillOutput(size: FrameSize): StillOutput? = null
+
     /** Creates the YUV ring output for [size]; null when unavailable. */
     fun createRingOutput(size: FrameSize): RingOutput? = null
 
@@ -314,6 +322,17 @@ class AndroidCamera2Driver(
 
     override fun createStillOutput(size: FrameSize): StillOutput? =
         runCatching { JpegStillOutput(size.width, size.height, handler = handler) }.getOrNull()
+
+    override fun createUltraHdrStillOutput(size: FrameSize): StillOutput? {
+        // JPEG_R exists only from API 34; older releases keep plain JPEG.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return null
+        return runCatching {
+            JpegStillOutput(
+                size.width, size.height, handler = handler,
+                format = android.graphics.ImageFormat.JPEG_R,
+            )
+        }.getOrNull()
+    }
 
     override fun createRingOutput(size: FrameSize): RingOutput? =
         runCatching { YuvRingOutput(size.width, size.height, handler = handler) }.getOrNull()

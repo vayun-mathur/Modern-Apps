@@ -77,6 +77,8 @@ class Camera2Session(
     private var previewSize: FrameSize? = null
     private var stillOutput: StillOutput? = null
     private var stillSize: FrameSize? = null
+    private var ultraHdrOutput: StillOutput? = null
+    private var ultraHdrSize: FrameSize? = null
     private var ringOutput: RingOutput? = null
     private var ringSize: FrameSize? = null
     private val ring = ReprocessRing<RingHeldFrame>(ringConfig.capacity)
@@ -94,6 +96,7 @@ class Camera2Session(
     private class PendingStill(
         val params: ResolvedStillParams,
         val callback: StillCallback,
+        val tag: StillOutputTag = StillOutputTag.JPEG,
         var rawMetadata: RawStillMetadata? = null,
         var jpegBytes: ByteArray? = null,
         var jpegWidth: Int = 0,
@@ -225,6 +228,15 @@ class Camera2Session(
 
     /** True when a JPEG output exists (see [StillEnginePolicy]). */
     val hasJpegOutput: Boolean get() = stillOutput != null
+
+    /** Facade-reported JPEG_R (Ultra HDR) support for this lens. */
+    val ultraHdrSupportedJpegR: Boolean get() = snapshot.supportsJpegR
+
+    /** True when a JPEG_R output is configured (Ultra HDR captures can be served). */
+    val hasUltraHdrOutput: Boolean get() = ultraHdrOutput != null
+
+    /** The JPEG_R still size configured at [open], or null when unavailable. */
+    fun currentUltraHdrSize(): FrameSize? = ultraHdrSize
 
     /** True when the YUV ring output is configured (see [StillEnginePolicy]). */
     val hasRingOutput: Boolean get() = ringOutput != null
@@ -411,6 +423,7 @@ class Camera2Session(
         callback: StillCallback,
         displayRotationDegrees: Int? = null,
         mirrored: Boolean = false,
+        ultraHdrRequested: Boolean = false,
     ) {
         executor.execute {
             val session = captureSession
@@ -422,7 +435,7 @@ class Camera2Session(
                     callback.onStillFailed("no JPEG output on this session")
                 pendingStill != null ->
                     callback.onStillFailed("a still capture is already in flight")
-                else -> startStillCapture(callback, displayRotationDegrees, mirrored)
+                else -> startStillCapture(callback, displayRotationDegrees, mirrored, ultraHdrRequested)
             }
         }
     }
@@ -432,18 +445,28 @@ class Camera2Session(
         callback: StillCallback,
         displayRotationDegrees: Int?,
         mirrored: Boolean,
+        ultraHdrRequested: Boolean = false,
     ) {
         val session = captureSession ?: run {
             callback.onStillFailed("still capture requires a streaming session")
             return
         }
-        val output = stillOutput ?: run {
+        val jpegOutput = stillOutput ?: run {
             callback.onStillFailed("no JPEG output on this session")
             return
         }
         if (pendingStill != null) {
             callback.onStillFailed("a still capture is already in flight")
             return
+        }
+        // JPEG_R only when requested and a JPEG_R output was configured;
+        // every other case is the plain JPEG output (graceful fallback,
+        // never a failed capture because Ultra HDR was requested).
+        val tag = StillOutputRouter.select(ultraHdrRequested, ultraHdrOutput != null)
+        val output = if (tag == StillOutputTag.ULTRA_HDR_JPEG_R) {
+            ultraHdrOutput ?: jpegOutput
+        } else {
+            jpegOutput
         }
         val params = StillCapturePlanner.resolve(
             state = controls,
@@ -452,7 +475,7 @@ class Camera2Session(
                 ?: this@Camera2Session.displayRotationDegrees,
             mirrored = mirrored,
         )
-        val pending = PendingStill(params, callback)
+        val pending = PendingStill(params, callback, tag)
         pendingStill = pending
         runCatching {
             session.captureStill(params, output.surface, object : StillResultCallback {
@@ -528,9 +551,20 @@ class Camera2Session(
     }
 
     private fun onJpegAvailable(bytes: ByteArray, width: Int, height: Int) {
+        onStillBytesAvailable(bytes, width, height, StillOutputTag.JPEG)
+    }
+
+    private fun onUltraHdrJpegAvailable(bytes: ByteArray, width: Int, height: Int) {
+        onStillBytesAvailable(bytes, width, height, StillOutputTag.ULTRA_HDR_JPEG_R)
+    }
+
+    private fun onStillBytesAvailable(bytes: ByteArray, width: Int, height: Int, tag: StillOutputTag) {
         try {
             executor.execute {
                 val pending = pendingStill ?: return@execute
+                // Bytes from the output the pending capture did not target
+                // are not this still (both readers share the session).
+                if (pending.tag != tag) return@execute
                 pending.jpegBytes = bytes
                 pending.jpegWidth = width
                 pending.jpegHeight = height
@@ -552,6 +586,7 @@ class Camera2Session(
                 metadata = StillMetadataMapper.map(
                     raw, pending.params.jpegOrientationDegrees, pending.params.mirrored,
                 ),
+                tag = pending.tag,
             ),
         )
     }
@@ -588,6 +623,9 @@ class Camera2Session(
             runCatching { stillOutput?.close() }
             stillOutput = null
             stillSize = null
+            runCatching { ultraHdrOutput?.close() }
+            ultraHdrOutput = null
+            ultraHdrSize = null
             runCatching { ringOutput?.close() }
             ringOutput = null
             ringSize = null
@@ -644,6 +682,23 @@ class Camera2Session(
         }
         stillOutput = output
         stillSize = if (output != null) jpegSize else null
+        // Additional output: the JPEG_R (Ultra HDR) reader, only when the
+        // facade advertises JPEG_R sizes. Failure degrades to no Ultra HDR
+        // output (captures requesting it fall back to the JPEG output).
+        val jpegRSize = if (snapshot.supportsJpegR) {
+            StreamSelection.selectJpegRSize(snapshot)
+        } else {
+            null
+        }
+        val createdUltraHdr = jpegRSize?.let { size ->
+            runCatching { driver.createUltraHdrStillOutput(size) }.getOrNull()?.also { created ->
+                created.setListener(JpegImageListener { bytes, width, height, _ ->
+                    onUltraHdrJpegAvailable(bytes, width, height)
+                })
+            }
+        }
+        ultraHdrOutput = createdUltraHdr
+        ultraHdrSize = if (createdUltraHdr != null) jpegRSize else null
         // Third output: the YUV ring, only when this session was built
         // with the ring enabled. Failure degrades to no-ring (the
         // policy then excludes the ring path, capture stays Phase 4a).
@@ -681,7 +736,8 @@ class Camera2Session(
         rawRingSize = if (createdRawRing != null) selectedRawSize else null
         rawRingFormat = if (createdRawRing != null) selectedRawFormat else null
         val surfaces = listOfNotNull(
-            surface, output?.surface, createdRing?.surface, createdRawRing?.surface,
+            surface, output?.surface, createdUltraHdr?.surface,
+            createdRing?.surface, createdRawRing?.surface,
         )
         val callback = SessionCallbackImpl(gen)
         runCatching {

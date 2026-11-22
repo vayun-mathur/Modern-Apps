@@ -54,16 +54,43 @@ data class StillCaptureMetadata(
     val frameNumber: Long? = null,
 )
 
+/** Which still output a [CapturedStill] came from. */
+enum class StillOutputTag {
+    JPEG,
+
+    /** JPEG_R surface: [CapturedStill.jpegBytes] are an Ultra HDR JPEG (gain map embedded). */
+    ULTRA_HDR_JPEG_R,
+}
+
+/**
+ * Pure still-output routing: JPEG_R only when the caller asked for Ultra
+ * HDR *and* a JPEG_R output exists on the session; plain JPEG in every
+ * other case. Requesting Ultra HDR can therefore never fail a capture —
+ * unsupported devices, a failed JPEG_R reader, and plain requests all land
+ * on the JPEG output that Phase 4a already requires.
+ */
+object StillOutputRouter {
+    fun select(ultraHdrRequested: Boolean, hasUltraHdrOutput: Boolean): StillOutputTag =
+        if (ultraHdrRequested && hasUltraHdrOutput) {
+            StillOutputTag.ULTRA_HDR_JPEG_R
+        } else {
+            StillOutputTag.JPEG
+        }
+}
+
 /** One finished still: HAL JPEG bytes plus their mapped metadata. */
 data class CapturedStill(
     val jpegBytes: ByteArray,
     val jpegWidth: Int,
     val jpegHeight: Int,
     val metadata: StillCaptureMetadata,
+    /** Output the bytes came from; JPEG_R bytes carry EXIF + gain map untouched. */
+    val tag: StillOutputTag = StillOutputTag.JPEG,
 ) {
     override fun equals(other: Any?): Boolean =
         other is CapturedStill && jpegWidth == other.jpegWidth &&
             jpegHeight == other.jpegHeight && metadata == other.metadata &&
+            tag == other.tag &&
             jpegBytes.contentEquals(other.jpegBytes)
 
     override fun hashCode(): Int {
@@ -71,6 +98,7 @@ data class CapturedStill(
         result = 31 * result + jpegWidth
         result = 31 * result + jpegHeight
         result = 31 * result + metadata.hashCode()
+        result = 31 * result + tag.hashCode()
         return result
     }
 }

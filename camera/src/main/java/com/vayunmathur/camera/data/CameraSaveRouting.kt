@@ -13,6 +13,7 @@ import com.vayunmathur.camera.domain.StillFormatRouting
 import com.vayunmathur.camera.platform.CameraViewModel
 import com.vayunmathur.camera.platform.EncodedStill
 import com.vayunmathur.camera.platform.StillEncoder.encode
+import com.vayunmathur.camera.platform.buildAvifExifTiff
 import com.vayunmathur.camera.platform.mirrorCaptures
 
 /**
@@ -112,14 +113,38 @@ internal data class SavedStill(val uri: Uri, val format: StillFormat)
 
 /**
  * Encodes a processed [bitmap] in the user's still format and saves it.
- * AVIF has no EXIF orientation tag (ravif exposes no EXIF API), so the
- * rotation is baked into the pixels first; JPEG keeps the bitmap as-is
- * and the caller stamps orientation via `writeCaptureExif` as before.
- * Falls back to JPEG bytes when the native AVIF encoder is unavailable.
+ * On the AVIF path the rotation is baked into the pixels first and a
+ * TIFF payload — the same tags the JPEG path stamps (see
+ * `buildAvifExifTiff`), orientation Normal, plus GPS when enabled — is
+ * muxed in as the file's Exif item; JPEG keeps the bitmap as-is and
+ * the caller stamps orientation via `writeCaptureExif` as before.
+ * Falls back to JPEG bytes when the native AVIF encoder is
+ * unavailable or no EXIF payload could be built (never an EXIF-less
+ * AVIF). [sourceJpeg] is the capture's original JPEG bytes, when one
+ * exists, used only as the EXIF tag source. [fileStem], when given,
+ * replaces the `IMG_<timestamp>` stem (burst frame names).
  */
-internal fun CameraViewModel.saveProcessedStill(bitmap: Bitmap, rotationDegrees: Int): SavedStill? {
-    val encoded: EncodedStill = encode(bitmap, rotationDegrees)
-    val name = StillFormatRouting.displayName(MediaStoreSaver.timestamp(), encoded.format)
+internal fun CameraViewModel.saveProcessedStill(
+    bitmap: Bitmap,
+    rotationDegrees: Int,
+    sourceJpeg: ByteArray? = null,
+    fileStem: String? = null,
+): SavedStill? {
+    val exifTiff = if (photoFormatMutable.value == com.vayunmathur.camera.platform.PhotoFormat.AVIF) {
+        val carrier = java.io.ByteArrayOutputStream().use { out ->
+            bitmap.compress(Bitmap.CompressFormat.JPEG, StillFormatRouting.JPEG_QUALITY, out)
+            out.toByteArray()
+        }
+        buildAvifExifTiff(sourceJpeg, carrier)
+    } else {
+        null
+    }
+    val encoded: EncodedStill = encode(bitmap, rotationDegrees, exifTiff)
+    val name = if (fileStem != null) {
+        "$fileStem.${StillFormatRouting.extension(encoded.format)}"
+    } else {
+        StillFormatRouting.displayName(MediaStoreSaver.timestamp(), encoded.format)
+    }
     val uri = saveStillBytes(name, encoded.bytes, StillFormatRouting.mimeType(encoded.format))
         ?: return null
     return SavedStill(uri, encoded.format)

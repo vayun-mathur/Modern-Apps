@@ -130,6 +130,21 @@ object StreamSelection {
         supportedJpegSizes(snapshot)
             .maxWithOrNull(compareBy({ it.area }, { it.width }, { it.height }))
 
+    /** Supported JPEG_R (Ultra HDR) still sizes in facade order. */
+    fun supportedJpegRSizes(snapshot: LensCharacteristicsSnapshot): List<FrameSize> =
+        snapshot.streamConfig.sizesFor(ImageFormat.JPEG_R)
+            .map { FrameSize.from(it) }.distinct()
+
+    /**
+     * The JPEG_R still size to configure: the largest advertised, matching
+     * [selectJpegSize]. Null when the lens reports no JPEG_R sizes (pre-API 34
+     * or no Ultra HDR output) — the session then has no Ultra HDR output and
+     * still capture falls back to plain JPEG.
+     */
+    fun selectJpegRSize(snapshot: LensCharacteristicsSnapshot): FrameSize? =
+        supportedJpegRSizes(snapshot)
+            .maxWithOrNull(compareBy({ it.area }, { it.width }, { it.height }))
+
     /** Supported YUV_420_888 sizes in facade order (empty = no ring). */
     fun supportedYuvSizes(snapshot: LensCharacteristicsSnapshot): List<FrameSize> =
         snapshot.streamConfig.sizesFor(ImageFormat.YUV_420_888)

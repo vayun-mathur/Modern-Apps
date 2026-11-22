@@ -20,18 +20,44 @@ import com.vayunmathur.camera.data.PendingStill
 import com.vayunmathur.camera.data.prepareStillSave
 import com.vayunmathur.camera.data.saveProcessedStill
 import com.vayunmathur.camera.data.saveStillBitmap
+import com.vayunmathur.camera.data.saveStillBytes
 import com.vayunmathur.camera.data.setLastCaptureUri
 import com.vayunmathur.camera.data.updateLocation
 import com.vayunmathur.camera.data.closeStream
 import com.vayunmathur.camera.data.resolveUri
 
+/**
+ * True when this single leaves the CameraX file path for an in-memory
+ * capture: a preview effect must be baked in, or AVIF is the effective
+ * format (the file path can only write the HAL JPEG, so an AVIF single
+ * captured there would land as `.jpg` whatever the setting says).
+ */
+private fun CameraViewModel.singleCaptureInMemory(): Boolean {
+    val requested = if (photoFormatMutable.value == PhotoFormat.AVIF) {
+        com.vayunmathur.camera.domain.StillFormat.AVIF
+    } else {
+        com.vayunmathur.camera.domain.StillFormat.JPEG
+    }
+    return cameraModeMutable.value == CameraMode.PORTRAIT ||
+        warmthMutable.value != 0f || shadowsMutable.value != 0f ||
+        com.vayunmathur.camera.domain.StillFormatRouting.plainSingleNeedsInMemory(
+            requested, StitchNative.isAvailable
+        )
+}
+
 internal fun CameraViewModel.captureSinglePhoto() {
     val capture = imageCapture ?: return
     isCapturingMutable.value = true
-    val fileName = "IMG_${MediaStoreSaver.timestamp()}.jpg"
-    val pending = prepareStillSave(fileName) ?: run {
-        isCapturingMutable.value = false
-        return
+    // In-memory captures save through saveProcessedStill, which creates
+    // its own save target — preparing a `.jpg` file target for them
+    // would leave an empty JPEG document behind on SAF targets.
+    val pending = if (singleCaptureInMemory()) {
+        null
+    } else {
+        prepareStillSave("IMG_${MediaStoreSaver.timestamp()}.jpg") ?: run {
+            isCapturingMutable.value = false
+            return
+        }
     }
     val plan = buildSingleCapturePlan(pending) ?: run {
         isCapturingMutable.value = false
@@ -49,8 +75,8 @@ internal fun CameraViewModel.captureSinglePhoto() {
 @OptIn(ExperimentalCamera2Interop::class)
 private data class SingleCapturePlan(
     val capture: ImageCapture,
-    val pending: PendingStill,
-    val outputOptions: ImageCapture.OutputFileOptions,
+    val pending: PendingStill?,
+    val outputOptions: ImageCapture.OutputFileOptions?,
     val exposureNanos: Long?,
     val nightIso: Int?,
     val cam2Control: androidx.camera.camera2.interop.Camera2CameraControl?,
@@ -68,9 +94,9 @@ private data class SingleCapturePlan(
  */
 @Suppress("DEPRECATION")
 @OptIn(ExperimentalCamera2Interop::class)
-private fun CameraViewModel.buildSingleCapturePlan(pending: PendingStill): SingleCapturePlan? {
+private fun CameraViewModel.buildSingleCapturePlan(pending: PendingStill?): SingleCapturePlan? {
     val capture = imageCapture ?: return null
-    val outputOptions = pending.outputOptions
+    val outputOptions = pending?.outputOptions
 
     val stop = CameraViewModel.EXPOSURE_TIME_STOPS[exposureTimeIndexMutable.value]
     // applyManualControls() applies only the preview half of a manual exposure live; the
@@ -157,24 +183,24 @@ private fun CameraViewModel.runSingleCapture(plan: SingleCapturePlan) {
         isCapturingMutable.value = false
         stopLongExposureCountdown()
         restoreAfterNight()
-        plan.pending.closeStream()
+        plan.pending?.closeStream()
         if (uri != null) setLastCaptureUri(uri)
     }
 
-    if (plan.bokeh || plan.warmth != 0f || plan.shadows != 0f) {
+    if (plan.bokeh || plan.warmth != 0f || plan.shadows != 0f || singleCaptureInMemory()) {
         captureProcessedSingle(plan, ::finishCapture)
         return
     }
 
     plan.capture.takePicture(
-        plan.outputOptions,
+        plan.outputOptions!!,
         ContextCompat.getMainExecutor(app),
         object : ImageCapture.OnImageSavedCallback {
             override fun onCaptureStarted() {
                 emitShutterFeedback()
             }
             override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
-                finishCapture(plan.pending.resolveUri(outputFileResults))
+                finishCapture(plan.pending?.resolveUri(outputFileResults) ?: outputFileResults.savedUri)
             }
             override fun onError(exception: ImageCaptureException) {
                 finishCapture(null)
@@ -188,9 +214,13 @@ private fun CameraViewModel.runSingleCapture(plan: SingleCapturePlan) {
  * since the warmth/shadows adjustment and portrait bokeh only live in the preview
  * RenderEffect. Re-encoding drops the JPEG's EXIF, so it is copied back from the
  * original frame (plus GPS and the orientation tag) to match the normal path.
- * Caveat: this processed path is always SDR JPEG — decoding to an ARGB_8888 bitmap
- * discards any Ultra HDR gain map, so processed captures lose HDR even when
- * Ultra HDR is otherwise active. Normal (unprocessed) captures keep the gain map.
+ * Caveat: the processed (bokeh/colour) path is always SDR — decoding to
+ * an ARGB_8888 bitmap discards any Ultra HDR gain map, so processed
+ * captures lose HDR even when Ultra HDR is otherwise active. A plain
+ * single that only took this path because AVIF is selected keeps its
+ * gain map instead: an Ultra HDR source stays JPEG_R (see
+ * [processSingleFrame]), because AVIF gain-map (`tmap`) muxing is not
+ * implemented yet.
  */
 private fun CameraViewModel.captureProcessedSingle(
     plan: SingleCapturePlan,
@@ -238,6 +268,20 @@ private fun CameraViewModel.processSingleFrame(
     cropRect: Rect,
     degrees: Int
 ): Uri? {
+    // Plain AVIF single + Ultra HDR source: decoding would discard the
+    // gain map and AVIF `tmap` muxing is not implemented, so the shot
+    // stays JPEG_R — stamped (orientation/GPS, gain map preserved by
+    // ExifInterface) exactly like the Motion Photo still. Processed
+    // shots (bokeh/colour) already trade HDR for the effect, as before.
+    val plainAvif = !plan.bokeh && plan.warmth == 0f && plan.shadows == 0f &&
+        photoFormatMutable.value == PhotoFormat.AVIF
+    if (plainAvif && com.vayunmathur.camera.domain.StillFormatRouting.isUltraHdrJpeg(sourceJpeg)) {
+        val stamped = stampStillBytes(sourceJpeg, degrees, plan.mirror)
+        val name = com.vayunmathur.camera.domain.StillFormatRouting.displayName(
+            MediaStoreSaver.timestamp(), com.vayunmathur.camera.domain.StillFormat.JPEG
+        )
+        return saveStillBytes(name, stamped)
+    }
     val decodedRaw = BitmapFactory.decodeByteArray(sourceJpeg, 0, sourceJpeg.size)
         ?: error("Could not decode captured frame")
     val decoded = cropToRect(decodedRaw, cropRect)
@@ -248,9 +292,10 @@ private fun CameraViewModel.processSingleFrame(
         stillBokeh.render(decoded, degrees, plan.strength, plan.warmth, plan.shadows, plan.mirror)
     } else null)
         ?: applyColorAdjustments(decoded, plan.warmth, plan.shadows, plan.mirror)
-    // AVIF (when chosen) bakes orientation into the pixels and carries no
-    // EXIF; JPEG keeps the EXIF stamping path below.
-    val saved = saveProcessedStill(adjusted, degrees)
+    // AVIF (when chosen) bakes orientation into the pixels and carries
+    // its tags in the muxed Exif item; JPEG keeps the EXIF stamping
+    // path below.
+    val saved = saveProcessedStill(adjusted, degrees, sourceJpeg)
     adjusted.recycle()
     if (saved == null) return null
     if (saved.format == com.vayunmathur.camera.domain.StillFormat.JPEG) {

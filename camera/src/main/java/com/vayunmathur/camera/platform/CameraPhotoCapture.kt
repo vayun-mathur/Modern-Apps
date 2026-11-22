@@ -10,6 +10,7 @@ import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.ImageProxy
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -19,6 +20,7 @@ import kotlin.math.roundToInt
 import com.vayunmathur.camera.data.MediaStoreSaver
 import com.vayunmathur.camera.domain.MotionPhotoWriter
 import com.vayunmathur.camera.data.prepareStillSave
+import com.vayunmathur.camera.data.saveProcessedStill
 import com.vayunmathur.camera.data.saveStillBytes
 import com.vayunmathur.camera.data.setLastCaptureUri
 import com.vayunmathur.camera.data.closeStream
@@ -229,9 +231,78 @@ fun CameraViewModel.startBurst() {
         }
     }
 
+    // AVIF bursts cannot use the JPEG file path: each frame is captured
+    // in memory and encoded like a plain AVIF single (Ultra HDR frames
+    // stay JPEG_R, as for singles). JPEG bursts keep the fast file path.
+    val burstAvif = com.vayunmathur.camera.domain.StillFormatRouting.plainSingleNeedsInMemory(
+        if (photoFormatMutable.value == PhotoFormat.AVIF) {
+            com.vayunmathur.camera.domain.StillFormat.AVIF
+        } else {
+            com.vayunmathur.camera.domain.StillFormat.JPEG
+        },
+        StitchNative.isAvailable,
+    )
+
     fun shootNext(n: Int) {
         if (!burstActiveMutable.value || n > CameraViewModel.BURST_MAX) {
             finishBurst()
+            return
+        }
+        if (burstAvif) {
+            val mirror = mirrorCaptures
+            capture.takePicture(
+                ContextCompat.getMainExecutor(app),
+                object : ImageCapture.OnImageCapturedCallback() {
+                    override fun onCaptureSuccess(image: ImageProxy) {
+                        val degrees = image.imageInfo.rotationDegrees
+                        val cropRect = android.graphics.Rect(image.cropRect)
+                        val sourceJpeg = try {
+                            image.planes[0].buffer.let { buf ->
+                                ByteArray(buf.remaining()).also { buf.get(it) }
+                            }
+                        } finally {
+                            image.close()
+                        }
+                        viewModelScope.launch {
+                            val uri = kotlinx.coroutines.withContext(Dispatchers.IO) {
+                                runCatching {
+                                    if (com.vayunmathur.camera.domain.StillFormatRouting
+                                            .isUltraHdrJpeg(sourceJpeg)
+                                    ) {
+                                        saveStillBytes(
+                                            "IMG_${ts}_BURST${n}.jpg",
+                                            stampStillBytes(sourceJpeg, degrees, mirror),
+                                        )
+                                    } else {
+                                        val decodedRaw = android.graphics.BitmapFactory
+                                            .decodeByteArray(sourceJpeg, 0, sourceJpeg.size)
+                                            ?: error("Could not decode burst frame")
+                                        val decoded = cropToRect(decodedRaw, cropRect)
+                                        val adjusted = applyColorAdjustments(decoded, 0f, 0f, mirror)
+                                        val saved = saveProcessedStill(
+                                            adjusted, degrees, sourceJpeg, "IMG_${ts}_BURST${n}"
+                                        )
+                                        adjusted.recycle()
+                                        if (saved != null &&
+                                            saved.format == com.vayunmathur.camera.domain.StillFormat.JPEG
+                                        ) {
+                                            writeCaptureExif(saved.uri, sourceJpeg, degrees, mirrored = mirror)
+                                        }
+                                        saved?.uri
+                                    }
+                                }.getOrNull()
+                            }
+                            burstCountMutable.value = n
+                            uri?.let { setLastCaptureUri(it) }
+                            shootNext(n + 1)
+                        }
+                    }
+                    override fun onError(exception: ImageCaptureException) {
+                        Log.error("CameraViewModel", "Burst frame $n failed", exception)
+                        shootNext(n + 1)
+                    }
+                }
+            )
             return
         }
         // prepareStillSave falls back to MediaStore, so null is unexpected — but a null
