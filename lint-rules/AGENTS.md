@@ -12,7 +12,7 @@
 
 ## Overview
 **Purpose:** Custom Android-lint detectors enforcing repo conventions at build time — the executable form of root `AGENTS.md` §2. Fatal detectors break the build; advisory ones warn.
-**Blocking:** every Modern-Apps detector is fatal in the app and library conventions. That includes `ToastUsage` (no `Toast` — use messenger), `DirectComposeAnimation` (no raw animation at call sites), `FileLength`, `DirectAndroidLog` (no direct `android.util.Log`), `DirectBuildDatabase` (subclass `RoomRepository`), `OneComposablePerFile`, `PackageStructure` (closed roots and flat `widget`), `RawScaffoldInApp` (use `AppScaffold`), `Room2Usage` (Room 3 only), `WindowInsetsInReusableComponent` (no padding in `library.ui`), and the comment-hygiene detectors (`CommentedOutCode`, `ExceptionMarkerFormat`, `TodoEvasion` with `CommentOnlyMatcher`).
+**Blocking:** every Modern-Apps detector is fatal in the app and library conventions. That includes `ToastUsage` (no `Toast` — use messenger), `DirectComposeAnimation` (no raw animation at call sites), `FileLength`, `DirectAndroidLog` (no direct `android.util.Log`), `DirectBuildDatabase` (subclass `RoomRepository`), `OneComposablePerFile`, `PackageStructure` (closed roots and flat `widget`), `RawScaffoldInApp` (use `AppScaffold`), `ScaffoldLoading` (whole-content loading via the scaffold's `isLoading`), `Room2Usage` (Room 3 only), `WindowInsetsInReusableComponent` (no padding in `library.ui`), and the comment-hygiene detectors (`CommentedOutCode`, `ExceptionMarkerFormat`, `TodoEvasion` with `CommentOnlyMatcher`).
 **Entry points:** `ModernAppsIssueRegistry.kt` → the detector for your rule → `LintPackageExclusions.kt` for scope.
 **Gotchas:** New detectors need registry entries + severity decisions (fatal vs advisory is a deliberate call). Fix code to green modules, never relax config (`detekt.yml` rationale is inline per the root card).
 
@@ -24,6 +24,7 @@
 - com/vayunmathur/lint/DirectBuildDatabaseDetector.kt — RoomRepository rule
 - com/vayunmathur/lint/Room2UsageDetector.kt — Room 3 rule
 - com/vayunmathur/lint/RawScaffoldInAppDetector.kt — AppScaffold rule
+- com/vayunmathur/lint/ScaffoldLoadingDetector.kt — scaffold-owned loading rule
 - com/vayunmathur/lint/PackageStructureDetector.kt — closed-roots rule
 - com/vayunmathur/lint/OneComposablePerFileDetector.kt
 - com/vayunmathur/lint/WindowInsetsInReusableComponentDetector.kt

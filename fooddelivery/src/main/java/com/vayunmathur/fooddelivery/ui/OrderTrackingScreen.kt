@@ -43,7 +43,6 @@ import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.util.ConnectivityMonitor
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.Card
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.ui.IconHome
 import com.vayunmathur.library.ui.IconDeliveryDining
@@ -113,14 +112,10 @@ fun OrderTrackingScreen(orderId: Int, onBack: () -> Unit) {
             )
         },
         onNavigateBack = onBack,
+        isLoading = loading,
     ) { padding ->
         val o = order
         when {
-            loading -> Box(
-                Modifier.fillMaxSize().padding(padding),
-                contentAlignment = Alignment.Center,
-            ) { CircularProgressIndicator() }
-
             o == null -> EmptyState(
                 title = stringResource(R.string.order_not_found),
                 modifier = Modifier.fillMaxSize().padding(padding),

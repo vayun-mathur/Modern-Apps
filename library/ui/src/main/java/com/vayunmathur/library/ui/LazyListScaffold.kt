@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
@@ -49,6 +50,9 @@ import androidx.compose.ui.unit.dp
  * already pass their own margin (e.g. 16.dp) can pass [Spacing.lg] explicitly
  * to stay fixed, or `0.dp` to opt out entirely.
  *
+ * [isLoading] replaces the list with the canonical loading state (the scaffold's
+ * bars stay); see [AppScaffold] for the whole-content loading semantics.
+ *
  * [overlay] is drawn on top of the list in a [Box] exactly the list's size,
  * for chrome that must track the viewport itself - e.g. a fast-scroller whose
  * travel should run along the list, not the whole screen.
@@ -70,6 +74,8 @@ fun LazyListScaffold(
     verticalArrangement: Arrangement.Vertical = Arrangement.Top,
     containerColor: Color = MaterialTheme.colorScheme.background,
     overlay: @Composable BoxScope.() -> Unit = {},
+    isLoading: Boolean = false,
+    loadingMessage: String? = null,
     content: LazyListScope.() -> Unit,
 ) {
     val behavior = scrollBehavior ?: appBarScrollBehavior()
@@ -87,6 +93,13 @@ fun LazyListScaffold(
     floatingActionButtonPosition,
     containerColor,
 ) { pad ->
+    if (isLoading) {
+        LoadingState(
+            modifier = Modifier.fillMaxSize().padding(pad),
+            message = loadingMessage,
+        )
+        return@Scaffold
+    }
     val dir = LocalLayoutDirection.current
     // Only the width class above compact adds padding; on phones this is
     // exactly [horizontalPadding], unchanged from before.

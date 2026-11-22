@@ -1,7 +1,6 @@
 package com.vayunmathur.fooddelivery.ui
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -21,7 +20,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
@@ -32,7 +30,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.vayunmathur.library.image.compose.AsyncImage
 import com.vayunmathur.library.ui.Card
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.ui.IconEmojiEvents
 import com.vayunmathur.library.ui.LinearProgressIndicator
@@ -78,13 +75,8 @@ fun DealsScreen(onMerchantClick: (Int) -> Unit) {
         }
     }
 
-    AppScaffold(topBar = {}) { padding ->
+    AppScaffold(topBar = {}, isLoading = loading) { padding ->
         when {
-            loading -> Box(
-                Modifier.fillMaxSize().padding(padding),
-                contentAlignment = Alignment.Center,
-            ) { CircularProgressIndicator() }
-
             deals.isEmpty() -> EmptyState(
                 title = stringResource(R.string.no_deals_yet),
                 message = stringResource(R.string.deals_will_appear_here),

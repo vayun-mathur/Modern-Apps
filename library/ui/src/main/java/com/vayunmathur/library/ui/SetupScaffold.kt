@@ -62,6 +62,8 @@ fun SetupScaffold(
     secondaryAction: SetupAction? = null,
     scrollBehavior: TopAppBarScrollBehavior? = null,
     fullBleed: Boolean = false,
+    isLoading: Boolean = false,
+    loadingMessage: String? = null,
     content: @Composable ColumnScope.() -> Unit = {},
 ) = AppScaffold(
     title = "",
@@ -70,6 +72,8 @@ fun SetupScaffold(
     onClose = onClose,
     scrollBehavior = scrollBehavior,
     bottomBar = { SetupFooter(primaryAction, secondaryAction) },
+    isLoading = isLoading,
+    loadingMessage = loadingMessage,
 ) { pad ->
     SetupColumn(pad, title, subtitle, icon, fullBleed, content)
 }
@@ -86,6 +90,8 @@ fun <T : NavKey> SetupScaffold(
     secondaryAction: SetupAction? = null,
     scrollBehavior: TopAppBarScrollBehavior? = null,
     fullBleed: Boolean = false,
+    isLoading: Boolean = false,
+    loadingMessage: String? = null,
     content: @Composable ColumnScope.() -> Unit = {},
 ) = SetupScaffold(
     title = title,
@@ -97,6 +103,8 @@ fun <T : NavKey> SetupScaffold(
     secondaryAction = secondaryAction,
     scrollBehavior = scrollBehavior,
     fullBleed = fullBleed,
+    isLoading = isLoading,
+    loadingMessage = loadingMessage,
     content = content,
 )
 

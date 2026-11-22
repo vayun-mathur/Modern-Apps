@@ -2,6 +2,8 @@ package com.vayunmathur.library.ui
 
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
@@ -54,6 +56,17 @@ enum class AppBarSize { Small, MediumFlexible, LargeFlexible }
  * [scrollBehavior] defaults to [appBarScrollBehavior] for the chosen [size] — almost every
  * screen passed exactly that by hand (335 call sites), so it is now the default rather than
  * a per-screen statement. Pass one explicitly only to pair a size with a custom behaviour.
+ *
+ * Loading belongs here, not in the content: pass [isLoading] (with an optional
+ * [loadingMessage]) and the scaffold renders the canonical [LoadingState] in the
+ * content area instead of invoking [content] at all. The bars, FAB, bottom bar and
+ * snackbar host keep rendering, so the screen's chrome does not jump while its data
+ * arrives. That replacement semantics is deliberate — a screen whose content lambda
+ * ran under a spinner would compose its empty state and fire its item effects for
+ * data that has not arrived yet. Local waits that are not the whole screen (a
+ * button's own progress, a determinate transfer, pull-to-refresh) are not this:
+ * keep those inline; the `ScaffoldLoading` lint rule only flags whole-content
+ * loading inside a scaffold.
  */
 @Composable
 fun AppScaffold(
@@ -71,6 +84,8 @@ fun AppScaffold(
     bottomBar: @Composable () -> Unit = {},
     snackbarHost: (@Composable () -> Unit)? = null,
     containerColor: Color = MaterialTheme.colorScheme.background,
+    isLoading: Boolean = false,
+    loadingMessage: String? = null,
     content: @Composable (PaddingValues) -> Unit,
 ) = AppScaffold(
     title = { Text(title, modifier = Modifier.semantics { heading() }) },
@@ -87,6 +102,8 @@ fun AppScaffold(
     bottomBar = bottomBar,
     snackbarHost = snackbarHost,
     containerColor = containerColor,
+    isLoading = isLoading,
+    loadingMessage = loadingMessage,
     content = content,
 )
 
@@ -112,6 +129,8 @@ fun AppScaffold(
     bottomBar: @Composable () -> Unit = {},
     snackbarHost: (@Composable () -> Unit)? = null,
     containerColor: Color = MaterialTheme.colorScheme.background,
+    isLoading: Boolean = false,
+    loadingMessage: String? = null,
     content: @Composable (PaddingValues) -> Unit,
 ) {
     val resolvedNavigationIcon = resolveNavigationIcon(navigationIcon, onClose, onNavigateBack)
@@ -133,8 +152,16 @@ fun AppScaffold(
         bottomBar = bottomBar,
         snackbarHost = snackbarHost,
         containerColor = containerColor,
-        content = content,
-    )
+    ) { padding ->
+        if (isLoading) {
+            LoadingState(
+                modifier = Modifier.fillMaxSize().padding(padding),
+                message = loadingMessage,
+            )
+        } else {
+            content(padding)
+        }
+    }
 }
 
 /**
@@ -150,6 +177,8 @@ fun AppScaffold(
     bottomBar: @Composable () -> Unit = {},
     snackbarHost: (@Composable () -> Unit)? = null,
     containerColor: Color = MaterialTheme.colorScheme.background,
+    isLoading: Boolean = false,
+    loadingMessage: String? = null,
     content: @Composable (PaddingValues) -> Unit,
 ) = Scaffold(
     modifier = modifier,
@@ -158,8 +187,16 @@ fun AppScaffold(
     bottomBar = bottomBar,
     snackbarHost = snackbarHost,
     containerColor = containerColor,
-    content = content,
-)
+) { padding ->
+    if (isLoading) {
+        LoadingState(
+            modifier = Modifier.fillMaxSize().padding(padding),
+            message = loadingMessage,
+        )
+    } else {
+        content(padding)
+    }
+}
 
 /** [AppScaffold] for a screen that owns a back stack, wiring the back button to it. */
 @Composable
@@ -178,6 +215,8 @@ fun <T : NavKey> AppScaffold(
     bottomBar: @Composable () -> Unit = {},
     snackbarHost: (@Composable () -> Unit)? = null,
     containerColor: Color = MaterialTheme.colorScheme.background,
+    isLoading: Boolean = false,
+    loadingMessage: String? = null,
     content: @Composable (PaddingValues) -> Unit,
 ) = AppScaffold(
     title = title,
@@ -194,6 +233,8 @@ fun <T : NavKey> AppScaffold(
     bottomBar = bottomBar,
     snackbarHost = snackbarHost,
     containerColor = containerColor,
+    isLoading = isLoading,
+    loadingMessage = loadingMessage,
     content = content,
 )
 

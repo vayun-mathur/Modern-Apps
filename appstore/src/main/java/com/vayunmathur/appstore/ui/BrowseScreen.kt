@@ -3,7 +3,6 @@ import com.vayunmathur.appstore.R
 
 import com.vayunmathur.appstore.platform.BrowseUiState
 import com.vayunmathur.appstore.platform.loadBrowse
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -13,7 +12,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -21,7 +19,6 @@ import com.vayunmathur.appstore.data.UnifiedApp
 import com.vayunmathur.appstore.platform.AppStoreViewModel
 import com.vayunmathur.library.ui.AppBarAlignment
 import com.vayunmathur.library.ui.AppScaffold
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.ui.IconSearch
 
@@ -45,15 +42,9 @@ fun BrowseScreen(
         title = state.title,
         onNavigateBack = onBack,
         alignment = AppBarAlignment.Start,
+        isLoading = state.isLoading && state.apps.isEmpty(),
     ) { padding ->
         when {
-            state.isLoading && state.apps.isEmpty() -> Box(
-                Modifier.fillMaxSize().padding(padding),
-                contentAlignment = Alignment.Center,
-            ) {
-                CircularProgressIndicator()
-            }
-
             state.apps.isEmpty() -> EmptyState(
                 title = stringResource(R.string.browse_empty_title),
                 message = stringResource(R.string.browse_empty_message),

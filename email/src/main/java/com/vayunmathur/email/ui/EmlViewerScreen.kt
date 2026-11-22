@@ -104,6 +104,7 @@ fun EmlViewerScreen(
     }
 
     AppScaffold(
+        isLoading = loading,
         title = {
             val t = parsed?.message?.subject ?: uriString.substringAfterLast('/').substringAfterLast("%2F")
             Text(t.ifBlank { stringResource(R.string.e_mail_file) }, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -119,11 +120,6 @@ fun EmlViewerScreen(
         },
     ) { padding ->
         when {
-            loading -> {
-                Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-            }
             error != null -> {
                 Box(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {

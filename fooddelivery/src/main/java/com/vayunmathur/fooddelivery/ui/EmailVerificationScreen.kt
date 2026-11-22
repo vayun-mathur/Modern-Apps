@@ -24,7 +24,6 @@ import com.vayunmathur.fooddelivery.network.BitesCustomers
 import com.vayunmathur.fooddelivery.platform.AppInit
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Button
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.IconCheck
 import com.vayunmathur.library.ui.IconWarning
 import com.vayunmathur.library.ui.MaterialTheme
@@ -70,6 +69,8 @@ private fun EmailVerificationContent(
     AppScaffold(
         title = stringResource(R.string.email_verification),
         onClose = onDone,
+        isLoading = state == VerifyState.LOADING,
+        loadingMessage = stringResource(R.string.verifying_your_email),
     ) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).padding(24.dp),
@@ -77,11 +78,7 @@ private fun EmailVerificationContent(
             verticalArrangement = Arrangement.Center,
         ) {
             when (state) {
-                VerifyState.LOADING -> {
-                    CircularProgressIndicator()
-                    Spacer(Modifier.height(16.dp))
-                    Text(stringResource(R.string.verifying_your_email))
-                }
+                VerifyState.LOADING -> Unit
                 VerifyState.SUCCESS -> {
                     IconCheck(
                         modifier = Modifier.size(64.dp),

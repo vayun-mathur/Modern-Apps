@@ -184,6 +184,82 @@ class ScaffoldsSliceTest {
         assertEquals(1, selected)
     }
 
+    @Test fun appScaffoldLoadingReplacesContentButKeepsChrome() {
+        rule.setContent {
+            AppScaffold(
+                title = "Inbox",
+                isLoading = true,
+                loadingMessage = "Fetching mail",
+                scrollBehavior = appBarScrollBehavior(),
+            ) { Text("Body text") }
+        }
+        // Chrome stays, content is not composed, canonical loading message shows.
+        rule.onNodeWithText("Inbox").assertIsDisplayed()
+        rule.onNodeWithText("Fetching mail").assertIsDisplayed()
+        rule.onNodeWithText("Body text").assertDoesNotExist()
+    }
+
+    @Test fun appScaffoldNotLoadingShowsContent() {
+        rule.setContent {
+            AppScaffold(
+                title = "Inbox",
+                isLoading = false,
+                loadingMessage = "Fetching mail",
+                scrollBehavior = appBarScrollBehavior(),
+            ) { Text("Body text") }
+        }
+        rule.onNodeWithText("Body text").assertIsDisplayed()
+        rule.onNodeWithText("Fetching mail").assertDoesNotExist()
+    }
+
+    @Test fun appScaffoldTopBarOverloadLoadingReplacesContent() {
+        rule.setContent {
+            AppScaffold(topBar = {}, isLoading = true, loadingMessage = "Loading browse") {
+                Text("Browse body")
+            }
+        }
+        rule.onNodeWithText("Loading browse").assertIsDisplayed()
+        rule.onNodeWithText("Browse body").assertDoesNotExist()
+    }
+
+    @Test fun detailScaffoldLoadingReplacesContent() {
+        rule.setContent {
+            DetailScaffold(
+                title = "Profile",
+                isLoading = true,
+                loadingMessage = "Loading profile",
+            ) { Text("Profile body") }
+        }
+        rule.onNodeWithText("Loading profile").assertIsDisplayed()
+        rule.onNodeWithText("Profile body").assertDoesNotExist()
+    }
+
+    @Test fun lazyListScaffoldLoadingReplacesList() {
+        rule.setContent {
+            LazyListScaffold(
+                title = "Dashboard",
+                isLoading = true,
+                loadingMessage = "Loading usage",
+            ) {
+                item { Text("Usage row") }
+            }
+        }
+        rule.onNodeWithText("Loading usage").assertIsDisplayed()
+        rule.onNodeWithText("Usage row").assertDoesNotExist()
+    }
+
+    @Test fun setupScaffoldLoadingReplacesContent() {
+        rule.setContent {
+            SetupScaffold(
+                title = "Pair your SIM",
+                isLoading = true,
+                loadingMessage = "Contacting carrier",
+            ) { Text("Setup body") }
+        }
+        rule.onNodeWithText("Contacting carrier").assertIsDisplayed()
+        rule.onNodeWithText("Setup body").assertDoesNotExist()
+    }
+
     @Test fun topAppBarOverlayBackAndActions() {
         var backs = 0
         var shares = 0

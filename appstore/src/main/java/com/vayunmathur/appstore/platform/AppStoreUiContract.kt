@@ -157,6 +157,8 @@ data class LibraryUiState(
     val filter: SourceFilter = SourceFilter.ALL,
     val counts: Map<SourceFilter, Int> = emptyMap(),
     val installedIcons: Map<String, Drawable> = emptyMap(),
+    /** False until the first installed-apps sweep lands, so an empty library can show a spinner. */
+    val hasLoaded: Boolean = false,
 )
 
 /**

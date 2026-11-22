@@ -47,6 +47,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -154,6 +155,11 @@ class AppStoreViewModel(
     internal val accrescentUpdatesFlow = MutableStateFlow<List<UnifiedApp>>(emptyList())
 
     private val libraryFilterFlow = MutableStateFlow(SourceFilter.ALL)
+
+    private val _hasLoadedLibrary = MutableStateFlow(false)
+
+    /** Flips true once the first installed-apps sweep lands; the library starts empty. */
+    val hasLoadedLibrary: StateFlow<Boolean> = _hasLoadedLibrary.asStateFlow()
 
     /**
      * Installed packages Play confirmed it actually hosts.
@@ -368,7 +374,8 @@ class AppStoreViewModel(
         ) { index, playPackages, accrescentPackages, filter, enabled ->
             LibraryInputs(index, playPackages, accrescentPackages, filter, enabled)
         },
-    ) { rows, inputs ->
+        _hasLoadedLibrary,
+    ) { rows, inputs, hasLoaded ->
         // Source attribution, highest priority first:
         //  1. Whatever the offline catalogue (F-Droid / Modern Apps / Proprietary) recorded.
         //  2. Accrescent, for packages its signed allowlist vouches for.
@@ -395,6 +402,7 @@ class AppStoreViewModel(
             sourceOf(info.packageName)?.let { info.toUnifiedApp(it) }
         }
         LibraryUiState(
+            hasLoaded = hasLoaded,
             apps = all.filter { inputs.filter.source == null || it.source == inputs.filter.source },
             filter = inputs.filter,
             counts = SourceFilter.entries.associateWith { f ->
@@ -424,6 +432,7 @@ class AppStoreViewModel(
             // every restart and keep feeding search, updates and the library (#845).
             catalog.purgeDisabled(enabled)
             installedRepo.refresh()
+            _hasLoadedLibrary.value = true
             if (AppSource.PLAYSTORE in enabled) play.restore()
             loadHome(enabled)
             refreshPlayInstalledPackages(enabled)
@@ -464,6 +473,7 @@ class AppStoreViewModel(
     fun refreshInstalled() {
         viewModelScope.launch {
             installedRepo.refresh()
+            _hasLoadedLibrary.value = true
             refreshPlayInstalledPackages()
         }
     }

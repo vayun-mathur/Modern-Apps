@@ -17,6 +17,7 @@ class ModernAppsIssueRegistry : IssueRegistry() {
         OneComposablePerFileDetector.ISSUE,
         PackageStructureDetector.ISSUE,
         RawScaffoldInAppDetector.ISSUE,
+        ScaffoldLoadingDetector.ISSUE,
         Room2UsageDetector.ISSUE,
         WindowInsetsInReusableComponentDetector.ISSUE,
         ExceptionMarkerFormatDetector.ISSUE,

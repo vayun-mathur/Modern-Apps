@@ -27,6 +27,7 @@ import com.vayunmathur.email.data.OutboxEntry
 import com.vayunmathur.email.platform.EmailViewModel
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.EmptyState
+import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.HorizontalDivider
 import com.vayunmathur.library.ui.IconButton
@@ -43,6 +44,7 @@ fun OutboxScreen(
     onBack: () -> Unit,
 ) {
     val outbox by viewModel.outbox.collectAsStateWithLifecycle(emptyList())
+    val hasLoaded by viewModel.hasLoadedOutbox.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val resources = LocalResources.current
 
@@ -58,7 +60,9 @@ fun OutboxScreen(
             }
         },
     ) { padding ->
-        if (outbox.isEmpty()) {
+        if (!hasLoaded && outbox.isEmpty()) {
+            LoadingState(Modifier.padding(padding).fillMaxSize())
+        } else if (outbox.isEmpty()) {
             EmptyState(
                 title = stringResource(R.string.outbox_is_empty),
                 modifier = Modifier.padding(padding).fillMaxSize(),

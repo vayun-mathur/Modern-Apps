@@ -43,6 +43,9 @@ import com.vayunmathur.library.util.NavKey
  * [DetailLazyColumn] instead when the body is itself a long list that should
  * lazily compose.
  *
+ * [isLoading] is forwarded to [AppScaffold]: while true the scaffold renders
+ * the canonical loading state instead of the detail column (see AppScaffold).
+ *
  * On wide windows the scrolling column is centred and capped at
  * [DesktopContentMaxWidth] so forms and detail blocks keep a readable
  * measure instead of stretching edge to edge. Pass [fullBleed] = true only
@@ -62,6 +65,8 @@ fun DetailScaffold(
     scrollBehavior: TopAppBarScrollBehavior? = null,
     bottomBar: @Composable () -> Unit = {},
     fullBleed: Boolean = false,
+    isLoading: Boolean = false,
+    loadingMessage: String? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) = AppScaffold(
     title = title,
@@ -74,6 +79,8 @@ fun DetailScaffold(
     actions = actions,
     scrollBehavior = scrollBehavior,
     bottomBar = bottomBar,
+    isLoading = isLoading,
+    loadingMessage = loadingMessage,
 ) { pad ->
     DetailColumn(pad, fillHeight = false, fullBleed = fullBleed, content)
 }
@@ -93,6 +100,8 @@ fun DetailScaffold(
     bottomBar: @Composable () -> Unit = {},
     fillHeight: Boolean = false,
     fullBleed: Boolean = false,
+    isLoading: Boolean = false,
+    loadingMessage: String? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) = AppScaffold(
     title = title,
@@ -105,6 +114,8 @@ fun DetailScaffold(
     actions = actions,
     scrollBehavior = scrollBehavior,
     bottomBar = bottomBar,
+    isLoading = isLoading,
+    loadingMessage = loadingMessage,
 ) { pad ->
     DetailColumn(pad, fillHeight, fullBleed, content)
 }
@@ -123,6 +134,8 @@ fun <T : NavKey> DetailScaffold(
     scrollBehavior: TopAppBarScrollBehavior? = null,
     bottomBar: @Composable () -> Unit = {},
     fullBleed: Boolean = false,
+    isLoading: Boolean = false,
+    loadingMessage: String? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) = DetailScaffold(
     title = title,
@@ -136,6 +149,8 @@ fun <T : NavKey> DetailScaffold(
     scrollBehavior = scrollBehavior,
     bottomBar = bottomBar,
     fullBleed = fullBleed,
+    isLoading = isLoading,
+    loadingMessage = loadingMessage,
     content = content,
 )
 
@@ -155,6 +170,8 @@ fun DetailLazyColumn(
     actions: @Composable RowScope.() -> Unit = {},
     scrollBehavior: TopAppBarScrollBehavior? = null,
     bottomBar: @Composable () -> Unit = {},
+    isLoading: Boolean = false,
+    loadingMessage: String? = null,
     content: LazyListScope.() -> Unit,
 ) = AppScaffold(
     title = title,
@@ -165,6 +182,8 @@ fun DetailLazyColumn(
     actions = actions,
     scrollBehavior = scrollBehavior,
     bottomBar = bottomBar,
+    isLoading = isLoading,
+    loadingMessage = loadingMessage,
 ) { pad ->
     DetailList(pad, content)
 }
@@ -180,6 +199,8 @@ fun DetailLazyColumn(
     actions: @Composable RowScope.() -> Unit = {},
     scrollBehavior: TopAppBarScrollBehavior? = null,
     bottomBar: @Composable () -> Unit = {},
+    isLoading: Boolean = false,
+    loadingMessage: String? = null,
     content: LazyListScope.() -> Unit,
 ) = AppScaffold(
     title = title,
@@ -190,6 +211,8 @@ fun DetailLazyColumn(
     actions = actions,
     scrollBehavior = scrollBehavior,
     bottomBar = bottomBar,
+    isLoading = isLoading,
+    loadingMessage = loadingMessage,
 ) { pad ->
     DetailList(pad, content)
 }
@@ -205,6 +228,8 @@ fun <T : NavKey> DetailLazyColumn(
     actions: @Composable RowScope.() -> Unit = {},
     scrollBehavior: TopAppBarScrollBehavior? = null,
     bottomBar: @Composable () -> Unit = {},
+    isLoading: Boolean = false,
+    loadingMessage: String? = null,
     content: LazyListScope.() -> Unit,
 ) = DetailLazyColumn(
     title = title,
@@ -215,6 +240,8 @@ fun <T : NavKey> DetailLazyColumn(
     actions = actions,
     scrollBehavior = scrollBehavior,
     bottomBar = bottomBar,
+    isLoading = isLoading,
+    loadingMessage = loadingMessage,
     content = content,
 )
 

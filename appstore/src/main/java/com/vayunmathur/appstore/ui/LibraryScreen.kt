@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import com.vayunmathur.appstore.data.UnifiedApp
 import com.vayunmathur.appstore.platform.AppStoreViewModel
 import com.vayunmathur.library.ui.EmptyState
+import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.FilterChip
 import com.vayunmathur.library.ui.IconPackage
 import com.vayunmathur.library.ui.AppScaffold
@@ -64,7 +65,9 @@ fun LibraryScreen(
                 }
             }
 
-            if (state.apps.isEmpty()) {
+            if (!state.hasLoaded && state.apps.isEmpty()) {
+                LoadingState(Modifier.fillMaxSize())
+            } else if (state.apps.isEmpty()) {
                 EmptyState(
                     title = stringResource(R.string.library_empty_title),
                     message = stringResource(R.string.library_empty_message),

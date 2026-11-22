@@ -38,7 +38,6 @@ import com.vayunmathur.library.image.compose.AsyncImage
 import com.vayunmathur.library.ui.AlertDialog
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.Card
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.FilterChip
 import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.IconPackage
@@ -112,12 +111,8 @@ fun OrdersScreen(onTrackOrder: (Int) -> Unit = {}) {
         loading = false
     }
 
-    AppScaffold(topBar = {}) { padding ->
-        if (loading) {
-            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        } else if (!isLoggedIn) {
+    AppScaffold(topBar = {}, isLoading = loading) { padding ->
+        if (!isLoggedIn) {
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     IconPerson(modifier = Modifier.size(48.dp),

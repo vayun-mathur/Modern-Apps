@@ -27,7 +27,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.IconArrowForward
-import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.IconBack
 import com.vayunmathur.library.ui.LazyListScaffold
 import com.vayunmathur.library.ui.MaterialTheme
@@ -73,6 +72,8 @@ fun DashboardScreen(state: ScreenTimeUiState, actions: DashboardActions) {
     LazyListScaffold(
         title = stringResource(R.string.app_name),
         horizontalPadding = 0.dp,
+        isLoading = state.loading,
+        loadingMessage = stringResource(R.string.apps_loading),
     ) {
         item { PeriodToggle(state.period, actions.onSetPeriod) }
 
@@ -81,7 +82,6 @@ fun DashboardScreen(state: ScreenTimeUiState, actions: DashboardActions) {
         }
 
         when {
-            state.loading -> item { LoadingState(modifier = Modifier.fillParentMaxSize()) }
             !state.hasUsageAccess -> item {
                 SettingsSection {
                     SettingsRow(

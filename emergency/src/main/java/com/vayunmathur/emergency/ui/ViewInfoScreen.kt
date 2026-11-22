@@ -24,7 +24,6 @@ import com.vayunmathur.emergency.platform.EmergencyUiState
 import com.vayunmathur.emergency.platform.EmergencyViewModel
 import com.vayunmathur.library.ui.Card
 import com.vayunmathur.library.ui.LazyListScaffold
-import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.verticalShape
 
@@ -34,6 +33,7 @@ fun ViewInfoScreen(state: EmergencyUiState) {
     // Resolved up front: the LazyListScope content below is not itself @Composable,
     // so stringResource() calls must happen here or inside item {} blocks.
     val ownerLabel = stringResource(R.string.group_owner)
+    val loadingLabel = stringResource(R.string.contacts_loading)
     val contactLabel = stringResource(R.string.group_emergency_contact)
     val allergiesLabel = stringResource(R.string.section_allergies)
     val conditionsLabel = stringResource(R.string.section_conditions)
@@ -44,12 +44,10 @@ fun ViewInfoScreen(state: EmergencyUiState) {
     LazyListScaffold(
         // No title and no actions: the scaffold draws no bar, so the content starts
         // at the top. scrollBehavior is still required for the nested-scroll wiring.
+        isLoading = state.loading,
+        loadingMessage = loadingLabel,
     ) {
-        if (state.loading) {
-            item {
-                LoadingState(modifier = Modifier.fillParentMaxSize())
-            }
-        } else if (ownerRows.isEmpty() && state.info.contacts.isEmpty() &&
+        if (ownerRows.isEmpty() && state.info.contacts.isEmpty() &&
             state.health.allergies.isEmpty() && state.health.conditions.isEmpty() &&
             state.health.medications.isEmpty()
         ) {

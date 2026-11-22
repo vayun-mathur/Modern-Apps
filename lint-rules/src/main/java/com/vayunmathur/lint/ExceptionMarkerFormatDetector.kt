@@ -109,6 +109,22 @@ class ExceptionMarkerFormatDetector : Detector(), SourceCodeScanner {
             return
         }
 
+        if (text.contains(LOADING_KEYWORD)) {
+            if (!text.contains(LOADING_PREFIX)) {
+                report(context, node, file, source, base + text.indexOf(LOADING_KEYWORD), LOADING_KEYWORD.length,
+                    "Malformed Scaffold Loading exception marker: the colon is required and a marker without " +
+                        "it does NOT opt the file out. Use `// SCAFFOLD LOADING EXCEPTION: <reason>`.")
+                return
+            }
+            val reason = reasonAfter(text, LOADING_PREFIX)
+            if (!hasReason(source, comments, index, reason)) {
+                report(context, node, file, source, base + text.indexOf(LOADING_PREFIX), LOADING_PREFIX.length,
+                    "Exception marker without a reason. Append `: <reason>` to " +
+                        "`// SCAFFOLD LOADING EXCEPTION:` so the opt-out stays reviewable.")
+            }
+            return
+        }
+
         if (text.contains(TOAST_KEYWORD)) {
             if (!text.contains(TOAST_PREFIX)) {
                 report(context, node, file, source, base + text.indexOf(TOAST_KEYWORD), TOAST_KEYWORD.length,
@@ -201,6 +217,8 @@ class ExceptionMarkerFormatDetector : Detector(), SourceCodeScanner {
         private const val PACKAGE_KEYWORD = "PACKAGE STRUCTURE EXCEPTION"
         private const val SCAFFOLD_KEYWORD = "RAW SCAFFOLD EXCEPTION"
         private const val SCAFFOLD_PREFIX = "// RAW SCAFFOLD EXCEPTION"
+        private const val LOADING_KEYWORD = "SCAFFOLD LOADING EXCEPTION"
+        private const val LOADING_PREFIX = "// SCAFFOLD LOADING EXCEPTION:"
         private const val TOAST_KEYWORD = "TOAST EXCEPTION"
         private const val TOAST_PREFIX = "// TOAST EXCEPTION:"
         private const val ANIMATION_KEYWORD = "RAW ANIMATION EXCEPTION"
@@ -217,7 +235,7 @@ class ExceptionMarkerFormatDetector : Detector(), SourceCodeScanner {
                 missing colon silently does NOT opt the file out, so enforcement disappears \
                 with no signal. Use the canonical shapes — `// PACKAGE STRUCTURE EXCEPTION \
                 (JNI)` verbatim, `// RAW SCAFFOLD EXCEPTION: <reason>`, `// TOAST EXCEPTION: \
-                <reason>`, `// RAW ANIMATION EXCEPTION: <reason>` — each with a non-empty \
+                <reason>`, `// RAW ANIMATION EXCEPTION: <reason>`, `// SCAFFOLD LOADING EXCEPTION: <reason>` — each with a non-empty \
                 reason (which may continue on following `//` lines), so every opt-out stays \
                 reviewable.
                 """.trimIndent(),

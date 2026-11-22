@@ -35,7 +35,6 @@ import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.image.compose.AsyncImage
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.Card
-import com.vayunmathur.library.ui.LoadingIndicator
 import com.vayunmathur.library.ui.IconHome
 import com.vayunmathur.library.ui.IconStar
 import com.vayunmathur.library.ui.MaterialTheme
@@ -60,12 +59,8 @@ fun HomeContent(
     noAddress: Boolean = false,
     onMerchantClick: (Int) -> Unit = {},
 ) {
-    AppScaffold(topBar = {}) { padding ->
-        if (loading) {
-            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                LoadingIndicator()
-            }
-        } else if (noAddress) {
+    AppScaffold(topBar = {}, isLoading = loading) { padding ->
+        if (noAddress) {
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     IconHome(modifier = Modifier.size(48.dp),

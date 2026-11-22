@@ -30,7 +30,6 @@ import com.vayunmathur.appstore.platform.AppStoreViewModel
 import com.vayunmathur.library.ui.AppPullToRefreshBox
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.EmptyState
-import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.IconCheck
 import com.vayunmathur.library.ui.IconDownload
 import com.vayunmathur.library.ui.MaterialTheme
@@ -46,7 +45,7 @@ fun UpdatesScreen(
     val anyInstalling = state.stages.values.any { it !is InstallStage.Failed }
     val total = state.updates.size + state.foreignUpdates.size
 
-    AppScaffold(topBar = {}) { padding ->
+    AppScaffold(topBar = {}, isLoading = total == 0 && state.isChecking) { padding ->
         AppPullToRefreshBox(
             isRefreshing = state.isChecking,
             onRefresh = { actions.checkForUpdates() },
@@ -93,9 +92,7 @@ fun UpdatesScreen(
                     )
                 }
 
-                if (total == 0 && state.isChecking) {
-                    LoadingState(modifier = Modifier.fillMaxSize())
-                } else if (total == 0) {
+                if (total == 0) {
                     EmptyState(
                         title = stringResource(R.string.all_apps_up_to_date),
                         message = stringResource(R.string.updates_empty_message),

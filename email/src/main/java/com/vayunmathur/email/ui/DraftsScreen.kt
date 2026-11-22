@@ -14,6 +14,7 @@ import com.vayunmathur.email.R
 import com.vayunmathur.email.platform.EmailViewModel
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.EmptyState
+import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.HorizontalDivider
 import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.IconDelete
@@ -28,11 +29,14 @@ fun DraftsScreen(
     onOpenDraft: (Long) -> Unit,
 ) {
     val drafts by viewModel.drafts.collectAsStateWithLifecycle(emptyList())
+    val hasLoaded by viewModel.hasLoadedDrafts.collectAsStateWithLifecycle()
     AppScaffold(
         title = stringResource(R.string.drafts),
         onNavigateBack = onBack,
     ) { padding ->
-        if (drafts.isEmpty()) {
+        if (!hasLoaded && drafts.isEmpty()) {
+            LoadingState(Modifier.fillMaxSize().padding(padding))
+        } else if (drafts.isEmpty()) {
             EmptyState(
                 title = stringResource(R.string.no_drafts),
                 modifier = Modifier.fillMaxSize().padding(padding),

@@ -10,6 +10,11 @@ plugins {
 dependencies {
     compileOnly(libs.lint.api)
     compileOnly(libs.lint.checks)
+
+    testImplementation(libs.lint.api)
+    testImplementation(libs.lint.checks)
+    testImplementation(libs.lint.tests)
+    testImplementation(libs.kotlin.test.junit)
 }
 
 kotlin {

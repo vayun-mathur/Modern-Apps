@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flatMapLatest
@@ -59,8 +60,18 @@ class EmailViewModel(application: Application) :
     val isSyncing: StateFlow<Boolean> = EmailSyncState.isSyncing
     val syncProgress: StateFlow<Float> = EmailSyncState.progress
 
+    private val _hasLoadedOutbox = kotlinx.coroutines.flow.MutableStateFlow(false)
+    /** Flips true once the outbox DAO emits at least once; the list starts empty. */
+    val hasLoadedOutbox: kotlinx.coroutines.flow.StateFlow<Boolean> = _hasLoadedOutbox
+
+    private val _hasLoadedDrafts = kotlinx.coroutines.flow.MutableStateFlow(false)
+    /** Flips true once the drafts DAO emits at least once; the list starts empty. */
+    val hasLoadedDrafts: kotlinx.coroutines.flow.StateFlow<Boolean> = _hasLoadedDrafts
+
     val outbox: Flow<List<OutboxEntry>> = outboxDao.getOutboxFlow()
+        .onEach { _hasLoadedOutbox.value = true }
     val drafts: Flow<List<com.vayunmathur.email.data.DraftEntry>> = outboxDao.getDraftsFlow()
+        .onEach { _hasLoadedDrafts.value = true }
 
     /** Block a sender (matched by email address) so their mail is hidden from the inbox. */
     override fun blockSender(from: String) {

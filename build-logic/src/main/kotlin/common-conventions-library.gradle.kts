@@ -87,6 +87,7 @@ configure<com.android.build.api.dsl.LibraryExtension> {
             "OneComposablePerFile",
             "PackageStructure",
             "RawScaffoldInApp",
+            "ScaffoldLoading",
             "Room2Usage",
             "WindowInsetsInReusableComponent",
             "ExceptionMarkerFormat",

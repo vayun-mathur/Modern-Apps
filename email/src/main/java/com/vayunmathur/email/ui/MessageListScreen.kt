@@ -147,6 +147,7 @@ fun MessageListScreen(
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
+        isLoading = state.messages.isEmpty() && state.searchQuery.isEmpty() && state.isSyncing,
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
             Box(modifier = Modifier.fillMaxWidth().height(2.dp)) {
@@ -186,9 +187,7 @@ fun MessageListScreen(
                 // so only a small clearance is needed; the slot stays centered.
                 topClearance = 8.dp,
             ) {
-                if (state.messages.isEmpty() && state.searchQuery.isEmpty() && state.isSyncing) {
-                    com.vayunmathur.library.ui.LoadingState(modifier = Modifier.fillMaxSize())
-                } else if (state.messages.isEmpty() && state.searchQuery.isEmpty()) {
+                if (state.messages.isEmpty() && state.searchQuery.isEmpty()) {
                     EmptyState(
                         title = stringResource(R.string.no_messages_found_pull_down_to_refresh),
                         modifier = Modifier.fillMaxSize(),
