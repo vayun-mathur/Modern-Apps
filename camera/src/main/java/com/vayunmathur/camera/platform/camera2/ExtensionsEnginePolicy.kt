@@ -15,18 +15,18 @@ enum class NightEngine {
 }
 
 /**
- * Gate for the Camera2 NIGHT-extension path. Default OFF in two independent
- * places, mirroring [SloMoCamera2Gate]: this compile-time master switch and
- * the ViewModel's runtime flow. Either being off keeps every night capture
+ * Gate for the Camera2 NIGHT-extension path. Default ON in two places,
+ * mirroring [SloMoCamera2Gate]: this compile-time master switch and the
+ * ViewModel's runtime flow. Either being off keeps every night capture
  * on today's routing (CameraX extension, else own burst).
  */
 object NightCamera2Gate {
-    const val ENABLED: Boolean = false
+    const val ENABLED: Boolean = true
 }
 
 /** Inputs to the night-engine selection rule. */
 data class ExtensionsEngineInput(
-    /** The Phase-6 gate (master switch AND runtime flow). Default OFF. */
+    /** The Phase-6 gate (master switch AND runtime flow). Default ON. */
     val camera2GateOn: Boolean,
     val mode: CameraMode,
     /** [Camera2ExtensionProbe] result for this lens (probe ok = usable). */

@@ -47,10 +47,11 @@ internal fun Camera2Preview(
     flashSetting: com.vayunmathur.camera.domain.FlashSetting =
         com.vayunmathur.camera.domain.FlashSetting.OFF,
     onSessionChanged: (Camera2Session?) -> Unit = {},
+    onError: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val sessionHolder = remember(cameraId) { Camera2PreviewSession(context, cameraId) }
+    val sessionHolder = remember(cameraId) { Camera2PreviewSession(context, cameraId, onError) }
 
     DisposableEffect(sessionHolder) {
         onSessionChanged(sessionHolder.session)
@@ -91,7 +92,11 @@ internal fun Camera2Preview(
 }
 
 /** Executor + bridge + session for one camera id; built once, closed once. */
-private class Camera2PreviewSession(context: Context, private val cameraId: String) {
+private class Camera2PreviewSession(
+    context: Context,
+    private val cameraId: String,
+    private val onError: (String) -> Unit = {},
+) {
     val executor = Camera2Executor("Camera2Preview-$cameraId")
     val session: Camera2Session
     val bridge: PreviewSurfaceBridge
@@ -112,6 +117,9 @@ private class Camera2PreviewSession(context: Context, private val cameraId: Stri
             listener = object : Camera2Session.Listener {
                 override fun onError(message: String) {
                     Log.status("Camera2Preview", message)
+                    // Configure/bind/open failures drive the one-shot
+                    // CameraX fallback latch in the ViewModel.
+                    onError(message)
                 }
             },
         )

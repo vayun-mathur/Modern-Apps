@@ -7,18 +7,19 @@ import com.vayunmathur.camera.platform.CameraMode
 enum class SloMoEngine { CAMERAX, CAMERA2 }
 
 /**
- * Gate for the Camera2 slo-mo path. Default OFF in two independent places:
- * this constant (the compile-time master switch, like
- * `CustomRecordingGate`) and the ViewModel's runtime flow. Either being off
- * keeps every slo-mo recording on CameraX.
+ * Gate for the Camera2 slo-mo path. Default ON in two places: this
+ * constant (the compile-time master switch) and the ViewModel's runtime
+ * flow. Recording still stays on CameraX until
+ * [SloMoEngineInput.recordingEngineReady] is true (see that field): the
+ * gate only enables the decision, it never fakes a recording route.
  */
 object SloMoCamera2Gate {
-    const val ENABLED: Boolean = false
+    const val ENABLED: Boolean = true
 }
 
 /** Inputs to the slo-mo engine selection rule. */
 data class SloMoEngineInput(
-    /** The Phase-5 gate. Default OFF: CameraX remains the live path. */
+    /** The Phase-5 gate. Default ON; recording still needs every condition below. */
     val camera2Enabled: Boolean,
     val mode: CameraMode,
     /** Slo-mo is back-only today (enforced by the mode switch and here). */

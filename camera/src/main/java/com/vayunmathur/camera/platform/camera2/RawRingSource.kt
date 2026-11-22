@@ -159,9 +159,9 @@ class RawImageReaderOutput(
     }
 }
 
-/** Gate for the RAW night path. Default OFF, mirroring [ReprocessRingGate]. */
+/** Gate for the RAW ring output. Default ON, mirroring [ReprocessRingGate]. */
 object RawRingGate {
-    const val ENABLED: Boolean = false
+    const val ENABLED: Boolean = true
 }
 
 /** What the RAW half of the dual ring holds. */

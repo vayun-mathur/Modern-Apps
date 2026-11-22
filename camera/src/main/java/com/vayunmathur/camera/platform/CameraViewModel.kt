@@ -158,60 +158,90 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
     internal val ds = DataStoreUtils.getInstance(app)
 
     /**
-     * Gate for the Camera2 preview engine (Phase 2). Default OFF — CameraX
-     * stays the live path and `Camera2Preview` is never composed. In-memory
-     * only for now; `PreviewEnginePolicy` further restricts it to PHOTO.
+     * Gate for the Camera2 preview engine. Default ON — Camera2 is the
+     * live path and CameraX is the opt-out / fallback. Persisted as
+     * `camera_camera2_engine`; `PreviewEnginePolicy` restricts it to PHOTO.
      */
-    internal val camera2PreviewEnabledMutable = MutableStateFlow(false)
+    internal val camera2PreviewEnabledMutable = MutableStateFlow(true)
     val camera2PreviewEnabled = camera2PreviewEnabledMutable.asStateFlow()
 
-    /** Turns the Camera2 preview gate on/off (PHOTO only; see PreviewEnginePolicy). */
+    /** One-shot CameraX fallback latch for a failed Camera2 bind attempt. */
+    internal val camera2FallbackLatch =
+        com.vayunmathur.camera.platform.camera2.Camera2FallbackLatch()
+    internal val camera2FallbackBindKeyMutable = MutableStateFlow<String?>(null)
+    val camera2FallbackBindKey = camera2FallbackBindKeyMutable.asStateFlow()
+
+    /**
+     * Records a Camera2 preview configure/bind failure. First failure for
+     * this bind key latches (returns true) and the UI switches that
+     * session to CameraX; repeat failures for the same key are ignored.
+     */
+    fun onCamera2PreviewFailed(cameraId: String): Boolean {
+        val key = com.vayunmathur.camera.platform.camera2.Camera2FallbackLatch
+            .bindKey(cameraId, cameraModeMutable.value)
+        if (!camera2FallbackLatch.recordFailure(key)) return false
+        camera2FallbackBindKeyMutable.value = key
+        Log.status("Camera2Preview", "Camera2 bind failed for $key; falling back to CameraX for this session")
+        return true
+    }
+
+    /** Clears the fallback latch (manual retry / gate re-enable / new bind). */
+    fun clearCamera2Fallback() {
+        camera2FallbackLatch.reset()
+        camera2FallbackBindKeyMutable.value = null
+    }
+
+    /** Turns the Camera2 engine on/off (PHOTO only; see PreviewEnginePolicy). */
     fun setCamera2PreviewEnabled(enabled: Boolean) {
         camera2PreviewEnabledMutable.value = enabled
+        if (enabled) clearCamera2Fallback()
+        viewModelScope.launch { ds.setString("camera_camera2_engine", enabled.toString()) }
     }
 
     /**
-     * Gate for the Camera2 slo-mo path (Phase 5). Default OFF — SLOW_MO
-     * stays on the CameraX high-speed session and the Camera2 decision in
-     * `Camera2SloMoGlue` is not even evaluated. In-memory only;
-     * `SloMoEnginePolicy` further requires a constrained-HFR lens, a
-     * capable encoder and a coupled, device-verified recording engine.
+     * Gate for the Camera2 slo-mo path. Default ON — the Camera2 decision
+     * in `Camera2SloMoGlue` is evaluated; `SloMoEnginePolicy` still keeps
+     * recording on CameraX until a coupled, device-verified recording
+     * engine exists (`recordingEngineReady`).
      */
-    internal val camera2SloMoEnabledMutable = MutableStateFlow(false)
+    internal val camera2SloMoEnabledMutable = MutableStateFlow(true)
     val camera2SloMoEnabled = camera2SloMoEnabledMutable.asStateFlow()
 
     /** Turns the Camera2 slo-mo gate on/off (SLOW_MO only; see SloMoEnginePolicy). */
     fun setCamera2SloMoEnabled(enabled: Boolean) {
         camera2SloMoEnabledMutable.value = enabled
+        viewModelScope.launch { ds.setString("camera_camera2_slomo", enabled.toString()) }
     }
 
     /**
-     * Gate for the Camera2 NIGHT-extension path (Phase 6). Default OFF —
-     * night stays on CameraX extension / own burst and the Camera2 decision
-     * in `Camera2NightGlue` is not evaluated. In-memory only;
-     * `ExtensionsEnginePolicy` further requires a passing probe and a clear
-     * failure cache.
+     * Gate for the Camera2 NIGHT path. Default ON — the Camera2 decision
+     * in `Camera2NightGlue` is evaluated; `ExtensionsEnginePolicy` still
+     * requires a passing probe, a clear failure cache and a live
+     * extension session, else CameraX extension / own burst serves.
      */
-    internal val camera2NightEnabledMutable = MutableStateFlow(false)
+    internal val camera2NightEnabledMutable = MutableStateFlow(true)
     val camera2NightEnabled = camera2NightEnabledMutable.asStateFlow()
 
     /** Turns the Camera2 night gate on/off (PHOTO only; see ExtensionsEnginePolicy). */
     fun setCamera2NightEnabled(enabled: Boolean) {
         camera2NightEnabledMutable.value = enabled
+        viewModelScope.launch { ds.setString("camera_camera2_night", enabled.toString()) }
     }
 
     /**
-     * Explicit RAW-night selection (depth Phase 2). Default OFF — this is
-     * the user explicitly choosing the RAW burst; it is never inferred
-     * from darkness. In-memory only; [com.vayunmathur.camera.platform.camera2.RawNightPolicy]
-     * additionally requires the RAW gate, RAW support and a live RAW ring.
+     * RAW-night selection on the Camera2 dual ring. Default ON as the
+     * Camera2 night route; it is never inferred from darkness alone —
+     * [com.vayunmathur.camera.platform.camera2.RawNightPolicy] still
+     * requires a night route, RAW support and a live RAW ring, else the
+     * existing night routing serves.
      */
-    internal val camera2RawNightEnabledMutable = MutableStateFlow(false)
+    internal val camera2RawNightEnabledMutable = MutableStateFlow(true)
     val camera2RawNightEnabled = camera2RawNightEnabledMutable.asStateFlow()
 
-    /** Turns the explicit RAW-night selection on/off (see RawNightPolicy). */
+    /** Turns the RAW-night Camera2 route on/off (see RawNightPolicy). */
     fun setCamera2RawNightEnabled(enabled: Boolean) {
         camera2RawNightEnabledMutable.value = enabled
+        viewModelScope.launch { ds.setString("camera_camera2_raw_night", enabled.toString()) }
     }
 
     /**

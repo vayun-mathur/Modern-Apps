@@ -17,8 +17,8 @@ import com.vayunmathur.library.log.Log
  * high-speed session and the existing CameraX slo-mo path.
  *
  * The decision is evaluated only when a gate is on — with both gates off
- * (the default) this file costs one boolean check and SLOW_MO runs exactly
- * as before. When the runtime gate is on, the lens snapshot, planner
+ * this file costs one boolean check and SLOW_MO runs exactly as before.
+ * With the gates on (the default), the lens snapshot, planner
  * selection and AVC encoder probe are assembled and [SloMoEnginePolicy]
  * decides; the reason is logged either way. Today the policy always keeps
  * recording on CameraX because `recordingEngineReady` is false: the

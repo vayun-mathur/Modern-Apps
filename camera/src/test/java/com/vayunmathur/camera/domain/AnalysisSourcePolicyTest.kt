@@ -2,7 +2,7 @@ package com.vayunmathur.camera.domain
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class AnalysisSourcePolicyTest {
 
@@ -16,10 +16,13 @@ class AnalysisSourcePolicyTest {
         cheapPlaneConsumersOnly = cheapOnly,
     )
 
-    @Test fun defaultFlagIsCameraX() {
-        assertFalse(AnalysisSourcePolicy.CAMERA2_ENABLED)
+    @Test fun defaultFlagIsCamera2ForCheapPlaneSessions() {
+        assertTrue(AnalysisSourcePolicy.CAMERA2_ENABLED)
         val defaulted = AnalysisSourceInput(needsQr = false, needsBitmapFrame = false, cheapPlaneConsumersOnly = true)
-        assertEquals(AnalysisSource.CAMERAX, AnalysisSourcePolicy.select(defaulted))
+        assertEquals(AnalysisSource.CAMERA2_IMAGE_READER, AnalysisSourcePolicy.select(defaulted))
+        // Exclusions still win over the default-on flag.
+        assertEquals(AnalysisSource.CAMERAX, AnalysisSourcePolicy.select(
+            AnalysisSourceInput(needsQr = true, needsBitmapFrame = false, cheapPlaneConsumersOnly = true)))
     }
 
     @Test fun cheapPlaneSessionMayUseImageReaderWhenEnabled() {

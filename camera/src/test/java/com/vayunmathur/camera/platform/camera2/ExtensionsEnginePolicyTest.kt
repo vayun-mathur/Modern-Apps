@@ -28,8 +28,8 @@ class ExtensionsEnginePolicyTest {
         cameraXExtensionUsable = cameraXUsable,
     )
 
-    @Test fun gateOffByDefaultConstant() {
-        assertFalse(NightCamera2Gate.ENABLED)
+    @Test fun gateOnByDefaultConstant() {
+        assertTrue(NightCamera2Gate.ENABLED)
     }
 
     @Test fun camera2WinsWhenGateProbeAndCacheAllPass() {

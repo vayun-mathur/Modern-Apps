@@ -79,6 +79,12 @@ private fun CameraViewModel.loadPreferenceToggles() {
     ds.getString("camera_mirror_front")?.let { mirrorFrontMutable.value = it.toBoolean() }
     ds.getString("camera_noise_reduction")?.let { noiseReductionEnabledMutable.value = it.toBoolean() }
     ds.getString("camera_edge_sharpening")?.let { edgeSharpeningEnabledMutable.value = it.toBoolean() }
+    // Camera2 gates default on (fields initialise true); a persisted
+    // value is the user's opt-out and wins when present.
+    ds.getString("camera_camera2_engine")?.let { camera2PreviewEnabledMutable.value = it.toBoolean() }
+    ds.getString("camera_camera2_slomo")?.let { camera2SloMoEnabledMutable.value = it.toBoolean() }
+    ds.getString("camera_camera2_night")?.let { camera2NightEnabledMutable.value = it.toBoolean() }
+    ds.getString("camera_camera2_raw_night")?.let { camera2RawNightEnabledMutable.value = it.toBoolean() }
 }
 
 fun CameraViewModel.setFlashMode(mode: FlashMode) {

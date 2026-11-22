@@ -18,9 +18,9 @@ import android.hardware.camera2.CameraMetadata
  * unchanged, one instance per format, selected by `RawNightPolicy`.
  */
 
-/** Gate for the ring path. Default OFF, mirroring [NightCamera2Gate]. */
+/** Gate for the ring path. Default ON, mirroring [NightCamera2Gate]. */
 object ReprocessRingGate {
-    const val ENABLED: Boolean = false
+    const val ENABLED: Boolean = true
 }
 
 /** Pixel format of one ring. RAW entries exist only as the future slot. */

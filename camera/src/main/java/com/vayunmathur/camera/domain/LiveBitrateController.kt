@@ -8,7 +8,7 @@ enum class RecordingPath { CAMERAX_RECORDER, CUSTOM_CAMERA2 }
 /**
  * Inputs to the recording-path selection rule.
  *
- * @property customPathEnabled the (default-off) gate for the Camera2/MediaCodec path.
+ * @property customPathEnabled the (still default-off, not device-verified) gate for the Camera2/MediaCodec path.
  * @property liveAdaptationWanted live, during-recording bitrate changes are wanted.
  * @property hlgRequested 10-bit HLG output is wanted (vendor HDR semantics).
  * @property stabilizationRequested a vendor/CameraX stabilization mode is wanted.

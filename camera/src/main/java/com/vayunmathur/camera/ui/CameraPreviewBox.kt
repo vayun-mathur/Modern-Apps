@@ -221,6 +221,7 @@ internal fun BoxWithConstraintsScope.CameraPreviewBox(
                 onSessionChanged = { session ->
                     viewModel.registerCamera2Session(session)
                 },
+                onError = { viewModel.onCamera2PreviewFailed(camera2Id) },
                 modifier = previewModifier,
             )
         } else {

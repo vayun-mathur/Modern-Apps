@@ -78,7 +78,7 @@ internal fun CameraViewModel.camera2NightDecision(
 }
 
 /**
- * Attempts the night shutter on the Camera2 extension session. Returns
+ * Attempts the night shutter on the Camera2 extension session (gate default on). Returns
  * true when Camera2 took the shot (the caller must not also route it to
  * CameraX/custom); false means the existing routing decides, for a policy
  * reason or because no gated extension session is live. The caller has

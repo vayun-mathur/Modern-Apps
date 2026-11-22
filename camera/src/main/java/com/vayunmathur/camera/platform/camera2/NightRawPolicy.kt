@@ -22,9 +22,9 @@ data class RawNightInput(
 /**
  * Explicit selection rule for the RAW night merge (depth Phase 2).
  *
- * RAW is never the silent default: it takes a night shutter only when the
- * gate is on, the user explicitly selected RAW night, the facade proves
- * RAW support, and a RAW ring is live. Everything else stays on the
+ * RAW night takes a night shutter only when the gate is on, RAW night
+ * is selected (default on; Settings/ViewModel can opt out), the facade
+ * proves RAW support, and a RAW ring is live. Everything else stays on the
  * existing night routing (vendor extension, then the YUV burst) exactly
  * as before. [RawNightInput.dngMetadataComplete] gates nothing here —
  * it is carried so the report/UI can state whether a DNG sidecar could

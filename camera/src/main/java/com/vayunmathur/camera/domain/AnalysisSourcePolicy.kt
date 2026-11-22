@@ -7,8 +7,8 @@ enum class AnalysisSource { CAMERAX, CAMERA2_IMAGE_READER }
  * What one session asks its analysis stream to do.
  *
  * @property camera2Enabled the policy flag for the Camera2/ImageReader path.
- *   Default off ([AnalysisSourcePolicy.CAMERA2_ENABLED]): every session stays
- *   on CameraX until the ImageReader path is device-verified per mode.
+ *   Default on ([AnalysisSourcePolicy.CAMERA2_ENABLED]): cheap-plane-only
+ *   sessions may use the ImageReader path; QR/bitmap sessions stay CameraX.
  * @property needsQr the session decodes QR/barcodes from the analysis stream.
  * @property needsBitmapFrame a consumer needs a converted `Bitmap` frame
  *   (portrait segmentation, panorama/motion-photo frame copies).
@@ -41,8 +41,8 @@ data class AnalysisSourceInput(
  * and may move once the flag is enabled for that session.
  */
 object AnalysisSourcePolicy {
-    /** Master policy flag: default CameraX everywhere. */
-    const val CAMERA2_ENABLED: Boolean = false
+    /** Master policy flag: default on (per-session exclusions still apply). */
+    const val CAMERA2_ENABLED: Boolean = true
 
     fun select(input: AnalysisSourceInput): AnalysisSource = when {
         !input.camera2Enabled -> AnalysisSource.CAMERAX

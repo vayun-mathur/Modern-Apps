@@ -64,6 +64,8 @@ internal suspend fun runSessionBindWithRetry(
  */
 fun CameraViewModel.retrySessionBind() {
     sessionBindFailedMutable.value = false
+    // A manual retry is a fresh bind attempt: Camera2 may be tried once again.
+    clearCamera2Fallback()
     sessionBindRetryMutable.value += 1
 }
 

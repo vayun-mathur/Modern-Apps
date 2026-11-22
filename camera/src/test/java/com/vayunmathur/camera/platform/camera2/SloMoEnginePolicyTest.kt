@@ -34,8 +34,11 @@ class SloMoEnginePolicyTest {
         assertTrue(SloMoEnginePolicy.exclusionReason(readyInput(camera2Enabled = false))!!.contains("gate off"))
     }
 
-    @Test fun masterGateConstantIsOff() {
-        assertFalse(SloMoCamera2Gate.ENABLED, "Phase 5 ships with the gate off (device unverified)")
+    @Test fun masterGateConstantIsOnButRecordingStaysCameraXUntilReady() {
+        assertTrue(SloMoCamera2Gate.ENABLED, "Camera2 is the default; slo-mo decision is evaluated")
+        // The recording engine is not coupled/device-verified yet, so even
+        // with the gate on the honest selection remains CameraX.
+        assertEquals(SloMoEngine.CAMERAX, SloMoEnginePolicy.select(readyInput(recordingEngineReady = false)))
     }
 
     @Test fun allConditionsMetSelectsCamera2() {

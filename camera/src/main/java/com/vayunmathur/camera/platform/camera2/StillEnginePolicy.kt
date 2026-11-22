@@ -16,7 +16,7 @@ enum class StillEngine {
  * non-plain capture is an exclusion for Phase 4a (see [StillEnginePolicy]).
  */
 data class StillEngineInput(
-    /** The Phase-2 gate. Default OFF: CameraX remains the live path. */
+    /** The Phase-2 gate. Default ON: Camera2 is the live still path when supported. */
     val camera2Enabled: Boolean,
     val mode: CameraMode,
     /** A JPEG `ImageReader` output was configured on the Camera2 session. */
