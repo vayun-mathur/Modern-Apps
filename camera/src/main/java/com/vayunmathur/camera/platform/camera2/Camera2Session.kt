@@ -1,6 +1,5 @@
 package com.vayunmathur.camera.platform.camera2
 
-import android.graphics.ImageFormat
 import android.view.Surface
 
 /**
@@ -43,15 +42,15 @@ import android.view.Surface
  * from a `DisposableEffect`). [close] is idempotent and terminal.
  */
 class Camera2Session(
-    private val driver: Camera2Driver,
+    internal val driver: Camera2Driver,
     internal val executor: Camera2Executor,
-    private val snapshot: LensCharacteristicsSnapshot,
+    internal val snapshot: LensCharacteristicsSnapshot,
     private val stateMachine: SessionStateMachine = SessionStateMachine(),
     private val listener: Listener? = null,
-    private val ringConfig: ReprocessRingConfig = ReprocessRingConfig.DISABLED,
-    private val rawRingConfig: RawRingConfig = RawRingConfig.DISABLED,
+    internal val ringConfig: ReprocessRingConfig = ReprocessRingConfig.DISABLED,
+    internal val rawRingConfig: RawRingConfig = RawRingConfig.DISABLED,
     /** Plane consumer for the analysis stream; null = no analysis output. */
-    private val analysisConsumer: AnalysisConsumer? = null,
+    internal val analysisConsumer: AnalysisConsumer? = null,
 ) {
 
     /** Session lifecycle notifications; all fire on the executor thread. */
@@ -84,22 +83,22 @@ class Camera2Session(
 
     private var device: DeviceHandle? = null
     private var captureSession: CaptureSessionHandle? = null
-    private var previewSurface: Surface? = null
+    internal var previewSurface: Surface? = null
     private var previewSize: FrameSize? = null
-    private var stillOutput: StillOutput? = null
-    private var stillSize: FrameSize? = null
-    private var ultraHdrOutput: StillOutput? = null
-    private var ultraHdrSize: FrameSize? = null
-    private var ringOutput: RingOutput? = null
-    private var ringSize: FrameSize? = null
+    internal var stillOutput: StillOutput? = null
+    internal var stillSize: FrameSize? = null
+    internal var ultraHdrOutput: StillOutput? = null
+    internal var ultraHdrSize: FrameSize? = null
+    internal var ringOutput: RingOutput? = null
+    internal var ringSize: FrameSize? = null
     private val ring = ReprocessRing<RingHeldFrame>(ringConfig.capacity)
-    private var analysisOutput: AnalysisOutput? = null
-    private var analysisSize: FrameSize? = null
+    internal var analysisOutput: AnalysisOutput? = null
+    internal var analysisSize: FrameSize? = null
     /** Set once a configure failure has dropped analysis: never re-add it. */
-    private var analysisComboDropped: Boolean = false
-    private var rawRingOutput: RawRingOutput? = null
-    private var rawRingSize: FrameSize? = null
-    private var rawRingFormat: RingFormat? = null
+    internal var analysisComboDropped: Boolean = false
+    internal var rawRingOutput: RawRingOutput? = null
+    internal var rawRingSize: FrameSize? = null
+    internal var rawRingFormat: RingFormat? = null
     private val rawRing = ReprocessRing<RawHeldFrame>(rawRingConfig.capacity)
     private var latestPreviewTimestampNs: Long? = null
     private val previewMetas = LinkedHashMap<Long, RawStillMetadata>()
@@ -513,7 +512,7 @@ class Camera2Session(
 
     // Still byte/result pairing + delivery lives in Camera2SessionStillDelivery.kt.
 
-    private fun onRingFrame(frame: RingHeldFrame) {
+    internal fun onRingFrame(frame: RingHeldFrame) {
         try {
             executor.execute {
                 val evicted = ring.offer(frame.meta, frame)
@@ -531,7 +530,7 @@ class Camera2Session(
         }
     }
 
-    private fun onRawRingFrame(frame: RawHeldFrame) {
+    internal fun onRawRingFrame(frame: RawHeldFrame) {
         try {
             executor.execute {
                 val evicted = rawRing.offer(frame.meta, frame)
@@ -629,150 +628,15 @@ class Camera2Session(
         }.onFailure { reportError("setRepeatingPreview failed: ${it.message}") }
     }
 
-    private fun configureSession(opened: DeviceHandle, gen: Long, reuseOutputs: Boolean = false) {
-        val surface = previewSurface ?: return
-        if (transition(SessionEvent.CONFIGURE_REQUESTED) !is TransitionResult.Applied) return
-        if (reuseOutputs) {
-            // Retry after a stream-combo failure dropped analysis: every
-            // other output already exists; only the capture session is new.
-            createCaptureSessionWithAnalysisFallback(opened, gen)
-            return
-        }
-        // Second output: the JPEG still reader, when the lens reports JPEG
-        // sizes and the driver can create it. Failure degrades to
-        // preview-only (capture() then fails cleanly, policy excludes it).
-        val jpegSize = StreamSelection.selectJpegSize(snapshot)
-        val output = jpegSize?.let { size ->
-            runCatching { driver.createStillOutput(size) }.getOrNull()?.also { created ->
-                created.setListener(JpegImageListener { bytes, width, height, _ ->
-                    onJpegAvailable(bytes, width, height)
-                })
-            }
-        }
-        stillOutput = output
-        stillSize = if (output != null) jpegSize else null
-        // Additional output: the JPEG_R (Ultra HDR) reader, only when the
-        // facade advertises JPEG_R sizes. Failure degrades to no Ultra HDR
-        // output (captures requesting it fall back to the JPEG output).
-        val jpegRSize = if (snapshot.supportsJpegR) {
-            StreamSelection.selectJpegRSize(snapshot)
-        } else {
-            null
-        }
-        val createdUltraHdr = jpegRSize?.let { size ->
-            runCatching { driver.createUltraHdrStillOutput(size) }.getOrNull()?.also { created ->
-                created.setListener(JpegImageListener { bytes, width, height, _ ->
-                    onUltraHdrJpegAvailable(bytes, width, height)
-                })
-            }
-        }
-        ultraHdrOutput = createdUltraHdr
-        ultraHdrSize = if (createdUltraHdr != null) jpegRSize else null
-        // Third output: the YUV ring, only when this session was built
-        // with the ring enabled. Failure degrades to no-ring (the
-        // policy then excludes the ring path, capture stays Phase 4a).
-        val selectedRingSize = if (ringConfig.enabled) {
-            StreamSelection.selectRingSize(snapshot)
-        } else {
-            null
-        }
-        val createdRing = selectedRingSize?.let { size ->
-            runCatching { driver.createRingOutput(size) }.getOrNull()?.also { created ->
-                created.setListener(RingFrameListener { frame -> onRingFrame(frame) })
-            }
-        }
-        ringOutput = createdRing
-        ringSize = if (createdRing != null) selectedRingSize else null
-        // Fourth output: the RAW ring, only when built with it enabled and
-        // the facade proves RAW. RAW stream combos vary wildly per HAL, so
-        // failure degrades to no RAW ring (policy excludes the RAW path).
-        val selectedRawSize = if (rawRingConfig.enabled) {
-            StreamSelection.selectRawRingSize(snapshot)
-        } else {
-            null
-        }
-        val selectedRawFormat = snapshot.rawRingFormat
-        val createdRawRing = if (selectedRawSize != null && selectedRawFormat != null) {
-            runCatching {
-                driver.createRawRingOutput(selectedRawSize, selectedRawFormat)
-            }.getOrNull()?.also { created ->
-                created.setListener(RawRingFrameListener { frame -> onRawRingFrame(frame) })
-            }
-        } else {
-            null
-        }
-        rawRingOutput = createdRawRing
-        rawRingSize = if (createdRawRing != null) selectedRawSize else null
-        rawRingFormat = if (createdRawRing != null) selectedRawFormat else null
-        // Optional analysis output: only when a consumer was supplied.
-        // Failure degrades to no analysis (preview/still unaffected).
-        val consumer = analysisConsumer
-        val selectedAnalysisSize = if (consumer != null && !analysisComboDropped) {
-            StreamSelection.selectAnalysisSize(snapshot)
-        } else {
-            null
-        }
-        val createdAnalysis = if (selectedAnalysisSize != null && consumer != null) {
-            runCatching { driver.createAnalysisOutput(selectedAnalysisSize, consumer) }.getOrNull()
-        } else {
-            null
-        }
-        analysisOutput = createdAnalysis
-        analysisSize = if (createdAnalysis != null) selectedAnalysisSize else null
-        createCaptureSessionWithAnalysisFallback(opened, gen)
-    }
-
-    /** Surfaces for one configure attempt: preview + every live output. */
-    private fun configuredSurfaces(): List<Surface> = listOfNotNull(
-        previewSurface, stillOutput?.surface, ultraHdrOutput?.surface,
-        ringOutput?.surface, rawRingOutput?.surface, analysisOutput?.surface,
-    )
-
-    /**
-     * Creates the capture session over [configuredSurfaces]. A synchronous
-     * create failure with analysis present drops analysis and retries once
-     * without it; an asynchronous configure failure takes the same path in
-     * [SessionCallbackImpl.onConfigureFailed]. Analysis never costs preview.
-     */
-    private fun createCaptureSessionWithAnalysisFallback(opened: DeviceHandle, gen: Long) {
-        val callback = SessionCallbackImpl(gen)
-        val ringSize = ringSize
-        runCatching {
-            if (ringOutput != null && ringSize != null && snapshot.supportsYuvRingReprocess) {
-                opened.createReprocessableCaptureSession(
-                    ReprocessInputConfig(ringSize.width, ringSize.height, ImageFormat.YUV_420_888),
-                    configuredSurfaces(),
-                    callback,
-                )
-            } else {
-                opened.createCaptureSession(configuredSurfaces(), callback)
-            }
-        }.onFailure {
-            if (analysisOutput != null && !analysisComboDropped) {
-                dropAnalysisOutput()
-                createCaptureSessionWithAnalysisFallback(opened, gen)
-            } else {
-                dispatch(gen, SessionEvent.CONFIGURE_FAILED)
-                reportError("createCaptureSession failed: ${it.message}")
-            }
-        }
-    }
-
-    /** Drops the analysis output (combo degrade); preview/still keep serving. */
-    private fun dropAnalysisOutput() {
-        analysisComboDropped = true
-        runCatching { analysisOutput?.close() }
-        analysisOutput = null
-        analysisSize = null
-    }
-
-    private fun transition(event: SessionEvent): TransitionResult {
+    // Session configuration (outputs + capture-session creation) lives in
+    // Camera2SessionConfigure.kt.
+    internal fun transition(event: SessionEvent): TransitionResult {
         val result = stateMachine.transition(event)
         if (result is TransitionResult.Applied) notifyState()
         return result
     }
 
-    private fun dispatch(gen: Long, event: SessionEvent): TransitionResult {
+    internal fun dispatch(gen: Long, event: SessionEvent): TransitionResult {
         val result = stateMachine.dispatch(gen, event)
         if (result is TransitionResult.Applied) notifyState()
         return result
@@ -782,7 +646,7 @@ class Camera2Session(
         listener?.onStateChanged(stateMachine.state)
     }
 
-    private fun reportError(message: String) {
+    internal fun reportError(message: String) {
         listener?.onError(message)
     }
 
@@ -824,7 +688,7 @@ class Camera2Session(
         }
     }
 
-    private inner class SessionCallbackImpl(
+    internal inner class SessionCallbackImpl(
         private val gen: Long,
     ) : CaptureSessionCallback {
         override fun onConfigured(session: CaptureSessionHandle) {
