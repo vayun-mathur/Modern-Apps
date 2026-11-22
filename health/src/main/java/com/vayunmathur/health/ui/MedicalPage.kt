@@ -2,7 +2,6 @@ package com.vayunmathur.health.ui
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -30,18 +29,10 @@ import com.vayunmathur.health.data.MedicationEntry
 import com.vayunmathur.health.data.VaccinationEntry
 import com.vayunmathur.health.platform.MedicalViewModel
 import com.vayunmathur.health.platform.PersonalHealthRecords
-import com.vayunmathur.health.platform.deleteAllergy
-import com.vayunmathur.health.platform.deleteCondition
-import com.vayunmathur.health.platform.deleteLabResult
-import com.vayunmathur.health.platform.deleteMedication
-import com.vayunmathur.health.platform.deleteVaccination
 import com.vayunmathur.health.platform.importFromHealthConnect
 import com.vayunmathur.health.platform.recordDoseTaken
 import com.vayunmathur.health.ui.components.HealthRow
 import com.vayunmathur.health.ui.components.MedicalStorageNotice
-import com.vayunmathur.library.ui.Button
-import com.vayunmathur.library.ui.Card
-import com.vayunmathur.library.ui.ConfirmDialog
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.ExperimentalMaterial3ExpressiveApi
 import com.vayunmathur.library.ui.FloatingActionButtonMenu
@@ -54,8 +45,6 @@ import com.vayunmathur.library.ui.IconScience
 import com.vayunmathur.library.ui.IconVaccine
 import com.vayunmathur.library.ui.IconWarning
 import com.vayunmathur.library.ui.LazyListScaffold
-import com.vayunmathur.library.ui.ListItem
-import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.library.ui.SwipeActionsBox
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.ToggleFloatingActionButton
@@ -121,66 +110,19 @@ fun MedicalPage(backStack: NavBackStack<Route>, viewModel: MedicalViewModel) {
     var pendingLabDelete by remember { mutableStateOf<LabResultEntry?>(null) }
     var pendingMedicationDelete by remember { mutableStateOf<MedicationEntry?>(null) }
 
-    pendingVaccinationDelete?.let { entry ->
-        ConfirmDialog(
-            title = stringResource(R.string.delete_record_confirm, entry.displayName),
-            confirmLabel = stringResource(UiR.string.delete),
-            destructive = true,
-            onConfirm = {
-                viewModel.deleteVaccination(entry)
-                pendingVaccinationDelete = null
-            },
-            onDismiss = { pendingVaccinationDelete = null },
-        )
-    }
-    pendingAllergyDelete?.let { entry ->
-        ConfirmDialog(
-            title = stringResource(R.string.delete_record_confirm, entry.displayName),
-            confirmLabel = stringResource(UiR.string.delete),
-            destructive = true,
-            onConfirm = {
-                viewModel.deleteAllergy(entry)
-                pendingAllergyDelete = null
-            },
-            onDismiss = { pendingAllergyDelete = null },
-        )
-    }
-    pendingConditionDelete?.let { entry ->
-        ConfirmDialog(
-            title = stringResource(R.string.delete_record_confirm, entry.displayName),
-            confirmLabel = stringResource(UiR.string.delete),
-            destructive = true,
-            onConfirm = {
-                viewModel.deleteCondition(entry)
-                pendingConditionDelete = null
-            },
-            onDismiss = { pendingConditionDelete = null },
-        )
-    }
-    pendingLabDelete?.let { entry ->
-        ConfirmDialog(
-            title = stringResource(R.string.delete_record_confirm, entry.displayName),
-            confirmLabel = stringResource(UiR.string.delete),
-            destructive = true,
-            onConfirm = {
-                viewModel.deleteLabResult(entry)
-                pendingLabDelete = null
-            },
-            onDismiss = { pendingLabDelete = null },
-        )
-    }
-    pendingMedicationDelete?.let { entry ->
-        ConfirmDialog(
-            title = stringResource(R.string.delete_record_confirm, entry.displayName),
-            confirmLabel = stringResource(UiR.string.delete),
-            destructive = true,
-            onConfirm = {
-                viewModel.deleteMedication(entry)
-                pendingMedicationDelete = null
-            },
-            onDismiss = { pendingMedicationDelete = null },
-        )
-    }
+    MedicalDeleteDialogs(
+        viewModel = viewModel,
+        pendingVaccinationDelete = pendingVaccinationDelete,
+        onVaccinationDeleteChange = { pendingVaccinationDelete = it },
+        pendingAllergyDelete = pendingAllergyDelete,
+        onAllergyDeleteChange = { pendingAllergyDelete = it },
+        pendingConditionDelete = pendingConditionDelete,
+        onConditionDeleteChange = { pendingConditionDelete = it },
+        pendingLabDelete = pendingLabDelete,
+        onLabDeleteChange = { pendingLabDelete = it },
+        pendingMedicationDelete = pendingMedicationDelete,
+        onMedicationDeleteChange = { pendingMedicationDelete = it },
+    )
 
     fun toggle(key: String, hasEntries: Boolean) {
         if (!hasEntries) return
@@ -372,26 +314,6 @@ fun MedicalPage(backStack: NavBackStack<Route>, viewModel: MedicalViewModel) {
                 onTakeDose = { viewModel.recordDoseTaken(it) },
             )
         }
-    }
-}
-
-/**
- * The tap target for PHR access, following the gate-row pattern (Card + ListItem +
- * trailing Grant button) the shared permission gate uses: purpose text is read
- * first, and only the button invokes the Health Connect contract.
- */
-@Composable
-private fun MedicalPhrPermissionCard(onRequest: () -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        ListItem(
-            headlineContent = { Text(stringResource(R.string.phr_permission_title)) },
-            supportingContent = { Text(stringResource(R.string.phr_permission_body)) },
-            trailingContent = {
-                Button(onClick = onRequest) {
-                    Text(stringResource(R.string.phr_permission_action))
-                }
-            },
-        )
     }
 }
 

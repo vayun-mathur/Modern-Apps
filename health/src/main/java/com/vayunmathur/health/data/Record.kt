@@ -396,11 +396,12 @@ abstract class HealthDatabase : RoomDatabase() {
     companion object : com.vayunmathur.library.util.DatabaseMigrations {
         override val migrations = listOf(
             // v1 -> v2 (reconstructed): nutrition columns + the type/time index.
-            // History: v1 (74d509796, "health: sync to local db first") had only
-            // Record(id, index, type, startTime, endTime, value, secondaryValue,
-            // primaryKey). 51de2c18a then embedded NutritionData (every field
-            // except calories) and 4af82b094 added the (type, startTime, endTime)
-            // index, both WITHOUT a version bump, and b091920a9 jumped straight
+            // The first shipped version, from commit 74d509796, had a record
+            // with only an id, an index, a type, start and end times, a value,
+            // a secondary value and a primary key. Commit 51de2c18a then
+            // embedded the nutrition data (every field except calories) and
+            // 4af82b094 added the index over type and start/end times,
+            // both WITHOUT a version bump, and b091920a9 jumped straight
             // to version = 3 - version 2 was never committed or shipped. This
             // step assigns the nutrition+index half of that diff to 1->2. The
             // table is recreated (copying only the v1-guaranteed columns) so a

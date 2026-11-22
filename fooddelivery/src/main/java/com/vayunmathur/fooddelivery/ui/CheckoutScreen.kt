@@ -1,23 +1,9 @@
 package com.vayunmathur.fooddelivery.ui
 
-import android.Manifest
-import android.content.Context
-import android.content.pm.PackageManager
-import android.os.Build
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.content.ContextCompat
 import com.vayunmathur.library.log.Log
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -29,7 +15,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import com.stripe.android.PaymentConfiguration
 import com.stripe.android.Stripe
 import com.stripe.android.paymentsheet.PaymentSheet
@@ -47,9 +32,6 @@ import com.vayunmathur.fooddelivery.data.CheckoutDraftAction
 import com.vayunmathur.fooddelivery.data.CheckoutDraftStore
 import com.vayunmathur.fooddelivery.data.checkoutDraftAction
 import com.vayunmathur.fooddelivery.data.paymentIntentId
-import com.vayunmathur.fooddelivery.data.CheckoutAddress
-import com.vayunmathur.fooddelivery.data.CheckoutCartItem
-import com.vayunmathur.fooddelivery.data.CheckoutRequest
 import com.vayunmathur.fooddelivery.data.CheckoutResponse
 import com.vayunmathur.fooddelivery.data.Customer
 import com.vayunmathur.fooddelivery.data.Deal
@@ -58,13 +40,7 @@ import com.vayunmathur.fooddelivery.data.SavedAddress
 import com.vayunmathur.fooddelivery.notifications.OrderTrackingService
 import com.vayunmathur.fooddelivery.platform.AppInit
 import com.vayunmathur.library.ui.AppScaffold
-import com.vayunmathur.library.ui.Button
-import com.vayunmathur.library.ui.Card
-import com.vayunmathur.library.ui.CircularProgressIndicator
-import com.vayunmathur.library.ui.MaterialTheme
-import com.vayunmathur.library.ui.Text
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -89,25 +65,7 @@ fun CheckoutScreen(
     var error by remember { mutableStateOf<String?>(null) }
     var orderSuccess by remember { mutableStateOf(false) }
     var checkoutResponse by remember { mutableStateOf<CheckoutResponse?>(null) }
-    // Contextual notification ask (todo/files pattern): only when an order is
-    // confirmed and tracking starts, ask once and persist that we asked.
-    val notificationsLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission(),
-    ) {}
-    LaunchedEffect(orderSuccess) {
-        if (orderSuccess && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val prefs = context.getSharedPreferences("fooddelivery_prefs", Context.MODE_PRIVATE)
-            if (!prefs.getBoolean("has_asked_notifications", false)) {
-                prefs.edit().putBoolean("has_asked_notifications", true).apply()
-                if (ContextCompat.checkSelfPermission(
-                        context, Manifest.permission.POST_NOTIFICATIONS,
-                    ) != PackageManager.PERMISSION_GRANTED
-                ) {
-                    notificationsLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                }
-            }
-        }
-    }
+    CheckoutNotificationPermissionEffect(orderSuccess)
 
     var promoCode by remember { mutableStateOf("") }
     var customer by remember { mutableStateOf<Customer?>(null) }
@@ -203,73 +161,24 @@ fun CheckoutScreen(
         deals = if (merchantId != 0) BitesDeals.getActiveDealsByMerchant(merchantId) else emptyList()
     }
 
-    LaunchedEffect(isPickup, tipCents, selectedAddress?.id, promoCode, customer?.uuid, selectedDealId) {
-        if (!canFetch || orderSuccess) return@LaunchedEffect
-        AppInit.awaitReady()
-        checkoutResponse = null
-        error = null
-        fetchingPrices = true
-        delay(400)
-        // Modifiers already carry their group id, price and quantity from selection time,
-        // so they go over the wire exactly as the reference cart stores them.
-        val cartItems = items.map { item ->
-            CheckoutCartItem(
-                itemId = item.menuItem.id,
-                quantity = item.quantity,
-                specialInstructions = item.specialInstructions,
-                modifiers = item.selectedModifiers,
-            )
-        }
-        val addr = if (!isPickup) selectedAddress?.let { a ->
-            CheckoutAddress(
-                addressStreet = a.addressStreet,
-                addressCity = a.addressCity,
-                addressState = a.addressState,
-                addressZip = a.addressZip,
-                addressUnit = a.aptUnit,
-                latitude = a.latitude,
-                longitude = a.longitude,
-            )
-        } else null
-        val request = CheckoutRequest(
-            cartItems = cartItems,
-            address = addr,
-            isPickup = isPickup,
-            tips = tipCents,
-            promoCode = promoCode.trim().ifBlank { null },
-            dealId = selectedDealId,
-            deliveryInstructions = deliveryInstructions.ifBlank { null },
-            gateCode = selectedAddress?.gateCode?.ifBlank { null },
-            uuid = lastOrderUuid,
-            firstName = customer?.firstName?.ifBlank { null },
-            lastName = customer?.lastName?.ifBlank { null },
-            email = customer?.email?.ifBlank { null },
-            phone = customer?.phone?.ifBlank { null },
-        )
-        // Entry reconciliation may have restored a placed order meanwhile; never
-        // create a fresh draft for an order that already went through.
-        if (orderSuccess) { fetchingPrices = false; return@LaunchedEffect }
-        val response = BitesOrders.checkout(merchantId, request)
-        if (BuildConfig.DEV_BUILD) {
-            Log.dev("Checkout", "response.order=${response?.order}")
-            Log.dev("Checkout", "response.clientSecret=${response?.clientSecret?.take(20)}")
-            Log.dev("Checkout", "response.serviceable=${response?.serviceable}")
-            response?.order?.let { o ->
-                Log.dev("Checkout", "order: foodTotal=${o.foodTotal} taxes=${o.taxes} deliveryFee=${o.deliveryFee} fees=${o.fees} tips=${o.tips} displayTotal=${o.displayTotal}")
-            }
-        }
-        // Reuse the draft order on the next re-price; drop it if this call failed so we
-        // don't keep asking the server to update an order it can't find.
-        lastOrderUuid = response?.order?.uuid
-        if (response == null) {
-            error = "Failed to load pricing. Please try again."
-        } else if (!response.isServiceable) {
-            error = "This address is not serviceable for delivery."
-        } else {
-            checkoutResponse = response
-        }
-        fetchingPrices = false
-    }
+    CheckoutPricingEffect(
+        items = items,
+        merchantId = merchantId,
+        canFetch = canFetch,
+        orderSuccess = orderSuccess,
+        isPickup = isPickup,
+        tipCents = tipCents,
+        selectedAddress = selectedAddress,
+        promoCode = promoCode,
+        customer = customer,
+        selectedDealId = selectedDealId,
+        deliveryInstructions = deliveryInstructions,
+        lastOrderUuid = lastOrderUuid,
+        onCheckoutResponseChange = { checkoutResponse = it },
+        onErrorChange = { error = it },
+        onFetchingPricesChange = { fetchingPrices = it },
+        onLastOrderUuidChange = { lastOrderUuid = it },
+    )
 
     // Persist the draft as soon as a priced checkout exists, long before payment:
     // process death at any later point resumes this same order uuid / PaymentIntent.
@@ -370,117 +279,56 @@ fun CheckoutScreen(
         onNavigateBack = onBack,
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
-            LazyColumn(
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.weight(1f)
-            ) {
-                item { CheckoutOrderSummary(items) }
-                item { CheckoutOrderTypePicker(isPickup) { isPickup = it } }
-
-                if (!isPickup) {
-                    item {
-                        CheckoutAddressPicker(
-                            addresses = addresses,
-                            addressesLoaded = addressesLoaded,
-                            selectedAddress = selectedAddress,
-                            onSelect = {
-                                selectedAddress = it
-                                if (it.deliveryInstructions.isNotEmpty()) {
-                                    deliveryInstructions = it.deliveryInstructions
-                                }
-                            },
-                            deliveryInstructions = deliveryInstructions,
-                            onInstructionsChange = { deliveryInstructions = it },
-                        )
+            CheckoutOrderContent(
+                items = items,
+                isPickup = isPickup,
+                onPickupChange = { isPickup = it },
+                addresses = addresses,
+                addressesLoaded = addressesLoaded,
+                selectedAddress = selectedAddress,
+                onAddressSelect = {
+                    selectedAddress = it
+                    if (it.deliveryInstructions.isNotEmpty()) {
+                        deliveryInstructions = it.deliveryInstructions
                     }
-                }
-
-                item { CheckoutTipPicker(tipCents) { tipCents = it } }
-
-                item {
-                    CheckoutDealsPicker(
-                        deals = deals,
-                        selectedDealId = selectedDealId,
-                        onSelect = { selectedDealId = it },
-                        promoCode = promoCode,
-                        onPromoChange = { promoCode = it },
-                    )
-                }
-
-                item {
-                    CheckoutTotals(
-                        subtotal = subtotal,
-                        fetchingPrices = fetchingPrices,
-                        taxesDollars = confirmedOrder?.taxesDollars,
-                        deliveryFeeDollars = confirmedOrder?.deliveryFeeDollars,
-                        feesDollars = confirmedOrder?.fees?.div(100.0),
-                        tipsDollars = confirmedOrder?.tipsDollars,
-                        rewardsApplied = rewardsApplied,
-                        payTotal = payTotal,
-                        displayTotal = confirmedOrder?.displayTotal,
-                    )
-                }
-
-                if (error != null) {
-                    item {
-                        Spacer(Modifier.height(8.dp))
-                        Text(error!!, color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall)
-                    }
-                }
-            }
-
-            Card(Modifier.fillMaxWidth().padding(16.dp)) {
-                Column(Modifier.padding(16.dp)) {
-                    Button(
-                        onClick = {
-                            val response = checkoutResponse ?: return@Button
-                            paying = true
-                            scope.launch {
-                                // Persist presented=true BEFORE the sheet shows: death
-                                // while it is up is then an unknown payment outcome,
-                                // reconciled on entry — never a fresh checkout.
-                                CheckoutDraftStore.save(
-                                    context,
-                                    CheckoutDraft(
-                                        merchantId = merchantId,
-                                        orderUuid = response.order?.uuid,
-                                        paymentIntentId = paymentIntentId(response.clientSecret),
-                                        clientSecret = response.clientSecret.takeIf { it.isNotBlank() },
-                                        isPickup = isPickup,
-                                        tipCents = tipCents,
-                                        promoCode = promoCode,
-                                        dealId = selectedDealId,
-                                        addressId = selectedAddress?.id,
-                                        deliveryInstructions = deliveryInstructions,
-                                        paymentPresented = true,
-                                        savedAtMs = System.currentTimeMillis(),
-                                    ),
-                                )
-                                paymentSheet.presentWithPaymentIntent(
-                                    response.clientSecret,
-                                    PaymentSheet.Configuration(
-                                        merchantDisplayName = items.firstOrNull()?.merchantName ?: "Food Delivery",
-                                    ),
-                                )
-                            }
-                        },
-                        enabled = checkoutResponse != null && !paying && !fetchingPrices,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        if (paying || fetchingPrices) {
-                            CircularProgressIndicator(modifier = Modifier.size(20.dp))
-                        } else {
-                            if (payTotal != null) {
-                                Text("Place Order · $%.2f".format(payTotal))
-                            } else {
-                                Text(stringResource(R.string.place_order))
-                            }
-                        }
-                    }
-                }
-            }
+                },
+                deliveryInstructions = deliveryInstructions,
+                onInstructionsChange = { deliveryInstructions = it },
+                tipCents = tipCents,
+                onTipChange = { tipCents = it },
+                deals = deals,
+                selectedDealId = selectedDealId,
+                onDealSelect = { selectedDealId = it },
+                promoCode = promoCode,
+                onPromoChange = { promoCode = it },
+                subtotal = subtotal,
+                fetchingPrices = fetchingPrices,
+                taxesDollars = confirmedOrder?.taxesDollars,
+                deliveryFeeDollars = confirmedOrder?.deliveryFeeDollars,
+                feesDollars = confirmedOrder?.fees?.div(100.0),
+                tipsDollars = confirmedOrder?.tipsDollars,
+                rewardsApplied = rewardsApplied,
+                payTotal = payTotal,
+                displayTotal = confirmedOrder?.displayTotal,
+                error = error,
+                modifier = Modifier.weight(1f),
+            )
+            CheckoutPlaceOrderCard(
+                checkoutResponse = checkoutResponse,
+                merchantId = merchantId,
+                isPickup = isPickup,
+                tipCents = tipCents,
+                promoCode = promoCode,
+                selectedDealId = selectedDealId,
+                selectedAddress = selectedAddress,
+                deliveryInstructions = deliveryInstructions,
+                merchantName = items.firstOrNull()?.merchantName,
+                paying = paying,
+                fetchingPrices = fetchingPrices,
+                payTotal = payTotal,
+                onPayingChange = { paying = it },
+                paymentSheet = paymentSheet,
+            )
         }
     }
 }

@@ -82,7 +82,14 @@ class RecipeEditorFlowTest {
         rule.onNodeWithText("Flow Rice", substring = true).assertIsDisplayed()
         // Rename through the name field (loaded name is the field value).
         rule.onNodeWithText("Flow Bowl").performTextInput("Flow Bowl v2")
-        rule.waitForIdle()
+        // The text input lands through the paused main looper; a single
+        // waitForIdle can return before it applies under load, leaving Save
+        // to race the rename. Wait until the renamed value itself is the
+        // field's semantics text (the second, previously unverified path
+        // after the load/save awaits were made deterministic).
+        rule.awaitSemantics("renamed value entered") {
+            rule.onAllNodesWithText("Flow Bowl v2", substring = true).fetchSemanticsNodes().isNotEmpty()
+        }
         rule.onNodeWithText("Save Recipe", substring = true).performClick()
         // Save completes asynchronously (Room writes, then a Main hop) and
         // pops to Today: that pop is the terminal signal.

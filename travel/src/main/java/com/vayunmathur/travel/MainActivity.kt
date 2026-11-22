@@ -52,8 +52,8 @@ class MainActivity : MaActivity() {
         // Resume polling any trip that is still awaiting payment / processing.
         if (!::repository.isInitialized) return
         lifecycleScope.launch {
-            // pendingTripIds() reads Room (getAllBookedTrips) — keep that off Main;
-            // pollTrip() only touches ViewModel state / launches its own scope, so it stays on Main.
+            // Reading the pending trip ids touches Room, so keep that off Main;
+            // polling only touches ViewModel state and launches its own scope, so it stays on Main.
             val ids = withContext(Dispatchers.IO) { viewModel.pendingTripIds() }
             ids.forEach { viewModel.pollTrip(it) }
         }
