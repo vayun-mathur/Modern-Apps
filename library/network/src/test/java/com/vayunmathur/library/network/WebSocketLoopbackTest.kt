@@ -1,6 +1,7 @@
 package com.vayunmathur.library.network
 
 import com.sun.net.httpserver.HttpServer
+import com.vayunmathur.testsupport.awaitWithMainIdle
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
@@ -139,6 +140,15 @@ class WebSocketLoopbackTest {
                 assertEquals(listOf("hello-ws"), responseHeaders["X-Test-Header"])
                 send("hello server"); send(byteArrayOf(9, 8, 7)); ping()
                 sessionFrames = incoming.take(7).toList()
+            }
+            // The echoes above prove the server read the text/binary frames,
+            // but the client's ping and the close written by webSocket's
+            // finally are only *sent* at this point: the daemon server thread
+            // may not have read them off the socket yet, and under load it is
+            // starved exactly here. Wait for the server's own terminal signal
+            // (it has recorded both frames) before asserting on its log.
+            awaitWithMainIdle("server received ping and close frames") {
+                srv.received.any { it.first == 0x9 } && srv.received.any { it.first == 0x8 }
             }
             assertEquals("/chat?room=1", srv.handshakePath)
             assertEquals("loopback", srv.handshakeHeaders["x-client"])

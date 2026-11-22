@@ -129,15 +129,15 @@ class MapsCarNavC5Test {
         val carContext = TestCarContext.createCarContext(app)
         val screen = CarSearchScreen(carContext)
         call(screen, "runSearch", "zzzzqqqq")
-        repeat(200) {
-            Thread.sleep(10)
-            if (field(screen, "loading") == false) {
-                assertEquals(
-                    carContext.getString(com.vayunmathur.maps.R.string.car_no_results),
-                    field(screen, "message"),
-                )
-                return
-            }
+        // Search runs on IO; the old sleep-poll gave it a 2 s wall-clock
+        // budget, which a CPU-capped batched JVM cannot meet. Wait on the
+        // screen's own terminal state instead: `loading` flips off just
+        // before `message` is assigned on the IO thread, with no
+        // happens-before edge to this thread, so the published message is
+        // the signal that the search has fully landed.
+        val expected = carContext.getString(com.vayunmathur.maps.R.string.car_no_results)
+        com.vayunmathur.testsupport.awaitWithMainIdle("car search reported no results") {
+            field(screen, "loading") == false && field(screen, "message") == expected
         }
         assertEquals(
             carContext.getString(com.vayunmathur.maps.R.string.car_no_results),

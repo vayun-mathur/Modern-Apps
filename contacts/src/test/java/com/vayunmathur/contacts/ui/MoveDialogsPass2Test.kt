@@ -25,6 +25,8 @@ import com.vayunmathur.contacts.ui.dialogs.MoveToAccountDialog
 import com.vayunmathur.contacts.platform.ContactAccount
 import com.vayunmathur.contacts.platform.ContactViewModel
 import com.vayunmathur.library.ui.DynamicTheme
+import com.vayunmathur.testsupport.awaitSemantics
+import com.vayunmathur.testsupport.awaitWithMainIdle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
@@ -55,6 +57,14 @@ class MoveDialogsPass2Test {
         ShadowContentResolver.registerProviderInternal(
             ContactsContract.AUTHORITY, FakeProviderPass2Test.FakeContactsProvider()
         )
+    }
+
+    @AfterTest
+    fun tearDown() {
+        // setMain above is process-wide: without this, every later class in
+        // the batched JVM inherits Unconfined Main and its paused-looper
+        // waits silently change meaning (order-dependent flakes).
+        Dispatchers.resetMain()
     }
 
 
@@ -120,6 +130,16 @@ class MoveDialogsPass2Test {
     fun moveDialogHostTransfersToSelectedAccount() {
         val vm = ContactViewModel(app)
         runBlocking { vm.syncFromSystem() }
+        // The ViewModel's own init sync/loadAccounts writes accountsState
+        // asynchronously (since the SIM-source isolation work it does so at
+        // the end of every sync). Injecting the test accounts before that
+        // work settles lets a late write erase them, so the dialog never
+        // lists them — wait for the sync's terminal state first: contacts
+        // published (fake provider contact 7) and the load marked complete
+        // (set in syncFromSystem's finally, after its account refresh).
+        awaitWithMainIdle("contacts sync settled") {
+            vm.allContactsState.value.any { it.id == 7L } && vm.hasLoadedContacts.value
+        }
         // fake provider contact 7 loaded; make both accounts available
         vm.accountsState.value = listOf(google, sim)
         var dismissed = 0
@@ -129,7 +149,7 @@ class MoveDialogsPass2Test {
                 MoveDialogHost(vm, listOf(7L), onDismiss = { dismissed++ }, onTransferred = { transferred++ })
             }
         }
-        rule.waitUntil(20_000) {
+        rule.awaitSemantics("account rows listed") {
             rule.onAllNodesWithText("a@gmail.com", substring = true).fetchSemanticsNodes().isNotEmpty()
         }
         // Aisha's own (google) account is the disabled source; pick the SIM
@@ -141,11 +161,19 @@ class MoveDialogsPass2Test {
             // SIM row may be labelled by its account name "5"
             rule.onAllNodesWithText("5", substring = true)[0].performClick()
         }
-        rule.waitForIdle()
-        // the SIM destination switches to the loss-warning page ("Move anyway")
+        // The SIM destination switches to the loss-warning page ("Move
+        // anyway"); that switch is a recomposition on the main looper, so
+        // wait on the page itself rather than idling once.
+        rule.awaitSemantics("SIM loss page shown") {
+            rule.onAllNodesWithText(str(R.string.move_anyway), substring = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
         rule.onNodeWithText(str(R.string.move_anyway)).assertExists()
         rule.onNodeWithText(str(R.string.move_anyway)).performClick()
-        rule.waitUntil(30_000) { dismissed == 1 }
+        // The transfer runs on IO and reports back on Main (result state,
+        // then a LaunchedEffect fires onTransferred/onDismiss): dismissal
+        // is the terminal signal.
+        rule.awaitSemantics("transfer dismissed the dialog") { dismissed == 1 }
         assertEquals(1, dismissed)
         assertEquals(1, transferred)
     }

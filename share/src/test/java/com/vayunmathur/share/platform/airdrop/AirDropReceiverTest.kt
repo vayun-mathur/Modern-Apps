@@ -9,6 +9,7 @@ import com.vayunmathur.share.domain.airdrop.DvZip
 import com.vayunmathur.share.domain.protocol.ShareState
 import com.vayunmathur.share.network.airdrop.AirDropHttp
 import com.vayunmathur.share.platform.ReceivedFileStore
+import com.vayunmathur.testsupport.awaitValue
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.net.InetAddress
@@ -73,16 +74,11 @@ class AirDropReceiverTest {
             files = files, transferId = "tid-1",
         )
         val askJob = async { r.handle(request("/Ask", BinaryPlist.encode(ask.toPlist())), remote) }
-        // Wait for session to appear, then accept
-        var handle: Long? = null
-        val deadline = System.currentTimeMillis() + 5_000
-        while (System.currentTimeMillis() < deadline) {
-            handle = r.incoming.value.firstOrNull()?.sessionHandle
-            if (handle != null) break
-            delay(20)
-        }
-        assertNotNull(handle)
-        val incoming = r.sessionFor(handle!!)!!
+        // Wait for the session to appear, then accept. Suspend on the
+        // incoming flow's own emission instead of polling it against a 5 s
+        // wall clock, which a CPU-capped batched JVM could starve past.
+        val handle = r.incoming.awaitValue { it.isNotEmpty() }.first().sessionHandle
+        val incoming = r.sessionFor(handle)!!
         assertEquals(ShareState.AwaitingAccept, incoming.state.value)
         assertEquals("PeerPhone", incoming.displayName)
         assertEquals(1, incoming.pendingFiles.value.size)

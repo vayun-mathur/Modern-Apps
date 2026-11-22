@@ -23,6 +23,7 @@ import androidx.compose.ui.test.click
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
+import com.vayunmathur.testsupport.awaitSemantics
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -642,7 +643,14 @@ class MiscUiComposeSlice3Test {
         val manager = FakeAchievementsManager(appContext)
         var backs = 0
         rule.setContent { GameCenterScreen(manager = manager, onBack = { backs++ }) }
-        rule.waitForIdle()
+        // The statuses arrive over DataStore's IO-backed flow and publish on
+        // the paused main looper: waitForIdle can return while that emission
+        // is still in flight under load, so wait on the listed names
+        // themselves (the terminal semantics state).
+        rule.awaitSemantics("achievements listed") {
+            rule.onAllNodesWithText("First win").fetchSemanticsNodes().isNotEmpty() &&
+                rule.onAllNodesWithText("Steady play").fetchSemanticsNodes().isNotEmpty()
+        }
         rule.onNodeWithText("First win").assertIsDisplayed()
         rule.onNodeWithText("Steady play").assertIsDisplayed()
         rule.onNodeWithContentDescription("Back").performClick()

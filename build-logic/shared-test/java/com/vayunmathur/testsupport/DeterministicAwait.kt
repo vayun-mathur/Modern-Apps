@@ -60,9 +60,12 @@ fun <T> awaitValueBlocking(flow: Flow<T>, predicate: (T) -> Boolean): T =
  * Idles the main looper until [condition] holds, then returns.
  *
  * Step-counted as a failure bound only: each step is a full looper idle,
- * which is the work that makes progress possible, and the thread yields
- * between steps so IO/Default producers on other threads can run. This
- * replaces `Thread.sleep` + `System.currentTimeMillis` deadline loops,
+ * which is the work that makes progress possible, and the thread parks
+ * briefly between steps so IO/Default producers on other threads can run.
+ * (A bare yield is not enough in the Robolectric sandbox: a tight
+ * idle+yield loop kept the test thread runnable and an IO search behind
+ * it never landed in 10,000 steps, while parking let it finish in ~10.)
+ * This replaces `Thread.sleep` + `System.currentTimeMillis` deadline loops,
  * which under Robolectric measured a substituted clock and gave up before
  * real IO had landed.
  */
@@ -71,7 +74,7 @@ fun awaitWithMainIdle(description: String, maxSteps: Int = 10_000, condition: ()
     while (step++ < maxSteps) {
         idleMainLooper()
         if (condition()) return
-        Thread.yield()
+        java.util.concurrent.locks.LockSupport.parkNanos(1_000_000)
     }
     // One last idle + check so the failure reports the settled state.
     idleMainLooper()

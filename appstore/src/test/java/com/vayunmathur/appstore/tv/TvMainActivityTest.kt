@@ -94,11 +94,40 @@ class TvMainActivityTest {
                 .fetchSemanticsNodes().isNotEmpty()
         }
         composeRule.onNodeWithText("Updates").performSemanticsAction(SemanticsActions.RequestFocus)
-        composeRule.waitForIdle()
+        // The remaining destinations were only waitForIdle'd: their content
+        // lands via viewModelScope on the paused main looper (and Updates /
+        // Home first show an indeterminate loading spinner, which never
+        // idles), so under load the focus hops raced content that had not
+        // composed yet. Wait on each destination's own terminal text,
+        // idling the looper per poll like the Library/Sources legs above.
+        composeRule.waitUntil(timeoutMillis = 15_000) {
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+            composeRule.onAllNodesWithText("Everything is up to date", substring = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
         composeRule.onNodeWithText("Search").performSemanticsAction(SemanticsActions.RequestFocus)
+        composeRule.waitUntil(timeoutMillis = 15_000) {
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+            composeRule.onAllNodesWithText("Search for an app", substring = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        // Return home the way the frame's own test does (TvRouteAppFrameTest):
+        // focus the rail item first (focusing is what selects it), then invoke
+        // its click, which moves focus into the new content. Firing either
+        // alone here left focus on the outgoing entry's rail during the
+        // sibling crossfade, and its focus restorer re-selected Search.
+        val homeNode = composeRule.onNodeWithText("Home")
+        homeNode.performSemanticsAction(SemanticsActions.RequestFocus)
         composeRule.waitForIdle()
-        composeRule.onNodeWithText("Home").performSemanticsAction(SemanticsActions.RequestFocus)
-        composeRule.waitForIdle()
+        homeNode.fetchSemanticsNode()
+            .config[SemanticsActions.OnClick].action?.invoke()
+        // Home's terminal state is its first catalog section (the seeded
+        // in-memory catalog is non-empty, so the empty state never shows).
+        composeRule.waitUntil(timeoutMillis = 15_000) {
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+            composeRule.onAllNodesWithText("New from Modern Apps", substring = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
         composeRule.onNodeWithText("Home").assertIsDisplayed()
     }
 }

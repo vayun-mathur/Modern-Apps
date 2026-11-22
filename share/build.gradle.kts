@@ -79,6 +79,12 @@ rustNativeTests {
         listOf(
             "com.vayunmathur.share.platform.ShareViewModelHelpersTest",
             "com.vayunmathur.share.ui.SharePopupAndActivitiesTest",
+            // Victim of FileProvider's static path-strategy cache: the first
+            // getUriForFile in a shared sandbox caches that test method's
+            // per-method filesDir root, and AirDropReceiver's upload then
+            // fails its contentUri root check (500) whenever
+            // ReceivedFileStoreTest's contentUri test ran first in the JVM.
+            "com.vayunmathur.share.platform.airdrop.AirDropReceiverTest",
         )
     )
 }
