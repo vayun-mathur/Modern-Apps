@@ -90,16 +90,16 @@ Work in repo dir. Experiments/logs go in `analysis/` (gitignored).
 
 `./install` — build + session-install (handles `.idsig`/fs-verity + `versionCodeOverride` automatically):
 ```
-./install <module> [...]              # dev by default
+./install <module> [...]              # release by default
 ./install [dev|release] <module> [...]
 ./install voxels                      # shorthand → games:voxels; dooraccess → personal:dooraccess
 ./install dev games/voxels            # slash == colon
 ./install contacts calendar           # multi-module, one gradlew invocation
 ./install 9 maps                      # 8 = Pixel 8, 9 = Pixel 9 (default: first non-emulator)
-./install all / ./install dev all     # full repo (auto big-heap); release all caps R8 workers
-./install --dry-run dev contacts
+./install all / ./install release all # full repo (auto big-heap); release all caps R8 workers
+./install --dry-run contacts
 ```
-Rules: `dev` default, `release` only when asked, `debug` blocked. Never uninstall / clear data (emulator-only exception, never touch physical device). Never give placeholder commands — output copy-pasteable.
+Rules: `release` default (dev is almost never the right install), `dev` only when asked, `debug` blocked. Never uninstall / clear data (emulator-only exception, never touch physical device). Never give placeholder commands — output copy-pasteable.
 
 `./dhu` — Desktop Head Unit loopback for `auto/` (Pixel 8 default):
 ```

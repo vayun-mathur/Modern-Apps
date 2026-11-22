@@ -8,14 +8,15 @@ print_help() {
   cat <<'EOF'
 Usage:
   ./install [dev|release] <module> [module...]
-  ./install <module> [module...]            # defaults to dev
+  ./install <module> [module...]            # defaults to release
   ./install [dev|release] all               # installs all app modules
-  ./install all                             # same, defaults to dev
+  ./install all                             # same, defaults to release
   ./install [dev|release] [8|9] <module>    # Pixel 8 or Pixel 9 (by model)
 
 Description:
-  Ergonomic wrapper around ./gradlew :module:assembleDev + adb session install.
-  - Variant is swappable and optional (defaults to dev)
+  Ergonomic wrapper around ./gradlew :module:assembleRelease + adb session install.
+  - Variant is swappable and optional (defaults to release; dev is almost
+    never the right install — pass dev explicitly when you need it)
   - Supports both slash and colon notations: games/voxels == games:voxels
   - Supports games shorthand: ./install voxels -> games:voxels (auto-prefixed if games/<name> is a game)
   - Supports personal shorthand: ./install dooraccess -> personal:dooraccess (auto-prefixed if personal/<name> is a personal app)
@@ -31,27 +32,27 @@ Description:
     exactly the on-device version for user apps.
 
 Examples:
-  ./install dev contacts                    -> :contacts:assembleDev + session install
+  ./install release contacts                -> :contacts:assembleRelease + session install
   ./install release games:voxels            -> :games:voxels:assembleRelease + session install
   ./install dev games/voxels                -> :games:voxels:assembleDev (slash normalized)
   ./install dev :games:voxels:              -> :games:voxels:assembleDev (colon trimming)
-  ./install voxels                          -> :games:voxels:assembleDev (shorthand auto games:)
-  ./install chess                           -> :games:chess:assembleDev (shorthand auto games:)
-  ./install dooraccess                      -> :personal:dooraccess:assembleDev (shorthand auto personal:)
-  ./install all                             -> :contacts:assembleDev :games:chess:assembleDev ... (all modules)
-  ./install dev all                         -> same as above with dev variant
-  ./install contacts calendar               -> :contacts:assembleDev :calendar:assembleDev
-  ./install release contacts                -> :contacts:assembleRelease + session install
+  ./install voxels                          -> :games:voxels:assembleRelease (shorthand auto games:)
+  ./install chess                           -> :games:chess:assembleRelease (shorthand auto games:)
+  ./install dooraccess                      -> :personal:dooraccess:assembleRelease (shorthand auto personal:)
+  ./install all                             -> :contacts:assembleRelease :games:chess:assembleRelease ... (all modules)
+  ./install release all                     -> same as above with release variant
+  ./install contacts calendar               -> :contacts:assembleRelease :calendar:assembleRelease
+  ./install dev contacts                    -> :contacts:assembleDev + session install
   ./install contacts dev                    -> :contacts:assembleDev (variant anywhere)
-  ./install 9 maps                        -> :maps:assembleDev + session install to the Pixel 9
+  ./install 9 maps                        -> :maps:assembleRelease + session install to the Pixel 9
   ./install dev 8 maps                    -> :maps:assembleDev + session install to the Pixel 8
   ./install --help
-  ./install --dry-run dev contacts          # prints what would run without executing gradle
+  ./install --dry-run contacts              # prints what would run without executing gradle
   ./install --dry-run all                   # preview all modules
 
 Variant rules:
-  - dev (default): assembleDev + session install unless explicitly asked for release
-  - release: assembleRelease + session install when explicitly requested
+  - release (default): assembleRelease + session install unless explicitly asked for dev
+  - dev: assembleDev + session install when explicitly requested
   - debug: BLOCKED - never use assembleDebug
 
 Notes:
@@ -242,18 +243,18 @@ while [[ $idx -lt ${#FILTERED_ARGS[@]} ]]; do
 done
 
 if [[ -z "$VARIANT_LC" ]]; then
-  VARIANT_LC="dev"
+  VARIANT_LC="release"
 fi
 
 if [[ "$VARIANT_LC" == "debug" ]]; then
   echo "Error: 'debug' variant is blocked."
   echo ""
   echo "  - Never assemble or install a debug variant"
-  echo "  - Always install the dev build, unless specifically asked for release"
+  echo "  - Always install the release build, unless specifically asked for dev"
   echo ""
-  echo "Use 'dev' (default) or 'release' instead:"
+  echo "Use 'release' (default) or 'dev' instead:"
+  echo "  ./install <module>"
   echo "  ./install dev <module>"
-  echo "  ./install release <module>"
   exit 1
 fi
 
