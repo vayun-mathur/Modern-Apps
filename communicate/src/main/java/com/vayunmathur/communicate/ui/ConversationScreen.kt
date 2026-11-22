@@ -10,6 +10,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -73,18 +74,30 @@ fun ConversationScreen(
     val notificationsLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) {}
-    val askNotificationsOnce = remember(context) {
-        {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                val prefs = context.getSharedPreferences(
-                    "communicate_notifications", Context.MODE_PRIVATE,
-                )
-                if (!prefs.getBoolean("has_asked_notifications", false)) {
-                    prefs.edit().putBoolean("has_asked_notifications", true).apply()
-                    if (ContextCompat.checkSelfPermission(
-                            context, Manifest.permission.POST_NOTIFICATIONS,
-                        ) != PackageManager.PERMISSION_GRANTED
-                    ) {
+    // The send below only flips this flag; the ask itself runs in a
+    // LaunchedEffect (the cast/email/taxi/fooddelivery pattern), so it can
+    // only run while this composition — and therefore the launcher's
+    // registration — is alive. Launching directly from the send-success
+    // coroutine instead could outlive the composition: rememberCoroutineScope
+    // cancellation is cooperative, and a send resuming off the main thread
+    // raced unregistering the launcher (observed crashing the Y2 screen
+    // tests with "unregistered ActivityResultLauncher"). The ask is
+    // best-effort, so any residual unregistered state skips it silently
+    // rather than crashing a successful send.
+    var notificationsAskRequested by remember { mutableStateOf(false) }
+    LaunchedEffect(notificationsAskRequested) {
+        if (!notificationsAskRequested) return@LaunchedEffect
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val prefs = context.getSharedPreferences(
+                "communicate_notifications", Context.MODE_PRIVATE,
+            )
+            if (!prefs.getBoolean("has_asked_notifications", false)) {
+                prefs.edit().putBoolean("has_asked_notifications", true).apply()
+                if (ContextCompat.checkSelfPermission(
+                        context, Manifest.permission.POST_NOTIFICATIONS,
+                    ) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    runCatching {
                         notificationsLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                     }
                 }
@@ -293,7 +306,7 @@ fun ConversationScreen(
                             participants = if (isGroup) participants else emptyList(),
                         )
                         if (ok) {
-                            askNotificationsOnce()
+                            notificationsAskRequested = true
                             // Clear only what was sent; anything the user
                             // typed or attached while sending survives.
                             if (draft == sentDraft) draft = ""
