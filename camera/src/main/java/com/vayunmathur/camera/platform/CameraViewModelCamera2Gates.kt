@@ -45,9 +45,31 @@ fun CameraViewModel.setCamera2SloMoEnabled(enabled: Boolean) {
     viewModelScope.launch { ds.setString("camera_camera2_slomo", enabled.toString()) }
 }
 
+/**
+ * Records a Camera2 NIGHT extension preview configure/open failure for
+ * [cameraId]: latches this bind key so the UI stops composing the
+ * extension preview and falls back to the regular preview path. Does
+ * NOT write the persisted 7-day failure cache — a probe/configure miss
+ * here must not suppress the CameraX extension at capture time; only a
+ * real capture failure does that (see `tryCaptureCamera2NightExtension`).
+ */
+fun CameraViewModel.onCamera2NightPreviewFailed(cameraId: String) {
+    val key = com.vayunmathur.camera.platform.camera2.Camera2FallbackLatch
+        .bindKey(cameraId, cameraModeMutable.value)
+    if (camera2NightFallbackBindKeyMutable.value == key) return
+    camera2NightFallbackBindKeyMutable.value = key
+    Log.status("Camera2Night", "Camera2 extension preview failed for $key; falling back for this session")
+}
+
+/** Clears the Camera2 night fallback latch (new lens/mode/gate re-enable). */
+fun CameraViewModel.clearCamera2NightFallback() {
+    camera2NightFallbackBindKeyMutable.value = null
+}
+
 /** Turns the Camera2 night gate on/off (PHOTO only; see ExtensionsEnginePolicy). */
 fun CameraViewModel.setCamera2NightEnabled(enabled: Boolean) {
     camera2NightEnabledMutable.value = enabled
+    if (enabled) clearCamera2NightFallback()
     viewModelScope.launch { ds.setString("camera_camera2_night", enabled.toString()) }
 }
 

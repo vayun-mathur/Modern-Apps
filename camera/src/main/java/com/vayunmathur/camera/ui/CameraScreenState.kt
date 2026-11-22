@@ -102,6 +102,10 @@ import com.vayunmathur.camera.platform.BokehAnalyzer
     val camera2FallbackBindKey: String? = null,
     /** Phase 6: a Camera2 NIGHT extension session is live (strength hides). */
     val camera2NightSessionActive: Boolean = false,
+    /** Camera2 NIGHT gate (default ON, persisted); policy still decides. */
+    val camera2NightEnabled: Boolean = true,
+    /** Bind key latched after a Camera2 extension preview failure, or null. */
+    val camera2NightFallbackBindKey: String? = null,
 ) {
     var activeSetting by activeSettingState
     var maskBitmap by maskBitmapState
@@ -141,6 +145,29 @@ import com.vayunmathur.camera.platform.BokehAnalyzer
                 camera2PreviewEnabled, cameraMode,
                 fallbackLatched = camera2FallbackBindKey == bindKey,
             )
+        }
+
+    /**
+     * True when the Camera2 NIGHT extension preview owns the viewfinder:
+     * PHOTO, night engaged (luma hysteresis / indicator via the existing
+     * flows), the persisted Camera2 night gate on, and no extension-preview
+     * failure latched for this bind. The extension session itself re-probes
+     * the lens at open (`Camera2ExtensionProbe`); a probe/configure failure
+     * latches `camera2NightFallbackBindKey` and the regular preview
+     * (Camera2 or CameraX, with CameraX-extension → own-burst capture
+     * order) serves instead. This intentionally does NOT require the
+     * CameraX extension to be usable — policy order is Camera2 first.
+     */
+    val useCamera2NightPreview: Boolean
+        get() {
+            if (cameraMode != CameraMode.PHOTO || !nightModeActive) return false
+            if (!camera2NightEnabled) return false
+            if (!com.vayunmathur.camera.platform.camera2.NightCamera2Gate.ENABLED) return false
+            val cameraId = selectedLens?.logicalCameraId
+            if (cameraId.isNullOrEmpty()) return false
+            val bindKey = com.vayunmathur.camera.platform.camera2.Camera2FallbackLatch
+                .bindKey(cameraId, cameraMode)
+            return camera2NightFallbackBindKey != bindKey
         }
 
     /**
@@ -245,6 +272,8 @@ internal fun rememberCameraScreenState(viewModel: CameraViewModel): CameraScreen
     val camera2PreviewEnabled by viewModel.camera2PreviewEnabled.collectAsState()
     val camera2FallbackBindKey by viewModel.camera2FallbackBindKey.collectAsState()
     val camera2NightSessionActive by viewModel.camera2NightSessionActive.collectAsState()
+    val camera2NightEnabled by viewModel.camera2NightEnabled.collectAsState()
+    val camera2NightFallbackBindKey by viewModel.camera2NightFallbackBindKey.collectAsState()
     val sessionBindFailed by viewModel.sessionBindFailed.collectAsState()
     val sessionBindRetry by viewModel.sessionBindRetry.collectAsState()
     val availableZoomLevels by viewModel.availableZoomLevels.collectAsState()
@@ -274,6 +303,7 @@ internal fun rememberCameraScreenState(viewModel: CameraViewModel): CameraScreen
         nightModeActive, extensionStrength, sloMoSupported, highSpeedActive,
         photoSessionActive, analysisStreamActive, nightExtAvailable, surfaceRequest,
         camera2PreviewEnabled, camera2FallbackBindKey, camera2NightSessionActive,
+        camera2NightEnabled, camera2NightFallbackBindKey,
         sessionBindFailed, sessionBindRetry,
         availableZoomLevels, galleryBitmap, panoSweeping, panoStitching, panoDots,
         panoCurrentAngle, panoDirection, panoPitch,
@@ -342,6 +372,8 @@ internal fun rememberCameraScreenState(viewModel: CameraViewModel): CameraScreen
             camera2PreviewEnabled = camera2PreviewEnabled,
             camera2FallbackBindKey = camera2FallbackBindKey,
             camera2NightSessionActive = camera2NightSessionActive,
+            camera2NightEnabled = camera2NightEnabled,
+            camera2NightFallbackBindKey = camera2NightFallbackBindKey,
         )
     }
 }

@@ -165,6 +165,26 @@ object StreamSelection {
         return pool.maxWithOrNull(compareBy({ it.area }, { it.width }, { it.height }))
     }
 
+    /** Pixel cap for the analysis stream: the CameraX analysis cap (~1.2 MP, 1280x960). */
+    const val MAX_ANALYSIS_PIXELS: Long = 1280L * 960L
+
+    /**
+     * The analysis size: the largest YUV size at or under
+     * [MAX_ANALYSIS_PIXELS] (luma/motion consumers gain nothing from sensor
+     * resolution), else the smallest YUV size over the cap. Null when the
+     * lens reports no YUV sizes — no analysis output is configured then.
+     */
+    fun selectAnalysisSize(snapshot: LensCharacteristicsSnapshot): FrameSize? {
+        val yuv = supportedYuvSizes(snapshot)
+        if (yuv.isEmpty()) return null
+        val underCap = yuv.filter { it.area.toLong() <= MAX_ANALYSIS_PIXELS }
+        return if (underCap.isNotEmpty()) {
+            underCap.maxWithOrNull(compareBy({ it.area }, { it.width }, { it.height }))
+        } else {
+            yuv.minWithOrNull(compareBy({ it.area }, { it.width }, { it.height }))
+        }
+    }
+
     /** Supported RAW sizes for the facade's RAW ring format (empty = no RAW ring). */
     fun supportedRawSizes(snapshot: LensCharacteristicsSnapshot): List<FrameSize> {
         val format = snapshot.rawRingFormat?.toImageFormat() ?: return emptyList()

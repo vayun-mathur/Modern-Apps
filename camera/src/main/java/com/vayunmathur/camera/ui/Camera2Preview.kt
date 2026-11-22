@@ -48,10 +48,14 @@ internal fun Camera2Preview(
         com.vayunmathur.camera.domain.FlashSetting.OFF,
     onSessionChanged: (Camera2Session?) -> Unit = {},
     onError: (String) -> Unit = {},
+    /** Plane consumer for the analysis stream; null = no analysis output. */
+    analysisConsumer: com.vayunmathur.camera.platform.camera2.AnalysisConsumer? = null,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val sessionHolder = remember(cameraId) { Camera2PreviewSession(context, cameraId, onError) }
+    val sessionHolder = remember(cameraId) {
+        Camera2PreviewSession(context, cameraId, onError, analysisConsumer)
+    }
 
     DisposableEffect(sessionHolder) {
         onSessionChanged(sessionHolder.session)
@@ -96,6 +100,7 @@ private class Camera2PreviewSession(
     context: Context,
     private val cameraId: String,
     private val onError: (String) -> Unit = {},
+    analysisConsumer: com.vayunmathur.camera.platform.camera2.AnalysisConsumer? = null,
 ) {
     val executor = Camera2Executor("Camera2Preview-$cameraId")
     val session: Camera2Session
@@ -114,6 +119,7 @@ private class Camera2PreviewSession(
             snapshot = facade.snapshot,
             ringConfig = ReprocessRingConfig(enabled = ReprocessRingGate.ENABLED),
             rawRingConfig = RawRingConfig(enabled = RawRingGate.ENABLED),
+            analysisConsumer = analysisConsumer,
             listener = object : Camera2Session.Listener {
                 override fun onError(message: String) {
                     Log.status("Camera2Preview", message)

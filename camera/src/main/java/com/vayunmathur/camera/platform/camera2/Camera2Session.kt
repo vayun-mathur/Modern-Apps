@@ -20,6 +20,15 @@ import android.view.Surface
  * session when the facade reports YUV reprocessing, direct-encoded
  * otherwise — with no AE-convergence wait or fresh exposure.
  *
+ * The analysis phase adds an optional YUV analysis stream (another
+ * output, [analysisConsumer]): when a consumer is supplied, a capped
+ * YUV `ImageReader` feeds it plane views (see [AnalysisImageSource])
+ * alongside preview/still. This stream is strictly best-effort: if its
+ * output cannot be created, or the stream combination fails to
+ * configure with it, the session drops the analysis output and
+ * (re)configures preview+still without it — analysis never costs the
+ * preview (the fallback-latch philosophy, applied per-stream).
+ *
  * Threading: every public method posts onto the executor; every driver
  * callback arrives on the executor and is generation-checked through
  * [SessionStateMachine] before it may touch session state, so a callback
@@ -41,6 +50,8 @@ class Camera2Session(
     private val listener: Listener? = null,
     private val ringConfig: ReprocessRingConfig = ReprocessRingConfig.DISABLED,
     private val rawRingConfig: RawRingConfig = RawRingConfig.DISABLED,
+    /** Plane consumer for the analysis stream; null = no analysis output. */
+    private val analysisConsumer: AnalysisConsumer? = null,
 ) {
 
     /** Session lifecycle notifications; all fire on the executor thread. */
@@ -82,6 +93,10 @@ class Camera2Session(
     private var ringOutput: RingOutput? = null
     private var ringSize: FrameSize? = null
     private val ring = ReprocessRing<RingHeldFrame>(ringConfig.capacity)
+    private var analysisOutput: AnalysisOutput? = null
+    private var analysisSize: FrameSize? = null
+    /** Set once a configure failure has dropped analysis: never re-add it. */
+    private var analysisComboDropped: Boolean = false
     private var rawRingOutput: RawRingOutput? = null
     private var rawRingSize: FrameSize? = null
     private var rawRingFormat: RingFormat? = null
@@ -237,6 +252,12 @@ class Camera2Session(
 
     /** The JPEG_R still size configured at [open], or null when unavailable. */
     fun currentUltraHdrSize(): FrameSize? = ultraHdrSize
+
+    /** True when the YUV analysis output is configured (see AnalysisSourcePolicy). */
+    val hasAnalysisOutput: Boolean get() = analysisOutput != null
+
+    /** The analysis size configured at [open], or null when unavailable/dropped. */
+    fun currentAnalysisSize(): FrameSize? = analysisSize
 
     /** True when the YUV ring output is configured (see [StillEnginePolicy]). */
     val hasRingOutput: Boolean get() = ringOutput != null
@@ -567,6 +588,9 @@ class Camera2Session(
             ringOutput = null
             ringSize = null
             ring.drainAll().forEach { runCatching { it.close() } }
+            runCatching { analysisOutput?.close() }
+            analysisOutput = null
+            analysisSize = null
             runCatching { rawRingOutput?.close() }
             rawRingOutput = null
             rawRingSize = null
@@ -591,7 +615,9 @@ class Camera2Session(
         val surface = previewSurface ?: return
         if (stateMachine.state != SessionState.STREAMING) return
         val params = Camera2Controls.resolve(controls, snapshot)
-        val targets = listOfNotNull(surface, ringOutput?.surface, rawRingOutput?.surface)
+        val targets = listOfNotNull(
+            surface, ringOutput?.surface, rawRingOutput?.surface, analysisOutput?.surface,
+        )
         runCatching {
             session.setRepeatingStreaming(params, targets, PreviewResultCallback { raw ->
                 try {
@@ -603,9 +629,15 @@ class Camera2Session(
         }.onFailure { reportError("setRepeatingPreview failed: ${it.message}") }
     }
 
-    private fun configureSession(opened: DeviceHandle, gen: Long) {
+    private fun configureSession(opened: DeviceHandle, gen: Long, reuseOutputs: Boolean = false) {
         val surface = previewSurface ?: return
         if (transition(SessionEvent.CONFIGURE_REQUESTED) !is TransitionResult.Applied) return
+        if (reuseOutputs) {
+            // Retry after a stream-combo failure dropped analysis: every
+            // other output already exists; only the capture session is new.
+            createCaptureSessionWithAnalysisFallback(opened, gen)
+            return
+        }
         // Second output: the JPEG still reader, when the lens reports JPEG
         // sizes and the driver can create it. Failure degrades to
         // preview-only (capture() then fails cleanly, policy excludes it).
@@ -672,28 +704,66 @@ class Camera2Session(
         rawRingOutput = createdRawRing
         rawRingSize = if (createdRawRing != null) selectedRawSize else null
         rawRingFormat = if (createdRawRing != null) selectedRawFormat else null
-        val surfaces = listOfNotNull(
-            surface, output?.surface, createdUltraHdr?.surface,
-            createdRing?.surface, createdRawRing?.surface,
-        )
+        // Optional analysis output: only when a consumer was supplied.
+        // Failure degrades to no analysis (preview/still unaffected).
+        val consumer = analysisConsumer
+        val selectedAnalysisSize = if (consumer != null && !analysisComboDropped) {
+            StreamSelection.selectAnalysisSize(snapshot)
+        } else {
+            null
+        }
+        val createdAnalysis = if (selectedAnalysisSize != null && consumer != null) {
+            runCatching { driver.createAnalysisOutput(selectedAnalysisSize, consumer) }.getOrNull()
+        } else {
+            null
+        }
+        analysisOutput = createdAnalysis
+        analysisSize = if (createdAnalysis != null) selectedAnalysisSize else null
+        createCaptureSessionWithAnalysisFallback(opened, gen)
+    }
+
+    /** Surfaces for one configure attempt: preview + every live output. */
+    private fun configuredSurfaces(): List<Surface> = listOfNotNull(
+        previewSurface, stillOutput?.surface, ultraHdrOutput?.surface,
+        ringOutput?.surface, rawRingOutput?.surface, analysisOutput?.surface,
+    )
+
+    /**
+     * Creates the capture session over [configuredSurfaces]. A synchronous
+     * create failure with analysis present drops analysis and retries once
+     * without it; an asynchronous configure failure takes the same path in
+     * [SessionCallbackImpl.onConfigureFailed]. Analysis never costs preview.
+     */
+    private fun createCaptureSessionWithAnalysisFallback(opened: DeviceHandle, gen: Long) {
         val callback = SessionCallbackImpl(gen)
+        val ringSize = ringSize
         runCatching {
-            if (createdRing != null && snapshot.supportsYuvRingReprocess) {
+            if (ringOutput != null && ringSize != null && snapshot.supportsYuvRingReprocess) {
                 opened.createReprocessableCaptureSession(
-                    ReprocessInputConfig(
-                        selectedRingSize.width, selectedRingSize.height,
-                        ImageFormat.YUV_420_888,
-                    ),
-                    surfaces,
+                    ReprocessInputConfig(ringSize.width, ringSize.height, ImageFormat.YUV_420_888),
+                    configuredSurfaces(),
                     callback,
                 )
             } else {
-                opened.createCaptureSession(surfaces, callback)
+                opened.createCaptureSession(configuredSurfaces(), callback)
             }
         }.onFailure {
-            dispatch(gen, SessionEvent.CONFIGURE_FAILED)
-            reportError("createCaptureSession failed: ${it.message}")
+            if (analysisOutput != null && !analysisComboDropped) {
+                dropAnalysisOutput()
+                createCaptureSessionWithAnalysisFallback(opened, gen)
+            } else {
+                dispatch(gen, SessionEvent.CONFIGURE_FAILED)
+                reportError("createCaptureSession failed: ${it.message}")
+            }
         }
+    }
+
+    /** Drops the analysis output (combo degrade); preview/still keep serving. */
+    private fun dropAnalysisOutput() {
+        analysisComboDropped = true
+        runCatching { analysisOutput?.close() }
+        analysisOutput = null
+        analysisSize = null
     }
 
     private fun transition(event: SessionEvent): TransitionResult {
@@ -773,6 +843,17 @@ class Camera2Session(
 
         override fun onConfigureFailed() {
             if (!stateMachine.isCurrent(gen)) return
+            // Stream-combo degrade: a combination that included the YUV
+            // analysis surface failed — drop analysis and reconfigure
+            // preview+still once. Only a failure without analysis (or a
+            // second failure) is a real configure failure.
+            val opened = device
+            if (analysisOutput != null && !analysisComboDropped && opened != null) {
+                dispatch(gen, SessionEvent.CONFIGURE_FAILED)
+                dropAnalysisOutput()
+                configureSession(opened, gen, reuseOutputs = true)
+                return
+            }
             dispatch(gen, SessionEvent.CONFIGURE_FAILED)
             reportError("capture session configure failed")
         }

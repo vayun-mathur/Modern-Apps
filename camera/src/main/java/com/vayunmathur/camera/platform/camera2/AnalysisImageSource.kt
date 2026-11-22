@@ -36,6 +36,17 @@ fun interface AnalysisConsumer {
 }
 
 /**
+ * Testable handle over a YUV analysis output (an `ImageReader` in the real
+ * driver). The session adds [surface] as a capture-session output alongside
+ * preview/still and includes it in the repeating request targets; frames
+ * arrive through the consumer given at creation. Mirrors [RingOutput].
+ */
+interface AnalysisOutput : AutoCloseable {
+    val surface: Surface
+    override fun close()
+}
+
+/**
  * The drop policy, isolated from Android so it is unit-testable: at most one
  * frame is in flight to the consumer. A frame that arrives while the consumer
  * is busy is dropped (and counted) instead of queued — analysis consumers
@@ -162,13 +173,13 @@ class AnalysisImageSource(
     handler: Handler,
     executor: Executor,
     consumer: AnalysisConsumer,
-) : AutoCloseable {
+) : AnalysisOutput {
 
     private val reader: ImageReader =
         ImageReader.newInstance(width, height, ImageFormat.YUV_420_888, maxImages)
     private val dispatcher = AnalysisFrameDispatcher(consumer, executor)
 
-    val surface: Surface get() = reader.surface
+    override val surface: Surface get() = reader.surface
 
     /** Frames dropped because the consumer was busy (see [FrameDropGate]). */
     val droppedFrames: Long get() = dispatcher.gate.droppedFrames

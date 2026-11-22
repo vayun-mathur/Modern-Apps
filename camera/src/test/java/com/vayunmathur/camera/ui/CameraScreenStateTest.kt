@@ -23,10 +23,13 @@ class CameraScreenStateTest {
         mirrorFront: Boolean = true,
         nightModeActive: Boolean = false,
         nightExtAvailable: Boolean = false,
+        selectedLens: com.vayunmathur.camera.domain.PhysicalLens? = null,
+        camera2NightEnabled: Boolean = true,
+        camera2NightFallbackBindKey: String? = null,
     ) = CameraScreenState(
         cameraMode = mode,
         lensFacing = lensFacing,
-        selectedLens = null,
+        selectedLens = selectedLens,
         availableLenses = emptyList(),
         hasFlashUnit = true,
         flashMode = FlashMode.OFF,
@@ -81,6 +84,18 @@ class CameraScreenStateTest {
         activeSettingState = mutableStateOf(null),
         maskBitmapState = mutableStateOf(null),
         deviceRotationState = mutableIntStateOf(0),
+        camera2NightEnabled = camera2NightEnabled,
+        camera2NightFallbackBindKey = camera2NightFallbackBindKey,
+    )
+
+    private fun lens(id: String = "0") = com.vayunmathur.camera.domain.PhysicalLens(
+        logicalCameraId = id,
+        lensType = com.vayunmathur.camera.domain.LensType.WIDE,
+        facing = com.vayunmathur.camera.domain.LensFacing.BACK,
+        focalLengthMm35Eq = 24f,
+        nominalZoomRatio = 1f,
+        fallbackPriority = 0,
+        labelKey = "wide",
     )
 
     @Test fun modeFamilies() {
@@ -109,6 +124,18 @@ class CameraScreenStateTest {
         assertFalse(state(nightModeActive = true, nightExtAvailable = false).useNightPreview)
         assertFalse(state(CameraMode.PORTRAIT, nightModeActive = true, nightExtAvailable = true).useNightPreview)
         assertFalse(state(nightModeActive = false, nightExtAvailable = true).useNightPreview)
+    }
+
+    @Test fun camera2NightPreviewRequiresPhotoNightGateAndLens() {
+        // Camera2-first: does NOT require the CameraX extension to be usable.
+        assertTrue(state(nightModeActive = true, nightExtAvailable = false, selectedLens = lens()).useCamera2NightPreview)
+        assertFalse(state(nightModeActive = false, selectedLens = lens()).useCamera2NightPreview)
+        assertFalse(state(nightModeActive = true, selectedLens = lens(), camera2NightEnabled = false).useCamera2NightPreview)
+        assertFalse(state(nightModeActive = true, selectedLens = null).useCamera2NightPreview)
+        assertFalse(state(CameraMode.PORTRAIT, nightModeActive = true, selectedLens = lens()).useCamera2NightPreview)
+        // Latched failure for this bind (cameraId:mode) suppresses retry.
+        val key = com.vayunmathur.camera.platform.camera2.Camera2FallbackLatch.bindKey("0", CameraMode.PHOTO)
+        assertFalse(state(nightModeActive = true, selectedLens = lens(), camera2NightFallbackBindKey = key).useCamera2NightPreview)
     }
 
     @Test fun previewAspectRatios() {

@@ -68,6 +68,34 @@ class StreamSelectionTest {
         assertNull(StreamSelection.rejectionFor(FrameSize(1600, 900), supported))
     }
 
+    @Test fun analysisSizeCapsAtPhotoAnalysisPixels() {
+        val snapshot = CharacteristicsFacade.fromFakeMap(
+            cameraId = "0",
+            sizesByFormat = mapOf(
+                ImageFormat.YUV_420_888 to listOf(
+                    Size(1920, 1080), Size(1280, 960), Size(1280, 720), Size(640, 480),
+                ),
+            ),
+        ).snapshot
+        // Largest at/under ~1.2 MP wins (1280x960), never sensor resolution.
+        assertEquals(FrameSize(1280, 960), StreamSelection.selectAnalysisSize(snapshot))
+    }
+
+    @Test fun analysisSizeOverCapPicksSmallestAndEmptyPicksNull() {
+        val overCap = CharacteristicsFacade.fromFakeMap(
+            cameraId = "0",
+            sizesByFormat = mapOf(
+                ImageFormat.YUV_420_888 to listOf(Size(4000, 3000), Size(1920, 1080)),
+            ),
+        ).snapshot
+        assertEquals(FrameSize(1920, 1080), StreamSelection.selectAnalysisSize(overCap))
+        val noYuv = CharacteristicsFacade.fromFakeMap(
+            cameraId = "0",
+            sizesByFormat = mapOf(ImageFormat.PRIVATE to listOf(Size(640, 480))),
+        ).snapshot
+        assertNull(StreamSelection.selectAnalysisSize(noYuv))
+    }
+
     @Test fun supportedSizesPreferSurfaceTextureThenPrivate() {
         val withTexture = CharacteristicsFacade.fromFakeMap(
             cameraId = "0",

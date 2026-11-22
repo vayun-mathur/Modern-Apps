@@ -16,9 +16,13 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import com.vayunmathur.camera.R
 import com.vayunmathur.camera.platform.CameraViewModel
+import com.vayunmathur.camera.platform.onCamera2NightPreviewFailed
 import com.vayunmathur.camera.platform.onCamera2PreviewFailed
+import com.vayunmathur.camera.platform.registerCamera2ExtensionSession
 import com.vayunmathur.camera.platform.onViewfinderZoomRatio
 import com.vayunmathur.camera.platform.retrySessionBind
+import com.vayunmathur.camera.platform.camera2AnalysisConsumer
+import com.vayunmathur.camera.platform.camera2AnalysisServes
 import com.vayunmathur.camera.platform.registerCamera2Session
 import com.vayunmathur.camera.platform.setScreenFlash
 import com.vayunmathur.library.log.Log
@@ -39,9 +43,29 @@ internal fun CameraPreviewSurface(
     coordinateTransformer: MutableCoordinateTransformer,
 ) {
     val useCamera2Preview = state.useCamera2Preview
+    val useCamera2NightPreview = state.useCamera2NightPreview
     val surfaceRequest = state.surfaceRequest
 
-    if (useCamera2Preview) {
+    if (useCamera2NightPreview) {
+        // Camera2 NIGHT extension preview: registers the live extension
+        // session so the night shutter can serve from Camera2. Takes
+        // precedence over both regular previews; a probe/configure
+        // failure latches the bind and the branch below serves instead.
+        val nightCamera2Id = state.selectedLens?.logicalCameraId.orEmpty()
+        if (nightCamera2Id.isNotEmpty()) {
+            Camera2NightPreview(
+                cameraId = nightCamera2Id,
+                onSessionChanged = { session ->
+                    viewModel.registerCamera2ExtensionSession(session)
+                },
+                onError = { viewModel.onCamera2NightPreviewFailed(nightCamera2Id) },
+                modifier = previewModifier,
+            )
+        } else {
+            Box(modifier = previewModifier.background(Color.Black))
+        }
+    }
+    if (useCamera2Preview && !useCamera2NightPreview) {
         // Camera2 preview behind gate (CameraScreenState.useCamera2Preview, PHOTO only).
         // TextureView-backed, same overlay tree / RenderEffects below.
         // Guard: never compose with empty cameraId — fall back to CameraX black/error branch below.
@@ -63,6 +87,14 @@ internal fun CameraPreviewSurface(
                 onSessionChanged = { session ->
                     viewModel.registerCamera2Session(session)
                 },
+                // Analysis wiring: luma-only plane consumer when policy
+                // selects Camera2; QR/bitmap sessions stay CameraX (they
+                // never compose this preview).
+                analysisConsumer = if (viewModel.camera2AnalysisServes()) {
+                    viewModel.camera2AnalysisConsumer()
+                } else {
+                    null
+                },
                 onError = { viewModel.onCamera2PreviewFailed(camera2Id) },
                 modifier = previewModifier,
             )
@@ -70,7 +102,7 @@ internal fun CameraPreviewSurface(
             Box(modifier = previewModifier.background(Color.Black))
         }
     }
-    if (!useCamera2Preview) {
+    if (!useCamera2Preview && !useCamera2NightPreview) {
     surfaceRequest?.let { request ->
         LaunchedEffect(request) {
             Log.dev("NightPreview", "CameraXViewfinder COMPOSED with request res=${request.resolution} dynamicRange=${request.dynamicRange} useNightPreview=${state.useNightPreview} sessionKind=${state.sessionKind} zoomRatio=${state.zoomRatio} levels=${state.availableZoomLevels} thread=${Thread.currentThread().name}")
@@ -119,7 +151,7 @@ internal fun CameraPreviewSurface(
             onScreenFlashReady = { screenFlash -> viewModel.setScreenFlash(screenFlash) },
         )
     }
-    if (!useCamera2Preview && surfaceRequest == null) {
+    if (!useCamera2Preview && !useCamera2NightPreview && surfaceRequest == null) {
         if (state.sessionBindFailed) {
             // Bind exhausted its retries: a visible, retryable error instead
             // of parking on a black preview until the next mode/lens change.

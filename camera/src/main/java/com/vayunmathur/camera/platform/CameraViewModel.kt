@@ -171,6 +171,18 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
     val camera2NightSessionActive = camera2NightSessionActiveMutable.asStateFlow()
 
     /**
+     * Bind key latched after a Camera2 NIGHT extension preview failed to
+     * configure/open for this lens+mode; the UI then falls back to the
+     * regular preview (Camera2 or CameraX) for that bind instead of
+     * retry-looping the extension session. Session-scoped (not the 7-day
+     * persisted failure cache): a probe miss on one lens must not suppress
+     * the CameraX extension — capture-time failures still record into
+     * that cache via `recordNightExtensionFailure`.
+     */
+    internal val camera2NightFallbackBindKeyMutable = MutableStateFlow<String?>(null)
+    val camera2NightFallbackBindKey = camera2NightFallbackBindKeyMutable.asStateFlow()
+
+    /**
      * The live Camera2 session while the gated preview is composed
      * (Phase 4a stills), registered by `Camera2Preview`; null otherwise.
      * The shutter glue reads it synchronously — it is only ever set/cleared

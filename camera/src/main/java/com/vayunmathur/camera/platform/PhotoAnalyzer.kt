@@ -75,7 +75,9 @@ class PhotoAnalyzer(
      * phase (see AnalysisSourcePolicy) and stay on the CameraX path.
      */
     fun onYPlane(plane: PlaneView) {
-        val avg = LumaPlaneMath.mean(plane) ?: return
+        // Luma via the Rust plane-stats work (StitchNative.lumaStats, with
+        // the identical Kotlin fallback for non-direct/unavailable cases).
+        val avg = StitchNative.lumaStats(plane)?.mean ?: return
         try {
             onLuminance(avg.toFloat())
         } catch (e: IllegalStateException) {
