@@ -105,8 +105,24 @@ class NonogramViewModelTest {
             // idled at least once before judging the condition, and a
             // condition that is already true at entry can still need
             // that one pump for the work behind it to settle.
-            Shadows.shadowOf(Looper.getMainLooper())
-                .idleFor(PUMP_STEP_MS, java.util.concurrent.TimeUnit.MILLISECONDS)
+            //
+            // Idle WITHOUT advancing the looper clock on most steps.
+            // Advancing it every step is what awaitFlow (below) proved
+            // keeps retriggering the session combine while a generation
+            // runs on Dispatchers.Default: each clock-advanced idle lets
+            // a delayed re-emission land, collectLatest cancels the
+            // in-flight generation, and under CI CPU contention the
+            // replacement never finishes either — generating=true
+            // forever (fd5ebb27d: rapidMovesAllPersistInOrder burned
+            // both 6,000-step budgets, ~603s, with every worker idle
+            // between cancellations). Delayed posts still get their
+            // chance: the clock advances every 20th step, as in
+            // awaitFlow.
+            Shadows.shadowOf(Looper.getMainLooper()).idle()
+            if (steps % 20 == 19) {
+                Shadows.shadowOf(Looper.getMainLooper())
+                    .idleFor(PUMP_STEP_MS, java.util.concurrent.TimeUnit.MILLISECONDS)
+            }
             if (condition()) break
             java.util.concurrent.locks.LockSupport.parkNanos(
                 java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(PARK_MS),

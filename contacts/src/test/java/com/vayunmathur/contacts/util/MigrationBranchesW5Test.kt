@@ -90,16 +90,18 @@ class MigrationBranchesW5Test {
     fun hiddenKeysOfEveryShapeMigrateOrKeep() {
         val vm = ContactViewModel(app)
         ioBlocking {
-            vm.dataStore.addStringToSet("hidden_accounts", "com.google|Raw Name")
-            vm.dataStore.addStringToSet("hidden_accounts", "no-pipe-entry")
-            vm.dataStore.addStringToSet("hidden_accounts", encodeHiddenAccountKey("com.google", "Clean Name"))
-            vm.dataStore.addStringToSet("hidden_accounts", "|")
-            val deadline = System.nanoTime() + 15_000_000_000L
-            while (!vm.dataStore.getStringSetAwait("hidden_accounts").contains("no-pipe-entry") &&
-                System.nanoTime() < deadline
-            ) {
-                Thread.sleep(25)
-            }
+            // Suspending adds, not addStringToSet: that API is
+            // fire-and-forget (scope.launch), so under CPU contention
+            // the later seeds may not have landed when the migration
+            // reads the set — the "no seeded key should be lost"
+            // assertion then measures scheduler timing, not migration
+            // behaviour (CI run fd5ebb27d: only the first two seeds
+            // were visible). addStringToSetIfAbsent returns only once
+            // its edit is committed, so every seed is present below.
+            vm.dataStore.addStringToSetIfAbsent("hidden_accounts", "com.google|Raw Name")
+            vm.dataStore.addStringToSetIfAbsent("hidden_accounts", "no-pipe-entry")
+            vm.dataStore.addStringToSetIfAbsent("hidden_accounts", encodeHiddenAccountKey("com.google", "Clean Name"))
+            vm.dataStore.addStringToSetIfAbsent("hidden_accounts", "|")
             vm.migrateHiddenAccountKeys()
             val hidden = vm.dataStore.getStringSetAwait("hidden_accounts")
             assertTrue(hidden.contains("no-pipe-entry"), "pipe-less keys are kept, hidden=$hidden")

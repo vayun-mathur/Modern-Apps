@@ -80,8 +80,25 @@ class RecipeEditorFlowTest {
             rule.onAllNodesWithText("Flow Rice", substring = true).fetchSemanticsNodes().isNotEmpty()
         }
         rule.onNodeWithText("Flow Rice", substring = true).assertIsDisplayed()
-        // Rename through the name field (loaded name is the field value).
-        rule.onNodeWithText("Flow Bowl").performTextInput("Flow Bowl v2")
+        // The ingredient text and the name field do not publish together:
+        // "Flow Rice" is a plain Text set in the same recomposition that
+        // assigns the loaded name, but the text field's editable semantics
+        // sync from its internal state on a later scheduler pass. In a
+        // batched (forkEvery = 20) JVM that pass can still be queued when
+        // the ingredient appears, and performTextInput by the loaded
+        // value then finds no editable 'Flow Bowl' node (full-suite-only
+        // failure; the class alone is fast enough to hide it). Waiting
+        // for the value's semantics proved equally racy, so address the
+        // field itself: it is the screen's only editable node, and the
+        // rename is order-proof — if the load lands after the input, its
+        // `if (recipeName.isBlank())` guard keeps the typed name. The
+        // renamed-value await below still verifies the rename landed.
+        rule.awaitSemantics("recipe name field editable") {
+            rule.onAllNodes(androidx.compose.ui.test.hasSetTextAction())
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        // Rename through the name field.
+        rule.onNode(androidx.compose.ui.test.hasSetTextAction()).performTextInput("Flow Bowl v2")
         // The text input lands through the paused main looper; a single
         // waitForIdle can return before it applies under load, leaving Save
         // to race the rename. Wait until the renamed value itself is the

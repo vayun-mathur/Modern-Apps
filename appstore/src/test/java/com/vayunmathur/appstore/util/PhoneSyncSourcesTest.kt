@@ -27,12 +27,32 @@ class PhoneSyncSourcesTest {
 
     @BeforeTest
     fun setUp() {
+        // Hermetic offline (the TvHomeBranchesTest pattern): this test
+        // waits for the init sync and then a refresh sync to settle.
+        // Without a failing download override both syncs fetch the real
+        // F-Droid/Modern/Proprietary/Izzy indices (multi-MB downloads +
+        // full-catalogue parse/upserts), so the class's duration is
+        // whatever the host's egress + CPU contention make it — seconds
+        // on an idle dev box, unbounded (30s connect / 120s read
+        // timeouts per file, per source, per sync) on a throttled CI
+        // container. The assertions below only need the sync lifecycle
+        // (flag rises/falls, status clears), which a failed sync
+        // exercises identically. Cleared in tearDown so loopback-download
+        // classes in the same JVM keep real behaviour.
+        com.vayunmathur.appstore.data.FDroidRepository.downloadOverride = { url, _ ->
+            throw java.io.IOException("offline test double for $url")
+        }
         val app = ApplicationProvider.getApplicationContext<Application>()
         val db = Room.inMemoryDatabaseBuilder(app, AppDatabase::class.java)
             .setDriver(BundledSQLiteDriver())
             .allowMainThreadQueries()
             .build()
         vm = AppStoreViewModel(app, db)
+    }
+
+    @kotlin.test.AfterTest
+    fun tearDown() {
+        com.vayunmathur.appstore.data.FDroidRepository.downloadOverride = null
     }
 
     @Test

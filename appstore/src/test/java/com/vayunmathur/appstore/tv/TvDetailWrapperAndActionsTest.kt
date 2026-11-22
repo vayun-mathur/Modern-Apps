@@ -46,6 +46,26 @@ class TvDetailWrapperAndActionsTest {
     @BeforeTest
     fun setUp() {
         app = ApplicationProvider.getApplicationContext()
+        // Hermetic offline + purge-proof (the TvHomeBranchesTest
+        // pattern): persist FDROID as enabled before the ViewModel
+        // exists, so init's purgeDisabled keeps F-Droid rows instead of
+        // deleting the seeded one whenever its launch wins the race
+        // against a test's seed (the "startup settled" signal below can
+        // be satisfied by the package-index collector's loadHome before
+        // init's own purge has run — observed as a 300s wedge where
+        // loadDetail shelled the package via Play). The failing
+        // download override keeps init's first-sync offline; cleared in
+        // tearDown so loopback-download classes keep real behaviour.
+        com.vayunmathur.appstore.data.FDroidRepository.downloadOverride = { url, _ ->
+            throw java.io.IOException("offline test double for $url")
+        }
+        kotlinx.coroutines.runBlocking {
+            val settings = com.vayunmathur.appstore.data.SettingsRepository(
+                app, kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO),
+            )
+            settings.setSourceEnabled(AppSource.FDROID, true)
+            settings.setSourceEnabled(AppSource.MODERN_APPS, true)
+        }
         db = Room.inMemoryDatabaseBuilder(app, AppDatabase::class.java)
             .setDriver(BundledSQLiteDriver())
             .allowMainThreadQueries()
@@ -53,6 +73,11 @@ class TvDetailWrapperAndActionsTest {
         // Not closed: the ViewModel scope keeps collecting DB flows; the
         // in-memory DB dies with the Robolectric sandbox.
         vm = TvStoreViewModel(app, db)
+    }
+
+    @kotlin.test.AfterTest
+    fun tearDown() {
+        com.vayunmathur.appstore.data.FDroidRepository.downloadOverride = null
     }
 
     private fun await(description: String, condition: () -> Boolean) {

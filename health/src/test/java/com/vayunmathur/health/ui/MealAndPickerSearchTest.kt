@@ -27,6 +27,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Rule
@@ -75,12 +76,23 @@ class MealAndPickerSearchTest {
         rule.onNodeWithText("Save").performClick()
         rule.waitForIdle()
         assertTrue(dismissed)
-        var logged = false
-        repeat(100) {
-            if (repo.getRecordsFlow(RecordType.Nutrition).first().any { it.metadata == "MealFlow Stew" }) { logged = true; return@repeat }
-            Thread.sleep(10)
+        // Wait on the terminal Room emission while pumping the main
+        // looper: logMeal runs on viewModelScope (Main), so its insert
+        // segment only executes when the paused Robolectric looper is
+        // idled — the previous Thread.sleep poll never pumped it and
+        // burned its 1s wall-clock budget in a batched (forkEvery = 20)
+        // JVM before the IO hop landed. Collecting on IO + pumped idle
+        // is the NonogramViewModelTest blocking pattern.
+        val loggedJob = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO)
+            .async {
+                repo.getRecordsFlow(RecordType.Nutrition)
+                    .first { rows -> rows.any { it.metadata == "MealFlow Stew" } }
+                true
+            }
+        runCatching {
+            com.vayunmathur.testsupport.awaitWithMainIdle("meal logged to Room") { loggedJob.isCompleted }
         }
-        assertTrue(logged, "meal was logged to Room")
+        assertTrue(loggedJob.isCompleted && loggedJob.await(), "meal was logged to Room")
     }
 
     @Test

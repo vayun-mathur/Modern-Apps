@@ -43,33 +43,54 @@ class DetailAndBrowseOpsTest {
             .setDriver(BundledSQLiteDriver())
             .allowMainThreadQueries()
             .build()
-        runBlocking {
-            db.cachedAppDao().upsertAll(
-                listOf(
-                    UnifiedApp(
-                        packageName = "com.example.cached",
-                        source = AppSource.FDROID,
-                        name = "Cached Name",
-                        versionCode = 9L,
-                        categories = listOf("Games"),
-                        repoUrl = DefaultRepos.FDROID.url,
-                    ).toEntity(),
-                    UnifiedApp(
-                        packageName = "com.example.zmodern",
-                        source = AppSource.MODERN_APPS,
-                        name = "Zulu Modern",
-                        repoUrl = DefaultRepos.MODERN_APPS.url,
-                    ).toEntity(),
-                    UnifiedApp(
-                        packageName = "com.example.amodern",
-                        source = AppSource.MODERN_APPS,
-                        name = "Alpha Modern",
-                        repoUrl = DefaultRepos.MODERN_APPS.url,
-                    ).toEntity(),
-                ),
-            )
-        }
+        seedCatalogue()
         vm = AppStoreViewModel(app, db)
+    }
+
+    private fun seedCatalogue() = runBlocking {
+        db.cachedAppDao().upsertAll(
+            listOf(
+                UnifiedApp(
+                    packageName = "com.example.cached",
+                    source = AppSource.FDROID,
+                    name = "Cached Name",
+                    versionCode = 9L,
+                    categories = listOf("Games"),
+                    repoUrl = DefaultRepos.FDROID.url,
+                ).toEntity(),
+                UnifiedApp(
+                    packageName = "com.example.zmodern",
+                    source = AppSource.MODERN_APPS,
+                    name = "Zulu Modern",
+                    repoUrl = DefaultRepos.MODERN_APPS.url,
+                ).toEntity(),
+                UnifiedApp(
+                    packageName = "com.example.amodern",
+                    source = AppSource.MODERN_APPS,
+                    name = "Alpha Modern",
+                    repoUrl = DefaultRepos.MODERN_APPS.url,
+                ).toEntity(),
+            ),
+        )
+    }
+
+    /**
+     * Settle-then-reseed (the LoadHomeTest arrangement): ViewModel init
+     * purges every disabled source's cached rows — F-Droid is not in
+     * DEFAULT_ENABLED, so the seeded "Cached Name" row is deleted
+     * whenever init's purge lands before a test's query, and the pumped
+     * awaits below then burn their whole 6,000-step budget on a
+     * condition that can never become true again (observed: "category
+     * browse" wedged for 300s in a contended companion run). The
+     * modern-recent section is init's terminal home signal (only its
+     * loadHome can produce it here); re-seeding afterwards restores
+     * the row init legitimately purged, and no second purge runs.
+     */
+    private fun settleInit() {
+        await("init home") {
+            vm.home.value.sections.any { it.id == "modern-recent" }
+        }
+        seedCatalogue()
     }
 
     private fun await(description: String, condition: () -> Boolean) {
@@ -117,6 +138,7 @@ class DetailAndBrowseOpsTest {
 
     @Test
     fun `loadDetail by package resolves the catalogue row`() {
+        settleInit()
         // Even a package Play also lists: the catalogue row an install
         // would use wins over any shell listing.
         vm.loadDetail("com.example.cached")
@@ -135,6 +157,7 @@ class DetailAndBrowseOpsTest {
 
     @Test
     fun `loading a second package replaces the first detail`() {
+        settleInit()
         // The route-argument contract in one test: the entry for package B
         // must never render package A's listing, not even briefly from a
         // stale flow — loadDetail drops the old app synchronously.
@@ -151,6 +174,7 @@ class DetailAndBrowseOpsTest {
 
     @Test
     fun `browse expands an offline section to its full sorted catalogue`() {
+        settleInit()
         vm.loadBrowse("modern-recent")
         await("browse loaded") { vm.browse.value.apps.size == 2 && !vm.browse.value.isLoading }
         assertEquals("modern-recent", vm.browse.value.sectionId)
@@ -163,6 +187,7 @@ class DetailAndBrowseOpsTest {
 
     @Test
     fun `browse by category and by play cluster fallback`() {
+        settleInit()
         // A category's name lives only in the home row's title: browse the
         // category home is currently showing.
         vm.selectCategory("Games")
