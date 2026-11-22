@@ -5,10 +5,7 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -30,7 +27,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vayunmathur.email.R
@@ -40,7 +36,6 @@ import com.vayunmathur.email.ui.composer.EmailHtmlEditorController
 import com.vayunmathur.email.ui.composer.InlineAttachment
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.CircularProgressIndicator
-import com.vayunmathur.library.ui.DesktopMaxWidthContainer
 import com.vayunmathur.library.ui.DropdownMenu
 import com.vayunmathur.library.ui.DropdownMenuItem
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
@@ -48,7 +43,6 @@ import com.vayunmathur.library.ui.IconAttachment
 import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.IconImage
 import com.vayunmathur.library.ui.IconSend
-import com.vayunmathur.library.ui.LabeledTextField
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.library.util.AppMessages
@@ -303,51 +297,30 @@ fun ComposerScreen(
             }
         },
     ) { padding ->
-        // Detail pane form: letterboxed on expanded windows so fields keep a
-        // readable measure on desktop.
-        DesktopMaxWidthContainer(Modifier.padding(padding)) {
-        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxSize(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            ComposerHeaderSection(
-                accounts = accounts,
-                fromAccount = fromAccount,
-                showAccountPicker = showAccountPicker,
-                onOpenAccountPicker = { showAccountPicker = true },
-                onDismissAccountPicker = { showAccountPicker = false },
-                onSelectAccount = { fromAccount = it; showAccountPicker = false },
-                to = to,
-                onToChange = { to = it },
-                cc = cc,
-                onCcChange = { cc = it },
-                bcc = bcc,
-                onBccChange = { bcc = it },
-                showCcBcc = showCcBcc,
-                onToggleCcBcc = { showCcBcc = !showCcBcc },
-                onPickContact = pickContact,
-            )
-            // The drafts row's subject morphs into this field. Null for a fresh compose, a reply or
-            // a forward, none of which came from a draft.
-            LabeledTextField(
-                value = subject,
-                onValueChange = { subject = it },
-                label = stringResource(R.string.subject_label),
-                modifier = Modifier.fillMaxWidth(),
-                imeAction = ImeAction.Next,
-                sharedTextKey = draftId?.let { "email-draft-subject-$it" },
-            )
-
-            com.vayunmathur.email.ui.composer.EmailHtmlEditor(
-                controller = bodyController,
-                placeholder = stringResource(R.string.body_label),
-                modifier = Modifier.fillMaxWidth().weight(1f),
-            )
-
-            ComposerAttachmentSection(
-                context = context,
-                bodyController = bodyController,
-                attachments = attachments,
-                onRemoveAttachment = { uri -> attachments = attachments - uri },
-            )
-        }
-        }
+        ComposerForm(
+            padding = padding,
+            accounts = accounts,
+            fromAccount = fromAccount,
+            showAccountPicker = showAccountPicker,
+            onOpenAccountPicker = { showAccountPicker = true },
+            onDismissAccountPicker = { showAccountPicker = false },
+            onSelectAccount = { fromAccount = it; showAccountPicker = false },
+            to = to,
+            onToChange = { to = it },
+            cc = cc,
+            onCcChange = { cc = it },
+            bcc = bcc,
+            onBccChange = { bcc = it },
+            showCcBcc = showCcBcc,
+            onToggleCcBcc = { showCcBcc = !showCcBcc },
+            onPickContact = pickContact,
+            subject = subject,
+            onSubjectChange = { subject = it },
+            draftId = draftId,
+            bodyController = bodyController,
+            context = context,
+            attachments = attachments,
+            onRemoveAttachment = { uri -> attachments = attachments - uri },
+        )
     }
 }

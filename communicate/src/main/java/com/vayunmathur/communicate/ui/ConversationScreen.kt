@@ -8,7 +8,6 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
-import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -18,7 +17,6 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.vayunmathur.communicate.R
@@ -26,18 +24,14 @@ import com.vayunmathur.communicate.data.CommunicateAttachment
 import com.vayunmathur.communicate.data.CommunicateLine
 import com.vayunmathur.communicate.data.CommunicateRepository
 import com.vayunmathur.communicate.data.LineChoice
-import com.vayunmathur.communicate.data.SmsMessage
 import com.vayunmathur.communicate.data.SmsThread
 import com.vayunmathur.communicate.data.canSendPoll
 import com.vayunmathur.communicate.data.canShareContact
 import com.vayunmathur.communicate.data.findContactName
 import com.vayunmathur.communicate.data.isUnknownContact
-import com.vayunmathur.communicate.data.loadSmsMessagesMerged
-import com.vayunmathur.communicate.data.acceptSignalIdentity
 import com.vayunmathur.communicate.data.sendMessage
 import com.vayunmathur.communicate.data.sendPoll
 import com.vayunmathur.communicate.data.shareContact
-import com.vayunmathur.communicate.data.signalPendingIdentityChange
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.util.AppMessages
 import kotlinx.coroutines.Dispatchers
@@ -66,7 +60,6 @@ fun ConversationScreen(
     val conversationTitleLabel = stringResource(R.string.conversation_title)
     val gvSendFailedMessage = stringResource(R.string.gv_send_failed)
     val pollSendFailedMessage = stringResource(R.string.poll_send_failed)
-    val safetyNumberFailedMessage = stringResource(R.string.signal_safety_number_accept_failed)
     val scope = rememberCoroutineScope()
     // Contextual notification ask (todo/files pattern: system request only at first
     // use, never on first frame): after the first successful send the user has shown
@@ -322,84 +315,28 @@ fun ConversationScreen(
             )
         },
     ) { padding ->
-        if (showPollComposer) {
-            PollComposerDialog(
-                onDismiss = { showPollComposer = false },
-                onCreate = { question, options ->
-                    scope.launch {
-                        val ok = CommunicateRepository.sendPoll(
-                            context = context,
-                            line = line,
-                            conversationId = remoteId ?: address,
-                            question = question,
-                            options = options,
-                        )
-                        if (ok) refresh++ else AppMessages.show(pollSendFailedMessage)
-                    }
-                },
-            )
-        }
-        // A changed Signal identity key blocks sending until the user verifies it, so the warning has to
-        // be in front of them here rather than only in a notification.
-        var safetyNumber by remember(remoteId, address) { mutableStateOf<Pair<String, String>?>(null) }
-        androidx.compose.runtime.LaunchedEffect(line, remoteId, address, refresh) {
-            safetyNumber = if (line == CommunicateLine.Signal) {
-                try {
-                    CommunicateRepository.signalPendingIdentityChange(context, remoteId, address)
-                } catch (_: Throwable) {
-                    null
-                }
-            } else {
-                null
-            }
-        }
-        safetyNumber?.let { (number, keyHex) ->
-            SafetyNumberBanner(
-                safetyNumber = number,
-                onAccept = {
-                    scope.launch {
-                        val ok = CommunicateRepository.acceptSignalIdentity(context, remoteId, address, keyHex)
-                        if (ok) {
-                            safetyNumber = null
-                            refresh++
-                        } else {
-                            AppMessages.show(safetyNumberFailedMessage)
-                        }
-                    }
-                },
-                modifier = Modifier.padding(padding),
-            )
-        }
-        RcsEncryptionBanner(
+        ConversationBody(
+            padding = padding,
             line = line,
             remoteId = remoteId,
             address = address,
             refresh = refresh,
-            modifier = Modifier.padding(padding),
-        )
-        // Google Voice threads don't require the default-SMS role or READ_SMS; only SIM does.
-        if (line == CommunicateLine.GoogleVoice) {
-            MessagesList(padding, refresh) {
-                CommunicateRepository.loadSmsMessagesMerged(context, thread)
-            }
-            return@AppScaffold
-        }
-        DefaultSmsGate(modifier = Modifier.padding(padding)) { roleRevision ->
-            PermissionGate(
-                permission = Manifest.permission.READ_SMS,
-                message = stringResource(R.string.permission_sms_message),
-                modifier = Modifier.padding(padding),
-            ) { permissionRevision ->
-                val messages = produceState<List<SmsMessage>?>(
-                    initialValue = null,
-                    threadId,
-                    roleRevision,
-                    permissionRevision,
-                    refresh) {
-                    value = withContext(Dispatchers.IO) { CommunicateRepository.loadSmsMessagesMerged(context, thread) }
+            onRefresh = { refresh++ },
+            thread = thread,
+            showPollComposer = showPollComposer,
+            onDismissPollComposer = { showPollComposer = false },
+            onCreatePoll = { question, options ->
+                scope.launch {
+                    val ok = CommunicateRepository.sendPoll(
+                        context = context,
+                        line = line,
+                        conversationId = remoteId ?: address,
+                        question = question,
+                        options = options,
+                    )
+                    if (ok) refresh++ else AppMessages.show(pollSendFailedMessage)
                 }
-                MessagesContent(padding, messages.value)
-            }
-        }
+            },
+        )
     }
 }

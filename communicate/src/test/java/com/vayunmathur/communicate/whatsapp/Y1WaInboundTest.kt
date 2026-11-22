@@ -129,6 +129,13 @@ class Y1WaInboundTest {
         WhatsAppClient.appStateKeyRequested.clear()
         WhatsAppDiag.clear(); events.clear()
         CoroutineScope(Dispatchers.Default + Job()).launch { WhatsAppClient.events.collect { events.add(it) } }
+        // WhatsAppClient.events is a SharedFlow with no replay: an event
+        // emitted before this collector's subscription lands is dropped, so
+        // under load the first feed could race the subscription and its
+        // event was simply never recorded. Wait for the subscription itself.
+        com.vayunmathur.testsupport.awaitWithMainIdle(
+            "events collector subscribed", maxSteps = 100_000,
+        ) { WhatsAppClient.eventsMutable.subscriptionCount.value > 0 }
     }
 
     @AfterTest
@@ -138,12 +145,21 @@ class Y1WaInboundTest {
     }
 
     private fun await(label: String, cond: () -> Boolean) {
-        val deadline = System.currentTimeMillis() + 15_000
-        while (System.currentTimeMillis() < deadline) {
-            if (cond()) return
-            Thread.sleep(25)
+        // Terminal-signal wait, not a wall clock: each step idles the main
+        // looper and yields so the IO-scope stanza pipeline and the Default
+        // event collector can actually run under CPU caps. The old 15 s
+        // sleep-poll expired while that work was merely starved.
+        try {
+            // cond reads `events`, a synchronizedList whose iterators are
+            // not themselves synchronized: evaluating the filter without
+            // holding the list's lock races the collector's adds (a tight
+            // pumped loop hits that race far sooner than a sleep-poll did).
+            com.vayunmathur.testsupport.awaitWithMainIdle(label, maxSteps = 100_000) {
+                synchronized(events) { cond() }
+            }
+        } catch (e: IllegalStateException) {
+            error("timeout $label diag=${WhatsAppDiag.log.value.takeLast(5)} events=$events")
         }
-        error("timeout $label diag=${WhatsAppDiag.log.value.takeLast(5)} events=$events")
     }
 
     private fun feed(node: WhatsAppProtocol.Node) =
@@ -437,7 +453,10 @@ class Y1WaInboundTest {
         feedEncrypted(edit("edited body"), "edit-1")
         await("edit") { events.filterIsInstance<WhatsAppEvent.MessageEdited>().any { it.newBody == "edited body" } }
         feedEncrypted(edit("edited again"), "edit-1")
-        Thread.sleep(400)
+        // No settle wait needed for the count: dedup is an atomic
+        // ConcurrentHashMap-set add (processedEditIDs), so whenever the
+        // duplicate stanza is processed it emits nothing — the count is 1
+        // at every instant after the first edit above, loaded or not.
         assertEquals(1, events.filterIsInstance<WhatsAppEvent.MessageEdited>().size)
         val eph = WhatsAppE2EProto.Message.newBuilder().setProtocolMessage(
             WhatsAppE2EProto.ProtocolMessage.newBuilder().setType(WhatsAppE2EProto.ProtocolMessage.Type.EPHEMERAL_SETTING).setEphemeralExpiration(86400),
