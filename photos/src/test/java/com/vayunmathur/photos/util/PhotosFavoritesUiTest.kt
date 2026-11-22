@@ -205,7 +205,7 @@ class PhotosFavoritesUiTest {
         assertTrue(last is Route.PhotoPage)
         last as Route.PhotoPage
         assertEquals(b.id, last.id)
-        assertEquals(com.vayunmathur.photos.PhotoSource.Favorites, last.sourceKey)
+        assertEquals(com.vayunmathur.photos.domain.PhotoSource.Favorites, last.sourceKey)
     }
 
     @Test

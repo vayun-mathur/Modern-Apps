@@ -84,16 +84,20 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
             )
         }
         
+        // Watermark before the EXIF pass: that pass can run for a long time
+        // over a backlogged library, and if the worker is stopped during it
+        // the next sync must still start from this generation instead of
+        // re-walking every change since the previous one.
+        dataStore.setLong("last_photos_generation", currentGeneration)
+
         setExifData(scanRepository, applicationContext)
-        
+
         // OCR and face grouping are both always on (no opt-in). Each worker is
         // inert if its data/model assets are missing.
         OCRWorker.enqueue(applicationContext)
         FaceWorker.enqueue(applicationContext)
         ClipWorker.enqueue(applicationContext)
-        
-        dataStore.setLong("last_photos_generation", currentGeneration)
-        
+
         // Enqueue next observation
         enqueue(applicationContext)
         
@@ -232,17 +236,26 @@ suspend fun syncPhotos(
 ) {
     // Single read of the local DB reused for both deletion detection and update diffing.
     val existing = repository.getAllForSync()
-    // 1. Get all IDs currently in MediaStore to detect deletions
-    val allMediaStoreIds = collectMediaStoreIds(context)
-
-    // 2. Handle deletions
-    val localIds = existing.map { it.id }.toSet()
-    val toDelete = if (uris != null) {
-        val triggeredIds = uris.mapNotNull { runCatching { ContentUris.parseId(it) }.getOrNull() }.toSet()
-        triggeredIds - allMediaStoreIds
-    } else {
-        localIds - allMediaStoreIds
+    // Deletion detection is scoped to what this sync already knows about.
+    // A triggered sync only checks the items it was triggered for. An
+    // incremental sync does not check deletions at all, because proving a
+    // row is gone used to mean walking every identifier in the media
+    // provider on every app open, behind the first paint. A full scan is
+    // the one place where deletions are reconciled against the whole
+    // provider, and full scans still happen on a fresh install, while
+    // legacy rows are being backfilled, and for the one-time favourites
+    // rescan described by the library sync above.
+    val triggeredIds = uris?.mapNotNull {
+        runCatching { ContentUris.parseId(it) }.getOrNull()
+    }?.toSet()
+    val toDelete = when {
+        triggeredIds != null ->
+            triggeredIds - collectMediaStoreIds(context, triggeredIds)
+        lastGeneration > 0L -> emptySet()
+        else -> existing.map { it.id }.toSet() - collectMediaStoreIds(context)
     }
+
+    // Handle deletions
 
     if (toDelete.isNotEmpty()) {
         // deleteByIds also removes these photos' face/embedding rows (and any
@@ -425,17 +438,26 @@ private fun queryMediaStore(
     }
 }
 
-private fun collectMediaStoreIds(context: Context): MutableSet<Long> {
+private fun collectMediaStoreIds(
+    context: Context,
+    onlyIds: Set<Long>? = null,
+): MutableSet<Long> {
     val ids = mutableSetOf<Long>()
-    collectIdsInto(context, MediaStore.Images.Media.EXTERNAL_CONTENT_URI, ids)
-    collectIdsInto(context, MediaStore.Video.Media.EXTERNAL_CONTENT_URI, ids)
+    collectIdsInto(context, MediaStore.Images.Media.EXTERNAL_CONTENT_URI, ids, onlyIds)
+    collectIdsInto(context, MediaStore.Video.Media.EXTERNAL_CONTENT_URI, ids, onlyIds)
     return ids
 }
 
-private fun collectIdsInto(context: Context, baseUri: Uri, ids: MutableSet<Long>) {
+private fun collectIdsInto(context: Context, baseUri: Uri, ids: MutableSet<Long>, onlyIds: Set<Long>? = null) {
     try {
         val bundle = Bundle().apply {
             putInt(MediaStore.QUERY_ARG_MATCH_TRASHED, MediaStore.MATCH_INCLUDE)
+            if (!onlyIds.isNullOrEmpty()) {
+                putString(
+                    ContentResolver.QUERY_ARG_SQL_SELECTION,
+                    "${MediaStore.MediaColumns._ID} IN (${onlyIds.joinToString(",")})",
+                )
+            }
         }
         context.contentResolver.query(baseUri, arrayOf(MediaStore.MediaColumns._ID), bundle, null)?.use { cursor ->
             val idCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)

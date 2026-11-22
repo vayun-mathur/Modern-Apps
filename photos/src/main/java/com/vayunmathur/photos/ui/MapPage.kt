@@ -185,7 +185,7 @@ fun MapPage(
                         }
                         items(selectedCluster.allPhotos, key = { it.id }, contentType = { "photo_thumbnail" }) {
                             ImageLoader.PhotoItem(it, Modifier.fillMaxHeight().aspectRatio(1f)) {
-                                backStack.pushPhoto(Route.PhotoPage(it.id, com.vayunmathur.photos.PhotoSource.MapCluster(selectedCluster.coverPhoto.id)))
+                                backStack.pushPhoto(Route.PhotoPage(it.id, com.vayunmathur.photos.domain.PhotoSource.MapCluster(selectedCluster.coverPhoto.id)))
                             }
                         }
                         item {

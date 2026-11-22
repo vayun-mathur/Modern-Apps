@@ -133,7 +133,7 @@ fun FavoritesScreen(
                                         if (isSelectionMode) {
                                             actions.toggleSelection(photo.id)
                                         } else {
-                                            backStack.pushPhoto(Route.PhotoPage(photo.id, com.vayunmathur.photos.PhotoSource.Favorites))
+                                            backStack.pushPhoto(Route.PhotoPage(photo.id, com.vayunmathur.photos.domain.PhotoSource.Favorites))
                                         }
                                     },
                                     thumbnail = thumbnail,

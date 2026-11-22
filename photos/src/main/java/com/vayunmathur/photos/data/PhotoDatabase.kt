@@ -147,7 +147,33 @@ interface PhotoDao {
     /** Photos already scanned for faces (numerator of the progress bar). */
     @Query("SELECT count(*) FROM Photo WHERE faceScanned = 1 AND isTrashed = 0 AND duration IS NULL")
     fun getFaceScannedCountFlow(): Flow<Int>
+
+    /**
+     * All four indexing-progress counters in one query/flow. The gallery
+     * collects OCR, CLIP, face and target counts together; as four separate
+     * flows every Photo-table write re-ran four observers (and their table
+     * scans) to recompute numbers only this one screen shows together.
+     */
+    @Query(
+        "SELECT " +
+            "(SELECT count(*) FROM Photo WHERE ocrScanned = 1 " +
+            "AND isTrashed = 0 AND duration IS NULL) AS ocrCount, " +
+            "(SELECT count(*) FROM Photo WHERE clipEmbedding IS NOT NULL " +
+            "AND isTrashed = 0 AND duration IS NULL) AS clipCount, " +
+            "(SELECT count(*) FROM Photo WHERE faceScanned = 1 " +
+            "AND isTrashed = 0 AND duration IS NULL) AS faceScannedCount, " +
+            "(SELECT count(*) FROM Photo WHERE isTrashed = 0 AND duration IS NULL) AS targetCount"
+    )
+    fun getIndexCountsFlow(): Flow<IndexCounts>
 }
+
+/** The four indexing-progress counters, read together (see [PhotoDao.getIndexCountsFlow]). */
+data class IndexCounts(
+    val ocrCount: Int = 0,
+    val clipCount: Int = 0,
+    val faceScannedCount: Int = 0,
+    val targetCount: Int = 0,
+)
 
 /**
  * Indexing reads/writes (OCR, CLIP, faces, EXIF backfill), split out of

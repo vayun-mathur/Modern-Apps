@@ -216,7 +216,7 @@ fun GalleryScreen(
                                             .aspectRatio(1f)
                                             .invisibleClickable {
                                                 searchActive = false
-                                                backStack.pushPhoto(Route.PhotoPage(photo.id, com.vayunmathur.photos.PhotoSource.Search))
+                                                backStack.pushPhoto(Route.PhotoPage(photo.id, com.vayunmathur.photos.domain.PhotoSource.Search))
                                             }
                                             .sharedContainer("photo-image-${photo.id}")
                                     ) {
@@ -304,7 +304,7 @@ fun GalleryScreen(
                                     if (isSelectionMode) {
                                         actions.toggleSelection(photo.id)
                                     } else {
-                                        backStack.pushPhoto(Route.PhotoPage(photo.id, com.vayunmathur.photos.PhotoSource.Gallery))
+                                        backStack.pushPhoto(Route.PhotoPage(photo.id, com.vayunmathur.photos.domain.PhotoSource.Gallery))
                                     }
                                 },
                                 thumbnail = thumbnail,

@@ -187,7 +187,7 @@ fun AlbumDetailScreen(
                                         if (isSelectionMode) {
                                             onToggleSelection(photo.id)
                                         } else {
-                                            backStack.pushPhoto(Route.PhotoPage(photo.id, com.vayunmathur.photos.PhotoSource.Album(albumName)))
+                                            backStack.pushPhoto(Route.PhotoPage(photo.id, com.vayunmathur.photos.domain.PhotoSource.Album(albumName)))
                                         }
                                     },
                                     thumbnail = thumbnail,

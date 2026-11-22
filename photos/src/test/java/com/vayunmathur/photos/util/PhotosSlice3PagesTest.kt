@@ -272,7 +272,7 @@ class PhotosSlice3PagesTest {
                     galleryViewModel = gallery,
                     photoMapViewModel = map,
                     id = b.id,
-                    sourceKey = com.vayunmathur.photos.PhotoSource.Gallery,
+                    sourceKey = com.vayunmathur.photos.domain.PhotoSource.Gallery,
                     backStack = NavBackStack(arrayOf(Route.Gallery)),
                 )
             }

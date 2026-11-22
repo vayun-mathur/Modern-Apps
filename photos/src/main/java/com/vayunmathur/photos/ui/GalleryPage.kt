@@ -3,9 +3,7 @@ package com.vayunmathur.photos.ui
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.photos.Route
@@ -21,8 +19,9 @@ fun GalleryPage(
     galleryViewModel: GalleryViewModel,
     secureFolderViewModel: SecureFolderViewModel,
 ) {
-    val allPhotos by galleryViewModel.photos.collectAsState()
-    val photos by remember { derivedStateOf { allPhotos.filter { !it.isTrashed } } }
+    // Untrashed rows projected off the main thread in the ViewModel
+    // (galleryPhotos); filtering here used to run O(library) in composition.
+    val photos by galleryViewModel.galleryPhotos.collectAsState()
     val albums by galleryViewModel.albums.collectAsState()
     val context = LocalContext.current
 

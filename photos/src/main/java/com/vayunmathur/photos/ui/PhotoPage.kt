@@ -36,7 +36,7 @@ import com.vayunmathur.library.ui.ZoomState
 import com.vayunmathur.library.ui.rememberMessenger
 import com.vayunmathur.library.ui.isExpandedWidth
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.photos.PhotoSource
+import com.vayunmathur.photos.domain.PhotoSource
 import com.vayunmathur.photos.R
 import com.vayunmathur.photos.Route
 import com.vayunmathur.photos.data.Photo

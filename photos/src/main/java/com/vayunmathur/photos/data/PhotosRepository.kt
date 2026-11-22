@@ -32,6 +32,9 @@ open class PhotosRepository internal constructor(context: Context) :
     /** Shared denominator for the OCR, CLIP and face progress bars. */
     fun getIndexTargetCountFlow(): Flow<Int> = photoDao.getIndexTargetCountFlow()
 
+    /** All indexing-progress counters as one flow (see PhotoDao). */
+    fun getIndexCountsFlow(): Flow<IndexCounts> = photoDao.getIndexCountsFlow()
+
     // ------------------------------------------------------------------
     // PhotoDao suspend wrappers
     // ------------------------------------------------------------------

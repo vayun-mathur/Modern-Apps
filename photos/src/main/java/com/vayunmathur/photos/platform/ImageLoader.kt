@@ -39,7 +39,26 @@ import com.vayunmathur.photos.R
 /** Singleton holding image loader state and operations. */
 object ImageLoader {
     private const val VIDEO_FRAME_MILLIS = 1000L
-    private const val THUMBNAIL_SIZE = 256
+
+    /**
+     * The grid/filmstrip/map thumbnail request for [photo]. Deliberately
+     * *unsized*: [com.vayunmathur.library.image.compose.AsyncImage] derives
+     * the decode size from the tile's layout constraints
+     * (`deriveDecodeSize`), so a 2-column grid decodes larger than an
+     * 8-column one and neither decodes at a fixed guess. The previous fixed
+     * 256px size bypassed that derivation — explicit sizes always win in
+     * `AsyncImage` — decoding ~4x the pixels a small tile needs and
+     * upscaling in a large one. Cache keys stay per-photo; the library
+     * folds the derived size into its cache key itself.
+     */
+    internal fun thumbnailRequest(context: Context, photo: Photo): ImageRequest =
+        ImageRequest.Builder(context)
+            .data(photo.uri.toUri())
+            .videoFrameMillis(VIDEO_FRAME_MILLIS)
+            .diskCacheKey("thumb_${photo.id}_${photo.dateModified}")
+            .memoryCacheKey("thumb_${photo.id}_${photo.dateModified}")
+            .crossfade(true)
+            .build()
 
     @Volatile
     private var instance: LibImageLoader? = null
@@ -87,14 +106,7 @@ object ImageLoader {
             contentAlignment = Alignment.Center
         ) {
             AsyncImage(
-                model = ImageRequest.Builder(context)
-                    .data(photo.uri.toUri())
-                    .videoFrameMillis(VIDEO_FRAME_MILLIS)
-                    .diskCacheKey("thumb_${photo.id}_${photo.dateModified}")
-                    .memoryCacheKey("thumb_${photo.id}_${photo.dateModified}")
-                    .crossfade(true)
-                    .size(THUMBNAIL_SIZE)
-                    .build(),
+                model = thumbnailRequest(context, photo),
                 imageLoader = loader(context),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
