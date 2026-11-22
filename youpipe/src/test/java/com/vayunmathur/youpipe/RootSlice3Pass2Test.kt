@@ -114,7 +114,20 @@ class RootSlice3Pass2Test {
         val controller = Robolectric.buildActivity(MainActivity::class.java, intent)
         val activity = controller.setup().get()
         assertTrue(!activity.isFinishing)
+        // setup() returns with the composition, its LaunchedEffects and the
+        // ViewModel's viewModelScope collectors still queued on Robolectric's
+        // paused main looper. Destroying immediately races that queued work:
+        // under CI load it (and any exception it raises, e.g. a VideoPage
+        // load against the shared in-memory DB) then executes during a later
+        // test's looper drain and is attributed to that test — which is why
+        // the first launch in the class passed in CI while launches 2-5
+        // failed. Drain deterministically instead: idle while the activity
+        // is alive so its work settles here, then idle again after destroy
+        // so teardown work is also attributed to this test. No sleeps: the
+        // looper being idle is the signal, however long the box takes.
+        org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
         controller.pause().stop().destroy()
+        org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
         return activity
     }
 

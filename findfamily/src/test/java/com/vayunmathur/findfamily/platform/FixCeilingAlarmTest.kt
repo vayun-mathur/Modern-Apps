@@ -76,15 +76,32 @@ class FixCeilingAlarmTest {
     private fun advance(ms: Long) = ShadowSystemClock.advanceBy(Duration.ofMillis(ms))
     private fun now() = SystemClock.elapsedRealtime()
 
-    /** Lets background coroutines that hop onto the (paused) main looper finish. */
+    /**
+     * Lets background coroutines that hop onto the (paused) main looper finish.
+     *
+     * Step-bounded, never wall-clock-bounded: the previous
+     * `System.currentTimeMillis() + 10_000` deadline burned its 10 s under
+     * CI CPU contention (5-CPU cap, several test JVMs) before the
+     * Dispatchers.IO producers it waits for got a slice, failing whichever
+     * test happened to be waiting. Each step idles the paused looper (the
+     * deterministic signal that queued main-thread work ran), then parks
+     * briefly so IO producers get a slice; the bound is pumping steps.
+     */
     private fun pumpUntil(done: () -> Boolean) {
-        val deadline = System.currentTimeMillis() + 10_000L
-        while (!done()) {
-            check(System.currentTimeMillis() < deadline) { "timed out waiting for the service" }
+        var steps = 0
+        while (true) {
             shadowOf(Looper.getMainLooper()).idle()
-            Thread.sleep(5)
+            if (done()) break
+            java.util.concurrent.locks.LockSupport.parkNanos(
+                java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(5L),
+            )
+            check(++steps < MAX_PUMP_STEPS) { "timed out waiting for the service (step-bounded)" }
         }
         shadowOf(Looper.getMainLooper()).idle()
+    }
+
+    private companion object {
+        const val MAX_PUMP_STEPS = 6_000
     }
 
     private fun await(job: Job?) {
@@ -219,13 +236,21 @@ class FixCeilingAlarmTest {
     fun inexactFallbackArmsEarlyEnoughToLandInsideTheCeiling() {
         ShadowAlarmManager.setCanScheduleExactAlarms(false)
         service.updateFixCeiling(true)
-        val checkedAt = now()
-        await(service.fixCeilingAlarmTick())
+        val job = service.fixCeilingAlarmTick()
+        // Measure from the attempt production actually armed against
+        // (lastForcedFixAttemptMs, stamped synchronously by the tick), not
+        // from a test-side clock read taken before the tick: any shadow-clock
+        // movement between that read and the tick's attempt stamp (looper
+        // drains, a heartbeat tick) inflates the apparent delay past the
+        // exact bound even though production armed correctly, and under CI
+        // load that made this assertion flaky. Same bound, correct origin.
+        val attemptMs = assertNotNull(service.lastForcedFixAttemptMs, "the tick recorded an attempt")
+        await(job)
         val alarm = assertNotNull(alarms.peekNextScheduledAlarm())
         assertTrue(alarm.isAllowWhileIdle)
-        val delay = alarm.triggerAtMs - checkedAt
+        val delay = alarm.triggerAtMs - attemptMs
         // Latest inexact delivery is 1.75x the delay after arming.
-        assertTrue(checkedAt + (delay * 1.75).toLong() <= checkedAt + ForcedFixPolicy.ACTIVE_CHECK_MAX_GAP_MS)
+        assertTrue(attemptMs + (delay * 1.75).toLong() <= attemptMs + ForcedFixPolicy.ACTIVE_CHECK_MAX_GAP_MS)
         assertTrue(delay > 0L)
     }
 
