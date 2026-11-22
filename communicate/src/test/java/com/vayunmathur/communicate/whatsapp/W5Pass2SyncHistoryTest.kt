@@ -27,6 +27,8 @@ import java.util.zip.Deflater
 import javax.crypto.Cipher
 import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
+import java.util.concurrent.CopyOnWriteArrayList
+import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -35,6 +37,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
@@ -56,7 +59,10 @@ class W5Pass2SyncHistoryTest {
     )
 
     private lateinit var eventScope: CoroutineScope
-    private val receivedEvents = mutableListOf<WhatsAppEvent>()
+    // Written by the collector on Dispatchers.Default, read by the test
+    // thread after a signal wait (see the awaits below): must be the
+    // thread-safe list, not a plain ArrayList.
+    private val receivedEvents = CopyOnWriteArrayList<WhatsAppEvent>()
 
     @BeforeTest
     fun setUp() {
@@ -76,6 +82,15 @@ class W5Pass2SyncHistoryTest {
         receivedEvents.clear()
         eventScope = CoroutineScope(Dispatchers.Default + Job())
         eventScope.launch { WhatsAppClient.events.collect { receivedEvents.add(it) } }
+    }
+
+    @AfterTest
+    fun tearDown() {
+        // Stop this method's collector: the SharedFlow broadcasts to every
+        // live collector, and an uncancelled scope would keep draining the
+        // singleton's stream (and writing into a stale list) for the rest
+        // of the JVM.
+        eventScope.cancel()
     }
 
     private fun deflate(data: ByteArray): ByteArray {
@@ -193,6 +208,14 @@ class W5Pass2SyncHistoryTest {
         WhatsAppClient.fullHistorySync = false // do not chase on-demand pages in this test
         WhatsAppClient.handleHistorySync(notif, "notif-1")
         assertEquals("777@s.whatsapp.net", WhatsAppClient.lidToPhoneMap["999@lid"])
+        // Events reach the collector on Dispatchers.Default asynchronously;
+        // wait for the terminal delivery instead of asserting on whatever
+        // has landed already (an immediate read races the collector and
+        // failed empty under load).
+        com.vayunmathur.testsupport.awaitWithMainIdle("history sync events delivered", maxSteps = 100_000) {
+            receivedEvents.filterIsInstance<WhatsAppEvent.MessageUpdate>().size >= 2 &&
+                receivedEvents.filterIsInstance<WhatsAppEvent.ConversationUpdate>().isNotEmpty()
+        }
         val updates = receivedEvents.filterIsInstance<WhatsAppEvent.MessageUpdate>()
         assertEquals(listOf("hello from history", "reply from me"), updates.map { it.body })
         assertEquals(listOf(false, true), updates.map { it.outgoing })
@@ -226,6 +249,11 @@ class W5Pass2SyncHistoryTest {
             .addMessages(historyMessage("g1", "group hello", fromMe = false, ts = 1_700_000_000L))
             .build()
         assertEquals(1, WhatsAppClient.emitHistoryConversation(conv, "12345@g.us", requestMore = false))
+        // Same delivery race as above: .single() on the not-yet-drained
+        // collector list threw NoSuchElementException under load.
+        com.vayunmathur.testsupport.awaitWithMainIdle("conversation update delivered", maxSteps = 100_000) {
+            receivedEvents.filterIsInstance<WhatsAppEvent.ConversationUpdate>().isNotEmpty()
+        }
         val update = receivedEvents.filterIsInstance<WhatsAppEvent.ConversationUpdate>().single()
         assertTrue(update.isGroup)
         assertEquals("wa:12345@g.us", update.conversationId)

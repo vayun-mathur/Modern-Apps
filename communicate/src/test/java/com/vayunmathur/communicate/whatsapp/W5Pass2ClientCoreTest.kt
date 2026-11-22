@@ -137,14 +137,13 @@ class W5Pass2ClientCoreTest {
         assertEquals("12345@lid", WhatsAppAuthData.load(WhatsAppClient.appContext)?.lid)
         assertTrue(WhatsAppDiag.log.value.any { it.contains("AUTHENTICATED") })
         assertTrue(WhatsAppDiag.log.value.any { it.contains("awaiting pushed history") })
-        // Prekeys are all uploaded locally, so the upload check logs and skips Rust.
-        val deadline = System.currentTimeMillis() + 10_000
-        var sawPrekeys = false
-        while (System.currentTimeMillis() < deadline && !sawPrekeys) {
-            sawPrekeys = WhatsAppDiag.log.value.any { it.contains("prekeys: nothing to upload") }
-            if (!sawPrekeys) Thread.sleep(25)
+        // Prekeys are all uploaded locally, so the upload check logs and skips
+        // Rust. The check runs on the client's IO scope, so wait on the
+        // terminal log line itself (step-bounded, no wall clock): a 10 s
+        // sleep-poll gave up under CI load before IO landed.
+        com.vayunmathur.testsupport.awaitWithMainIdle("prekeys upload check logged", maxSteps = 100_000) {
+            WhatsAppDiag.log.value.any { it.contains("prekeys: nothing to upload") }
         }
-        assertTrue(sawPrekeys, WhatsAppDiag.log.value.takeLast(5).toString())
         // A second success with no lid leaves the adopted one in place.
         WhatsAppClient.handleConnectSuccess(WhatsAppProtocol.Node(tag = "success"))
         assertEquals("12345@lid", WhatsAppClient.authData?.lid)

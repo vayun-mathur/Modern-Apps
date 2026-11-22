@@ -105,8 +105,30 @@ class DirectSipRcsPass3Test {
         }
     }
 
+    /** Bind the fake P-CSCF listener; see [withPcscf] call site for why. */
+    private fun bindPcscf(): ServerSocket {
+        // Attempt-counted, never clock-bounded: Robolectric substitutes
+        // System.currentTimeMillis with its paused scheduler clock.
+        var attempts = 0
+        while (true) {
+            try {
+                return ServerSocket().apply {
+                    reuseAddress = true
+                    bind(java.net.InetSocketAddress(5060))
+                }
+            } catch (e: java.net.BindException) {
+                if (++attempts >= 600) throw e
+                Thread.sleep(100)
+            }
+        }
+    }
+
     private suspend fun withPcscf(handler: (String) -> String?, block: suspend (Pcscf) -> Unit) {
-        val server = ServerSocket(5060)
+        // Port 5060 is fixed (the shadow advertises it as the P-CSCF) and
+        // shared with RcsSlice3Pass2DirectSipAuthTest / RcsSlice3Pass2ImsTest,
+        // which Gradle workers can run concurrently: SO_REUSEADDR covers
+        // TIME_WAIT, the bounded retry waits out an active listen.
+        val server = bindPcscf()
         val pcscf = Pcscf(handler)
         pcscf.serve(server)
         try {

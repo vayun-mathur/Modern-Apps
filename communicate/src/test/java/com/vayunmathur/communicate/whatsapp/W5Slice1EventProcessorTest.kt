@@ -59,18 +59,25 @@ class W5Slice1EventProcessorTest {
     }
 
     /**
-     * Poll until [cond] holds (bounded). The wait runs on a real-time
-     * dispatcher: these tests use runTest, whose virtual clock burns a
-     * delay budget instantly, while the processor drains on
-     * Dispatchers.IO in real time — polling on the test scheduler lost
-     * that race under load.
+     * Wait until [cond] holds: the wait is on the terminal signal (the
+     * effect visible in the db), polled on a real-time dispatcher.
+     * These tests use runTest, whose virtual clock burns a delay budget
+     * instantly, while the processor drains on Dispatchers.IO in real
+     * time — polling on the test scheduler lost that race under load.
+     * The bound counts attempts, never a clock (Robolectric substitutes
+     * System.currentTimeMillis, and the earlier 200x10ms budget expired
+     * on a 5-CPU box before the IO drain landed, leaving `!!` reads to
+     * NPE on empty rows); 6000 attempts is ~60 s of real backoff, far
+     * past any drain this processor does.
      */
     private suspend fun awaitSettled(cond: suspend () -> Boolean) {
         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
-            var waited = 0
-            while (waited < 200 && !cond()) {
+            var attempts = 0
+            while (!cond()) {
+                if (++attempts >= 6_000) {
+                    throw AssertionError("event processor effect never became visible in db")
+                }
                 kotlinx.coroutines.delay(10)
-                waited++
             }
         }
     }
@@ -86,9 +93,15 @@ class W5Slice1EventProcessorTest {
         else -> true
     }
 
-    private fun stripWa(id: String) = id.removePrefix("wa:").substringBefore(':').let {
-        val at = id.removePrefix("wa:").indexOf('@')
-        if (at <= 0) id.removePrefix("wa:") else it + id.removePrefix("wa:").substring(at)
+    // "wa:" prefix and any ":device" suffix before the '@' come off; the
+    // earlier form re-appended the domain for ids without a device suffix
+    // ("wa:9@g.us" -> "9@g.us@g.us"), so settled() below never matched and
+    // the old bounded poll silently expired as a fixed sleep.
+    private fun stripWa(id: String): String {
+        val raw = id.removePrefix("wa:")
+        val at = raw.indexOf('@')
+        if (at <= 0) return raw.substringBefore(':')
+        return raw.substring(0, at).substringBefore(':') + raw.substring(at)
     }
 
     @Test

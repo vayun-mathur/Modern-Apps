@@ -36,6 +36,33 @@ class RcsSlice3Pass2DirectSipAuthTest {
         RcsDirectSip.stop()
     }
 
+    /**
+     * The fake P-CSCF must listen on 5060 (the shadow advertises it and
+     * production dials that port). Three test classes bind it, and Gradle
+     * workers pull classes dynamically, so any two can listen at once:
+     * SO_REUSEADDR covers TIME_WAIT from earlier registrations, and the
+     * bounded retry waits out another class's active listen (bounded by
+     * that class's method runtime). Without this, 5060 binds flake with
+     * BindException under load (both directions observed).
+     */
+    private fun pcscfSocket(): ServerSocket {
+        // Attempt-counted, never clock-bounded: Robolectric substitutes
+        // System.currentTimeMillis with its paused scheduler clock, which
+        // can leap past any wall-clock deadline instantly.
+        var attempts = 0
+        while (true) {
+            try {
+                return ServerSocket().apply {
+                    reuseAddress = true
+                    bind(java.net.InetSocketAddress(5060))
+                }
+            } catch (e: java.net.BindException) {
+                if (++attempts >= 600) throw e
+                Thread.sleep(100)
+            }
+        }
+    }
+
     private class PcscfScript(val challengeFirst: Boolean) {
         val requests = CopyOnWriteArrayList<String>()
         val done = CountDownLatch(1)
@@ -109,7 +136,7 @@ class RcsSlice3Pass2DirectSipAuthTest {
     @Test
     fun akaChallengeRegistrationAndRestart() = runBlocking {
         // --- First start: 401 -> AKA digest REGISTER -> 200. ---
-        val server1 = ServerSocket(5060)
+        val server1 = pcscfSocket()
         val script1 = PcscfScript(challengeFirst = true)
         script1.serve(server1)
         assertTrue(RcsDirectSip.start(context, 1), "start failed: ${script1.requests}")
@@ -121,7 +148,7 @@ class RcsSlice3Pass2DirectSipAuthTest {
         assertEqualsRequests(script1)
 
         // --- Restart after stop: the stack must come back (scope fix). ---
-        val server2 = ServerSocket(5060)
+        val server2 = pcscfSocket()
         val script2 = PcscfScript(challengeFirst = false)
         script2.serve(server2)
         assertTrue(RcsDirectSip.start(context, 1), "restart failed: ${script2.requests}")

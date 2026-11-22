@@ -1,16 +1,21 @@
 package com.vayunmathur.communicate.ui
 
+import android.content.Context
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.test.core.app.ApplicationProvider
+import com.vayunmathur.communicate.data.rcs.RcsDatabase
 import com.vayunmathur.communicate.ui.rcs.RcsVerifyScreen
 import com.vayunmathur.communicate.ui.signal.SignalCaptchaWebView
 import com.vayunmathur.communicate.ui.signal.SignalRegistrationNumberScreen
 import com.vayunmathur.communicate.ui.whatsapp.WhatsAppBackupImportScreen
 import com.vayunmathur.communicate.ui.whatsapp.WhatsAppRegistrationNumberScreen
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -35,6 +40,30 @@ import org.robolectric.annotation.Config
 class Y1RegistrationScreensTest {
 
     @get:Rule val rule = createComposeRule()
+
+    // The RCS verify screen's buttons reach RcsDatabase through RcsE2E.
+    // Without this seam that is the SQLCipher singleton, whose
+    // AndroidKeyStore lookup does not exist on a JVM host: the click
+    // coroutine then dies with an uncaught KeyStoreException whenever the
+    // IO hop lands inside the test window (load-dependent). An in-memory
+    // database keeps the verify flow hermetic and deterministic.
+    private lateinit var testDb: RcsDatabase
+
+    @BeforeTest
+    fun setUp() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        testDb = androidx.room3.Room.inMemoryDatabaseBuilder(context, RcsDatabase::class.java)
+            .setDriver(androidx.sqlite.driver.bundled.BundledSQLiteDriver())
+            .allowMainThreadQueries()
+            .build()
+        RcsDatabase.overrideForTest = testDb
+    }
+
+    @AfterTest
+    fun tearDown() {
+        RcsDatabase.overrideForTest = null
+        testDb.close()
+    }
 
     // ---- Signal ----
 

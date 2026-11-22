@@ -231,12 +231,38 @@ rustNativeTests {
     // any test instantiating a *LineSession / GoogleVoiceSession or
     // using DataStoreUtils.getInstance directly belongs here. All other
     // classes batch.
+    //
+    // Post-batch CI fallout (46858d7faa, 5-CPU) added six more:
+    // (The fixed P-CSCF port 5060 shared by the DirectSip/Ims tests is
+    // handled in those classes with SO_REUSEADDR + bounded bind retry:
+    // forkEvery is a per-worker restart counter, not a fixed batch, so
+    // no task placement can serialize them.)
+    // - RcsSlice3Pass2DirectSipAuthTest asserts the RcsDirectSip
+    //   singleton's SIP CSeq starts at 1; batched neighbours that drive
+    //   the same singleton (same Robolectric sandbox classloader)
+    //   increment it first ("CSeq: 7 REGISTER" observed).
+    // - RcsSlice3Pass2TransportTest asserts RcsCapabilityExchange's
+    //   updates flow starts empty; neighbours populate it.
+    // - RcsSlice3Pass2TlsAndFtTest holds RcsMsrpTls's process-wide
+    //   cached identity + persisted identity files and the
+    //   RcsDatabase.overrideForTest seam.
+    // - W5Pass2ClientCoreTest / W5Pass2SyncHistoryTest /
+    //   W5Pass2ContactUtilsTest drive the WhatsAppClient singleton
+    //   (auth/db/socket/state fields and its never-cancelled IO scope),
+    //   whose asynchronous leftovers from batched neighbours can land
+    //   inside their assertions.
     isolatedClasses.addAll(
         listOf(
             "com.vayunmathur.communicate.data.SecretSealingTest",
             "com.vayunmathur.communicate.data.Y1RepositoryLoadersTest",
             "com.vayunmathur.communicate.googlevoice.GoogleVoiceSessionSlice4Test",
+            "com.vayunmathur.communicate.rcs.RcsSlice3Pass2DirectSipAuthTest",
+            "com.vayunmathur.communicate.rcs.RcsSlice3Pass2TlsAndFtTest",
+            "com.vayunmathur.communicate.rcs.RcsSlice3Pass2TransportTest",
             "com.vayunmathur.communicate.ui.Y2TopLevelScreensTest",
+            "com.vayunmathur.communicate.whatsapp.W5Pass2ClientCoreTest",
+            "com.vayunmathur.communicate.whatsapp.W5Pass2ContactUtilsTest",
+            "com.vayunmathur.communicate.whatsapp.W5Pass2SyncHistoryTest",
         )
     )
 }

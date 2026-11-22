@@ -47,6 +47,7 @@ import java.util.zip.Deflater
 import javax.crypto.Cipher
 import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
+import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -56,6 +57,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -117,7 +119,15 @@ class Y1WaE2eSyncTest {
         WhatsAppClient.onDemandPageCount.clear(); WhatsAppClient.appStateCollectionsFetching.clear()
         WhatsAppClient.appStateKeyRequested.clear()
         WhatsAppDiag.clear(); events.clear()
-        CoroutineScope(Dispatchers.Default + Job()).launch { WhatsAppClient.events.collect { events.add(it) } }
+        eventScope = CoroutineScope(Dispatchers.Default + Job())
+        eventScope.launch { WhatsAppClient.events.collect { events.add(it) } }
+    }
+
+    private lateinit var eventScope: CoroutineScope
+
+    @AfterTest
+    fun tearDown() {
+        eventScope.cancel()
     }
 
     private fun bundleFor(auth: WhatsAppAuthData, withOneTime: Pair<Int, ByteArray>? = null) =
@@ -481,6 +491,13 @@ class Y1WaE2eSyncTest {
             .setInitialHistBootstrapInlinePayload(ByteString.copyFrom(deflate(history.toByteArray()))).build()
         WhatsAppClient.handleHistorySync(notif, "hn-1")
         assertEquals("15550003@s.whatsapp.net", WhatsAppClient.lidToPhoneMap["888@lid"])
+        // Events reach the collector on Dispatchers.Default asynchronously;
+        // asserting immediately raced it and dropped the last conversation
+        // under load. Wait for the terminal delivery (step-bounded).
+        com.vayunmathur.testsupport.awaitWithMainIdle("history sync events delivered", maxSteps = 100_000) {
+            events.filterIsInstance<WhatsAppEvent.MessageUpdate>().size >= 3 &&
+                events.filterIsInstance<WhatsAppEvent.ConversationUpdate>().size >= 2
+        }
         val updates = events.filterIsInstance<WhatsAppEvent.MessageUpdate>()
         assertEquals(listOf("first", "mine", "group hist"), updates.map { it.body })
         val convs = events.filterIsInstance<WhatsAppEvent.ConversationUpdate>()

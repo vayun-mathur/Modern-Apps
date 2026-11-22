@@ -320,7 +320,12 @@ class SignalSlice2MessagingOfflineTest {
         }
         SignalClient.reportIdentityChange(peer, key)
         assertTrue(SignalClient.pendingIdentityChange(peer)?.contentEquals(key) == true)
-        val event = withTimeoutOrNull(5_000) { first.await() }
+        // The event is produced off the test scheduler; withTimeoutOrNull
+        // inside runTest burns virtual time instantly and returned null
+        // under load. Await the same signal on a real dispatcher instead.
+        val event = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+            withTimeoutOrNull(60_000) { first.await() }
+        }
         assertTrue(event is SignalEvent.IdentityKeyChanged, "got $event")
         assertEquals(peer, (event as SignalEvent.IdentityKeyChanged).peerAci)
     }

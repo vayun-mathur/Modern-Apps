@@ -107,6 +107,14 @@ class Y2TopLevelScreensTest {
             Manifest.permission.READ_CONTACTS,
             Manifest.permission.READ_PHONE_STATE,
         )
+        // ConversationScreen asks for POST_NOTIFICATIONS once after the
+        // first successful send (persisted ask-once flag). Pre-setting it
+        // keeps that prompt out of these screen tests: in this harness the
+        // send completes off the main thread and the launcher launch raced
+        // its registration, crashing with "unregistered
+        // ActivityResultLauncher" under load.
+        app.getSharedPreferences("communicate_notifications", Context.MODE_PRIVATE)
+            .edit().putBoolean("has_asked_notifications", true).commit()
         val shadow = Shadow.extract<ShadowRoleManager>(app.getSystemService(RoleManager::class.java))
         shadow.addHeldRole(RoleManager.ROLE_SMS)
         shadow.addHeldRole(RoleManager.ROLE_DIALER)

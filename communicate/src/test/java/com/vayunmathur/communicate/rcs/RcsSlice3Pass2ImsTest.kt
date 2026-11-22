@@ -44,6 +44,24 @@ class RcsSlice3Pass2ImsTest {
         RcsImsNetwork.reset()
     }
 
+    /** Bind the fake P-CSCF listener on the fixed port 5060. */
+    private fun bindPcscf5060(): ServerSocket {
+        // Attempt-counted, never clock-bounded: Robolectric substitutes
+        // System.currentTimeMillis with its paused scheduler clock.
+        var attempts = 0
+        while (true) {
+            try {
+                return ServerSocket().apply {
+                    reuseAddress = true
+                    bind(java.net.InetSocketAddress(5060))
+                }
+            } catch (e: java.net.BindException) {
+                if (++attempts >= 600) throw e
+                Thread.sleep(100)
+            }
+        }
+    }
+
     @Test
     fun imsNetworkScanFindsFakePdn() = runTest {
         RcsImsNetwork.reset()
@@ -408,7 +426,10 @@ class RcsSlice3Pass2ImsTest {
         // The IMS shadow advertises the P-CSCF on 127.0.0.1:5060; bind there
         // instead by pointing the accepted server at the shadow's port.
         server.close()
-        val pcscf = ServerSocket(5060)
+        // Port 5060 is shared with the DirectSip test classes, which Gradle
+        // workers can run concurrently: SO_REUSEADDR covers TIME_WAIT, the
+        // bounded retry waits out another class's active listen.
+        val pcscf = bindPcscf5060()
         val requests = CopyOnWriteArrayList<String>()
         val inboundSent = CountDownLatch(1)
         val serverDone = CountDownLatch(1)
