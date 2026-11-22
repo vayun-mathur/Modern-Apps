@@ -38,23 +38,31 @@ class PhoneSyncSourcesTest {
     @Test
     fun `refresh syncs and settles`() {
         // Let the init work finish first so refresh is the only sync.
-        val initDeadline = System.currentTimeMillis() + 30_000
-        while (System.currentTimeMillis() < initDeadline) {
-            Shadows.shadowOf(Looper.getMainLooper()).idle()
+        // Step-bounded pumps instead of wall-clock deadlines (see
+        // PagesWrapperTest): looper steps, not seconds CI contention
+        // can burn before the sync settles.
+        var initSteps = 0
+        while (initSteps++ < 6_000) {
+            Shadows.shadowOf(Looper.getMainLooper())
+                .idleFor(100, java.util.concurrent.TimeUnit.MILLISECONDS)
             if (!vm.isSyncingFlow.value && !vm.isLoadingHomeFlow.value) break
-            Thread.sleep(50)
+            java.util.concurrent.locks.LockSupport.parkNanos(
+                java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(10),
+            )
         }
         vm.refresh()
-        val deadline = System.currentTimeMillis() + 60_000
         var sawSyncingOrSettled = false
-        while (System.currentTimeMillis() < deadline) {
+        var steps = 0
+        while (steps++ < 6_000) {
             Shadows.shadowOf(Looper.getMainLooper())
-                .idleFor(200, java.util.concurrent.TimeUnit.MILLISECONDS)
+                .idleFor(100, java.util.concurrent.TimeUnit.MILLISECONDS)
             if (!vm.isSyncingFlow.value) {
                 sawSyncingOrSettled = true
                 break
             }
-            Thread.sleep(50)
+            java.util.concurrent.locks.LockSupport.parkNanos(
+                java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(10),
+            )
         }
         assertTrue(sawSyncingOrSettled, "refresh never settled")
         assertEquals("", vm.statusMessageFlow.value)

@@ -9,11 +9,16 @@ import com.vayunmathur.backup.data.BackupConfig
 import com.vayunmathur.backup.data.BackupSettings
 import com.vayunmathur.backup.domain.crypto.Bip39
 import com.vayunmathur.backup.platform.crypto.KeyManager
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Before
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows
 import org.robolectric.Shadows.shadowOf
 import android.os.Looper
 import kotlin.test.Test
@@ -44,20 +49,65 @@ class BackupViewModelTest {
     private val app: Application get() = ApplicationProvider.getApplicationContext()
     private val ctx: Context get() = app
 
-    @Before fun setUp() = runBlocking<Unit> {
+    @Before fun setUp() {
         FakeAndroidKeyStore.install(); FakeAndroidKeyStore.clear()
         ctx.getSharedPreferences("backup_secure_prefs", Context.MODE_PRIVATE).edit().clear().commit()
-        BackupConfig(ctx).clear()
+        // Pumped off-main edit, never runBlocking on this thread: parking
+        // the Robolectric main thread here wedged under a 5-CPU cap —
+        // completing the BackupConfig clear waits on work queued in the
+        // paused main looper (live BackupViewModels collect the shared
+        // store from viewModelScope), and a parked thread never pumps it
+        // (hung 9+ minutes in setUp, while passing locally). Launch the
+        // edit on IO and idle the looper until it has landed.
+        val done = CompletableDeferred<Unit>()
+        CoroutineScope(Dispatchers.IO).launch {
+            try { BackupConfig(ctx).clear(); done.complete(Unit) }
+            catch (e: Throwable) { done.completeExceptionally(e) }
+        }
+        pumpUntil("backup config clear") { done.isCompleted }
+        done.getCompletionExceptionOrNull()?.let { throw it }
         runCatching { KeyManager(ctx).clear() }
     }
 
     private fun idle() { shadowOf(Looper.getMainLooper()).idle() }
 
     private fun awaitState(cond: () -> Boolean) {
-        val deadline = System.nanoTime() + 10_000_000_000L
-        while (!cond() && System.nanoTime() < deadline) { idle(); Thread.sleep(10) }
-        idle()
+        pumpUntil("backup state", cond)
     }
+    /**
+     * Step-bounded pumped wait on a terminal [condition]: every step
+     * advances the paused main looper (running the ViewModel/DataStore
+     * work queued there, including delayed tasks), then parks briefly
+     * so Dispatchers.IO/Default producers get a CPU slice on a
+     * contended box. The bound is pumping steps, never wall-clock
+     * seconds that CI contention can burn before any work runs, and
+     * the failure is raised only after [MAX_PUMP_STEPS] pumps.
+     */
+    private fun pumpUntil(description: String, condition: () -> Boolean) {
+        var steps = 0
+        while (true) {
+            // Pump first, then check: the loops this replaces always
+            // idled at least once before judging the condition, and a
+            // condition that is already true at entry can still need
+            // that one pump for the work behind it to settle.
+            Shadows.shadowOf(Looper.getMainLooper())
+                .idleFor(PUMP_STEP_MS, java.util.concurrent.TimeUnit.MILLISECONDS)
+            if (condition()) break
+            java.util.concurrent.locks.LockSupport.parkNanos(
+                java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(PARK_MS),
+            )
+            if (++steps >= MAX_PUMP_STEPS) {
+                throw AssertionError("timed out (step-bounded): $description after $MAX_PUMP_STEPS pumps")
+            }
+        }
+    }
+
+    private companion object {
+        const val PUMP_STEP_MS = 100L
+        const val PARK_MS = 10L
+        const val MAX_PUMP_STEPS = 6_000
+    }
+
 
     @Test fun initialStateAndOnboardedLogic() {
         val vm = vm(); idle()
@@ -126,7 +176,14 @@ class BackupViewModelTest {
         vm.setFileBackupEnabled(true); idle()
         awaitState { vm.state.settings.fileBackupEnabled }
         assertTrue(vm.state.settings.fileBackupEnabled)
+        // Await the final toggle too: leaving it as a floating
+        // viewModelScope DataStore edit means tearDown's store.clear()
+        // can cancel it mid-flight and strand the shared store's write
+        // actor — the next test's setUp clear then never lands (the
+        // restoreValidCodeStoresKey wedge this ordering produced).
         vm.setFileBackupEnabled(false); idle()
+        awaitState { !vm.state.settings.fileBackupEnabled }
+        assertFalse(vm.state.settings.fileBackupEnabled)
     }
 
     @Test fun backupNowWithoutDestinationReportsError() {

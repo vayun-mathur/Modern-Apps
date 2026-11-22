@@ -99,14 +99,46 @@ class TvLoadHomePlayAccrescentTest {
     }
 
     private fun await(description: String, condition: () -> Boolean) {
-        val deadline = System.currentTimeMillis() + 30_000
-        while (System.currentTimeMillis() < deadline) {
-            Shadows.shadowOf(Looper.getMainLooper())
-                .idleFor(200, java.util.concurrent.TimeUnit.MILLISECONDS)
-            if (condition()) return
-            Thread.sleep(50)
+        try {
+            pumpUntil(description, condition)
+        } catch (e: AssertionError) {
+            throw AssertionError("timed out waiting for: $description; home=${vm.home.value}", e)
         }
-        throw AssertionError("timed out waiting for: $description; home=${vm.home.value}")
+    }
+
+    /**
+     * Step-bounded pumped wait on a terminal [condition]: every step
+     * advances the paused main looper (running the ViewModel/DataStore
+     * work queued there, including delayed tasks), then parks briefly
+     * so Dispatchers.IO/Default producers get a CPU slice on a
+     * contended box. The bound is pumping steps, never wall-clock
+     * seconds that CI contention can burn before any work runs (the
+     * previous 10-30s System.currentTimeMillis deadlines fired early
+     * under a 5-CPU cap while the terminal state was still landing).
+     */
+    private fun pumpUntil(description: String, condition: () -> Boolean) {
+        var steps = 0
+        while (true) {
+            // Pump first, then check: the loops this replaces always
+            // idled at least once before judging the condition, and a
+            // condition that is already true at entry can still need
+            // that one pump for the work behind it to settle.
+            Shadows.shadowOf(Looper.getMainLooper())
+                .idleFor(PUMP_STEP_MS, java.util.concurrent.TimeUnit.MILLISECONDS)
+            if (condition()) break
+            java.util.concurrent.locks.LockSupport.parkNanos(
+                java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(PARK_MS),
+            )
+            if (++steps >= MAX_PUMP_STEPS) {
+                throw AssertionError("timed out (step-bounded): $description after $MAX_PUMP_STEPS pumps")
+            }
+        }
+    }
+
+    private companion object {
+        const val PUMP_STEP_MS = 200L
+        const val PARK_MS = 50L
+        const val MAX_PUMP_STEPS = 6_000
     }
 
     @Test

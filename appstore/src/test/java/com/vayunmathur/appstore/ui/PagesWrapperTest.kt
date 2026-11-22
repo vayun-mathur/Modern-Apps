@@ -74,13 +74,18 @@ class PagesWrapperTest {
     @Test
     fun `library page attributes the installed app to its catalogue source`() {
         rule.setContent { LibraryPage(viewModel = vm, onAppClick = {}) }
-        val deadline = System.currentTimeMillis() + 15_000
-        while (System.currentTimeMillis() < deadline &&
-            vm.library.value.apps.none { it.packageName == ownPackage }
-        ) {
+        // Step-bounded pump (not a wall-clock deadline, which CI
+        // contention can burn before the library flow lands): advance
+        // the paused looper and yield a CPU slice per step, then let
+        // the assertions below judge the terminal state.
+        var steps = 0
+        while (vm.library.value.apps.none { it.packageName == ownPackage } && steps++ < 6_000) {
             org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper())
-                .idleFor(200, java.util.concurrent.TimeUnit.MILLISECONDS)
-            Thread.sleep(50)
+                .idleFor(100, java.util.concurrent.TimeUnit.MILLISECONDS)
+            if (vm.library.value.apps.any { it.packageName == ownPackage }) break
+            java.util.concurrent.locks.LockSupport.parkNanos(
+                java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(10),
+            )
         }
         assertTrue(exists("App Store"), "library apps were ${vm.library.value.apps.map { it.name to it.packageName }}")
         assertTrue(

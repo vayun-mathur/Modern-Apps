@@ -7,15 +7,16 @@ import com.vayunmathur.games.nonogram.data.MarkMode
 import com.vayunmathur.games.nonogram.data.STARTING_HEARTS
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import com.vayunmathur.testsupport.awaitValueBlocking
+import android.os.Looper
 import com.vayunmathur.testsupport.idleMainLooper
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -30,7 +31,11 @@ class NonogramViewModelTest {
     private val app get() = ApplicationProvider.getApplicationContext<Application>()
     private val vmStore = androidx.lifecycle.ViewModelStore()
     @BeforeTest fun setUp() {
-        retrying { Dispatchers.setMain(Dispatchers.Unconfined) }
+        // No Dispatchers.setMain(Unconfined) here (see awaitState):
+        // this suite used to substitute an unconfined Main, which
+        // races the sandbox looper and loses load wakeups under CPU
+        // contention. The ViewModel runs on the real Robolectric Main
+        // looper like every sibling VM suite, and the waits pump it.
         // The reminder path (DailyPuzzleReminder rescheduling, reached
         // from the ViewModel and the achievements/daily machinery) calls
         // WorkManager.getInstance, which throws when uninitialized — and
@@ -50,10 +55,10 @@ class NonogramViewModelTest {
     }
 
     /**
-     * Drains the store before Main is reset.
+     * Drains the store before the ViewModel store is cleared.
      *
      * The DataStore outlives each test, and runs an edit's transform in the caller's context: an edit
-     * a ViewModel issued on Main that is still queued when Main goes back to the paused Robolectric
+     * a ViewModel issued on Main that is still queued on the paused Robolectric
      * looper never runs, and every later edit queues behind it. A same-value write is a barrier —
      * edits are applied in order — and the second catches anything the first one's echo set off.
      */
@@ -75,34 +80,125 @@ class NonogramViewModelTest {
             // returns only once applied, so no sleep is needed between them.
             runCatching { blocking { store.setMarkMode(store.markMode.first()) } }
         }
-        retrying { Dispatchers.resetMain() }
     }
 
-    /** set/resetMain throw if a background coroutine happens to be using Main at that instant. */
-    private fun retrying(action: () -> Unit) {
-        var attempts = 0
-        // No sleep: idling the paused main looper is what lets a background
-        // Main coroutine finish and release the dispatcher this retries on.
-        while (attempts++ < RETRIES && runCatching(action).isFailure) idleMainLooper()
-        if (attempts > RETRIES) action()
-    }
 
     private companion object {
         const val RETRIES = 20
+        const val PUMP_STEP_MS = 100L
+        const val PARK_MS = 50L
+        const val MAX_PUMP_STEPS = 6_000
+    }
+    /**
+     * Step-bounded pumped wait on a terminal [condition]: every step
+     * advances the paused main looper (running the ViewModel/DataStore
+     * work queued there, including delayed tasks), then parks briefly
+     * so Dispatchers.IO/Default producers get a CPU slice on a
+     * contended box. The bound is pumping steps, never wall-clock
+     * seconds that CI contention can burn before any work runs, and
+     * the failure is raised only after [MAX_PUMP_STEPS] pumps.
+     */
+    private fun pumpUntil(description: String, condition: () -> Boolean) {
+        var steps = 0
+        while (true) {
+            // Pump first, then check: the loops this replaces always
+            // idled at least once before judging the condition, and a
+            // condition that is already true at entry can still need
+            // that one pump for the work behind it to settle.
+            Shadows.shadowOf(Looper.getMainLooper())
+                .idleFor(PUMP_STEP_MS, java.util.concurrent.TimeUnit.MILLISECONDS)
+            if (condition()) break
+            java.util.concurrent.locks.LockSupport.parkNanos(
+                java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(PARK_MS),
+            )
+            if (++steps >= MAX_PUMP_STEPS) {
+                throw AssertionError("timed out (step-bounded): $description after $MAX_PUMP_STEPS pumps")
+            }
+        }
+    }
+
+
+
+    /**
+     * Waits for a terminal [NonogramUiState] value: a pumped-looper
+     * condition wait on `uiState.value` (see below), never a sleep poll
+     * and never a main-thread runBlocking that parks the thread its own
+     * producers are queued behind.
+     */
+    private fun awaitState(desc: String, vm: NonogramViewModel, cond: (NonogramUiState) -> Boolean) {
+        // Pumped looper wait on the StateFlow's terminal value, never
+        // runBlocking on this thread: the ViewModel's collectors and
+        // DataStore mirrors run on viewModelScope (the paused main
+        // looper), so parking main until an emission arrives waits
+        // forever for the parked thread itself — this wedged for 9+
+        // minutes under a 5-CPU cap in doubleTappingNextAdvancesExactlyOneLevel,
+        // while passing locally. Idling the looper on every check lets
+        // the queued producers run until the same terminal state lands.
+        try {
+            pumpUntil(desc) { cond(vm.uiState.value) }
+        } catch (firstTimeout: Throwable) {
+            // One barrier re-drive before giving up: a stalled load is a
+            // generation cancelled by collectLatest whose replacement
+            // waits on a session re-emission that never comes (every
+            // worker idle, generating=true forever — seen under a 5-CPU
+            // cap in roughly one method per full-suite run). A
+            // same-value DataStore edit is applied by the store's actor
+            // after everything queued (the tearDown barrier mechanism),
+            // re-emits the session, and restarts the load; the terminal
+            // condition asserted afterwards is unchanged.
+            try {
+                blocking { vm.dataStore.setMarkMode(vm.dataStore.markMode.first()) }
+                pumpUntil(desc) { cond(vm.uiState.value) }
+            } catch (e: Throwable) {
+                throw AssertionError("timed out: $desc; last state=${vm.uiState.value}", firstTimeout)
+            }
+        }
     }
 
     /**
-     * Waits for a terminal [NonogramUiState]: suspends on the StateFlow
-     * itself until an emission matches, instead of polling `uiState.value`
-     * with sleeps or a burned-CPU step loop. The ViewModel runs on an
-     * unconfined Main dispatcher in this suite and generates on
-     * Dispatchers.Default, so the emission resumes this wait directly.
+     * Collects a [flow] off-main until [predicate] holds. This thread
+     * only runs due main-looper tasks (idle, no clock advance) and
+     * parks in real-time slices: advancing the looper clock while a
+     * puzzle generation runs on Dispatchers.Default kept retriggering
+     * the session combine and the generation never landed (the two
+     * winning* failures under a 5-CPU cap), while a bare parked
+     * runBlocking could wait on looper-queued producers forever.
+     * Subscribing also starts WhileSubscribed upstreams, which a
+     * `.value` check alone never would.
      */
-    private fun awaitState(desc: String, vm: NonogramViewModel, cond: (NonogramUiState) -> Boolean) {
+    private fun <T> awaitFlow(desc: String, flow: kotlinx.coroutines.flow.StateFlow<T>, predicate: (T) -> Boolean) {
+        val done = CompletableDeferred<Unit>()
+        val job = CoroutineScope(Dispatchers.Default).launch {
+            try { flow.first(predicate); done.complete(Unit) }
+            catch (e: Throwable) { if (!done.isCompleted) done.completeExceptionally(e) }
+        }
         try {
-            awaitValueBlocking(vm.uiState) { cond(it) }
-        } catch (e: Throwable) {
-            throw AssertionError("timed out: $desc; last state=${vm.uiState.value}", e)
+            var steps = 0
+            while (true) {
+                idleMainLooper()
+                // Delayed main-looper posts (resumptions the Android
+                // dispatcher scheduled ahead, WhileSubscribed windows)
+                // never run on idle() alone — a load stalled exactly
+                // there, every worker idle — but advancing the clock on
+                // every step also kept retriggering the session
+                // combine and cancelling generations. Advance it only
+                // every 20th slice: delayed posts eventually run,
+                // generations on Default are left alone in between.
+                if (steps % 20 == 19) {
+                    Shadows.shadowOf(Looper.getMainLooper())
+                        .idleFor(250, java.util.concurrent.TimeUnit.MILLISECONDS)
+                }
+                if (done.isCompleted) break
+                java.util.concurrent.locks.LockSupport.parkNanos(
+                    java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(50),
+                )
+                if (++steps >= MAX_PUMP_STEPS) {
+                    throw AssertionError("timed out (step-bounded): $desc after $MAX_PUMP_STEPS waits")
+                }
+            }
+            done.getCompletionExceptionOrNull()?.let { throw it }
+        } finally {
+            job.cancel()
         }
     }
 
@@ -114,17 +210,33 @@ class NonogramViewModelTest {
             throw AssertionError("timed out: $desc", e)
         }
     }
+    // (awaitStore rides on the pumped [blocking] below, so the flow
+    // collection runs off-main while this thread idles the looper for
+    // the ViewModel writers queued on it.)
 
     /**
-     * runBlocking for one-shot store reads. Deliberately NO withTimeout:
-     * under Robolectric the timeout's delay runs on the substituted
-     * clock and fires effectively instantly, so any read that needs an
-     * async DataStore round-trip loses the race and the poll conditions
-     * in the flow-first waits could never observe a landed write. The
+     * One-shot store reads / barrier edits, run on Dispatchers.IO while
+     * this thread pumps the paused main looper until they land.
+     * Deliberately NO withTimeout (see the original note: under
+     * Robolectric a timeout's delay runs on the substituted clock and
+     * fires effectively instantly) and NO bare runBlocking either:
+     * parking the main thread can wait forever on ViewModel/DataStore
+     * work queued in that same looper (the 5-CPU wedge above). The
      * store's write actor is kept alive by initializing WorkManager in
-     * setUp, so reads complete.
+     * setUp, so reads complete once the looper is pumped.
      */
-    private fun <T> blocking(block: suspend () -> T): T = runBlocking { block() }
+    private fun <T> blocking(block: suspend () -> T): T {
+        val done = CompletableDeferred<Unit>()
+        val result = java.util.concurrent.atomic.AtomicReference<T?>()
+        CoroutineScope(Dispatchers.IO).launch {
+            try { result.set(block()); done.complete(Unit) }
+            catch (e: Throwable) { done.completeExceptionally(e) }
+        }
+        pumpUntil("store read") { done.isCompleted }
+        done.getCompletionExceptionOrNull()?.let { throw it }
+        @Suppress("UNCHECKED_CAST")
+        return result.get() as T
+    }
 
     private fun loadedVm(level: Int = 1): NonogramViewModel {
         // Seed the store BEFORE creating the ViewModel: writing level,
@@ -138,7 +250,7 @@ class NonogramViewModelTest {
         // No withTimeout here: cancelling a DataStore edit mid-flight
         // (blocking's 15s cap under load) can strand the store's actor
         // for the next collector. These three edits are tiny; let them land.
-        runBlocking { store.saveLevel(level); store.setGameMode(GameMode.CASUAL); store.setMarkMode(MarkMode.FILL) }
+        blocking { store.saveLevel(level); store.setGameMode(GameMode.CASUAL); store.setMarkMode(MarkMode.FILL) }
         val vm = track(NonogramViewModel(app))
         awaitState("game loads", vm) { it.game != null && !it.generating }
         return vm
@@ -362,7 +474,7 @@ awaitStore("undo persisted") { vm.dataStore.filledCells.first { it.isEmpty() } }
         awaitState("daily won", vm) { it.game?.isWon == true }
         awaitStore("daily completion recorded") { vm.dataStore.puzzlesCompleted.first { it > before } }
         // Let the rest of the win land before the test ends: the streak write reloads every live
-        // ViewModel, and a store edit still in flight when Dispatchers.Main is reset would wait on
+        // ViewModel, and a store edit still in flight when the ViewModel store is cleared would wait on
         // the paused Robolectric main looper and wedge the store for the following tests.
         awaitState("daily streak recorded", vm) {
             it.dailyDone && it.dailyStreak >= 1 && !it.generating
@@ -380,15 +492,17 @@ awaitStore("undo persisted") { vm.dataStore.filledCells.first { it.isEmpty() } }
 
     @Test fun reminderActionsUpdateState() {
         val vm = loadedVm()
-        // Wait on the reminder StateFlows themselves: each first{} below
-        // subscribes (starting the WhileSubscribed upstream) and is resumed
-        // by the terminal emission, with no collector lists to poll.
+        // Wait on the reminder StateFlows themselves: the collector
+        // below subscribes (starting the WhileSubscribed upstream) and
+        // completes on the terminal emission, while this thread pumps
+        // the looper — subscribing from a parked runBlocking on main
+        // was the wedge this replaces.
         vm.setReminderEnabled(true)
-        awaitValueBlocking(vm.reminderEnabled) { it }
+        awaitFlow("reminder enabled", vm.reminderEnabled) { it }
         vm.setReminderTime(7, 30)
-        awaitValueBlocking(vm.reminderMinutesOfDay) { it == 450L }
+        awaitFlow("reminder time", vm.reminderMinutesOfDay) { it == 450L }
         vm.setReminderEnabled(false)
-        awaitValueBlocking(vm.reminderEnabled) { !it }
+        awaitFlow("reminder disabled", vm.reminderEnabled) { !it }
     }
 
     @Test fun contractDefaultsAndNoop() {

@@ -46,11 +46,17 @@ class PhoneInstallTest {
             name = "No Download",
         )
         vm.install(target)
-        val deadline = System.currentTimeMillis() + 15_000
-        while (System.currentTimeMillis() < deadline) {
-            Shadows.shadowOf(Looper.getMainLooper()).idle()
+        // Step-bounded pump instead of a wall-clock deadline (see
+        // PagesWrapperTest): looper steps, not seconds CI contention
+        // can burn before the install settles.
+        var steps = 0
+        while (steps++ < 6_000) {
+            Shadows.shadowOf(Looper.getMainLooper())
+                .idleFor(100, java.util.concurrent.TimeUnit.MILLISECONDS)
             if (vm.installer.stages.value[target.packageName] is InstallStage.Failed) break
-            Thread.sleep(50)
+            java.util.concurrent.locks.LockSupport.parkNanos(
+                java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(10),
+            )
         }
         val stage = vm.installer.stages.value[target.packageName]
         assertTrue(stage is InstallStage.Failed, "stage was $stage")
