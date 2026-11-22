@@ -144,13 +144,18 @@ internal fun CameraViewModel.tryCaptureCamera2NightExtension(): Boolean {
 internal fun CameraViewModel.evaluateCamera2NightDecision() {
     if (!camera2NightEnabledMutable.value) return
     try {
-        val lensId = selectedLensMutable.value?.logicalCameraId
+        val facing = selectedLensMutable.value?.facing
             ?: availableLensesMutable.value
                 .firstOrNull { it.facing == LensFacing.BACK }
-                ?.logicalCameraId
+                ?.facing
             ?: return
         val manager = app.getSystemService(CameraManager::class.java) ?: return
-        camera2NightDecision(CharacteristicsFacade.fromCameraManager(manager, lensId))
+        // Only a CameraManager.cameraIdList id (mapped by facing) may be
+        // handed to getCameraCharacteristics; the lens's CameraX-derived
+        // logicalCameraId need not exist there (unknown-device crash).
+        val lensId = CharacteristicsFacade.resolveCamera2Id(manager, facing) ?: return
+        val facade = CharacteristicsFacade.tryFromCameraManager(manager, lensId) ?: return
+        camera2NightDecision(facade)
     } catch (e: IllegalStateException) {
         Log.status("Camera2Night", "Camera2 night decision failed; staying on existing routing", e)
     } catch (e: IllegalArgumentException) {

@@ -95,15 +95,19 @@ internal fun encoderSupportsSloMoCaptureRate(selection: HighSpeedSelection): Boo
 internal fun CameraViewModel.evaluateCamera2SloMoDecision() {
     if (!camera2SloMoEnabledMutable.value) return
     try {
-        val lensId = selectedLensMutable.value
+        val facing = selectedLensMutable.value
             ?.takeIf { it.facing == LensFacing.BACK }
-            ?.logicalCameraId
+            ?.facing
             ?: availableLensesMutable.value
                 .firstOrNull { it.facing == LensFacing.BACK }
-                ?.logicalCameraId
+                ?.facing
             ?: return
         val manager = app.getSystemService(CameraManager::class.java) ?: return
-        val facade = CharacteristicsFacade.fromCameraManager(manager, lensId)
+        // Only a CameraManager.cameraIdList id (mapped by facing) may be
+        // handed to getCameraCharacteristics; the lens's CameraX-derived
+        // logicalCameraId need not exist there (unknown-device crash).
+        val lensId = CharacteristicsFacade.resolveCamera2Id(manager, facing) ?: return
+        val facade = CharacteristicsFacade.tryFromCameraManager(manager, lensId) ?: return
         val selection = HighSpeedPlanner.select(facade.snapshot)
         camera2SloMoDecision(
             facade,

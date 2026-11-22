@@ -55,6 +55,7 @@ internal fun CameraPreviewSurface(
         if (nightCamera2Id.isNotEmpty()) {
             Camera2NightPreview(
                 cameraId = nightCamera2Id,
+                lensFacing = state.selectedLens?.facing,
                 onSessionChanged = { session ->
                     viewModel.registerCamera2ExtensionSession(session)
                 },
@@ -73,6 +74,7 @@ internal fun CameraPreviewSurface(
         if (camera2Id.isNotEmpty()) {
             Camera2Preview(
                 cameraId = camera2Id,
+                lensFacing = state.selectedLens?.facing,
                 zoomRatio = state.zoomRatio,
                 torchOn = state.torchEnabled,
                 exposureCompEv = state.exposureComp,

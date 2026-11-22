@@ -541,5 +541,65 @@ class CharacteristicsFacade private constructor(
             }
             return fromCharacteristics(cameraId, chars, extensions, support)
         }
+
+        /**
+         * Every id in `manager.cameraIdList` paired with its `LENS_FACING`,
+         * in list order — the enumeration [Camera2IdResolver] selects from.
+         * Each id's characteristics read is guarded: an id the HAL lists but
+         * cannot describe yields a null-facing entry (never selectable),
+         * and a failing `cameraIdList` yields an empty list. Never throws.
+         */
+        fun cameraIdFacings(manager: CameraManager): List<CameraIdFacing> {
+            val ids = try {
+                manager.cameraIdList.toList()
+            } catch (e: RuntimeException) {
+                // IllegalArgumentException / ServiceSpecificException from a
+                // misbehaving HAL: no list, no mapping, error path upstream.
+                return emptyList()
+            }
+            return ids.map { id ->
+                val facingRaw = try {
+                    manager.getCameraCharacteristics(id)
+                        .get(CameraCharacteristics.LENS_FACING)
+                } catch (e: RuntimeException) {
+                    null
+                }
+                CameraIdFacing(
+                    cameraId = id,
+                    facing = when (facingRaw) {
+                        CameraMetadata.LENS_FACING_BACK -> LensFacing.BACK
+                        CameraMetadata.LENS_FACING_FRONT -> LensFacing.FRONT
+                        else -> null
+                    },
+                )
+            }
+        }
+
+        /**
+         * Resolves [facing] to a `cameraIdList` id via [cameraIdFacings] +
+         * [Camera2IdResolver]; null when no listed id serves that facing.
+         */
+        fun resolveCamera2Id(manager: CameraManager, facing: LensFacing?): String? =
+            when (val resolution = Camera2IdResolver.resolve(facing, cameraIdFacings(manager))) {
+                is Camera2IdResolution.Resolved -> resolution.cameraId
+                is Camera2IdResolution.Unavailable -> null
+            }
+
+        /**
+         * [fromCameraManager] that never throws: an unknown id
+         * (`IllegalArgumentException: getCameraCharacteristics: ... unknown
+         * device`), a binder/HAL failure (`ServiceSpecificException` and
+         * other `RuntimeException`s), or a `CameraAccessException` yields
+         * null so the caller can route to its error path exactly once
+         * instead of escaping composition.
+         */
+        fun tryFromCameraManager(manager: CameraManager, cameraId: String): CharacteristicsFacade? =
+            try {
+                fromCameraManager(manager, cameraId)
+            } catch (e: RuntimeException) {
+                null
+            } catch (e: android.hardware.camera2.CameraAccessException) {
+                null
+            }
     }
 }
