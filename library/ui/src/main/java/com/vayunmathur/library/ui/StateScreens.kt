@@ -84,6 +84,16 @@ fun EmptyState(
 /**
  * Shown while content is being fetched or built.
  *
+ * This is the canonical whole-content loading UI: a centred indeterminate
+ * [LoadingIndicator] (MaterialComponents.kt) plus an optional [message].
+ * Screens must render this (or a bare [LoadingIndicator] in a small slot)
+ * whenever their model says data is still loading - never a blank screen
+ * and never the loaded-but-empty [EmptyState].
+ *
+ * The spinner animates indefinitely, so under Robolectric it never lets
+ * the paused looper idle: tests must await CONTENT (text, a row, a node),
+ * never looper idle, while a loading state is on screen.
+ *
  * [message] is worth passing whenever the wait can be long enough to wonder
  * whether anything is happening.
  */

@@ -35,7 +35,7 @@ import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.image.compose.AsyncImage
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.Card
-import com.vayunmathur.library.ui.CircularProgressIndicator
+import com.vayunmathur.library.ui.LoadingIndicator
 import com.vayunmathur.library.ui.IconHome
 import com.vayunmathur.library.ui.IconStar
 import com.vayunmathur.library.ui.MaterialTheme
@@ -63,7 +63,7 @@ fun HomeContent(
     AppScaffold(topBar = {}) { padding ->
         if (loading) {
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+                LoadingIndicator()
             }
         } else if (noAddress) {
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {

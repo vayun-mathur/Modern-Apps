@@ -27,6 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.IconArrowForward
+import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.IconBack
 import com.vayunmathur.library.ui.LazyListScaffold
 import com.vayunmathur.library.ui.MaterialTheme
@@ -80,7 +81,7 @@ fun DashboardScreen(state: ScreenTimeUiState, actions: DashboardActions) {
         }
 
         when {
-            state.loading -> item { StatusRow(stringResource(R.string.apps_loading)) }
+            state.loading -> item { LoadingState(modifier = Modifier.fillParentMaxSize()) }
             !state.hasUsageAccess -> item {
                 SettingsSection {
                     SettingsRow(
@@ -310,9 +311,4 @@ private fun UsageProgressBar(fraction: Float) {
                 .background(MaterialTheme.colorScheme.primary),
         )
     }
-}
-
-@Composable
-private fun StatusRow(text: String) {
-    SettingsSection { SettingsRow(title = text) }
 }

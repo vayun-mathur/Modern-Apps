@@ -1,5 +1,8 @@
 package com.vayunmathur.euicc.ui
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -11,7 +14,11 @@ import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.euicc.Route
 import com.vayunmathur.euicc.platform.EuiccScreenState
 import com.vayunmathur.euicc.ui.dialogs.EidDialog
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.DetailScaffold
+import com.vayunmathur.library.ui.LoadingIndicator
 import com.vayunmathur.library.ui.SettingsRow
 import com.vayunmathur.library.ui.SettingsSection
 import com.vayunmathur.library.ui.Text
@@ -39,6 +46,14 @@ fun DeviceInfoScreen(state: EuiccScreenState, backStack: NavBackStack<Route>, on
         title = stringResource(R.string.device_info_title),
         backStack = backStack,
     ) {
+        if (state.loading) {
+            Box(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                LoadingIndicator()
+            }
+        }
         SettingsSection(title = stringResource(R.string.euicc_info_title)) {
             SettingsRow(
                 title = stringResource(R.string.eid_number),

@@ -24,6 +24,7 @@ import com.vayunmathur.emergency.platform.EmergencyUiState
 import com.vayunmathur.emergency.platform.EmergencyViewModel
 import com.vayunmathur.library.ui.Card
 import com.vayunmathur.library.ui.LazyListScaffold
+import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.verticalShape
 
@@ -46,7 +47,7 @@ fun ViewInfoScreen(state: EmergencyUiState) {
     ) {
         if (state.loading) {
             item {
-                Segment(value = stringResource(R.string.contacts_loading), index = 0, count = 1)
+                LoadingState(modifier = Modifier.fillParentMaxSize())
             }
         } else if (ownerRows.isEmpty() && state.info.contacts.isEmpty() &&
             state.health.allergies.isEmpty() && state.health.conditions.isEmpty() &&

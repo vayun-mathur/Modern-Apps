@@ -15,6 +15,7 @@ import com.vayunmathur.euicc.platform.EuiccScreenState
 import com.vayunmathur.euicc.ui.dialogs.RenameDialog
 import com.vayunmathur.library.ui.ConfirmDialog
 import com.vayunmathur.library.ui.DetailScaffold
+import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.SettingsRow
 import com.vayunmathur.library.ui.SettingsSection
 import com.vayunmathur.library.ui.Text
@@ -45,8 +46,14 @@ fun ProfileDetailScreen(
 ) {
     val profile = state.profiles.firstOrNull { it.iccid == iccid }
     if (profile == null) {
-        // Erased, or the eUICC was re-read and no longer reports it.
-        if (!state.loading) backStack.pop()
+        // Still loading, erased, or the eUICC was re-read and no longer reports it.
+        if (state.loading) {
+            DetailScaffold(title = "", onNavigateBack = { backStack.pop() }) {
+                LoadingState()
+            }
+        } else {
+            backStack.pop()
+        }
         return
     }
 

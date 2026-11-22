@@ -30,6 +30,7 @@ import com.vayunmathur.launcher.platform.DrawerActions
 import com.vayunmathur.launcher.platform.DrawerUiState
 import com.vayunmathur.launcher.ui.components.FastScrollStrip
 import com.vayunmathur.library.ui.CommonSearchBar
+import com.vayunmathur.library.ui.LoadingIndicator
 import com.vayunmathur.library.ui.HorizontalDivider
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.PrimaryTabRow
@@ -156,15 +157,16 @@ fun DrawerContent(
 
             if (apps.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(
-                        when {
-                            state.loading -> "Loading apps"
-                            state.query.isBlank() -> "No apps found"
-                            else -> "No apps match \"${state.query}\""
-                        },
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    if (state.loading) {
+                        LoadingIndicator()
+                    } else {
+                        Text(
+                            if (state.query.isBlank()) "No apps found"
+                            else "No apps match \"${state.query}\"",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
                 return@Column
             }

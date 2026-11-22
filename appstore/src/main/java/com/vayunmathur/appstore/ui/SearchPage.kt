@@ -31,7 +31,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
 import com.vayunmathur.appstore.data.UnifiedApp
 import com.vayunmathur.appstore.platform.AppStoreViewModel
-import com.vayunmathur.library.ui.CircularProgressIndicator
+import com.vayunmathur.library.ui.LoadingIndicator
 
 /** Binds [AppStoreViewModel] to the stateless [SearchScreen]. */
 @Composable
@@ -60,7 +60,7 @@ internal fun Loading() {
         Modifier.fillMaxSize(),
         contentAlignment = androidx.compose.ui.Alignment.Center,
     ) {
-        CircularProgressIndicator()
+        LoadingIndicator()
     }
 }
 

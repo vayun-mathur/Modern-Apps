@@ -36,6 +36,7 @@ import com.vayunmathur.appstore.platform.AppStoreViewModel
 import com.vayunmathur.library.ui.Card
 import com.vayunmathur.library.ui.CardDefaults
 import com.vayunmathur.library.ui.CircularProgressIndicator
+import com.vayunmathur.library.ui.LoadingIndicator
 import com.vayunmathur.library.ui.FilterChip
 import com.vayunmathur.library.ui.IconChevronRight
 import com.vayunmathur.library.ui.IconDownload
@@ -152,6 +153,6 @@ internal fun LoadingRow() {
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        CircularProgressIndicator()
+        LoadingIndicator()
     }
 }
