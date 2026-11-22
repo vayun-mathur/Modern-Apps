@@ -35,7 +35,7 @@ import android.view.Surface
  */
 class Camera2Session(
     private val driver: Camera2Driver,
-    private val executor: Camera2Executor,
+    internal val executor: Camera2Executor,
     private val snapshot: LensCharacteristicsSnapshot,
     private val stateMachine: SessionStateMachine = SessionStateMachine(),
     private val listener: Listener? = null,
@@ -88,12 +88,12 @@ class Camera2Session(
     private val rawRing = ReprocessRing<RawHeldFrame>(rawRingConfig.capacity)
     private var latestPreviewTimestampNs: Long? = null
     private val previewMetas = LinkedHashMap<Long, RawStillMetadata>()
-    private var pendingStill: PendingStill? = null
+    internal var pendingStill: PendingStill? = null
     private var displayRotationDegrees: Int = 0
     private var controls: Camera2ControlState = Camera2ControlState.DEFAULT
 
     /** In-flight still: JPEG bytes and result metadata pair up by arrival. */
-    private class PendingStill(
+    internal class PendingStill(
         val params: ResolvedStillParams,
         val callback: StillCallback,
         val tag: StillOutputTag = StillOutputTag.JPEG,
@@ -490,6 +490,8 @@ class Camera2Session(
         }.onFailure { failPending(pending, "captureStill failed: ${it.message}") }
     }
 
+    // Still byte/result pairing + delivery lives in Camera2SessionStillDelivery.kt.
+
     private fun onRingFrame(frame: RingHeldFrame) {
         try {
             executor.execute {
@@ -536,71 +538,6 @@ class Camera2Session(
         rawRing.attachMetadata(timestamp, raw.exposureTimeNs, raw.frameNumber, raw.aeState, raw.iso)
     }
 
-    private fun onStillResult(pending: PendingStill, metadata: RawStillMetadata) {
-        // Real driver callbacks already land on the executor; fakes may
-        // call synchronously. State is only touched on the executor.
-        try {
-            executor.execute {
-                if (pendingStill !== pending) return@execute
-                pending.rawMetadata = metadata
-                deliverPendingIfReady(pending)
-            }
-        } catch (e: java.util.concurrent.RejectedExecutionException) {
-            // Session is gone; the capture outcome no longer matters.
-        }
-    }
-
-    private fun onJpegAvailable(bytes: ByteArray, width: Int, height: Int) {
-        onStillBytesAvailable(bytes, width, height, StillOutputTag.JPEG)
-    }
-
-    private fun onUltraHdrJpegAvailable(bytes: ByteArray, width: Int, height: Int) {
-        onStillBytesAvailable(bytes, width, height, StillOutputTag.ULTRA_HDR_JPEG_R)
-    }
-
-    private fun onStillBytesAvailable(bytes: ByteArray, width: Int, height: Int, tag: StillOutputTag) {
-        try {
-            executor.execute {
-                val pending = pendingStill ?: return@execute
-                // Bytes from the output the pending capture did not target
-                // are not this still (both readers share the session).
-                if (pending.tag != tag) return@execute
-                pending.jpegBytes = bytes
-                pending.jpegWidth = width
-                pending.jpegHeight = height
-                deliverPendingIfReady(pending)
-            }
-        } catch (e: java.util.concurrent.RejectedExecutionException) {
-        }
-    }
-
-    private fun deliverPendingIfReady(pending: PendingStill) {
-        val raw = pending.rawMetadata ?: return
-        val bytes = pending.jpegBytes ?: return
-        pendingStill = null
-        pending.callback.onStillCaptured(
-            CapturedStill(
-                jpegBytes = bytes,
-                jpegWidth = pending.jpegWidth,
-                jpegHeight = pending.jpegHeight,
-                metadata = StillMetadataMapper.map(
-                    raw, pending.params.jpegOrientationDegrees, pending.params.mirrored,
-                ),
-                tag = pending.tag,
-            ),
-        )
-    }
-
-    private fun failPending(pending: PendingStill, message: String) {
-        try {
-            executor.execute {
-                if (pendingStill !== pending) return@execute
-                pendingStill = null
-                pending.callback.onStillFailed(message)
-            }
-        } catch (e: java.util.concurrent.RejectedExecutionException) {
-        }
-    }
 
     /** The preview size chosen at [open], or null before a successful open. */
     fun currentPreviewSize(): FrameSize? = previewSize

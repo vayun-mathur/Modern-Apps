@@ -99,3 +99,13 @@ internal fun CameraViewModel.startDebugLogging() {
         }
     }
 }
+
+/** Fires a hardware-shutter event for the UI to run as a capture. */
+fun CameraViewModel.triggerShutter() {
+    shutterEventsMutable.tryEmit(Unit)
+}
+
+/** Records the requested slo-mo frame rate for the next session bind. */
+fun CameraViewModel.setSloMoFps(fps: Int) {
+    sloMoFps = fps
+}

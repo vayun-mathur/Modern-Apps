@@ -24,7 +24,6 @@ import androidx.camera.extensions.ExtensionsManager
 import androidx.camera.video.Recorder
 import androidx.camera.video.Recording
 import androidx.camera.video.VideoCapture
-import androidx.exifinterface.media.ExifInterface
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.vayunmathur.library.util.DataStoreUtils
@@ -98,64 +97,19 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
         // small: one encoding plus one waiting. A press beyond it takes a plain still.
         const val MAX_PENDING_MOTION_SAVES = 2
 
-        val EXPOSURE_TIME_STOPS = listOf(
-            ExposureTimeStop("Auto", null),
-            ExposureTimeStop("1/4000s", 250_000L),
-            ExposureTimeStop("1/2000s", 500_000L),
-            ExposureTimeStop("1/1000s", 1_000_000L),
-            ExposureTimeStop("1/500s", 2_000_000L),
-            ExposureTimeStop("1/250s", 4_000_000L),
-            ExposureTimeStop("1/125s", 8_000_000L),
-            ExposureTimeStop("1/60s", 16_666_667L),
-            ExposureTimeStop("1/30s", 33_333_333L),
-            ExposureTimeStop("1/15s", 66_666_667L),
-            ExposureTimeStop("1/8s", 125_000_000L),
-            ExposureTimeStop("1/4s", 250_000_000L),
-            ExposureTimeStop("1/2s", 500_000_000L),
-            ExposureTimeStop("1s", 1_000_000_000L),
-            ExposureTimeStop("2s", 2_000_000_000L),
-            ExposureTimeStop("4s", 4_000_000_000L),
-        )
+        val EXPOSURE_TIME_STOPS: List<ExposureTimeStop> = EXPOSURE_TIME_STOPS_TABLE
 
         /**
          * EXIF tags copied from the original frame onto an adjusted capture. Orientation and GPS
          * are set separately (see writeCaptureExif); dimension tags are omitted so they aren't
          * left inconsistent with the re-encoded JPEG.
          */
-        val EXIF_TAGS_TO_COPY = listOf(
-            ExifInterface.TAG_DATETIME,
-            ExifInterface.TAG_DATETIME_ORIGINAL,
-            ExifInterface.TAG_DATETIME_DIGITIZED,
-            ExifInterface.TAG_OFFSET_TIME,
-            ExifInterface.TAG_OFFSET_TIME_ORIGINAL,
-            ExifInterface.TAG_OFFSET_TIME_DIGITIZED,
-            ExifInterface.TAG_SUBSEC_TIME,
-            ExifInterface.TAG_SUBSEC_TIME_ORIGINAL,
-            ExifInterface.TAG_SUBSEC_TIME_DIGITIZED,
-            ExifInterface.TAG_MAKE,
-            ExifInterface.TAG_MODEL,
-            ExifInterface.TAG_SOFTWARE,
-            ExifInterface.TAG_F_NUMBER,
-            ExifInterface.TAG_EXPOSURE_TIME,
-            ExifInterface.TAG_PHOTOGRAPHIC_SENSITIVITY,
-            ExifInterface.TAG_FOCAL_LENGTH,
-            ExifInterface.TAG_FOCAL_LENGTH_IN_35MM_FILM,
-            ExifInterface.TAG_APERTURE_VALUE,
-            ExifInterface.TAG_SHUTTER_SPEED_VALUE,
-            ExifInterface.TAG_EXPOSURE_BIAS_VALUE,
-            ExifInterface.TAG_MAX_APERTURE_VALUE,
-            ExifInterface.TAG_METERING_MODE,
-            ExifInterface.TAG_EXPOSURE_PROGRAM,
-            ExifInterface.TAG_EXPOSURE_MODE,
-            ExifInterface.TAG_WHITE_BALANCE,
-            ExifInterface.TAG_LIGHT_SOURCE,
-            ExifInterface.TAG_FLASH,
-            ExifInterface.TAG_SCENE_CAPTURE_TYPE,
-            ExifInterface.TAG_DIGITAL_ZOOM_RATIO,
-        )
+        val EXIF_TAGS_TO_COPY: List<String> = EXIF_TAGS_TO_COPY_TABLE
     }
 
     internal val ds = DataStoreUtils.getInstance(app)
+
+    // Camera2 gate setters/fallback live in CameraViewModelCamera2Gates.kt as extensions.
 
     /**
      * Gate for the Camera2 preview engine. Default ON — Camera2 is the
@@ -171,32 +125,6 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
     internal val camera2FallbackBindKeyMutable = MutableStateFlow<String?>(null)
     val camera2FallbackBindKey = camera2FallbackBindKeyMutable.asStateFlow()
 
-    /**
-     * Records a Camera2 preview configure/bind failure. First failure for
-     * this bind key latches (returns true) and the UI switches that
-     * session to CameraX; repeat failures for the same key are ignored.
-     */
-    fun onCamera2PreviewFailed(cameraId: String): Boolean {
-        val key = com.vayunmathur.camera.platform.camera2.Camera2FallbackLatch
-            .bindKey(cameraId, cameraModeMutable.value)
-        if (!camera2FallbackLatch.recordFailure(key)) return false
-        camera2FallbackBindKeyMutable.value = key
-        Log.status("Camera2Preview", "Camera2 bind failed for $key; falling back to CameraX for this session")
-        return true
-    }
-
-    /** Clears the fallback latch (manual retry / gate re-enable / new bind). */
-    fun clearCamera2Fallback() {
-        camera2FallbackLatch.reset()
-        camera2FallbackBindKeyMutable.value = null
-    }
-
-    /** Turns the Camera2 engine on/off (PHOTO only; see PreviewEnginePolicy). */
-    fun setCamera2PreviewEnabled(enabled: Boolean) {
-        camera2PreviewEnabledMutable.value = enabled
-        if (enabled) clearCamera2Fallback()
-        viewModelScope.launch { ds.setString("camera_camera2_engine", enabled.toString()) }
-    }
 
     /**
      * Gate for the Camera2 slo-mo path. Default ON — the Camera2 decision
@@ -207,11 +135,6 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
     internal val camera2SloMoEnabledMutable = MutableStateFlow(true)
     val camera2SloMoEnabled = camera2SloMoEnabledMutable.asStateFlow()
 
-    /** Turns the Camera2 slo-mo gate on/off (SLOW_MO only; see SloMoEnginePolicy). */
-    fun setCamera2SloMoEnabled(enabled: Boolean) {
-        camera2SloMoEnabledMutable.value = enabled
-        viewModelScope.launch { ds.setString("camera_camera2_slomo", enabled.toString()) }
-    }
 
     /**
      * Gate for the Camera2 NIGHT path. Default ON — the Camera2 decision
@@ -222,11 +145,6 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
     internal val camera2NightEnabledMutable = MutableStateFlow(true)
     val camera2NightEnabled = camera2NightEnabledMutable.asStateFlow()
 
-    /** Turns the Camera2 night gate on/off (PHOTO only; see ExtensionsEnginePolicy). */
-    fun setCamera2NightEnabled(enabled: Boolean) {
-        camera2NightEnabledMutable.value = enabled
-        viewModelScope.launch { ds.setString("camera_camera2_night", enabled.toString()) }
-    }
 
     /**
      * RAW-night selection on the Camera2 dual ring. Default ON as the
@@ -238,11 +156,6 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
     internal val camera2RawNightEnabledMutable = MutableStateFlow(true)
     val camera2RawNightEnabled = camera2RawNightEnabledMutable.asStateFlow()
 
-    /** Turns the RAW-night Camera2 route on/off (see RawNightPolicy). */
-    fun setCamera2RawNightEnabled(enabled: Boolean) {
-        camera2RawNightEnabledMutable.value = enabled
-        viewModelScope.launch { ds.setString("camera_camera2_raw_night", enabled.toString()) }
-    }
 
     /**
      * The live Camera2 NIGHT extension session while one is bound
@@ -691,9 +604,6 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
     internal val shutterEventsMutable = kotlinx.coroutines.flow.MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val shutterEvents = shutterEventsMutable.asSharedFlow()
 
-    fun triggerShutter() {
-        shutterEventsMutable.tryEmit(Unit)
-    }
 
     // Burst mode (press-and-hold shutter): fires single-frame captures back-to-back with only one
     // in flight at a time, up to BURST_MAX, until the user releases (stopBurst).
@@ -761,9 +671,6 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
     /** True while a record press is rebinding the video session for a new bitrate. */
     internal var adaptiveBitrateRebindInFlight: Boolean = false
 
-    fun setSloMoFps(fps: Int) {
-        sloMoFps = fps
-    }
 
     // (cancelTimerCountdown lives in CameraViewModelActions.kt as an extension.)
 
@@ -794,11 +701,9 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
 
     // Capture settings live in CameraSettings.kt as extensions.
 
-    // --- Mode, lens, capture-intent, shutter, timer and sensor members stay here: ---
-    // they are called from other packages (ui, root), which this task may not edit,
-    // and Kotlin extensions would need new imports at those call sites.
-    // Same-package-only helpers (crop ratio, level sensor, mirror flag, debug logging)
-    // live in CameraViewModelActions.kt as extensions.
+    // --- Mode/lens actions live in CameraViewModelModeLens.kt as extensions;
+    // shutter/timer/sensor helpers live in CameraViewModelActions.kt as extensions.
+    // Capture-intent, timer and sensor members stay here.
 
     // Bitmap/EXIF processing helpers live in CameraCaptureProcessing.kt as extensions.
     // (long-exposure countdown lives in CameraNightCapture.kt.)
@@ -808,70 +713,6 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
     // Night luminance/override handling lives in CameraNightMode.kt as extensions.
     // Last-capture persistence lives in CameraSettings.kt as an extension.
 
-    fun switchCameraMode(newMode: CameraMode) {
-        // Mid-recording mode switches rebind the session, whose teardown stops the
-        // active recording. Unlike the persisted bind-time settings they cannot be
-        // deferred (a mode jump on stop would surprise), so the switch is gated
-        // while recording; the UI explains why. Same-mode taps stay harmless.
-        if (isRecordingMutable.value && newMode != cameraModeMutable.value) return
-        // A pending shutter timer belongs to the old mode: firing capturePhoto() into the
-        // new session would capture unprompted (and with the wrong use cases bound).
-        if (newMode != cameraModeMutable.value) {
-            cancelTimerCountdown()
-            resetNightModeDetection()
-        }
-        // Slo-Mo is back-camera only; enforce it when entering Slo-Mo.
-        if (newMode == CameraMode.SLOW_MO) {
-            if (lensFacingMutable.value != CameraSelector.LENS_FACING_BACK) {
-                lensFacingMutable.value = CameraSelector.LENS_FACING_BACK
-                resetNightModeDetection()
-            }
-        }
-        cameraModeMutable.value = newMode
-    }
-
-    fun flipCamera() {
-        // Disallow flipping while in Slo-Mo — it's back-camera only, true HFR.
-        if (cameraModeMutable.value == CameraMode.SLOW_MO) return
-        // A flip rebinds the session and teardown would stop an active recording
-        // (the shutter row already hides flip while recording; this is the backstop).
-        if (isRecordingMutable.value) return
-        lensFacingMutable.value = if (lensFacingMutable.value == CameraSelector.LENS_FACING_BACK)
-            CameraSelector.LENS_FACING_FRONT else CameraSelector.LENS_FACING_BACK
-        // Preserve the lens family across the flip: e.g. UW back -> front lens,
-        // tele back -> front lens (front has a single family, anchored at its default).
-        val facing = if (lensFacingMutable.value == CameraSelector.LENS_FACING_BACK)
-            com.vayunmathur.camera.domain.LensFacing.BACK
-        else com.vayunmathur.camera.domain.LensFacing.FRONT
-        selectedLensMutable.value =
-            com.vayunmathur.camera.domain.LensSelectionLogic.filterByFacing(
-                availableLensesMutable.value, facing
-            ).minByOrNull { it.fallbackPriority }
-        resetNightModeDetection()
-    }
-
-    /**
-     * Selects a physical lens within the current facing family. The session
-     * rebind effect is keyed on [selectedLens], so this triggers a rebind with
-     * the filtered selector plus a capability refresh. Unknown lenses are
-     * ignored so a stale UI entry can never crash a bind.
-     */
-    fun selectLens(lens: com.vayunmathur.camera.domain.PhysicalLens) {
-        // A lens switch rebinds the session and teardown would stop an active
-        // recording; gated while recording (the lens bar explains why in the UI).
-        if (isRecordingMutable.value) return
-        if (lens.facing != (
-            if (lensFacingMutable.value == CameraSelector.LENS_FACING_BACK)
-                com.vayunmathur.camera.domain.LensFacing.BACK
-            else com.vayunmathur.camera.domain.LensFacing.FRONT
-            )
-        ) {
-            return
-        }
-        if (lens !in availableLensesMutable.value) return
-        selectedLensMutable.value = lens
-        resetNightModeDetection()
-    }
 
     // (night reset helper lives in CameraNightMode.kt.)
     // (mirrorCaptures lives in CameraViewModelActions.kt as an extension.)
@@ -925,8 +766,3 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
 }
 // (ManualLifecycleOwner lives in CameraViewModelTypes.kt.)
 
-/** One [CameraViewModel.zslCompatible] input sample: wanted value plus whether a shot is in flight. */
-internal class ZslGate(val compatible: Boolean, val capturing: Boolean)
-
-/** One [CameraViewModel.bindTimeSettings] input sample: desired settings plus recording state. */
-internal class BindSettingsGate(val settings: BindTimeSettings, val recording: Boolean)

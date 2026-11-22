@@ -165,3 +165,9 @@ internal class ManualLifecycleOwner : LifecycleOwner {
         registry.currentState = Lifecycle.State.DESTROYED
     }
 }
+
+/** One [CameraViewModel.zslCompatible] input sample: wanted value plus whether a shot is in flight. */
+internal class ZslGate(val compatible: Boolean, val capturing: Boolean)
+
+/** One [CameraViewModel.bindTimeSettings] input sample: desired settings plus recording state. */
+internal class BindSettingsGate(val settings: BindTimeSettings, val recording: Boolean)

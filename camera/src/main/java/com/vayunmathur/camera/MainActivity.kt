@@ -14,6 +14,7 @@ import androidx.core.content.IntentCompat
 import com.vayunmathur.camera.ui.CameraScreen
 import com.vayunmathur.camera.ui.SettingsPage
 import com.vayunmathur.camera.platform.CameraViewModel
+import com.vayunmathur.camera.platform.triggerShutter
 import com.vayunmathur.library.ui.AppPermissionsGate
 import com.vayunmathur.library.ui.AppPermissionsSpec
 import com.vayunmathur.library.ui.MaActivity

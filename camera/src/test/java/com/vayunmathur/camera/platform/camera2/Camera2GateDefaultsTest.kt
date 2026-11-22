@@ -7,6 +7,9 @@ import com.vayunmathur.camera.domain.RecordingPathInput
 import com.vayunmathur.camera.domain.RecordingPathPolicy
 import com.vayunmathur.camera.platform.CameraMode
 import com.vayunmathur.camera.platform.CameraViewModel
+import com.vayunmathur.camera.platform.clearCamera2Fallback
+import com.vayunmathur.camera.platform.onCamera2PreviewFailed
+import com.vayunmathur.camera.platform.setCamera2PreviewEnabled
 import com.vayunmathur.camera.platform.CustomRecordingGate
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse

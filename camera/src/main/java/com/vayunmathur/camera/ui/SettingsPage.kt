@@ -31,6 +31,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.camera.R
 import com.vayunmathur.camera.platform.CameraViewModel
+import com.vayunmathur.camera.platform.setCamera2PreviewEnabled
 import com.vayunmathur.camera.platform.MotionPhotoDuration
 import com.vayunmathur.camera.data.SafDocuments
 import com.vayunmathur.camera.data.SaveTarget

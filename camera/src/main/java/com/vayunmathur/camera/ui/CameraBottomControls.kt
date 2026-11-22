@@ -11,6 +11,8 @@ import androidx.compose.ui.platform.LocalContext
 import com.vayunmathur.camera.Route
 import com.vayunmathur.camera.platform.CameraMode
 import com.vayunmathur.camera.platform.CameraViewModel
+import com.vayunmathur.camera.platform.flipCamera
+import com.vayunmathur.camera.platform.switchCameraMode
 import com.vayunmathur.camera.platform.captureVideoSnapshot
 import com.vayunmathur.camera.platform.startBurst
 import com.vayunmathur.camera.platform.stopBurst
