@@ -585,14 +585,22 @@ val jacocoAntClasspath: FileCollection = objects.fileCollection().from(
 
 tasks.register<JacocoReport>(MERGED_COVERAGE_TASK) {
     group = "verification"
-    description = "Merged JaCoCo report for the dev variant: unit-test .exec plus " +
-        "androidTest .ec files (whichever exist), with generated-code excludes."
+    description = "Merged JaCoCo report for the dev variant: unit-test .exec, " +
+        "<task>Native companion .exec, plus androidTest .ec files (whichever " +
+        "exist), with generated-code excludes."
     dependsOn("testDevUnitTest")
     setJacocoClasspath(jacocoAntClasspath)
     classDirectories.from(mergedCoverageClassDirs(APP_UNIT_TEST_VARIANT))
     executionData.from(
         files(layout.buildDirectory.dir("outputs/unit_test_code_coverage/devUnitTest"))
             .asFileTree.matching { include("*.exec") },
+        // The <task>Native companions (see RustNative.kt splitNativeLoadingTests)
+        // are plain Gradle Test tasks, not AGP unit-test tasks, so their JaCoCo
+        // agent writes build/jacoco/<task>Native.exec instead of AGP's
+        // outputs/unit_test_code_coverage dir. Without this the quarantined
+        // (native-loading / isolated) classes report 0% in every split module.
+        files(layout.buildDirectory.dir("jacoco"))
+            .asFileTree.matching { include("*Native.exec") },
         files(layout.buildDirectory.dir("outputs/coverage-manual"))
             .asFileTree.matching { include("*.ec") },
     )

@@ -286,7 +286,11 @@ class SosServiceAndReceiverTest {
         val alarms = ctx.getSystemService(android.app.AlarmManager::class.java)
         val controller = Robolectric.buildService(SosCountdownService::class.java)
         val service = controller.create().get()
-        val before = System.currentTimeMillis()
+        // Production arms ELAPSED_REALTIME_WAKEUP at
+        // SystemClock.elapsedRealtime() + remainingMs (see SosCountdownService
+        // .scheduleCall), so the shadow's triggerAtMs lives in the elapsed
+        // domain — read the same shadow-backed clock here, not the wall clock.
+        val beforeElapsed = android.os.SystemClock.elapsedRealtime()
         val intent = Intent().putExtra("service.extra.remaining_time_ms", 60_000L)
         service.onStartCommand(intent, 0, 1)
         ShadowLooper.idleMainLooper()
@@ -295,7 +299,11 @@ class SosServiceAndReceiverTest {
         // grant is unavailable on device.
         val scheduled = Shadows.shadowOf(alarms).scheduledAlarms
         assertTrue(scheduled.isNotEmpty())
-        assertTrue(scheduled.first().triggerAtMs >= before + 50_000)
+        assertEquals(
+            android.app.AlarmManager.ELAPSED_REALTIME_WAKEUP,
+            scheduled.first().getType(),
+        )
+        assertTrue(scheduled.first().triggerAtMs >= beforeElapsed + 50_000)
         controller.destroy()
         ShadowLooper.idleMainLooper()
     }
