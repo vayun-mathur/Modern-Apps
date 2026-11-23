@@ -68,4 +68,33 @@ class LibraryScreenTest {
         rule.onNodeWithText("F-Droid", substring = true).performClick()
         assertEquals(SourceFilter.FDROID, filter)
     }
+
+    @Test
+    fun `first load hides the filter chips behind the spinner`() {
+        val state = LibraryUiState(hasLoaded = false)
+        rule.setContent { LibraryScreen(state = state, actions = LibraryActions.Noop) }
+
+        rule.onNodeWithText("F-Droid", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun `filtering a loaded library down to empty keeps the chips`() {
+        var filter: SourceFilter? = null
+        val actions = object : LibraryActions {
+            override fun setLibraryFilter(f: SourceFilter) {
+                filter = f
+            }
+        }
+        // hasLoaded stays true after the first sweep, so a filter with no rows
+        // shows the empty state under still-visible chips, never the spinner.
+        val state = LibraryUiState(
+            hasLoaded = true,
+            counts = mapOf(SourceFilter.ALL to 1, SourceFilter.FDROID to 1, SourceFilter.PLAYSTORE to 0),
+        )
+        rule.setContent { LibraryScreen(state = state, actions = actions) }
+
+        rule.onNodeWithText("Play Store", substring = true).assertIsDisplayed()
+        rule.onNodeWithText("F-Droid", substring = true).performClick()
+        assertEquals(SourceFilter.FDROID, filter)
+    }
 }

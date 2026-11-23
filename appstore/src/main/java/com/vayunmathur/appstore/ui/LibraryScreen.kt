@@ -23,7 +23,6 @@ import androidx.compose.ui.unit.dp
 import com.vayunmathur.appstore.data.UnifiedApp
 import com.vayunmathur.appstore.platform.AppStoreViewModel
 import com.vayunmathur.library.ui.EmptyState
-import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.FilterChip
 import com.vayunmathur.library.ui.IconPackage
 import com.vayunmathur.library.ui.AppScaffold
@@ -41,7 +40,14 @@ fun LibraryScreen(
     actions: LibraryActions,
     onAppClick: (UnifiedApp) -> Unit = {},
 ) {
-    AppScaffold(topBar = {}) { padding ->
+    // Whole-content loading: the list IS the content and the chips only filter a
+    // loaded list, so there is no meaningful filter state before the first sweep.
+    // isLoading is gated on hasLoaded, which never resets, so filtering a loaded
+    // library (even down to empty) keeps the chips visible above the empty state.
+    AppScaffold(
+        topBar = {},
+        isLoading = !state.hasLoaded && state.apps.isEmpty(),
+    ) { padding ->
         Column(Modifier.fillMaxSize().padding(top = padding.calculateTopPadding())) {
             LazyRow(
                 Modifier.fillMaxWidth(),
@@ -65,9 +71,7 @@ fun LibraryScreen(
                 }
             }
 
-            if (!state.hasLoaded && state.apps.isEmpty()) {
-                LoadingState(Modifier.fillMaxSize())
-            } else if (state.apps.isEmpty()) {
+            if (state.apps.isEmpty()) {
                 EmptyState(
                     title = stringResource(R.string.library_empty_title),
                     message = stringResource(R.string.library_empty_message),
