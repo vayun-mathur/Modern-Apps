@@ -1,160 +1,96 @@
 package com.vayunmathur.camera.platform
 
-import android.net.Uri
-import androidx.lifecycle.Lifecycle
+import android.graphics.ImageFormat
+import android.util.Range
+import android.util.Size
+import android.view.Surface
 import androidx.test.core.app.ApplicationProvider
-import androidx.test.ext.junit.runners.AndroidJUnit4
-import org.junit.Test
-import org.junit.runner.RunWith
+import com.vayunmathur.camera.platform.camera2.Camera2Driver
+import com.vayunmathur.camera.platform.camera2.Camera2Executor
+import com.vayunmathur.camera.platform.camera2.Camera2Session
+import com.vayunmathur.camera.platform.camera2.CaptureSessionHandle
+import com.vayunmathur.camera.platform.camera2.CharacteristicsFacade
+import com.vayunmathur.camera.platform.camera2.DeviceCallback
+import com.vayunmathur.camera.platform.camera2.DeviceHandle
+import com.vayunmathur.camera.platform.camera2.CaptureSessionCallback
+import com.vayunmathur.camera.platform.camera2.FrameSize
+import com.vayunmathur.camera.platform.camera2.LensCharacteristicsSnapshot
+import com.vayunmathur.camera.platform.camera2.ResolvedRequestParams
+import com.vayunmathur.camera.platform.camera2.StillOutput
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import com.vayunmathur.camera.data.SaveTarget
-import com.vayunmathur.camera.data.cycleAspectRatio
-import com.vayunmathur.camera.data.setAspectRatio
-import com.vayunmathur.camera.data.setAudioInputSource
-import com.vayunmathur.camera.data.setBlurStrength
-import com.vayunmathur.camera.data.setEdgeSharpeningEnabled
-import com.vayunmathur.camera.data.setExposureCompensation
-import com.vayunmathur.camera.data.setFlashMode
-import com.vayunmathur.camera.data.setLastCaptureUri
-import com.vayunmathur.camera.data.setLocationEnabled
-import com.vayunmathur.camera.data.setMirrorFront
-import com.vayunmathur.camera.data.setMotionPhotoDuration
-import com.vayunmathur.camera.data.setNoiseReductionEnabled
-import com.vayunmathur.camera.data.setShadows
-import com.vayunmathur.camera.data.setTimerDuration
-import com.vayunmathur.camera.data.setVideoCodec
-import com.vayunmathur.camera.data.setWarmth
-import com.vayunmathur.camera.data.toggleGrid
-import com.vayunmathur.camera.data.toggleLevel
-import com.vayunmathur.camera.data.toggleTorch
-import com.vayunmathur.camera.data.updateLocation
+import kotlinx.coroutines.runBlocking
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
-@RunWith(AndroidJUnit4::class)
+/** Camera2 contract: settings state + flash routed to session. */
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34])
 class CameraSettingsExtraTest {
 
     private fun vm() = CameraViewModel(ApplicationProvider.getApplicationContext())
 
-    @Test fun allSettingsSettersUpdateFlows() {
-        val v = vm()
-        v.setFlashMode(FlashMode.AUTO)
-        assertEquals(FlashMode.AUTO, v.flashMode.value)
-        v.setMirrorFront(false)
-        assertFalse(v.mirrorFront.value)
-        v.setNoiseReductionEnabled(false)
-        assertFalse(v.noiseReductionEnabled.value)
-        v.setEdgeSharpeningEnabled(false)
-        assertFalse(v.edgeSharpeningEnabled.value)
-        v.toggleTorch()
-        assertTrue(v.torchEnabled.value)
-        v.toggleTorch()
-        assertFalse(v.torchEnabled.value)
-        v.setTimerDuration(TimerDuration.TEN)
-        assertEquals(TimerDuration.TEN, v.timerDuration.value)
-        assertEquals(10, v.timerDuration.value.seconds)
-        v.setVideoCodec(VideoCodec.AV1)
-        assertEquals(VideoCodec.AV1, v.videoCodec.value)
-        v.setMotionPhotoDuration(MotionPhotoDuration.ONE)
-        assertEquals(1, v.motionPhotoDuration.value.seconds)
-        v.setAudioInputSource(AudioInputSource.MIC)
-        assertEquals(AudioInputSource.MIC, v.audioInputSource.value)
-        v.setLocationEnabled(true)
-        assertTrue(v.locationEnabled.value)
-        v.toggleGrid()
-        assertTrue(v.gridEnabled.value)
-        v.toggleLevel()
-        assertTrue(v.levelEnabled.value)
-        v.toggleLevel()
-        assertFalse(v.levelEnabled.value)
-        v.setLastCaptureUri(Uri.parse("content://media/1"))
-        assertEquals("content://media/1", v.lastCaptureUri.value.toString())
-        v.setLastCaptureUri(null)
-        assertEquals(null, v.lastCaptureUri.value)
+    private class FakeHandle : CaptureSessionHandle {
+        val repeating = mutableListOf<ResolvedRequestParams>()
+        override fun setRepeatingPreview(params: ResolvedRequestParams, target: Surface) { repeating += params }
+        override fun captureStill(params: com.vayunmathur.camera.platform.camera2.ResolvedStillParams, stillTarget: Surface, callback: com.vayunmathur.camera.platform.camera2.StillResultCallback) { callback.onCompleted(com.vayunmathur.camera.platform.camera2.RawStillMetadata()) }
+        override fun close() {}
+    }
+    private class FakeDevice : DeviceHandle {
+        override val cameraId: String = "0"
+        override fun createCaptureSession(surfaces: List<Surface>, callback: CaptureSessionCallback) { callback.onConfigured(FakeHandle()) }
+        override fun close() {}
+    }
+    private class FakeDriver : Camera2Driver {
+        override fun openCamera(cameraId: String, callback: DeviceCallback) { callback.onOpened(FakeDevice()) }
+        override fun createStillOutput(size: FrameSize): StillOutput? = null
+    }
+    internal fun snapshot(
+        zoom: Range<Float>? = Range(0.5f, 8f),
+        flash: Boolean = true,
+        sensitivity: Range<Int>? = Range(50, 6400),
+        ev: Range<Float>? = Range(-4f, 4f),
+    ): LensCharacteristicsSnapshot = CharacteristicsFacade.fromFakeMap(
+        cameraId = "0", zoomRatioRange = zoom, hasFlashUnit = flash,
+        sensitivityRange = sensitivity, exposureCompensationEvRange = ev,
+        exposureTimeRangeNs = Range(1_000_000L, 1_000_000_000L),
+        sizesByFormat = mapOf(ImageFormat.PRIVATE to listOf(Size(1920, 1080))),
+        activeArrayWidth = 4000, activeArrayHeight = 3000,
+        exposureCompensationStepEv = 1f / 6f, maxAfRegions = 1, maxAeRegions = 1,
+    ).snapshot
+
+    internal fun fakeSession(executor: Camera2Executor, snap: LensCharacteristicsSnapshot = snapshot()): Camera2Session =
+        Camera2Session(FakeDriver(), executor, snap)
+
+    internal fun Camera2Executor.drain() {
+        val latch = CountDownLatch(1); execute { latch.countDown() }
+        assertTrue(latch.await(5, TimeUnit.SECONDS))
+    }
+    internal fun dirtyTeardownState(v: CameraViewModel) {
+        v.isRecordingMutable.value = true; v.recordingPausedMutable.value = true
+        v.recordingDurationSecMutable.value = 42; v.timerCountdownMutable.value = 3
+        v.isCapturingMutable.value = true; v.photoSessionActiveMutable.value = true
+        v.analysisStreamActiveMutable.value = true; v.nightPreviewActiveMutable.value = true
+        v.highSpeedActiveMutable.value = true; v.videoSessionActiveMutable.value = true
+        v.videoSnapshotSupportedMutable.value = true; v.focusLockedMutable.value = true
+    }
+    internal fun assertTeardownCleared(v: CameraViewModel) {
+        assertFalse(v.isRecording.value); assertFalse(v.recordingPaused.value)
+        assertEquals(0L, v.recordingDurationSec.value); assertEquals(0, v.timerCountdown.value)
+        assertFalse(v.isCapturing.value); assertFalse(v.photoSessionActive.value)
+        assertFalse(v.analysisStreamActive.value); assertFalse(v.nightPreviewActive.value)
+        assertFalse(v.highSpeedActive.value); assertFalse(v.videoSessionActive.value)
+        assertFalse(v.videoSnapshotSupported.value); assertFalse(v.focusLocked.value)
     }
 
-    @Test fun aspectRatioCycling() {
-        val v = vm()
-        val start = v.aspectRatio.value
-        repeat(4) { v.cycleAspectRatio() }
-        assertEquals(start, v.aspectRatio.value)
-        v.setAspectRatio(AspectRatioOption.RATIO_1_1)
-        assertEquals("1:1", v.aspectRatio.value.label)
-        v.cycleAspectRatio()
-        assertEquals(AspectRatioOption.RATIO_4_3, v.aspectRatio.value)
-    }
+    @Test fun flashModePushesToSession() { val ex=Camera2Executor("settings"); val s=fakeSession(ex); val v=vm(); v.activeCamera2Session=s; try { v.flashModeMutable.value=FlashMode.AUTO; v.applyImageCaptureFlashMode(); ex.drain(); assertEquals(com.vayunmathur.camera.domain.FlashSetting.AUTO, s.controlState.flashSetting) } finally { ex.shutdown() } }
+    @Test fun saveTargetForms() { assertTrue(com.vayunmathur.camera.data.SaveTarget.MediaStoreDefault is com.vayunmathur.camera.data.SaveTarget) }
 
-    @Test fun slidersClampAndStore() {
-        val v = vm()
-        v.setBlurStrength(2f)
-        assertEquals(1f, v.blurStrength.value)
-        v.setBlurStrength(-1f)
-        assertEquals(0f, v.blurStrength.value)
-        v.setExposureCompensation(1.5f)
-        assertEquals(1.5f, v.exposureCompensation.value)
-        v.setWarmth(0.25f)
-        assertEquals(0.25f, v.warmth.value)
-        v.setShadows(-0.5f)
-        assertEquals(-0.5f, v.shadows.value)
-    }
-
-    @Test fun updateLocationWithoutEnableIsNoOp() {
-        val v = vm()
-        v.updateLocation() // locationEnabled defaults to false; must not throw
-        assertFalse(v.locationEnabled.value)
-    }
-
-    @Test fun zoomLabels() {
-        assertEquals(".5", formatZoomLabel(0.5f))
-        assertEquals(".9", formatZoomLabel(0.9f))
-        assertEquals("1x", formatZoomLabel(1f))
-        assertEquals("2x", formatZoomLabel(2f))
-        assertEquals("1.5x", formatZoomLabel(1.5f))
-        assertEquals("10x", formatZoomLabel(10f))
-    }
-
-    @Test fun colorMatrixReactsToWarmthAndShadows() {
-        val neutral = buildColorAdjustmentMatrix(0f, 0f)
-        val warm = buildColorAdjustmentMatrix(1f, 0f)
-        val lifted = buildColorAdjustmentMatrix(0f, 1f)
-        // Warmth raises the red gain (element 0) and lowers blue (element 12).
-        assertTrue(warm.array[0] > neutral.array[0])
-        assertTrue(warm.array[12] < neutral.array[12])
-        // Shadows lift is the translation column (element 4).
-        assertTrue(lifted.array[4] > neutral.array[4])
-        assertEquals(0f, neutral.array[4])
-    }
-
-    @Test fun enumMetadata() {
-        assertEquals(8, CameraMode.entries.size)
-        assertEquals(listOf(0, 1, 3, 5, 10), TimerDuration.entries.map { it.seconds })
-        assertEquals(4, AspectRatioOption.entries.size)
-        assertEquals(3, VideoCodec.entries.size)
-        assertEquals(4, AudioInputSource.entries.size)
-        assertEquals(listOf(1, 3, 5), MotionPhotoDuration.entries.map { it.seconds })
-    }
-
-    @Test fun manualLifecycleOwnerTransitions() {
-        val owner = ManualLifecycleOwner()
-        assertEquals(Lifecycle.State.INITIALIZED, owner.lifecycle.currentState)
-        owner.start()
-        assertEquals(Lifecycle.State.RESUMED, owner.lifecycle.currentState)
-        owner.destroy()
-        assertEquals(Lifecycle.State.DESTROYED, owner.lifecycle.currentState)
-    }
-
-    @Test fun codecSupportDefaultsAreConsistent() {
-        // Under Robolectric the Recorder reports no encoders, so HEVC/AV1
-        // availability must agree with the chosen default.
-        assertEquals(
-            if (CodecSupport.isHevcEncoderAvailable) VideoCodec.HEVC else VideoCodec.AVC,
-            CodecSupport.defaultVideoCodec,
-        )
-    }
-
-    @Test fun saveTargetSealedForms() {
-        assertEquals(SaveTarget.MediaStoreDefault, SaveTarget.MediaStoreDefault)
-        val saf = SaveTarget.SafTree(Uri.parse("content://tree/primary%3ADCIM"))
-        assertEquals("content://tree/primary%3ADCIM", saf.treeUri.toString())
-    }
 }

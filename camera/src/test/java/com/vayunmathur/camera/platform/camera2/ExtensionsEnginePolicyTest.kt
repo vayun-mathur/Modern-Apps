@@ -8,97 +8,67 @@ import kotlin.test.assertTrue
 import org.junit.Test
 
 /**
- * Phase-6 policy matrix: Camera2 extension only when gate on + probe ok +
- * failure-cache clear; else CameraX extension; else own burst. Pure JVM —
- * the policy carries no Android types beyond CameraMode.
+ * Night policy matrix: Camera2 extension when PHOTO + probe ok + failure
+ * cache clear; else our own burst. There is no other extension engine.
  */
 class ExtensionsEnginePolicyTest {
 
     private fun input(
-        gate: Boolean = true,
         mode: CameraMode = CameraMode.PHOTO,
         probeOk: Boolean = true,
         cacheClear: Boolean = true,
-        cameraXUsable: Boolean = true,
     ) = ExtensionsEngineInput(
-        camera2GateOn = gate,
         mode = mode,
         camera2ProbeOk = probeOk,
         failureCacheClear = cacheClear,
-        cameraXExtensionUsable = cameraXUsable,
     )
 
-    @Test fun gateOnByDefaultConstant() {
-        assertTrue(NightCamera2Gate.ENABLED)
-    }
-
-    @Test fun camera2WinsWhenGateProbeAndCacheAllPass() {
+    @Test fun camera2WinsWhenProbeAndCachePass() {
         val chosen = input()
         assertEquals(NightEngine.CAMERA2_EXTENSION, ExtensionsEnginePolicy.select(chosen))
         assertTrue(ExtensionsEnginePolicy.usesCamera2Extension(chosen))
         assertNull(ExtensionsEnginePolicy.camera2ExclusionReason(chosen))
     }
 
-    @Test fun gateOffFallsToCameraXExtension() {
-        assertEquals(
-            NightEngine.CAMERAX_EXTENSION,
-            ExtensionsEnginePolicy.select(input(gate = false)),
-        )
+    @Test fun noOffSwitchProbeAndCacheAlwaysWinInPhoto() {
+        // Repeated decisions are stable: no gate can demote a passing probe.
+        repeat(3) {
+            assertEquals(NightEngine.CAMERA2_EXTENSION, ExtensionsEnginePolicy.select(input()))
+        }
+    }
+
+    @Test fun probeFailureFallsToOwnBurst() {
+        val chosen = input(probeOk = false)
+        assertEquals(NightEngine.OWN_BURST, ExtensionsEnginePolicy.select(chosen))
+        assertFalse(ExtensionsEnginePolicy.usesCamera2Extension(chosen))
         assertTrue(
-            ExtensionsEnginePolicy.camera2ExclusionReason(input(gate = false))!!
-                .contains("gate off"),
+            ExtensionsEnginePolicy.camera2ExclusionReason(chosen)!!.contains("probe failed"),
         )
     }
 
-    @Test fun probeFailureFallsToCameraXExtension() {
-        assertEquals(
-            NightEngine.CAMERAX_EXTENSION,
-            ExtensionsEnginePolicy.select(input(probeOk = false)),
+    @Test fun nonPhotoModeFallsToOwnBurst() {
+        val chosen = input(mode = CameraMode.VIDEO)
+        assertEquals(NightEngine.OWN_BURST, ExtensionsEnginePolicy.select(chosen))
+        assertTrue(
+            ExtensionsEnginePolicy.camera2ExclusionReason(chosen)!!.contains("not PHOTO"),
         )
     }
 
-    @Test fun nonPhotoModeFallsToCameraXExtension() {
-        assertEquals(
-            NightEngine.CAMERAX_EXTENSION,
-            ExtensionsEnginePolicy.select(input(mode = CameraMode.VIDEO)),
-        )
-    }
-
-    @Test fun noExtensionAnywhereFallsToOwnBurst() {
-        assertEquals(
-            NightEngine.OWN_BURST,
-            ExtensionsEnginePolicy.select(
-                input(gate = false, probeOk = false, cameraXUsable = false),
-            ),
-        )
-        assertEquals(
-            NightEngine.OWN_BURST,
-            ExtensionsEnginePolicy.select(input(cameraXUsable = false, probeOk = false)),
-        )
-    }
-
-    @Test fun warmFailureCacheSuppressesBothExtensions() {
-        // A recorded failure (either engine, same store) makes at most one
-        // attempt per TTL: even with gate+probe green and CameraX reporting
-        // usable in isolation, the decision is the own burst.
+    @Test fun warmFailureCacheSuppressesExtension() {
         val warm = input(cacheClear = false)
         assertEquals(NightEngine.OWN_BURST, ExtensionsEnginePolicy.select(warm))
         assertFalse(ExtensionsEnginePolicy.usesCamera2Extension(warm))
         assertTrue(
             ExtensionsEnginePolicy.camera2ExclusionReason(warm)!!.contains("failure cache"),
         )
-        // Cache check precedes the gate check: reason stays the cache.
-        assertTrue(
-            ExtensionsEnginePolicy.camera2ExclusionReason(input(gate = false, cacheClear = false))!!
-                .contains("failure cache"),
-        )
+        // Cache wins even over a passing probe in PHOTO.
+        assertEquals(NightEngine.OWN_BURST, ExtensionsEnginePolicy.select(input(cacheClear = false)))
     }
 
-    @Test fun strengthShownOnlyOnCameraXExtension() {
-        assertTrue(ExtensionsEnginePolicy.showsExtensionStrength(NightEngine.CAMERAX_EXTENSION, 42))
-        assertFalse(ExtensionsEnginePolicy.showsExtensionStrength(NightEngine.CAMERA2_EXTENSION, 42))
+    @Test fun strengthShownOnlyOnCamera2Extension() {
+        assertTrue(ExtensionsEnginePolicy.showsExtensionStrength(NightEngine.CAMERA2_EXTENSION, 42))
         assertFalse(ExtensionsEnginePolicy.showsExtensionStrength(NightEngine.OWN_BURST, 42))
-        assertFalse(ExtensionsEnginePolicy.showsExtensionStrength(NightEngine.CAMERAX_EXTENSION, null))
         assertFalse(ExtensionsEnginePolicy.showsExtensionStrength(NightEngine.CAMERA2_EXTENSION, null))
+        assertFalse(ExtensionsEnginePolicy.showsExtensionStrength(NightEngine.OWN_BURST, null))
     }
 }

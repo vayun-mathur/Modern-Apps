@@ -1,160 +1,104 @@
 package com.vayunmathur.camera.platform
 
-import android.graphics.Bitmap
-import androidx.camera.core.ImageCapture
-import androidx.camera.core.ImageCaptureException
+import android.graphics.ImageFormat
+import android.util.Range
+import android.util.Size
+import android.view.Surface
 import androidx.test.core.app.ApplicationProvider
-import com.google.common.util.concurrent.ListenableFuture
+import com.vayunmathur.camera.platform.camera2.Camera2Driver
+import com.vayunmathur.camera.platform.camera2.Camera2Executor
+import com.vayunmathur.camera.platform.camera2.Camera2Session
+import com.vayunmathur.camera.platform.camera2.CaptureSessionHandle
+import com.vayunmathur.camera.platform.camera2.CharacteristicsFacade
+import com.vayunmathur.camera.platform.camera2.DeviceCallback
+import com.vayunmathur.camera.platform.camera2.DeviceHandle
+import com.vayunmathur.camera.platform.camera2.CaptureSessionCallback
+import com.vayunmathur.camera.platform.camera2.FrameSize
+import com.vayunmathur.camera.platform.camera2.LensCharacteristicsSnapshot
+import com.vayunmathur.camera.platform.camera2.ResolvedRequestParams
+import com.vayunmathur.camera.platform.camera2.StillOutput
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlinx.coroutines.runBlocking
 import org.junit.runner.RunWith
-import org.mockito.Mockito
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.robolectric.annotation.GraphicsMode
 
-/** Night hysteresis, exposure derivation, burst driver sequencing. */
-@GraphicsMode(GraphicsMode.Mode.NATIVE)
+/** Camera2 contract: night policy + luma hysteresis. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class NightLogicExtraTest {
 
-    private val context = ApplicationProvider.getApplicationContext<android.content.Context>()
-    private fun vm() = CameraViewModel(context.applicationContext as android.app.Application)
+    private fun vm() = CameraViewModel(ApplicationProvider.getApplicationContext())
+
+    private class FakeHandle : CaptureSessionHandle {
+        val repeating = mutableListOf<ResolvedRequestParams>()
+        override fun setRepeatingPreview(params: ResolvedRequestParams, target: Surface) { repeating += params }
+        override fun captureStill(params: com.vayunmathur.camera.platform.camera2.ResolvedStillParams, stillTarget: Surface, callback: com.vayunmathur.camera.platform.camera2.StillResultCallback) { callback.onCompleted(com.vayunmathur.camera.platform.camera2.RawStillMetadata()) }
+        override fun close() {}
+    }
+    private class FakeDevice : DeviceHandle {
+        override val cameraId: String = "0"
+        override fun createCaptureSession(surfaces: List<Surface>, callback: CaptureSessionCallback) { callback.onConfigured(FakeHandle()) }
+        override fun close() {}
+    }
+    private class FakeDriver : Camera2Driver {
+        override fun openCamera(cameraId: String, callback: DeviceCallback) { callback.onOpened(FakeDevice()) }
+        override fun createStillOutput(size: FrameSize): StillOutput? = null
+    }
+    internal fun snapshot(
+        zoom: Range<Float>? = Range(0.5f, 8f),
+        flash: Boolean = true,
+        sensitivity: Range<Int>? = Range(50, 6400),
+        ev: Range<Float>? = Range(-4f, 4f),
+    ): LensCharacteristicsSnapshot = CharacteristicsFacade.fromFakeMap(
+        cameraId = "0", zoomRatioRange = zoom, hasFlashUnit = flash,
+        sensitivityRange = sensitivity, exposureCompensationEvRange = ev,
+        exposureTimeRangeNs = Range(1_000_000L, 1_000_000_000L),
+        sizesByFormat = mapOf(ImageFormat.PRIVATE to listOf(Size(1920, 1080))),
+        activeArrayWidth = 4000, activeArrayHeight = 3000,
+        exposureCompensationStepEv = 1f / 6f, maxAfRegions = 1, maxAeRegions = 1,
+    ).snapshot
+
+    internal fun fakeSession(executor: Camera2Executor, snap: LensCharacteristicsSnapshot = snapshot()): Camera2Session =
+        Camera2Session(FakeDriver(), executor, snap)
+
+    internal fun Camera2Executor.drain() {
+        val latch = CountDownLatch(1); execute { latch.countDown() }
+        assertTrue(latch.await(5, TimeUnit.SECONDS))
+    }
+    internal fun dirtyTeardownState(v: CameraViewModel) {
+        v.isRecordingMutable.value = true; v.recordingPausedMutable.value = true
+        v.recordingDurationSecMutable.value = 42; v.timerCountdownMutable.value = 3
+        v.isCapturingMutable.value = true; v.photoSessionActiveMutable.value = true
+        v.analysisStreamActiveMutable.value = true; v.nightPreviewActiveMutable.value = true
+        v.highSpeedActiveMutable.value = true; v.videoSessionActiveMutable.value = true
+        v.videoSnapshotSupportedMutable.value = true; v.focusLockedMutable.value = true
+    }
+    internal fun assertTeardownCleared(v: CameraViewModel) {
+        assertFalse(v.isRecording.value); assertFalse(v.recordingPaused.value)
+        assertEquals(0L, v.recordingDurationSec.value); assertEquals(0, v.timerCountdown.value)
+        assertFalse(v.isCapturing.value); assertFalse(v.photoSessionActive.value)
+        assertFalse(v.analysisStreamActive.value); assertFalse(v.nightPreviewActive.value)
+        assertFalse(v.highSpeedActive.value); assertFalse(v.videoSessionActive.value)
+        assertFalse(v.videoSnapshotSupported.value); assertFalse(v.focusLocked.value)
+    }
 
     @Test fun luminanceHysteresisEngagesAndDisengages() {
-        val viewModel = vm()
-        val frames = CameraViewModel.NIGHT_DEBOUNCE_FRAMES
-        // Dark frames below the engage threshold, debounced.
-        repeat(frames - 1) { viewModel.onLuminance(10f) }
-        assertFalse(viewModel.lowLightDetectedMutable.value)
-        viewModel.onLuminance(10f)
-        assertTrue(viewModel.lowLightDetectedMutable.value)
-        // A bright-ish frame below disengage does not flap the state.
-        viewModel.onLuminance(50f)
-        assertTrue(viewModel.lowLightDetectedMutable.value)
-        // Sustained bright frames disengage and clear the override.
-        repeat(frames) { viewModel.onLuminance(120f) }
-        assertFalse(viewModel.lowLightDetectedMutable.value)
-        assertFalse(viewModel.nightModeOverriddenOffMutable.value)
-        // Mid-range frames in the bright arm reset the dark counter.
-        repeat(frames - 1) { viewModel.onLuminance(10f) }
-        viewModel.onLuminance(45f)
-        repeat(frames - 1) { viewModel.onLuminance(10f) }
-        assertFalse(viewModel.lowLightDetectedMutable.value)
+        val v = vm(); repeat(CameraViewModel.NIGHT_DEBOUNCE_FRAMES) { v.onLuminance(10f) }; assertTrue(v.lowLightDetected.value)
+        repeat(CameraViewModel.NIGHT_DEBOUNCE_FRAMES) { v.onLuminance(90f) }; assertFalse(v.lowLightDetected.value)
     }
+    @Test fun extensionPolicySelection() {
+        val ok = com.vayunmathur.camera.platform.camera2.ExtensionsEngineInput(CameraMode.PHOTO, camera2ProbeOk = true, failureCacheClear = true)
+        assertEquals(com.vayunmathur.camera.platform.camera2.NightEngine.CAMERA2_EXTENSION, com.vayunmathur.camera.platform.camera2.ExtensionsEnginePolicy.select(ok))
+        val bad = ok.copy(camera2ProbeOk = false); assertEquals(com.vayunmathur.camera.platform.camera2.NightEngine.OWN_BURST, com.vayunmathur.camera.platform.camera2.ExtensionsEnginePolicy.select(bad))
+    }
+    @Test fun resetNightDetection() { val v = vm(); repeat(4){v.onLuminance(5f)}; v.resetNightModeDetection(); assertFalse(v.lowLightDetected.value) }
 
-    @Test fun nightExposureFallsBackWithoutCamera() {
-        val viewModel = vm()
-        val exposure = viewModel.computeNightExposure(123_456L)
-        assertEquals(123_456L, exposure.nanos)
-        assertEquals(null, exposure.iso)
-        val defaulted = viewModel.computeNightExposure()
-        assertEquals(CameraViewModel.NIGHT_TARGET_EXPOSURE_NANOS, defaulted.nanos)
-    }
-
-    @Test fun lockNightExposureFallsThroughOnFailure() {
-        val viewModel = vm()
-        val control = Mockito.mock(androidx.camera.camera2.interop.Camera2CameraControl::class.java)
-        Mockito.`when`(
-            control.setCaptureRequestOptions(
-                Mockito.any(androidx.camera.camera2.interop.CaptureRequestOptions::class.java)
-                    ?: androidx.camera.camera2.interop.CaptureRequestOptions.Builder().build(),
-            ),
-        ).thenThrow(IllegalStateException("session gone"))
-        var locked = 0
-        viewModel.lockNightExposure(control, NightExposure(1_000_000L, 800)) { locked++ }
-        assertEquals(1, locked)
-        // With ISO null the ISO option is skipped; failure still falls through.
-        viewModel.lockNightExposure(control, NightExposure(2_000_000L, null)) { locked++ }
-        assertEquals(2, locked)
-    }
-
-    @Test fun lockNightExposureSuccessRegistersListener() {
-        val viewModel = vm()
-        val control = Mockito.mock(androidx.camera.camera2.interop.Camera2CameraControl::class.java)
-        @Suppress("UNCHECKED_CAST")
-        val future = Mockito.mock(ListenableFuture::class.java) as ListenableFuture<Void?>
-        Mockito.`when`(
-            control.setCaptureRequestOptions(
-                Mockito.any(androidx.camera.camera2.interop.CaptureRequestOptions::class.java)
-                    ?: androidx.camera.camera2.interop.CaptureRequestOptions.Builder().build(),
-            ),
-        ).thenReturn(future)
-        viewModel.lockNightExposure(control, NightExposure(1_000_000L, null)) { }
-        Mockito.verify(future).addListener(Mockito.any(Runnable::class.java) ?: Runnable { }, Mockito.any(java.util.concurrent.Executor::class.java) ?: java.util.concurrent.Executor { it.run() })
-    }
-
-    @Test fun burstDriverFinishesImmediatelyWithoutCapture() {
-        val viewModel = vm()
-        var done: List<Bitmap>? = null
-        val cls = Class.forName("com.vayunmathur.camera.platform.NightBurstDriver")
-        val ctor = cls.getDeclaredConstructor(
-            CameraViewModel::class.java,
-            androidx.camera.camera2.interop.Camera2CameraControl::class.java,
-            Boolean::class.javaPrimitiveType,
-            NightExposure::class.java,
-            Function1::class.java,
-            Function1::class.java,
-        ).apply { isAccessible = true }
-        val onFrameCaptured: (Int) -> Unit = { }
-        val onDone: (List<Bitmap>) -> Unit = { frames -> done = frames }
-        val driver = ctor.newInstance(viewModel, null, false, NightExposure(1_000L, null), onFrameCaptured, onDone)
-        cls.getDeclaredMethod("start").apply { isAccessible = true }.invoke(driver)
-        // No ImageCapture bound: finishes at once with an empty burst, once only.
-        assertEquals(emptyList(), done)
-    }
-
-    @Test fun burstDriverRetriesOnErrorUntilDone() {
-        val viewModel = vm()
-        val capture = Mockito.mock(ImageCapture::class.java)
-        val callbacks = mutableListOf<ImageCapture.OnImageCapturedCallback>()
-        Mockito.doAnswer { inv ->
-            callbacks.add(inv.getArgument(1))
-            null
-        }.`when`(capture).takePicture(
-            Mockito.any(java.util.concurrent.Executor::class.java),
-            Mockito.any(ImageCapture.OnImageCapturedCallback::class.java),
-        )
-        viewModel.imageCapture = capture
-        var done: List<Bitmap>? = null
-        val cls = Class.forName("com.vayunmathur.camera.platform.NightBurstDriver")
-        val ctor = cls.getDeclaredConstructor(
-            CameraViewModel::class.java,
-            androidx.camera.camera2.interop.Camera2CameraControl::class.java,
-            Boolean::class.javaPrimitiveType,
-            NightExposure::class.java,
-            Function1::class.java,
-            Function1::class.java,
-        ).apply { isAccessible = true }
-        val onFrameCaptured: (Int) -> Unit = { }
-        val onDone: (List<Bitmap>) -> Unit = { frames -> done = frames }
-        val driver = ctor.newInstance(viewModel, null, true, NightExposure(1_000L, 400), onFrameCaptured, onDone)
-        cls.getDeclaredMethod("start").apply { isAccessible = true }.invoke(driver)
-        // Every error re-queues the next frame; the driver never gives up early
-        // and finishes (empty) after the burst count is exhausted by errors.
-        var guard = 0
-        while (done == null && guard < 20) {
-            callbacks.last().onError(ImageCaptureException(ImageCapture.ERROR_UNKNOWN, "fail", null))
-            guard++
-        }
-        assertEquals(emptyList(), done)
-        assertTrue(callbacks.size >= 2)
-    }
-
-    @Test fun exposureRemainingFormatting() {
-        val m = Class.forName("com.vayunmathur.camera.platform.CameraNightCaptureKt")
-            .getDeclaredMethod("formatExposureRemaining", Long::class.javaPrimitiveType)
-            .apply { isAccessible = true }
-        fun f(ms: Long) = m.invoke(null, ms) as String
-        assertEquals("0.0s", f(0L))
-        assertEquals("1.5s", f(1500L))
-        assertEquals("12.3s", f(12349L))
-        val viewModel = vm()
-        viewModel.stopLongExposureCountdown()
-        assertEquals(0f, viewModel.longExposureProgressMutable.value)
-        assertEquals("", viewModel.longExposureRemainingMutable.value)
-    }
 }

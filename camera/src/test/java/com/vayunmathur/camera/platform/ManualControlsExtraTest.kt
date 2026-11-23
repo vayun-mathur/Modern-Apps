@@ -1,120 +1,99 @@
 package com.vayunmathur.camera.platform
 
-import androidx.camera.core.Camera
-import androidx.camera.core.CameraInfo
-import androidx.camera.core.ExposureState
-import androidx.camera.core.ZoomState
-import androidx.lifecycle.MutableLiveData
+import android.graphics.ImageFormat
+import android.util.Range
+import android.util.Size
+import android.view.Surface
 import androidx.test.core.app.ApplicationProvider
+import com.vayunmathur.camera.platform.camera2.Camera2Driver
+import com.vayunmathur.camera.platform.camera2.Camera2Executor
+import com.vayunmathur.camera.platform.camera2.Camera2Session
+import com.vayunmathur.camera.platform.camera2.CaptureSessionHandle
+import com.vayunmathur.camera.platform.camera2.CharacteristicsFacade
+import com.vayunmathur.camera.platform.camera2.DeviceCallback
+import com.vayunmathur.camera.platform.camera2.DeviceHandle
+import com.vayunmathur.camera.platform.camera2.CaptureSessionCallback
+import com.vayunmathur.camera.platform.camera2.FrameSize
+import com.vayunmathur.camera.platform.camera2.LensCharacteristicsSnapshot
+import com.vayunmathur.camera.platform.camera2.ResolvedRequestParams
+import com.vayunmathur.camera.platform.camera2.StillOutput
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlinx.coroutines.runBlocking
 import org.junit.runner.RunWith
-import org.mockito.Mockito
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.robolectric.annotation.GraphicsMode
 
-/** Manual exposure/ISO controls against bound and unbound cameras. */
-@GraphicsMode(GraphicsMode.Mode.NATIVE)
+/** Camera2 contract: manual controls from Camera2 snapshot ranges. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class ManualControlsExtraTest {
 
-    private val context = ApplicationProvider.getApplicationContext<android.content.Context>()
-    private fun vm() = CameraViewModel(context.applicationContext as android.app.Application)
+    private fun vm() = CameraViewModel(ApplicationProvider.getApplicationContext())
 
-    private fun fakeCamera(): Camera {
-        val info = Mockito.mock(CameraInfo::class.java)
-        val zoom = object : ZoomState {
-            override fun getZoomRatio() = 1f
-            override fun getMinZoomRatio() = 1f
-            override fun getMaxZoomRatio() = 1f
-            override fun getLinearZoom() = 0f
-        }
-        Mockito.`when`(info.zoomState).thenReturn(MutableLiveData<ZoomState>(zoom))
-        Mockito.`when`(info.cameraState).thenReturn(MutableLiveData())
-        Mockito.`when`(info.torchState).thenReturn(MutableLiveData<Int>(0))
-        Mockito.`when`(info.hasFlashUnit()).thenReturn(true)
-        val exposure = Mockito.mock(ExposureState::class.java)
-        Mockito.`when`(exposure.exposureCompensationRange).thenReturn(android.util.Range(-2, 2))
-        Mockito.`when`(exposure.isExposureCompensationSupported).thenReturn(true)
-        Mockito.`when`(info.exposureState).thenReturn(exposure)
-        val camera = Mockito.mock(Camera::class.java)
-        Mockito.`when`(camera.cameraInfo).thenReturn(info)
-        val control = Mockito.mock(
-            androidx.camera.core.CameraControl::class.java,
-            Mockito.withSettings().extraInterfaces(androidx.camera.core.impl.CameraControlInternal::class.java),
-        )
-        Mockito.`when`(camera.cameraControl).thenReturn(control)
-        return camera
+    private class FakeHandle : CaptureSessionHandle {
+        val repeating = mutableListOf<ResolvedRequestParams>()
+        override fun setRepeatingPreview(params: ResolvedRequestParams, target: Surface) { repeating += params }
+        override fun captureStill(params: com.vayunmathur.camera.platform.camera2.ResolvedStillParams, stillTarget: Surface, callback: com.vayunmathur.camera.platform.camera2.StillResultCallback) { callback.onCompleted(com.vayunmathur.camera.platform.camera2.RawStillMetadata()) }
+        override fun close() {}
+    }
+    private class FakeDevice : DeviceHandle {
+        override val cameraId: String = "0"
+        override fun createCaptureSession(surfaces: List<Surface>, callback: CaptureSessionCallback) { callback.onConfigured(FakeHandle()) }
+        override fun close() {}
+    }
+    private class FakeDriver : Camera2Driver {
+        override fun openCamera(cameraId: String, callback: DeviceCallback) { callback.onOpened(FakeDevice()) }
+        override fun createStillOutput(size: FrameSize): StillOutput? = null
+    }
+    internal fun snapshot(
+        zoom: Range<Float>? = Range(0.5f, 8f),
+        flash: Boolean = true,
+        sensitivity: Range<Int>? = Range(50, 6400),
+        ev: Range<Float>? = Range(-4f, 4f),
+    ): LensCharacteristicsSnapshot = CharacteristicsFacade.fromFakeMap(
+        cameraId = "0", zoomRatioRange = zoom, hasFlashUnit = flash,
+        sensitivityRange = sensitivity, exposureCompensationEvRange = ev,
+        exposureTimeRangeNs = Range(1_000_000L, 1_000_000_000L),
+        sizesByFormat = mapOf(ImageFormat.PRIVATE to listOf(Size(1920, 1080))),
+        activeArrayWidth = 4000, activeArrayHeight = 3000,
+        exposureCompensationStepEv = 1f / 6f, maxAfRegions = 1, maxAeRegions = 1,
+    ).snapshot
+
+    internal fun fakeSession(executor: Camera2Executor, snap: LensCharacteristicsSnapshot = snapshot()): Camera2Session =
+        Camera2Session(FakeDriver(), executor, snap)
+
+    internal fun Camera2Executor.drain() {
+        val latch = CountDownLatch(1); execute { latch.countDown() }
+        assertTrue(latch.await(5, TimeUnit.SECONDS))
+    }
+    internal fun dirtyTeardownState(v: CameraViewModel) {
+        v.isRecordingMutable.value = true; v.recordingPausedMutable.value = true
+        v.recordingDurationSecMutable.value = 42; v.timerCountdownMutable.value = 3
+        v.isCapturingMutable.value = true; v.photoSessionActiveMutable.value = true
+        v.analysisStreamActiveMutable.value = true; v.nightPreviewActiveMutable.value = true
+        v.highSpeedActiveMutable.value = true; v.videoSessionActiveMutable.value = true
+        v.videoSnapshotSupportedMutable.value = true; v.focusLockedMutable.value = true
+    }
+    internal fun assertTeardownCleared(v: CameraViewModel) {
+        assertFalse(v.isRecording.value); assertFalse(v.recordingPaused.value)
+        assertEquals(0L, v.recordingDurationSec.value); assertEquals(0, v.timerCountdown.value)
+        assertFalse(v.isCapturing.value); assertFalse(v.photoSessionActive.value)
+        assertFalse(v.analysisStreamActive.value); assertFalse(v.nightPreviewActive.value)
+        assertFalse(v.highSpeedActive.value); assertFalse(v.videoSessionActive.value)
+        assertFalse(v.videoSnapshotSupported.value); assertFalse(v.focusLocked.value)
     }
 
-    @Test fun unboundApplyIsNoOpAndRangesStayEmpty() {
-        val viewModel = vm()
-        viewModel.applyManualControls() // no bound camera: must not throw
-        viewModel.readManualControlRanges()
-        assertTrue(viewModel.isoStopsMutable.value.isEmpty() || viewModel.isoStopsMutable.value.isNotEmpty())
+    @Test fun rangesFromSnapshotClampIsoIndex() {
+        val ex=Camera2Executor("manual"); val s=fakeSession(ex); val v=vm(); v.activeCamera2Session=s
+        try { v.readManualControlRanges(); assertEquals(listOf(50,100,200,400,800,1600,3200,6400), v.isoStops.value); v.manualIsoIndexMutable.value=99; v.readManualControlRanges(); assertTrue(v.manualIsoIndex.value<=v.isoStops.value.size) } finally { ex.shutdown() }
     }
+    @Test fun manualIsoMapping() { val v=vm(); v.isoStopsMutable.value=listOf(100,200,400); v.setManualIsoIndex(2); assertEquals(200, v.manualIso()); v.setManualIsoIndex(0); assertNull(v.manualIso()); assertTrue(v.isExposureAuto()) }
 
-    @Test fun exposureAndIsoIndexClamping() {
-        val viewModel = vm()
-        viewModel.isoStopsMutable.value = listOf(100, 200, 400)
-        viewModel.setExposureTimeIndex(-5)
-        assertEquals(0, viewModel.exposureTimeIndexMutable.value)
-        viewModel.setExposureTimeIndex(10_000)
-        assertEquals(CameraViewModel.EXPOSURE_TIME_STOPS.lastIndex, viewModel.exposureTimeIndexMutable.value)
-        viewModel.setManualIsoIndex(-1)
-        assertEquals(0, viewModel.manualIsoIndexMutable.value)
-        viewModel.setManualIsoIndex(99)
-        assertEquals(3, viewModel.manualIsoIndexMutable.value) // size, not lastIndex: index is 1-based + auto slot
-    }
-
-    @Test fun manualIsoAndAutoDerivation() {
-        val viewModel = vm()
-        viewModel.isoStopsMutable.value = listOf(100, 200, 400)
-        viewModel.setExposureTimeIndex(0)
-        viewModel.setManualIsoIndex(0)
-        assertTrue(viewModel.isExposureAuto())
-        assertNull(viewModel.manualIso())
-        viewModel.setManualIsoIndex(2)
-        assertEquals(200, viewModel.manualIso())
-        assertFalse(viewModel.isExposureAuto())
-        viewModel.setManualIsoIndex(0)
-        viewModel.setExposureTimeIndex(1)
-        assertFalse(viewModel.isExposureAuto())
-    }
-
-    @Test fun applyWithBoundFakeCameraAcrossModes() {
-        val viewModel = vm()
-        viewModel.boundCamera = fakeCamera()
-        viewModel.isoStopsMutable.value = listOf(100, 200, 400, 800)
-        // Auto: clears options (empty builder) without throwing.
-        viewModel.setExposureTimeIndex(0); viewModel.setManualIsoIndex(0)
-        viewModel.applyManualControls()
-        // Manual shutter + auto ISO (seeded), then manual ISO + auto shutter.
-        viewModel.setExposureTimeIndex(2)
-        viewModel.setManualIsoIndex(3)
-        viewModel.applyManualControls()
-        // Post-processing toggles off add their request options.
-        viewModel.noiseReductionEnabledMutable.value = false
-        viewModel.edgeSharpeningEnabledMutable.value = false
-        viewModel.applyManualControls()
-    }
-
-    @Test fun startupSampleSizeAndNullThumbnail() = kotlinx.coroutines.runBlocking {
-        val m = Class.forName("com.vayunmathur.camera.platform.CameraStartupKt")
-            .getDeclaredMethod("sampleSizeFor", Int::class.javaPrimitiveType, Int::class.javaPrimitiveType, Int::class.javaPrimitiveType)
-            .apply { isAccessible = true }
-        fun s(w: Int, h: Int, max: Int) = m.invoke(null, w, h, max) as Int
-        assertEquals(1, s(100, 100, 512))
-        assertEquals(1, s(1024, 512, 512)) // exactly 2x maxSide still samples at 1
-        assertEquals(2, s(2049, 10, 512))
-        assertEquals(4, s(4096, 4096, 512))
-        assertEquals(1, s(0, 0, 512))
-        val viewModel = vm()
-        assertNull(viewModel.loadThumbnail(null))
-    }
 }

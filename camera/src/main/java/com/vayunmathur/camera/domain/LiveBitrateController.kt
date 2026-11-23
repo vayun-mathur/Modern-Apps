@@ -2,52 +2,6 @@ package com.vayunmathur.camera.domain
 
 import kotlin.math.roundToInt
 
-/** Which recording pipeline a recording should use. */
-enum class RecordingPath { CAMERAX_RECORDER, CUSTOM_CAMERA2 }
-
-/**
- * Inputs to the recording-path selection rule.
- *
- * @property customPathEnabled the (still default-off, not device-verified) gate for the Camera2/MediaCodec path.
- * @property liveAdaptationWanted live, during-recording bitrate changes are wanted.
- * @property hlgRequested 10-bit HLG output is wanted (vendor HDR semantics).
- * @property stabilizationRequested a vendor/CameraX stabilization mode is wanted.
- * @property codecAv1Requested AV1 output is wanted (custom path is AVC/HEVC only).
- * @property analysisBound the motion-analysis stream bound (live changes need it).
- */
-data class RecordingPathInput(
-    val customPathEnabled: Boolean,
-    val liveAdaptationWanted: Boolean,
-    val hlgRequested: Boolean,
-    val stabilizationRequested: Boolean,
-    val codecAv1Requested: Boolean,
-    val analysisBound: Boolean,
-)
-
-/**
- * Explicit selection rule for the two recording pipelines.
- *
- * The custom Camera2/MediaCodec path exists for one thing CameraX cannot do:
- * re-targeting the encoder mid-recording. It is selected only when that is
- * actually wanted *and* everything the recording asked for is something the
- * custom path can honestly provide. Vendor stabilization modes and HLG are
- * CameraX/HAL semantics the custom path cannot reproduce, AV1 encoding is not
- * attempted there, and without the analysis stream there is no motion signal
- * to adapt from — in all of those cases the CameraX Recorder path is used and
- * adaptation happens at the pre-recording decision only.
- */
-object RecordingPathPolicy {
-    fun select(input: RecordingPathInput): RecordingPath = when {
-        !input.customPathEnabled -> RecordingPath.CAMERAX_RECORDER
-        !input.liveAdaptationWanted -> RecordingPath.CAMERAX_RECORDER
-        input.hlgRequested -> RecordingPath.CAMERAX_RECORDER
-        input.stabilizationRequested -> RecordingPath.CAMERAX_RECORDER
-        input.codecAv1Requested -> RecordingPath.CAMERAX_RECORDER
-        !input.analysisBound -> RecordingPath.CAMERAX_RECORDER
-        else -> RecordingPath.CUSTOM_CAMERA2
-    }
-}
-
 /**
  * During-recording bitrate control, driven by the same policy numbers as the
  * pre-recording decision: the recording starts at the decision's bitrate, and

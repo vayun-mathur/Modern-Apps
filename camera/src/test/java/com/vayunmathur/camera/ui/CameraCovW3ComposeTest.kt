@@ -103,7 +103,7 @@ class CameraCovW3ComposeTest {
 
     @Test fun screenFrontFacingMirrorOff() {
         val viewModel = richVm(CameraMode.PHOTO)
-        viewModel.lensFacingMutable.value = androidx.camera.core.CameraSelector.LENS_FACING_FRONT
+        viewModel.lensFacingMutable.value = android.hardware.camera2.CameraMetadata.LENS_FACING_FRONT
         viewModel.setMirrorFront(false)
         viewModel.enableTorch(false)
         screen(viewModel)

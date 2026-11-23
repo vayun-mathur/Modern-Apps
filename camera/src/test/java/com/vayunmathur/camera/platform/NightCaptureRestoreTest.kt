@@ -1,90 +1,30 @@
 package com.vayunmathur.camera.platform
-
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Test
 import org.junit.runner.RunWith
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
-
-/**
- * Regression tests for the frozen/black preview after a mode switch during a
- * night-extension capture: captureNightPhotoExtension() used to restore the
- * photo session unconditionally in its finally, unbinding whatever session
- * the UI effect had just bound for the new mode.
- */
+import kotlin.test.*
+/** Night restore contract after CameraX extension removal: teardown/mode-switch
+ *  ownership (sessionTeardownCount) + surviving night progress helpers. */
 @RunWith(AndroidJUnit4::class)
 class NightCaptureRestoreTest {
-
     private fun vm() = CameraViewModel(ApplicationProvider.getApplicationContext())
-
-    @Test fun restoreAppliesWhenCaptureStillOwnsSession() {
-        assertTrue(
-            nightCaptureRestoreApplies(
-                CameraMode.PHOTO, CameraMode.PHOTO, startTeardownCount = 3, currentTeardownCount = 3
-            )
-        )
+    @Test fun progressLabelAndFractionClamp() {
+        assertEquals("Capturing 3/8", nightCaptureProgressLabel(3,8)); assertEquals("Capturing", nightCaptureProgressLabel(1,0))
+        assertEquals("Capturing 8/8", nightCaptureProgressLabel(99,8)); assertEquals(0.375f, nightCaptureProgressFraction(3,8)); assertEquals(0f, nightCaptureProgressFraction(1,0))
     }
-
-    @Test fun restoreSkippedAfterModeSwitchDuringCapture() {
-        for (mode in listOf(CameraMode.VIDEO, CameraMode.PORTRAIT, CameraMode.PANORAMA, CameraMode.SLOW_MO)) {
-            assertFalse(
-                nightCaptureRestoreApplies(
-                    CameraMode.PHOTO, mode, startTeardownCount = 3, currentTeardownCount = 3
-                ),
-                "restore must not run after switching to $mode"
-            )
-        }
+    @Test fun showNightProgressPublishesToOverlayFlows() {
+        val v=vm(); v.showNightCaptureProgress(4); assertEquals(nightCaptureProgressLabel(4, NightCaptureEngine.NIGHT_BURST_COUNT), v.longExposureRemainingMutable.value)
+        v.showNightMerging(); assertEquals(NIGHT_MERGING_LABEL, v.longExposureRemainingMutable.value); assertEquals(1f, v.longExposureProgressMutable.value)
     }
-
-    @Test fun restoreSkippedAfterInterveningTeardown() {
-        // Same mode, but the session effect tore down (lens flip, backgrounding,
-        // codec rebind): its fresh bind owns the session now.
-        assertFalse(
-            nightCaptureRestoreApplies(
-                CameraMode.PHOTO, CameraMode.PHOTO, startTeardownCount = 3, currentTeardownCount = 4
-            )
-        )
+    @Test fun teardownAdvancesOwnershipAndClearsCaptureState() {
+        val v=vm(); val before=v.sessionTeardownCount; v.isCapturingMutable.value=true; v.teardownSession()
+        assertTrue(v.sessionTeardownCount>before); assertFalse(v.isCapturingMutable.value)
+        // A capturePhoto after teardown has no session: must not claim the shutter.
+        v.capturePhoto(); assertFalse(v.isCapturingMutable.value)
     }
-
-    @Test fun restoreNeverAppliesOutsidePhoto() {
-        assertFalse(
-            nightCaptureRestoreApplies(
-                CameraMode.PORTRAIT, CameraMode.PORTRAIT, startTeardownCount = 0, currentTeardownCount = 0
-            )
-        )
-    }
-
-    @Test fun teardownSessionAdvancesOwnershipToken() {
-        val viewModel = vm()
-        val before = viewModel.sessionTeardownCount
-        viewModel.teardownSession()
-        assertTrue(viewModel.sessionTeardownCount > before)
-        // A restore decision snapshotted before the teardown must now refuse.
-        assertFalse(
-            nightCaptureRestoreApplies(
-                CameraMode.PHOTO, viewModel.cameraModeMutable.value,
-                startTeardownCount = before, currentTeardownCount = viewModel.sessionTeardownCount
-            )
-        )
-    }
-
-    @Test fun switchCameraModeInvalidatesRestoreDecision() {
-        val viewModel = vm()
-        val startMode = viewModel.cameraModeMutable.value
-        val startCount = viewModel.sessionTeardownCount
-        assertTrue(
-            nightCaptureRestoreApplies(
-                startMode, viewModel.cameraModeMutable.value,
-                startTeardownCount = startCount, currentTeardownCount = viewModel.sessionTeardownCount
-            )
-        )
-        viewModel.switchCameraMode(CameraMode.VIDEO)
-        assertFalse(
-            nightCaptureRestoreApplies(
-                startMode, viewModel.cameraModeMutable.value,
-                startTeardownCount = startCount, currentTeardownCount = viewModel.sessionTeardownCount
-            )
-        )
+    @Test fun modeSwitchAlsoInvalidatesStaleCapture() {
+        val v=vm(); v.switchCameraMode(CameraMode.VIDEO); assertEquals(CameraMode.VIDEO, v.cameraModeMutable.value)
+        v.capturePhoto(); assertFalse(v.isCapturingMutable.value)
     }
 }

@@ -5,7 +5,6 @@ import android.media.MediaScannerConnection
 import android.net.Uri
 import android.provider.MediaStore
 import com.vayunmathur.library.log.Log
-import androidx.camera.core.ImageCapture
 import androidx.core.content.ContextCompat
 import java.io.OutputStream
 import com.vayunmathur.camera.domain.StillFormat
@@ -14,73 +13,6 @@ import com.vayunmathur.camera.platform.CameraViewModel
 import com.vayunmathur.camera.platform.EncodedStill
 import com.vayunmathur.camera.platform.StillEncoder.encode
 import com.vayunmathur.camera.platform.buildAvifExifTiff
-import com.vayunmathur.camera.platform.mirrorCaptures
-
-/**
- * Shared save-target routing for still captures. When the user picked a SAF
- * folder, creates a document there and builds stream-backed
- * [ImageCapture.OutputFileOptions]; otherwise builds the classic MediaStore
- * options. The caller closes [PendingStill.stream] in both save callbacks
- * (close is idempotent even if CameraX already closed it) and must prefer
- * [PendingStill.saveUri] over `outputFileResults.savedUri` (null for streams).
- */
-internal data class PendingStill(
-    val outputOptions: ImageCapture.OutputFileOptions,
-    /** The URI the capture will land at (doc URI for SAF, null → use savedUri). */
-    val saveUri: Uri?,
-    val stream: OutputStream?,
-    /** Display name used, for logging. */
-    val displayName: String,
-)
-
-internal fun CameraViewModel.prepareStillSave(displayName: String): PendingStill? {
-    // Refresh the fix at capture time: lastLocation is otherwise only read on screen
-    // launch / settings toggle and can be stale or null (issue #731).
-    updateLocation()
-    val metadata = ImageCapture.Metadata().apply {
-        if (locationEnabledMutable.value) location = lastLocation
-        isReversedHorizontal = mirrorCaptures
-    }
-    val target = saveTargetMutable.value
-    if (target is SaveTarget.SafTree) {
-        val doc = SafDocuments.createImageDoc(app.contentResolver, target.treeUri, displayName)
-        if (doc != null) {
-            try {
-                val stream = app.contentResolver.openOutputStream(doc)
-                if (stream != null) {
-                    val options = ImageCapture.OutputFileOptions.Builder(stream)
-                        .setMetadata(metadata).build()
-                    return PendingStill(options, doc, stream, displayName)
-                }
-                Log.status("CameraViewModel", "Could not open SAF doc for $displayName; using MediaStore")
-            } catch (e: java.io.FileNotFoundException) {
-                Log.status("CameraViewModel", "SAF still save failed for $displayName; using MediaStore", e)
-            } catch (e: SecurityException) {
-                Log.status("CameraViewModel", "SAF still save failed for $displayName; using MediaStore", e)
-            }
-        } else {
-            Log.status("CameraViewModel", "SAF doc creation failed for $displayName; using MediaStore")
-        }
-        // Fall through to MediaStore so the shot is never lost.
-    }
-    val values = MediaStoreSaver.imageValues(displayName)
-    val options = ImageCapture.OutputFileOptions.Builder(
-        app.contentResolver,
-        MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-        values,
-    ).setMetadata(metadata).build()
-    return PendingStill(options, null, null, displayName)
-}
-
-internal fun PendingStill.closeStream() {
-    try {
-        stream?.close()
-    } catch (_: Exception) {}
-}
-
-/** Resolve the final saved URI, preferring the pre-created SAF doc. */
-internal fun PendingStill.resolveUri(results: ImageCapture.OutputFileResults): Uri? =
-    saveUri ?: results.savedUri
 
 /**
  * Saves re-encoded bytes/bitmap to the current target: SAF doc when set

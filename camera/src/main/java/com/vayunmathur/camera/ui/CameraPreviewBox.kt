@@ -7,7 +7,6 @@ import android.graphics.RenderEffect
 import android.graphics.RuntimeShader
 import android.graphics.Shader
 import android.os.Build
-import androidx.camera.viewfinder.compose.MutableCoordinateTransformer
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.BoxWithConstraintsScope
 import androidx.compose.foundation.layout.aspectRatio
@@ -31,9 +30,9 @@ import com.vayunmathur.camera.platform.CameraViewModel
 import com.vayunmathur.camera.platform.bokehBlurScale
 import com.vayunmathur.camera.platform.buildColorAdjustmentMatrix
 import com.vayunmathur.camera.platform.fallbackToDefaultMetering
-import com.vayunmathur.camera.platform.lockFocusAndMetering
+import com.vayunmathur.camera.platform.lockFocusAndMeteringAt
 import com.vayunmathur.camera.platform.onViewfinderZoomRatio
-import com.vayunmathur.camera.platform.startFocusAndMetering
+import com.vayunmathur.camera.platform.startFocusAndMeteringAt
 import com.vayunmathur.camera.data.setBlurStrength
 import com.vayunmathur.camera.data.setExposureCompensation
 import com.vayunmathur.camera.platform.setExposureTimeIndex
@@ -49,7 +48,7 @@ import com.vayunmathur.library.ui.rememberMessenger
 
 /** Maps the CameraX selector facing int to the pure lens-facing model. */
 private fun currentLensFacing(selectorInt: Int): com.vayunmathur.camera.domain.LensFacing =
-    if (selectorInt == androidx.camera.core.CameraSelector.LENS_FACING_FRONT)
+    if (selectorInt == android.hardware.camera2.CameraMetadata.LENS_FACING_FRONT)
         com.vayunmathur.camera.domain.LensFacing.FRONT
     else com.vayunmathur.camera.domain.LensFacing.BACK
 
@@ -76,7 +75,6 @@ internal fun BoxWithConstraintsScope.CameraPreviewBox(
     animatedRotation: Float,
 ) {
     val cameraMode = state.cameraMode
-    val surfaceRequest = state.surfaceRequest
     val maskBitmap = state.maskBitmap
 
     // Fit the preview inside the available area (letterboxed) so a tall ratio never
@@ -98,7 +96,6 @@ internal fun BoxWithConstraintsScope.CameraPreviewBox(
     } else {
         null
     }
-    val coordinateTransformer = remember { MutableCoordinateTransformer() }
     val tapToFocusState = remember { TapToFocusState() }
     val useCamera2Preview = state.useCamera2Preview
     val previewModifier = previewSize
@@ -167,30 +164,22 @@ internal fun BoxWithConstraintsScope.CameraPreviewBox(
             }
         )
             // Tap-to-focus (gesture, metering, indicator) is owned by
-            // TapToFocus.kt; pinch-to-zoom stays built-in below.
-            // Camera2 preview owns its taps (see Camera2Preview); do not attach
-            // CameraX tapToFocus there (it self-gates on CameraX FocusMetering).
+            // TapToFocus.kt; fractions route to the Camera2 session's
+            // metering transform (CameraViewModel.tapToFocusAt).
             .then(
-                if (useCamera2Preview) {
-                    Modifier
-                } else {
-                    Modifier.tapToFocus(
-                state = tapToFocusState,
-                surfaceRequest = surfaceRequest,
-                mirrorPreview = state.mirrorPreview,
-                coordinateTransformer = coordinateTransformer,
-                onFocus = { viewModel.startFocusAndMetering(it) },
-                onLockFocus = { viewModel.lockFocusAndMetering(it) },
-                onFallback = { viewModel.fallbackToDefaultMetering() },
-                    )
-                }
+                Modifier.tapToFocus(
+                    state = tapToFocusState,
+                    mirrorPreview = state.mirrorPreview,
+                    onFocus = { x, y -> viewModel.startFocusAndMeteringAt(x, y) },
+                    onLockFocus = { x, y -> viewModel.lockFocusAndMeteringAt(x, y) },
+                    onFallback = { viewModel.fallbackToDefaultMetering() },
+                )
             )
 
     CameraPreviewSurface(
         state = state,
         viewModel = viewModel,
         previewModifier = previewModifier,
-        coordinateTransformer = coordinateTransformer,
     )
 
     CaptureFlashOverlay(viewModel.shutterFeedback, previewSize.clip(RoundedCornerShape(12.dp)))

@@ -37,7 +37,7 @@ internal fun Camera2Session.configureSession(opened: DeviceHandle, gen: Long, re
     // Additional output: the JPEG_R (Ultra HDR) reader, only when the
     // facade advertises JPEG_R sizes. Failure degrades to no Ultra HDR
     // output (captures requesting it fall back to the JPEG output).
-    val jpegRSize = if (snapshot.supportsJpegR) {
+    val jpegRSize = if (ultraHdrEnabled && snapshot.supportsJpegR) {
         StreamSelection.selectJpegRSize(snapshot)
     } else {
         null

@@ -6,10 +6,10 @@ import com.vayunmathur.camera.domain.LensFacing
 import com.vayunmathur.camera.platform.camera2.CharacteristicsFacade
 import com.vayunmathur.camera.platform.camera2.HighSpeedPlanner
 import com.vayunmathur.camera.platform.camera2.HighSpeedSelection
-import com.vayunmathur.camera.platform.camera2.SloMoCamera2Gate
 import com.vayunmathur.camera.platform.camera2.SloMoEngine
 import com.vayunmathur.camera.platform.camera2.SloMoEngineInput
 import androidx.lifecycle.viewModelScope
+import com.vayunmathur.camera.data.MediaStoreSaver
 import com.vayunmathur.camera.data.saveVideoStaged
 import com.vayunmathur.camera.data.setLastCaptureUri
 import com.vayunmathur.camera.platform.camera2.RecordingSessionOwnership
@@ -82,7 +82,6 @@ internal fun CameraViewModel.camera2SloMoDecision(
     val snapshot = facade.snapshot
     val selection = HighSpeedPlanner.select(snapshot)
     val input = SloMoEngineInput(
-        camera2Enabled = SloMoCamera2Gate.ENABLED && camera2SloMoEnabledMutable.value,
         mode = cameraModeMutable.value,
         lensFacing = snapshot.lensFacing,
         hasConstrainedHighSpeed = snapshot.supportsConstrainedHighSpeedVideo,
@@ -119,7 +118,6 @@ internal fun encoderSupportsSloMoCaptureRate(selection: HighSpeedSelection): Boo
  * while the policy excludes Camera2 (see the file doc).
  */
 internal fun CameraViewModel.evaluateCamera2SloMoDecision() {
-    if (!camera2SloMoEnabledMutable.value) return
     try {
         val facing = selectedLensMutable.value
             ?.takeIf { it.facing == LensFacing.BACK }
@@ -175,12 +173,16 @@ internal fun CameraViewModel.handleCamera2SloMoFinalized(
                     stagedFile.delete()
                 }
             }
-            SloMoSaveAction.DISCARD_AND_REBIND_CAMERAX -> {
+            SloMoSaveAction.DISCARD_AND_ERROR -> {
                 withContext(Dispatchers.IO) { stagedFile.delete() }
-                // One-shot latch: only the first failure for this bind rebinds.
+                // One-shot latch (no CameraX to rebind to): surface a
+                // retryable error and clear the latch so the next press
+                // gets a fresh Camera2 attempt.
                 if (onCamera2SloMoFailed(cameraId)) {
-                    teardownSession()
-                    setupHighSpeedSession()
+                    com.vayunmathur.library.util.AppMessages.show(
+                        app.getString(com.vayunmathur.camera.R.string.camera_recording_failed)
+                    )
+                    clearCamera2SloMoFallback()
                 }
             }
             SloMoSaveAction.DISCARD_LATCHED -> withContext(Dispatchers.IO) {
@@ -191,15 +193,75 @@ internal fun CameraViewModel.handleCamera2SloMoFinalized(
     return action
 }
 
+/** Registers the live slo-mo preview holder's record control (null when it leaves composition). */
+internal fun CameraViewModel.registerCamera2SloMoControl(control: SloMoRecordingControl?) {
+    camera2RecordingState.sloMoControl = control
+}
+
 /**
- * Rebinds the CameraX high-speed session after a Camera2 slo-mo attempt
- * failed before producing a file. One-shot per bind key, like preview's
- * latch; a repeat failure for the same key does not rebind-loop.
+ * Starts a Camera2 slo-mo recording through the live preview holder's
+ * control. The encoder-at-capture-rate probe runs first (the same
+ * honest-support check as the decision); no control or no encoder
+ * support is an error surface, never a silent realtime file.
  */
-internal fun CameraViewModel.rebindCameraXAfterSloMoFailure(cameraId: String) {
-    if (!onCamera2SloMoFailed(cameraId)) return
-    viewModelScope.launch {
-        teardownSession()
-        setupHighSpeedSession()
+internal fun CameraViewModel.startCamera2SloMoRecording() {
+    if (isRecordingMutable.value) return
+    val control = camera2RecordingState.sloMoControl
+    if (control == null) {
+        Log.error("SloMo", "Camera2 slo-mo control unavailable; recording not started")
+        com.vayunmathur.library.util.AppMessages.show(
+            app.getString(com.vayunmathur.camera.R.string.camera_recording_failed)
+        )
+        return
     }
+    // Encoder probe for the planned operating point.
+    try {
+        val manager = app.getSystemService(CameraManager::class.java)
+        val lensId = manager?.let {
+            CharacteristicsFacade.resolveCamera2Id(it, LensFacing.BACK)
+        }
+        val facade = if (manager != null && lensId != null) {
+            CharacteristicsFacade.tryFromCameraManager(manager, lensId)
+        } else {
+            null
+        }
+        val selection = facade?.let { HighSpeedPlanner.select(it.snapshot) }
+        if (selection == null || !encoderSupportsSloMoCaptureRate(selection)) {
+            Log.error("SloMo", "No encoder supports the slo-mo capture rate; recording not started")
+            com.vayunmathur.library.util.AppMessages.show(
+                app.getString(com.vayunmathur.camera.R.string.camera_recording_failed)
+            )
+            return
+        }
+    } catch (e: Exception) {
+        Log.error("SloMo", "Camera2 slo-mo probe failed; recording not started", e)
+        com.vayunmathur.library.util.AppMessages.show(
+            app.getString(com.vayunmathur.camera.R.string.camera_recording_failed)
+        )
+        return
+    }
+    val timestamp = MediaStoreSaver.timestamp()
+    val displayName = "SLOMO_$timestamp"
+    val cacheFile = File(app.cacheDir, "$displayName.mp4")
+    camera2RecordingState.sloMoOutputFile = cacheFile
+    camera2RecordingState.sloMoDisplayName = displayName
+    startRecordingTimer()
+    isRecordingMutable.value = true
+    control.start(cacheFile) { file, ok ->
+        isRecordingMutable.value = false
+        stopRecordingTimer()
+        val cameraId = selectedLensMutable.value?.logicalCameraId.orEmpty()
+        handleCamera2SloMoFinalized(
+            displayName = displayName,
+            stagedFile = file,
+            outcomeError = !ok,
+            outputReadable = ok,
+            cameraId = cameraId,
+        )
+    }
+}
+
+/** Stops the in-flight Camera2 slo-mo recording; finalize arrives via the start callback. */
+internal fun CameraViewModel.stopCamera2SloMoRecording() {
+    camera2RecordingState.sloMoControl?.stop()
 }

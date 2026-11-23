@@ -1,10 +1,6 @@
 package com.vayunmathur.camera.platform
 
 import android.os.SystemClock
-import androidx.annotation.OptIn
-import androidx.camera.core.ExperimentalGetImage
-import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.ImageProxy
 import com.vayunmathur.camera.domain.FrameDiffSample
 import com.vayunmathur.camera.domain.LumaPlaneMath
 import com.vayunmathur.camera.domain.PlaneView
@@ -33,7 +29,7 @@ internal const val VIDEO_MOTION_GRID_MAX_SIDE = 96
  */
 class VideoMotionAnalyzer(
     private val onSample: (FrameDiffSample) -> Unit,
-) : ImageAnalysis.Analyzer {
+) {
     private var lastSampleAtMs = 0L
     private var previousGrid: FloatArray? = null
     private var previousGridWidth = 0
@@ -62,32 +58,6 @@ class VideoMotionAnalyzer(
                 Log.error("VideoMotion", "onSample callback threw", e)
             } catch (e: IllegalArgumentException) {
                 Log.error("VideoMotion", "onSample callback threw", e)
-            }
-        }
-    }
-
-    @OptIn(ExperimentalGetImage::class)
-    override fun analyze(imageProxy: ImageProxy) {
-        try {
-            val plane = imageProxy.planes.firstOrNull() ?: return
-            onYPlane(
-                PlaneView(
-                    buffer = plane.buffer.duplicate(),
-                    rowStride = plane.rowStride,
-                    pixelStride = plane.pixelStride,
-                    width = imageProxy.width,
-                    height = imageProxy.height,
-                )
-            )
-        } catch (e: IllegalStateException) {
-            Log.error("VideoMotion", "VideoMotionAnalyzer analyze() threw", e)
-        } catch (e: IllegalArgumentException) {
-            Log.error("VideoMotion", "VideoMotionAnalyzer analyze() threw", e)
-        } finally {
-            try {
-                imageProxy.close()
-            } catch (e: IllegalStateException) {
-                Log.error("VideoMotion", "imageProxy.close() threw – pipeline stall risk", e)
             }
         }
     }

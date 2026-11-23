@@ -187,22 +187,23 @@ class ReprocessRingSessionTest {
 
     // -- policy ---------------------------------------------------------------
 
-    @Test fun ringPolicyNeedsGateReprocessRingOutputAndPlainPhoto() {
+    @Test fun ringPolicyNeedsReprocessRingOutputAndPlainPhoto() {
         val plain = StillEngineInput(
-            camera2Enabled = true, mode = CameraMode.PHOTO, hasJpegOutput = true,
+            mode = CameraMode.PHOTO, hasJpegOutput = true,
             ringEnabled = true, reprocessSupported = true, hasRingOutput = true,
         )
         assertEquals(StillEngine.CAMERA2_RING, StillEnginePolicy.select(plain))
         assertTrue(StillEnginePolicy.usesRing(plain))
         assertTrue(StillEnginePolicy.usesReprocess(plain))
-        // Each requirement removed drops back to the Phase-4a plain path.
+        assertTrue(StillEnginePolicy.usesCamera2(plain))
+        // Each requirement removed drops back to the plain direct path.
         assertEquals(StillEngine.CAMERA2, StillEnginePolicy.select(plain.copy(ringEnabled = false)))
         assertEquals(StillEngine.CAMERA2, StillEnginePolicy.select(plain.copy(reprocessSupported = false)))
         assertEquals(StillEngine.CAMERA2, StillEnginePolicy.select(plain.copy(hasRingOutput = false)))
-        // Non-plain shots stay CameraX even with every ring flag on.
-        assertEquals(StillEngine.CAMERAX, StillEnginePolicy.select(plain.copy(nightRoute = true)))
-        assertEquals(StillEngine.CAMERAX, StillEnginePolicy.select(plain.copy(burst = true)))
-        assertEquals(StillEngine.CAMERAX, StillEnginePolicy.select(plain.copy(mode = CameraMode.PORTRAIT)))
+        // Non-plain shots take their dedicated route even with every ring flag on.
+        assertEquals(StillEngine.CAMERA2_ROUTED, StillEnginePolicy.select(plain.copy(nightRoute = true)))
+        assertEquals(StillEngine.CAMERA2_ROUTED, StillEnginePolicy.select(plain.copy(burst = true)))
+        assertEquals(StillEngine.CAMERA2_ROUTED, StillEnginePolicy.select(plain.copy(mode = CameraMode.PORTRAIT)))
         assertTrue(StillEnginePolicy.ringExclusionReason(plain.copy(nightRoute = true)).orEmpty().contains("night"))
     }
 

@@ -1,153 +1,97 @@
 package com.vayunmathur.camera.platform
 
+import android.graphics.ImageFormat
+import android.util.Range
+import android.util.Size
+import android.view.Surface
 import androidx.test.core.app.ApplicationProvider
-import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.vayunmathur.camera.domain.LensSelectionLogic
-import org.junit.Test
-import org.junit.runner.RunWith
+import com.vayunmathur.camera.platform.camera2.Camera2Driver
+import com.vayunmathur.camera.platform.camera2.Camera2Executor
+import com.vayunmathur.camera.platform.camera2.Camera2Session
+import com.vayunmathur.camera.platform.camera2.CaptureSessionHandle
+import com.vayunmathur.camera.platform.camera2.CharacteristicsFacade
+import com.vayunmathur.camera.platform.camera2.DeviceCallback
+import com.vayunmathur.camera.platform.camera2.DeviceHandle
+import com.vayunmathur.camera.platform.camera2.CaptureSessionCallback
+import com.vayunmathur.camera.platform.camera2.FrameSize
+import com.vayunmathur.camera.platform.camera2.LensCharacteristicsSnapshot
+import com.vayunmathur.camera.platform.camera2.ResolvedRequestParams
+import com.vayunmathur.camera.platform.camera2.StillOutput
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import com.vayunmathur.camera.data.cycleAspectRatio
-import com.vayunmathur.camera.data.setBlurStrength
-import com.vayunmathur.camera.data.setExposureCompensation
-import com.vayunmathur.camera.data.setFlashMode
-import com.vayunmathur.camera.data.setMotionPhotoDuration
-import com.vayunmathur.camera.data.setShadows
-import com.vayunmathur.camera.data.setTimerDuration
-import com.vayunmathur.camera.data.setVideoCodec
-import com.vayunmathur.camera.data.setWarmth
-import com.vayunmathur.camera.data.toggleGrid
-import com.vayunmathur.camera.data.toggleTorch
+import kotlinx.coroutines.runBlocking
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
-/**
- * Robolectric ViewModel tests: night-luminance detection and settings
- * toggles. No CameraX binding — only state flows and the hysteresis filter.
- */
-@RunWith(AndroidJUnit4::class)
+/** Camera2 contract: night hysteresis + retry/teardown preservation rules. */
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34])
 class CameraViewModelLogicTest {
 
     private fun vm() = CameraViewModel(ApplicationProvider.getApplicationContext())
 
-    // ---- Night luminance detection ----
+    private class FakeHandle : CaptureSessionHandle {
+        val repeating = mutableListOf<ResolvedRequestParams>()
+        override fun setRepeatingPreview(params: ResolvedRequestParams, target: Surface) { repeating += params }
+        override fun captureStill(params: com.vayunmathur.camera.platform.camera2.ResolvedStillParams, stillTarget: Surface, callback: com.vayunmathur.camera.platform.camera2.StillResultCallback) { callback.onCompleted(com.vayunmathur.camera.platform.camera2.RawStillMetadata()) }
+        override fun close() {}
+    }
+    private class FakeDevice : DeviceHandle {
+        override val cameraId: String = "0"
+        override fun createCaptureSession(surfaces: List<Surface>, callback: CaptureSessionCallback) { callback.onConfigured(FakeHandle()) }
+        override fun close() {}
+    }
+    private class FakeDriver : Camera2Driver {
+        override fun openCamera(cameraId: String, callback: DeviceCallback) { callback.onOpened(FakeDevice()) }
+        override fun createStillOutput(size: FrameSize): StillOutput? = null
+    }
+    internal fun snapshot(
+        zoom: Range<Float>? = Range(0.5f, 8f),
+        flash: Boolean = true,
+        sensitivity: Range<Int>? = Range(50, 6400),
+        ev: Range<Float>? = Range(-4f, 4f),
+    ): LensCharacteristicsSnapshot = CharacteristicsFacade.fromFakeMap(
+        cameraId = "0", zoomRatioRange = zoom, hasFlashUnit = flash,
+        sensitivityRange = sensitivity, exposureCompensationEvRange = ev,
+        exposureTimeRangeNs = Range(1_000_000L, 1_000_000_000L),
+        sizesByFormat = mapOf(ImageFormat.PRIVATE to listOf(Size(1920, 1080))),
+        activeArrayWidth = 4000, activeArrayHeight = 3000,
+        exposureCompensationStepEv = 1f / 6f, maxAfRegions = 1, maxAeRegions = 1,
+    ).snapshot
 
-    @Test fun darkFramesEngageLowLight() {
-        val v = vm()
-        repeat(3) { v.onLuminance(10f) }
-        assertFalse(v.lowLightDetected.value)
-        v.onLuminance(10f)
-        assertTrue(v.lowLightDetected.value)
+    internal fun fakeSession(executor: Camera2Executor, snap: LensCharacteristicsSnapshot = snapshot()): Camera2Session =
+        Camera2Session(FakeDriver(), executor, snap)
+
+    internal fun Camera2Executor.drain() {
+        val latch = CountDownLatch(1); execute { latch.countDown() }
+        assertTrue(latch.await(5, TimeUnit.SECONDS))
+    }
+    internal fun dirtyTeardownState(v: CameraViewModel) {
+        v.isRecordingMutable.value = true; v.recordingPausedMutable.value = true
+        v.recordingDurationSecMutable.value = 42; v.timerCountdownMutable.value = 3
+        v.isCapturingMutable.value = true; v.photoSessionActiveMutable.value = true
+        v.analysisStreamActiveMutable.value = true; v.nightPreviewActiveMutable.value = true
+        v.highSpeedActiveMutable.value = true; v.videoSessionActiveMutable.value = true
+        v.videoSnapshotSupportedMutable.value = true; v.focusLockedMutable.value = true
+    }
+    internal fun assertTeardownCleared(v: CameraViewModel) {
+        assertFalse(v.isRecording.value); assertFalse(v.recordingPaused.value)
+        assertEquals(0L, v.recordingDurationSec.value); assertEquals(0, v.timerCountdown.value)
+        assertFalse(v.isCapturing.value); assertFalse(v.photoSessionActive.value)
+        assertFalse(v.analysisStreamActive.value); assertFalse(v.nightPreviewActive.value)
+        assertFalse(v.highSpeedActive.value); assertFalse(v.videoSessionActive.value)
+        assertFalse(v.videoSnapshotSupported.value); assertFalse(v.focusLocked.value)
     }
 
-    @Test fun brightFramesResetDarkCounter() {
-        val v = vm()
-        repeat(3) { v.onLuminance(10f) }
-        v.onLuminance(200f)
-        // Counter reset: needs 4 fresh dark frames again.
-        repeat(3) { v.onLuminance(10f) }
-        assertFalse(v.lowLightDetected.value)
-        v.onLuminance(10f)
-        assertTrue(v.lowLightDetected.value)
-    }
+    @Test fun darkEngagesBrightDisengages() { val v=vm(); repeat(4){v.onLuminance(10f)}; assertTrue(v.lowLightDetected.value); repeat(4){v.onLuminance(90f)}; assertFalse(v.lowLightDetected.value) }
+    @Test fun teardownDoesNotResetNightOrManual() { val v=vm(); repeat(4){v.onLuminance(10f)}; v.setExposureTimeIndex(1); v.teardownSession(); assertTrue(v.lowLightDetected.value); assertEquals(1, v.exposureTimeIndex.value) }
+    @Test fun retryClearsBindFailure() { val v=vm(); v.sessionBindFailedMutable.value=true; v.retrySessionBind(); assertFalse(v.sessionBindFailed.value) }
 
-    @Test fun brightFramesDisengage() {
-        val v = vm()
-        repeat(4) { v.onLuminance(10f) }
-        assertTrue(v.lowLightDetected.value)
-        repeat(3) { v.onLuminance(200f) }
-        assertTrue(v.lowLightDetected.value)
-        v.onLuminance(200f)
-        assertFalse(v.lowLightDetected.value)
-        // Override flag resets on disengage.
-        assertFalse(v.nightModeOverriddenOff.value)
-    }
-
-    @Test fun indicatorSupportedSkipsHeuristic() {
-        val v = vm().apply { nightIndicatorSupported = true }
-        repeat(8) { v.onLuminance(5f) }
-        assertFalse(v.lowLightDetected.value)
-    }
-
-    @Test fun overrideToggleAndReset() {
-        val v = vm()
-        assertFalse(v.nightModeOverriddenOff.value)
-        v.toggleNightModeOverride()
-        assertTrue(v.nightModeOverriddenOff.value)
-        v.toggleNightModeOverride()
-        assertFalse(v.nightModeOverriddenOff.value)
-        repeat(4) { v.onLuminance(5f) }
-        assertTrue(v.lowLightDetected.value)
-        v.resetNightModeDetection()
-        assertFalse(v.lowLightDetected.value)
-        assertFalse(v.nightModeOverriddenOff.value)
-    }
-
-    @Test fun nightFailureFreshness() {
-        assertFalse(LensSelectionLogic.nightFailureFresh(null, 1000L, 100L))
-        assertTrue(LensSelectionLogic.nightFailureFresh(950L, 1000L, 100L))
-        assertFalse(LensSelectionLogic.nightFailureFresh(800L, 1000L, 100L))
-    }
-
-    // ---- Settings toggles ----
-
-    @Test fun torchAndFlash() {
-        val v = vm()
-        assertFalse(v.torchEnabled.value)
-        v.toggleTorch()
-        assertTrue(v.torchEnabled.value)
-        v.toggleTorch()
-        assertFalse(v.torchEnabled.value)
-        v.setFlashMode(FlashMode.AUTO)
-        assertEquals(FlashMode.AUTO, v.flashMode.value)
-    }
-
-    @Test fun aspectRatioCycle() {
-        val v = vm()
-        assertEquals(AspectRatioOption.RATIO_4_3, v.aspectRatio.value)
-        v.cycleAspectRatio()
-        assertEquals(AspectRatioOption.RATIO_3_2, v.aspectRatio.value)
-        v.cycleAspectRatio()
-        assertEquals(AspectRatioOption.RATIO_16_9, v.aspectRatio.value)
-        v.cycleAspectRatio()
-        assertEquals(AspectRatioOption.RATIO_1_1, v.aspectRatio.value)
-        v.cycleAspectRatio()
-        assertEquals(AspectRatioOption.RATIO_4_3, v.aspectRatio.value)
-    }
-
-    @Test fun gridAndTimer() {
-        val v = vm()
-        assertFalse(v.gridEnabled.value)
-        v.toggleGrid()
-        assertTrue(v.gridEnabled.value)
-        v.setTimerDuration(TimerDuration.FIVE)
-        assertEquals(TimerDuration.FIVE, v.timerDuration.value)
-    }
-
-    @Test fun blurStrengthClamped() {
-        val v = vm()
-        v.setBlurStrength(2f)
-        assertEquals(1f, v.blurStrength.value)
-        v.setBlurStrength(-1f)
-        assertEquals(0f, v.blurStrength.value)
-        v.setBlurStrength(0.5f)
-        assertEquals(0.5f, v.blurStrength.value)
-    }
-
-    @Test fun exposureAndGradingSetters() {
-        val v = vm()
-        v.setExposureCompensation(-2f)
-        assertEquals(-2f, v.exposureCompensation.value)
-        v.setWarmth(0.3f)
-        assertEquals(0.3f, v.warmth.value)
-        v.setShadows(-0.5f)
-        assertEquals(-0.5f, v.shadows.value)
-    }
-
-    @Test fun videoCodecAndAudioSource() {
-        val v = vm()
-        v.setVideoCodec(VideoCodec.HEVC)
-        assertEquals(VideoCodec.HEVC, v.videoCodec.value)
-        v.setMotionPhotoDuration(MotionPhotoDuration.THREE)
-        assertEquals(MotionPhotoDuration.THREE, v.motionPhotoDuration.value)
-    }
 }

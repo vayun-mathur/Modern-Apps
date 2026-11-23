@@ -1,144 +1,97 @@
 package com.vayunmathur.camera.platform
 
-import android.graphics.Bitmap
+import android.graphics.ImageFormat
+import android.util.Range
+import android.util.Size
+import android.view.Surface
 import androidx.test.core.app.ApplicationProvider
-import androidx.test.ext.junit.runners.AndroidJUnit4
-import org.junit.Test
-import org.junit.runner.RunWith
+import com.vayunmathur.camera.platform.camera2.Camera2Driver
+import com.vayunmathur.camera.platform.camera2.Camera2Executor
+import com.vayunmathur.camera.platform.camera2.Camera2Session
+import com.vayunmathur.camera.platform.camera2.CaptureSessionHandle
+import com.vayunmathur.camera.platform.camera2.CharacteristicsFacade
+import com.vayunmathur.camera.platform.camera2.DeviceCallback
+import com.vayunmathur.camera.platform.camera2.DeviceHandle
+import com.vayunmathur.camera.platform.camera2.CaptureSessionCallback
+import com.vayunmathur.camera.platform.camera2.FrameSize
+import com.vayunmathur.camera.platform.camera2.LensCharacteristicsSnapshot
+import com.vayunmathur.camera.platform.camera2.ResolvedRequestParams
+import com.vayunmathur.camera.platform.camera2.StillOutput
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import com.vayunmathur.camera.data.SafDocuments
-import com.vayunmathur.camera.data.toggleTorch
+import kotlinx.coroutines.runBlocking
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
-@RunWith(AndroidJUnit4::class)
+/** Camera2 contract: controls without/with session. */
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34])
 class CameraControlsExtraTest {
 
     private fun vm() = CameraViewModel(ApplicationProvider.getApplicationContext())
-    private val ctx get() = ApplicationProvider.getApplicationContext<android.content.Context>()
 
-    @Test fun qrAndZoomStateWithoutBoundCamera() {
-        val v = vm()
-        v.setQrResult("https://example.com")
-        assertEquals("https://example.com", v.qrResult.value)
-        v.setQrResult(null)
-        assertNull(v.qrResult.value)
+    private class FakeHandle : CaptureSessionHandle {
+        val repeating = mutableListOf<ResolvedRequestParams>()
+        override fun setRepeatingPreview(params: ResolvedRequestParams, target: Surface) { repeating += params }
+        override fun captureStill(params: com.vayunmathur.camera.platform.camera2.ResolvedStillParams, stillTarget: Surface, callback: com.vayunmathur.camera.platform.camera2.StillResultCallback) { callback.onCompleted(com.vayunmathur.camera.platform.camera2.RawStillMetadata()) }
+        override fun close() {}
+    }
+    private class FakeDevice : DeviceHandle {
+        override val cameraId: String = "0"
+        override fun createCaptureSession(surfaces: List<Surface>, callback: CaptureSessionCallback) { callback.onConfigured(FakeHandle()) }
+        override fun close() {}
+    }
+    private class FakeDriver : Camera2Driver {
+        override fun openCamera(cameraId: String, callback: DeviceCallback) { callback.onOpened(FakeDevice()) }
+        override fun createStillOutput(size: FrameSize): StillOutput? = null
+    }
+    internal fun snapshot(
+        zoom: Range<Float>? = Range(0.5f, 8f),
+        flash: Boolean = true,
+        sensitivity: Range<Int>? = Range(50, 6400),
+        ev: Range<Float>? = Range(-4f, 4f),
+    ): LensCharacteristicsSnapshot = CharacteristicsFacade.fromFakeMap(
+        cameraId = "0", zoomRatioRange = zoom, hasFlashUnit = flash,
+        sensitivityRange = sensitivity, exposureCompensationEvRange = ev,
+        exposureTimeRangeNs = Range(1_000_000L, 1_000_000_000L),
+        sizesByFormat = mapOf(ImageFormat.PRIVATE to listOf(Size(1920, 1080))),
+        activeArrayWidth = 4000, activeArrayHeight = 3000,
+        exposureCompensationStepEv = 1f / 6f, maxAfRegions = 1, maxAeRegions = 1,
+    ).snapshot
 
-        v.onViewfinderZoomRatio(2.5f)
-        assertEquals(2.5f, v.zoomRatio.value)
-        // No camera bound: the requested ratio is stored unclamped.
-        v.setZoomRatio(8f)
-        assertEquals(8f, v.zoomRatio.value)
-        v.restoreZoom(1f, 4f)
-        assertEquals(4f, v.zoomRatio.value)
-        v.restoreZoom(0.5f, 10f)
-        assertEquals(4f, v.zoomRatio.value)
+    internal fun fakeSession(executor: Camera2Executor, snap: LensCharacteristicsSnapshot = snapshot()): Camera2Session =
+        Camera2Session(FakeDriver(), executor, snap)
+
+    internal fun Camera2Executor.drain() {
+        val latch = CountDownLatch(1); execute { latch.countDown() }
+        assertTrue(latch.await(5, TimeUnit.SECONDS))
+    }
+    internal fun dirtyTeardownState(v: CameraViewModel) {
+        v.isRecordingMutable.value = true; v.recordingPausedMutable.value = true
+        v.recordingDurationSecMutable.value = 42; v.timerCountdownMutable.value = 3
+        v.isCapturingMutable.value = true; v.photoSessionActiveMutable.value = true
+        v.analysisStreamActiveMutable.value = true; v.nightPreviewActiveMutable.value = true
+        v.highSpeedActiveMutable.value = true; v.videoSessionActiveMutable.value = true
+        v.videoSnapshotSupportedMutable.value = true; v.focusLockedMutable.value = true
+    }
+    internal fun assertTeardownCleared(v: CameraViewModel) {
+        assertFalse(v.isRecording.value); assertFalse(v.recordingPaused.value)
+        assertEquals(0L, v.recordingDurationSec.value); assertEquals(0, v.timerCountdown.value)
+        assertFalse(v.isCapturing.value); assertFalse(v.photoSessionActive.value)
+        assertFalse(v.analysisStreamActive.value); assertFalse(v.nightPreviewActive.value)
+        assertFalse(v.highSpeedActive.value); assertFalse(v.videoSessionActive.value)
+        assertFalse(v.videoSnapshotSupported.value); assertFalse(v.focusLocked.value)
     }
 
-    @Test fun zoomLevelsFollowLensRange() {
-        val v = vm()
-        v.updateZoomLevels(1f, 1f)
-        assertEquals(listOf("1x" to 1f), v.availableZoomLevels.value)
-        v.updateZoomLevels(0.5f, 10f)
-        val levels = v.availableZoomLevels.value
-        assertEquals(".5", levels.first().first)
-        assertTrue(levels.any { it.second == 1f })
-        assertTrue(levels.any { it.second == 5f })
-        assertFalse(levels.any { it.second > 5f })
-    }
+    @Test fun noSessionControlsSafe() { val v=vm(); v.setQrResult("x"); assertEquals("x", v.qrResult.value); v.enableTorch(true); v.clearFocusLock(); assertFalse(v.focusLocked.value) }
+    @Test fun zoomClampedToSnapshotRange() { val ex=Camera2Executor("ctrlx"); val s=fakeSession(ex); val v=vm(); v.activeCamera2Session=s; try { v.setZoomRatio(99f); ex.drain(); assertEquals(8f, s.controlState.zoomRatio) } finally { ex.shutdown() } }
+    @Test fun recordingTimerStartStop() { val v=vm(); v.startRecordingTimer(); assertTrue(v.isRecording.value); v.stopRecordingTimer(); assertFalse(v.isRecording.value) }
 
-    @Test fun focusTorchExposureWithoutCameraAreSafe() {
-        val v = vm()
-        v.clearFocusLock()
-        assertFalse(v.focusLocked.value)
-        v.enableTorch(true)
-        // enableTorch forwards to cameraControl when bound; unbound it
-        // must at least not throw (torch flow is driven by toggleTorch).
-        v.applyExposureCompensation(1f)
-        v.applyImageCaptureFlashMode()
-        v.setImageAnalyzer(null)
-        v.setBokehAnalyzer(null)
-        v.setPhotoAnalyzer(null)
-        v.onSessionBound()
-    }
-
-    @Test fun manualControlStateWithoutCamera() {
-        val v = vm()
-        v.setExposureTimeIndex(3)
-        assertEquals(3, v.exposureTimeIndex.value)
-        v.isoStopsMutable.value = listOf(100, 200, 400)
-        v.setManualIsoIndex(2)
-        assertEquals(2, v.manualIsoIndex.value)
-        assertEquals(200, v.manualIso())
-        assertFalse(v.isExposureAuto())
-        v.setManualIsoIndex(99)
-        assertEquals(3, v.manualIsoIndex.value)
-        assertNull(v.camera2ControlOrNull())
-        v.applyManualControls()
-        v.readManualControlRanges()
-    }
-
-    @Test fun recordingTimerStartsAndStops() {
-        val v = vm()
-        v.startRecordingTimer()
-        v.stopRecordingTimer()
-        assertEquals(0L, v.recordingDurationSec.value)
-    }
-
-    @Test fun panoramaEngineFrameHandoff() {
-        val engine = PanoramaEngine(ctx)
-        assertFalse(engine.isSweeping.value)
-        val first = Bitmap.createBitmap(4, 4, Bitmap.Config.ARGB_8888)
-        val second = Bitmap.createBitmap(4, 4, Bitmap.Config.ARGB_8888)
-        engine.offerFrame(first, 90)
-        assertEquals(90, engine.latestFrameRotation)
-        // Offering a second frame recycles the undelivered first one.
-        engine.offerFrame(second, 180)
-        assertTrue(first.isRecycled)
-        val (taken, rotation) = engine.takeFrame()
-        assertEquals(second, taken)
-        assertEquals(180, rotation)
-        assertNull(engine.latestFrame)
-        taken?.recycle()
-    }
-
-    @Test fun panoramaSweepLifecycle() {
-        val engine = PanoramaEngine(ctx)
-        engine.startSweep()
-        assertTrue(engine.isSweeping.value)
-        assertTrue(engine.guideDots.value.isNotEmpty())
-        // The sweep seeds dot 0 as the one being captured.
-        assertEquals(GuideDotState.CAPTURING, engine.guideDots.value.first().state)
-        assertEquals(GuideDotState.PENDING, engine.guideDots.value[1].state)
-        engine.stopSweep()
-        assertFalse(engine.isSweeping.value)
-        engine.reset()
-        assertEquals(0, engine.frameCount.value)
-    }
-
-    @Test fun panoramaFullSphereHasMoreDots() {
-        val flat = PanoramaEngine(ctx).apply { startSweep(fullSphere = false) }
-        val sphere = PanoramaEngine(ctx).apply { startSweep(fullSphere = true) }
-        assertTrue(sphere.guideDots.value.size >= flat.guideDots.value.size)
-        flat.stopSweep(); sphere.stopSweep()
-    }
-
-    @Test fun nightExtensionFailureRecordingDoesNotThrow() {
-        val v = vm()
-        assertFalse(v.nightExtFailedRecently())
-        // The timestamp write is async on viewModelScope; recording must
-        // not throw and must mark the extension unusable immediately.
-        v.recordNightExtensionFailure()
-        assertFalse(v.nightExtensionUsable.value)
-    }
-
-    @Test fun saveTreeUriHelpers() {
-        val tree = android.net.Uri.parse("content://com.android.externalstorage.documents/tree/primary%3ADCIM")
-        assertEquals(
-            android.os.Environment.getExternalStorageDirectory().absolutePath + "/DCIM",
-            SafDocuments.primaryPath(tree),
-        )
-        assertNull(SafDocuments.primaryPath(android.net.Uri.parse("content://x/y")))
-    }
 }

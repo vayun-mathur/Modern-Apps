@@ -1,23 +1,15 @@
 package com.vayunmathur.camera.platform
 
 import com.vayunmathur.library.log.Log
-import androidx.camera.core.ImageCapture
-import androidx.camera.core.ImageCaptureException
-import androidx.camera.video.FileOutputOptions
-import androidx.camera.video.VideoRecordEvent
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.vayunmathur.camera.data.MediaStoreSaver
-import com.vayunmathur.camera.data.prepareStillSave
 import com.vayunmathur.camera.data.saveProcessedStill
 import com.vayunmathur.camera.data.saveStillBytes
 import com.vayunmathur.camera.data.saveVideoStaged
 import com.vayunmathur.camera.data.scanSafDoc
 import com.vayunmathur.camera.data.setLastCaptureUri
-import com.vayunmathur.camera.data.closeStream
-import com.vayunmathur.camera.data.resolveUri
 
 @android.annotation.SuppressLint("MissingPermission")
 fun CameraViewModel.toggleHighSpeedRecording() {
@@ -30,9 +22,14 @@ fun CameraViewModel.toggleHighSpeedRecording() {
     }
 
     if (isRecordingMutable.value) {
-        highSpeedRecording?.stop()
-        highSpeedRecording = null
-        stopRecordingTimer()
+        if (camera2RecordingState.sloMoControl != null) {
+            stopCamera2SloMoRecording()
+        } else {
+            // Recording state without a live slo-mo control: nothing owns
+            // the camera, so just clear the recording UI state.
+            stopRecordingTimer()
+            isRecordingMutable.value = false
+        }
         return
     }
 
@@ -46,12 +43,24 @@ fun CameraViewModel.toggleHighSpeedRecording() {
             }
             timerCountdownMutable.value = 0
             timerCountdownJob = null
-            startHighSpeedRecording()
+            startSloMoRecordingRouted()
         }
         return
     }
 
-    startHighSpeedRecording()
+    startSloMoRecordingRouted()
+}
+
+/** Slo-mo record press: Camera2 or an honest error (there is no other engine). */
+private fun CameraViewModel.startSloMoRecordingRouted() {
+    if (camera2RecordingState.sloMoControl != null) {
+        startCamera2SloMoRecording()
+    } else {
+        Log.error("SloMo", "No Camera2 slo-mo session live; recording not started")
+        com.vayunmathur.library.util.AppMessages.show(
+            app.getString(com.vayunmathur.camera.R.string.camera_recording_failed)
+        )
+    }
 }
 
 /** Shutter/video countdown tick and timelapse speed-up factor. */
@@ -63,45 +72,6 @@ private const val ADAPTIVE_REBIND_SETTLE_MS = 40L
 
 /** Settle pause for the preview session to release the camera before the engine opens it. */
 private const val RECORDING_SETTLE_MS = 350L
-
-@android.annotation.SuppressLint("MissingPermission")
-internal fun CameraViewModel.startHighSpeedRecording() {
-    if (isRecordingMutable.value) return
-    val videoCapture = highSpeedVideoCapture ?: return
-
-    val timestamp = MediaStoreSaver.timestamp()
-    val displayName = "SLOMO_$timestamp"
-
-    // Stage in cache so the finalize step can copy to MediaStore or the SAF
-    // folder through one shared path (direct MediaStoreOutputOptions can't
-    // target a SAF tree).
-    val cacheFile = java.io.File(app.cacheDir, "${displayName}.mp4")
-    val outputOptions = FileOutputOptions.Builder(cacheFile).build()
-
-    startRecordingTimer()
-
-    Log.debug("SloMo", "Starting high-speed recording at ${sloMoFps}fps")
-
-    highSpeedRecording = videoCapture.output
-        .prepareRecording(app, outputOptions)
-        .start(ContextCompat.getMainExecutor(app)) { event ->
-            if (event is VideoRecordEvent.Finalize) {
-                stopRecordingTimer()
-                if (event.hasError()) {
-                    Log.error("SloMo", "Recording error: ${event.error} - ${event.cause?.message}")
-                    cacheFile.delete()
-                } else {
-                    Log.dev("SloMo", "High-speed recording saved: ${event.outputResults.outputUri}")
-                    viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                        if (cacheFile.exists()) {
-                            saveVideoStaged(displayName, cacheFile)?.let { setLastCaptureUri(it) }
-                            cacheFile.delete()
-                        }
-                    }
-                }
-            }
-        }
-}
 
 @android.annotation.SuppressLint("MissingPermission")
 fun CameraViewModel.toggleRecording() {
@@ -154,13 +124,33 @@ internal fun CameraViewModel.startRecording() {
         useHevc -> android.media.MediaFormat.MIMETYPE_VIDEO_HEVC
         else -> android.media.MediaFormat.MIMETYPE_VIDEO_AVC
     }
+    // Tier must also be a stream size this lens advertises (PRIVATE is the
+    // honest proxy for the encoder surface): a tier the HAL cannot stream
+    // fails the capture-session configure, as UHD on a 1080p front lens does.
+    val manager0 = app.getSystemService(android.hardware.camera2.CameraManager::class.java)
+    val facing0 = selectedLensMutable.value?.facing ?: currentLensFacing()
+    val cameraId0 = manager0?.let {
+        com.vayunmathur.camera.platform.camera2.CharacteristicsFacade.resolveCamera2Id(it, facing0)
+    }
+    val snapshot0 = if (manager0 != null && cameraId0 != null) {
+        com.vayunmathur.camera.platform.camera2.CharacteristicsFacade
+            .tryFromCameraManager(manager0, cameraId0)?.snapshot
+    } else {
+        null
+    }
+    val privateSizes = snapshot0?.streamConfig
+        ?.sizesFor(android.graphics.ImageFormat.PRIVATE).orEmpty()
     val tier = listOf(
         com.vayunmathur.camera.domain.VideoQualityTier.UHD,
         com.vayunmathur.camera.domain.VideoQualityTier.FHD,
         com.vayunmathur.camera.domain.VideoQualityTier.HD,
         com.vayunmathur.camera.domain.VideoQualityTier.SD,
     ).firstOrNull { candidate ->
-        CodecSupport.supportsVideoBitrate(mime, candidate.width, candidate.height, 30, candidate.baseBitrateBps)
+        (privateSizes.isEmpty() || privateSizes.any {
+            it.width == candidate.width && it.height == candidate.height
+        }) && CodecSupport.supportsVideoBitrate(
+            mime, candidate.width, candidate.height, 30, candidate.baseBitrateBps
+        )
     } ?: com.vayunmathur.camera.domain.VideoQualityTier.FHD
     boundVideoQualityTier = tier
 
@@ -181,14 +171,9 @@ internal fun CameraViewModel.startRecording() {
 
     // Camera2 id for the selected lens (CameraManager ids only, never the
     // lens's logical id — see the slo-mo glue for the same contract).
-    val manager = app.getSystemService(android.hardware.camera2.CameraManager::class.java)
-    val facing = selectedLensMutable.value?.facing
-        ?: currentLensFacing()
-    val cameraId = manager?.let {
-        com.vayunmathur.camera.platform.camera2.CharacteristicsFacade.resolveCamera2Id(it, facing)
-    }
+    val cameraId = cameraId0
     if (cameraId == null) {
-        Log.error("Camera2Recorder", "No Camera2 id for facing $facing; recording not started")
+        Log.error("Camera2Recorder", "No Camera2 id for facing $facing0; recording not started")
         com.vayunmathur.library.util.AppMessages.show(
             app.getString(com.vayunmathur.camera.R.string.camera_recording_failed)
         )
@@ -215,13 +200,13 @@ internal fun CameraViewModel.startRecording() {
         controller = controller,
         motionSupplier = { sceneMotionEstimator.lastClassification },
         onMotionSample = { sample -> onSceneMotionSample(sample) },
-        onError = { e -> Log.error("Camera2Recorder", "Camera2 recording engine error", e) },
+        onError = { e -> onVideoEngineError(e) },
     )
-    activeVideoEngine = engine
-    activeVideoOutputFile = cacheFile
-    activeVideoDisplayName = displayName
-    activeVideoMode = recordingMode
-    activeVideoTimestamp = timestamp
+    camera2RecordingState.engine = engine
+    camera2RecordingState.outputFile = cacheFile
+    camera2RecordingState.displayName = displayName
+    camera2RecordingState.mode = recordingMode
+    camera2RecordingState.timestamp = timestamp
 
     // The engine owns the camera device: the preview session (Camera2 or
     // any transitional binding) must release it first. Flipping the
@@ -236,11 +221,12 @@ internal fun CameraViewModel.startRecording() {
             engine.start(VideoRecordingRequest(cacheFile, cameraId = cameraId, audioEnabled = audioEnabled)) { outcome ->
                 onCamera2RecordingFinalized(outcome)
             }
+            camera2RecordingState.previewTexture.value = engine.ownedPreviewTexture()
             isRecordingMutable.value = true
             startRecordingTimer()
         } catch (e: Exception) {
             Log.error("Camera2Recorder", "Camera2 recording failed to start", e)
-            activeVideoEngine = null
+            camera2RecordingState.engine = null
             camera2RecordingMutable.value = false
             cacheFile.delete()
             com.vayunmathur.library.util.AppMessages.show(
@@ -250,9 +236,21 @@ internal fun CameraViewModel.startRecording() {
     }
 }
 
+/**
+ * Engine error (configure/open/session failure): finalize through the
+ * normal stop path so the partial file is validated, discarded on
+ * failure, and the recording state/preview are restored — never a
+ * stuck "recording" state with no outcome.
+ */
+private fun CameraViewModel.onVideoEngineError(e: Exception) {
+    Log.error("Camera2Recorder", "Camera2 recording engine error", e)
+    if (camera2RecordingState.engine == null) return
+    stopCamera2Recording()
+}
+
 /** Stops the in-flight Camera2 recording (or cancels a pending start). */
 fun CameraViewModel.stopCamera2Recording() {
-    val engine = activeVideoEngine
+    val engine = camera2RecordingState.engine
     stopRecordingTimer()
     isRecordingMutable.value = false
     if (engine == null) {
@@ -269,11 +267,12 @@ fun CameraViewModel.stopCamera2Recording() {
 /** Finalize for the Camera2 engine: save the staged file or surface the error. */
 private fun CameraViewModel.onCamera2RecordingFinalized(outcome: VideoRecordingOutcome) {
     val cacheFile = outcome.outputFile
-    val displayName = activeVideoDisplayName ?: cacheFile.nameWithoutExtension
-    val recordingMode = activeVideoMode ?: CameraMode.VIDEO
-    val timestamp = activeVideoTimestamp ?: ""
-    activeVideoEngine = null
-    activeVideoOutputFile = null
+    val displayName = camera2RecordingState.displayName ?: cacheFile.nameWithoutExtension
+    val recordingMode = camera2RecordingState.mode ?: CameraMode.VIDEO
+    val timestamp = camera2RecordingState.timestamp ?: ""
+    camera2RecordingState.engine = null
+    camera2RecordingState.outputFile = null
+    camera2RecordingState.previewTexture.value = null
     camera2RecordingMutable.value = false
     if (outcome.error != null) {
         Log.error("Camera2Recorder", "Recording failed; discarding ${cacheFile.name}", outcome.error)
@@ -353,7 +352,7 @@ internal fun remuxTimelapse(cacheFile: java.io.File, timestamp: String): java.io
  * a Camera2 recording is active.
  */
 fun CameraViewModel.togglePauseRecording() {
-    if (activeVideoEngine != null) {
+    if (camera2RecordingState.engine != null) {
         Log.status("CameraViewModel", "Pause is unavailable on the Camera2 recording path")
         return
     }
@@ -366,106 +365,39 @@ fun CameraViewModel.togglePauseRecording() {
  */
 fun CameraViewModel.toggleMicMuted() {
     micMutedMutable.value = !micMutedMutable.value
-    if (activeVideoEngine != null) {
+    if (camera2RecordingState.engine != null) {
         Log.status("CameraViewModel", "Mic mute applies from the next recording on the Camera2 path")
     }
     viewModelScope.launch { ds.setString("camera_mic_muted", micMutedMutable.value.toString()) }
 }
 
 /**
- * True when a video/slo-mo snapshot must be captured in memory instead of
- * on the JPEG file path: an effective AVIF selection (the file path can
- * only write the HAL JPEG). Read at capture time, never cached at bind.
- */
-internal fun CameraViewModel.videoSnapshotInMemory(): Boolean =
-    com.vayunmathur.camera.domain.StillFormatRouting.plainSingleNeedsInMemory(
-        requestedStillFormat(), StitchNative.isAvailable,
-    )
-
-/**
- * Captures a still while recording (video snapshot, including slo-mo),
- * using the ImageCapture bound alongside the video session. No-op if the
- * device couldn't bind the extra ImageCapture use case. With AVIF
- * selected the snapshot is captured in memory and lands through the
- * EXIF-carrying `StillEncoder`, exactly like a plain AVIF single (an
- * Ultra HDR source stays JPEG_R); JPEG keeps the file path unchanged.
+ * Captures a still while previewing in a video mode (video snapshot),
+ * on the live Camera2 session. While a recording owns the camera the
+ * snapshot affordance is hidden (`videoSnapshotSupported` stays false),
+ * so this is a defensive no-op then.
  */
 fun CameraViewModel.captureVideoSnapshot() {
-    if (isCapturingMutable.value) return
-    val capture = imageCapture ?: return
-    if (videoSnapshotInMemory()) {
-        captureVideoSnapshotInMemory(capture)
-        return
-    }
-    val pending = prepareStillSave("IMG_${MediaStoreSaver.timestamp()}.jpg") ?: return
-    val outputOptions = pending.outputOptions
-    capture.takePicture(
-        outputOptions,
-        ContextCompat.getMainExecutor(app),
-        object : ImageCapture.OnImageSavedCallback {
-            override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
-                pending.closeStream()
-                pending.resolveUri(outputFileResults)?.let { setLastCaptureUri(it) }
-            }
-            override fun onError(exception: ImageCaptureException) {
-                Log.error("CameraViewModel", "Video snapshot failed", exception)
-                pending.closeStream()
-            }
-        }
-    )
-}
-
-/** In-memory (AVIF) video/slo-mo snapshot: decode, encode via `saveProcessedStill`, save. */
-private fun CameraViewModel.captureVideoSnapshotInMemory(capture: ImageCapture) {
-    val mirror = mirrorCaptures
-    capture.takePicture(
-        ContextCompat.getMainExecutor(app),
-        object : ImageCapture.OnImageCapturedCallback() {
-            override fun onCaptureSuccess(image: androidx.camera.core.ImageProxy) {
-                val degrees = image.imageInfo.rotationDegrees
-                val cropRect = android.graphics.Rect(image.cropRect)
-                val sourceJpeg = try {
-                    image.planes[0].buffer.let { buf ->
-                        ByteArray(buf.remaining()).also { buf.get(it) }
-                    }
-                } finally {
-                    image.close()
-                }
+    if (isCapturingMutable.value || camera2RecordingState.engine != null) return
+    val session = activeCamera2Session ?: return
+    session.capture(
+        mirrored = mirrorCaptures,
+        callback = object : com.vayunmathur.camera.platform.camera2.Camera2Session.StillCallback {
+            override fun onStillCaptured(still: com.vayunmathur.camera.platform.camera2.CapturedStill) {
                 viewModelScope.launch {
                     val uri = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                        runCatching {
-                            if (com.vayunmathur.camera.domain.StillFormatRouting
-                                    .isUltraHdrJpeg(sourceJpeg)
-                            ) {
-                                saveStillBytes(
-                                    "IMG_${MediaStoreSaver.timestamp()}.jpg",
-                                    stampStillBytes(sourceJpeg, degrees, mirror),
-                                )
-                            } else {
-                                val decodedRaw = android.graphics.BitmapFactory
-                                    .decodeByteArray(sourceJpeg, 0, sourceJpeg.size)
-                                    ?: error("Could not decode video snapshot")
-                                val decoded = cropToRect(decodedRaw, cropRect)
-                                val adjusted = applyColorAdjustments(decoded, 0f, 0f, mirror)
-                                val saved = saveProcessedStill(adjusted, degrees, sourceJpeg)
-                                adjusted.recycle()
-                                if (saved != null &&
-                                    saved.format == com.vayunmathur.camera.domain.StillFormat.JPEG
-                                ) {
-                                    writeCaptureExif(saved.uri, sourceJpeg, degrees, mirrored = mirror)
-                                }
-                                saved?.uri
-                            }
-                        }.getOrNull()
+                        runCatching { saveCamera2Still(still) }
+                            .onFailure { Log.error("CameraViewModel", "Video snapshot save failed", it) }
+                            .getOrNull()
                     }
                     if (uri != null) setLastCaptureUri(uri)
                 }
             }
 
-            override fun onError(exception: ImageCaptureException) {
-                Log.error("CameraViewModel", "Video snapshot failed", exception)
+            override fun onStillFailed(message: String) {
+                Log.error("CameraViewModel", "Video snapshot failed: $message")
             }
-        }
+        },
     )
 }
 

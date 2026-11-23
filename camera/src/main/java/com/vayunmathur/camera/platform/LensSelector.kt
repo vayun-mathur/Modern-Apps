@@ -1,15 +1,9 @@
 package com.vayunmathur.camera.platform
 
-import androidx.annotation.OptIn
-import androidx.camera.camera2.interop.ExperimentalCamera2Interop
-
 import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CameraManager
 import android.hardware.camera2.CameraMetadata
 import com.vayunmathur.library.log.Log
-import androidx.camera.camera2.interop.Camera2CameraInfo
-import androidx.camera.core.Camera
-import androidx.camera.core.CameraSelector
-import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.lifecycle.viewModelScope
 import com.vayunmathur.camera.domain.LensFacing
 import com.vayunmathur.camera.domain.LensLabels
@@ -20,23 +14,23 @@ import com.vayunmathur.camera.platform.CameraViewModel
 import kotlinx.coroutines.launch
 import kotlin.math.sqrt
 
-/** Maps the pure [LensFacing] to the CameraX selector constant. */
+/** Maps the pure [LensFacing] to the platform lens-facing constant (CameraMetadata values). */
 fun LensFacing.toSelectorInt(): Int = when (this) {
-    LensFacing.BACK -> CameraSelector.LENS_FACING_BACK
-    LensFacing.FRONT -> CameraSelector.LENS_FACING_FRONT
+    LensFacing.BACK -> CameraMetadata.LENS_FACING_BACK
+    LensFacing.FRONT -> CameraMetadata.LENS_FACING_FRONT
 }
 
-/** Maps a CameraX lens-facing constant to [LensFacing]; null for external/unknown. */
+/** Maps a platform lens-facing constant to [LensFacing]; null for external/unknown. */
 fun Int.toLensFacing(): LensFacing? = when (this) {
-    CameraSelector.LENS_FACING_BACK -> LensFacing.BACK
-    CameraSelector.LENS_FACING_FRONT -> LensFacing.FRONT
+    CameraMetadata.LENS_FACING_BACK -> LensFacing.BACK
+    CameraMetadata.LENS_FACING_FRONT -> LensFacing.FRONT
     else -> null
 }
 
 /**
- * Enumerates every physical/logical lens via [ProcessCameraProvider.availableCameraInfos]
- * plus `Camera2CameraInfo` interop (camera ID, `LENS_FACING`, focal lengths, sensor
- * physical size for the 35mm-equivalent label, mono color-filter detection).
+ * Enumerates every physical/logical lens from `CameraManager.cameraIdList`
+ * + `CameraCharacteristics` (`LENS_FACING`, focal lengths, sensor physical
+ * size for the 35mm-equivalent label, mono color-filter detection).
  *
  * Types are assigned per facing family sorted by focal length: the lens whose
  * 35mm-equivalent is closest to ~27mm is the wide reference (1x); shorter is
@@ -45,8 +39,8 @@ fun Int.toLensFacing(): LensFacing? = when (this) {
  *
  * Safe to call off the main thread; never throws (returns empty on failure).
  */
-fun enumerateLenses(provider: ProcessCameraProvider): List<PhysicalLens> {
-    val raws = provider.availableCameraInfos.mapNotNull { info -> readRawLens(info) }
+fun enumerateLenses(manager: CameraManager): List<PhysicalLens> {
+    val raws = manager.cameraIdList.mapNotNull { id -> readRawLens(manager, id) }
 
     // Logical multi-camera (e.g. a UW stop reachable via the wide camera's
     // zoom range) plus same-physical-lens duplicates would each render an
@@ -66,33 +60,34 @@ private const val WIDE_REFERENCE_EQ_MM = 27f
 private const val ULTRA_WIDE_RATIO = 0.85f
 private const val TELEPHOTO_RATIO = 1.4f
 
-/** Reads one camera info's physical-lens description; null when unusable. */
-private fun readRawLens(info: androidx.camera.core.CameraInfo): RawLens? {
+/** Reads one camera id's physical-lens description; null when unusable. */
+private fun readRawLens(manager: CameraManager, cameraId: String): RawLens? {
     return try {
-        readRawLensOrThrow(info)
+        readRawLensOrThrow(manager, cameraId)
     } catch (e: IllegalArgumentException) {
-        Log.status("LensSelector", "Skipping camera info during lens enumeration", e)
+        Log.status("LensSelector", "Skipping camera during lens enumeration", e)
+        null
+    } catch (e: android.hardware.camera2.CameraAccessException) {
+        Log.status("LensSelector", "Skipping camera during lens enumeration", e)
         null
     }
 }
 
-/** Physical-lens description probed off one CameraInfo (null for external/unknown lenses). */
-@Suppress("DEPRECATION")
-@OptIn(ExperimentalCamera2Interop::class)
-private fun readRawLensOrThrow(info: androidx.camera.core.CameraInfo): RawLens? {
-    val cam2 = Camera2CameraInfo.from(info)
+/** Physical-lens description probed off one camera id (null for external/unknown lenses). */
+private fun readRawLensOrThrow(manager: CameraManager, cameraId: String): RawLens? {
+    val chars = manager.getCameraCharacteristics(cameraId)
     val facing = when (
-        cam2.getCameraCharacteristic(CameraCharacteristics.LENS_FACING)
+        chars.get(CameraCharacteristics.LENS_FACING)
     ) {
         CameraMetadata.LENS_FACING_FRONT -> LensFacing.FRONT
         CameraMetadata.LENS_FACING_BACK -> LensFacing.BACK
         // External / unknown: not a phone lens.
         else -> return null
     }
-    val focal = cam2.getCameraCharacteristic(
+    val focal = chars.get(
         CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS
     )?.firstOrNull() ?: return null
-    val sensorSize = cam2.getCameraCharacteristic(
+    val sensorSize = chars.get(
         CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE
     )
     val eq35 = if (sensorSize != null && sensorSize.width > 0 && sensorSize.height > 0) {
@@ -101,19 +96,18 @@ private fun readRawLensOrThrow(info: androidx.camera.core.CameraInfo): RawLens? 
     } else {
         null
     }
-    val mono = cam2.getCameraCharacteristic(
+    val mono = chars.get(
         CameraCharacteristics.SENSOR_INFO_COLOR_FILTER_ARRANGEMENT
     ) == CameraMetadata.SENSOR_INFO_COLOR_FILTER_ARRANGEMENT_MONO
-    // Logical multi-camera reach: the UW stop served through the wide logical
-    // camera's zoom range (intrinsic ratio < 1), so the picker can skip a
-    // duplicate UW pill. Unknown on most HALs — the eq-35mm ratio stays primary.
-    val intrinsic = info.intrinsicZoomRatio.takeUnless {
-        // CameraX reports 1.0f when the intrinsic ratio is unknown (the value of
-        // its library-restricted INTRINSIC_ZOOM_RATIO_UNKNOWN sentinel).
-        it == INTRINSIC_ZOOM_RATIO_UNKNOWN_SENTINEL
+    // CameraX's intrinsic zoom ratio has no Camera2 equivalent; the
+    // eq-35mm ratio stays primary and the field stays null (unknown).
+    val intrinsic: Float? = null
+    val zoomFloor = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+        chars.get(CameraCharacteristics.CONTROL_ZOOM_RATIO_RANGE)?.lower
+    } else {
+        null
     }
-    val zoomFloor = info.zoomState.value?.minZoomRatio
-    return RawLens(cam2.getCameraId(), facing, focal, eq35, mono, intrinsic, zoomFloor)
+    return RawLens(cameraId, facing, focal, eq35, mono, intrinsic, zoomFloor)
 }
 
 private data class RawLens(
@@ -203,10 +197,11 @@ private fun labelOf(type: LensType): String {
  * process and anchors the default selection (same-facing wide/front). No-op once
  * populated; call at the top of every session setup after obtaining the provider.
  */
-fun CameraViewModel.ensureLensesEnumerated(provider: ProcessCameraProvider) {
+fun CameraViewModel.ensureLensesEnumerated() {
     if (availableLensesMutable.value.isNotEmpty()) return
+    val manager = app.getSystemService(CameraManager::class.java) ?: return
     val all = try {
-        enumerateLenses(provider)
+        enumerateLenses(manager)
     } catch (e: IllegalStateException) {
         Log.status("LensSelector", "Lens enumeration failed; sessions fall back to facing-only selectors", e)
         emptyList()
@@ -283,78 +278,4 @@ fun CameraViewModel.persistStartupLens(lens: PhysicalLens) {
 fun CameraViewModel.currentLensFamily(): List<PhysicalLens> {
     val facing = lensFacingMutable.value.toLensFacing() ?: LensFacing.BACK
     return LensSelectionLogic.filterByFacing(availableLensesMutable.value, facing)
-}
-
-/**
- * Builds the selector for [facingInt], pinned to [lens] via a `CameraFilter` on
- * the logical camera ID when non-null. A null lens keeps the legacy facing-only
- * behavior.
- */
-@Suppress("DEPRECATION")
-@OptIn(ExperimentalCamera2Interop::class)
-fun CameraViewModel.lensSelector(facingInt: Int, lens: PhysicalLens?): CameraSelector {
-    val builder = CameraSelector.Builder().requireLensFacing(facingInt)
-    if (lens != null) {
-        val id = lens.logicalCameraId
-        builder.addCameraFilter { infos ->
-            infos.filter { info ->
-                try {
-                    Camera2CameraInfo.from(info).getCameraId() == id
-                } catch (_: Exception) {
-                    false
-                }
-            }
-        }
-    }
-    return builder.build()
-}
-
-/**
- * Binds via [bind], retrying down the lens ladder: requested lens → same-facing
- * wide → any same-facing (priority order). When enumeration produced nothing,
- * the ladder is a single facing-only selector — identical to the legacy path.
- *
- * @return the lens that actually bound (null when facing-only) plus the camera.
- */
-fun CameraViewModel.bindWithFallback(
-    provider: ProcessCameraProvider,
-    requested: PhysicalLens?,
-    family: List<PhysicalLens>,
-    bind: (CameraSelector) -> Camera,
-): Pair<PhysicalLens?, Camera> {
-    val facingInt = lensFacingMutable.value
-    val ordered = buildList {
-        if (requested != null) add(requested)
-        family.sortedBy { it.fallbackPriority }.forEach { if (it != requested) add(it) }
-        if (requested == null && family.isEmpty()) add(null)
-    }
-    var lastError: Exception? = null
-    var first = true
-    for (candidate in ordered) {
-        try {
-            // The caller unbinds before the first attempt; unbind between retries only.
-            if (!first) {
-                try {
-                    provider.unbindAll()
-                } catch (_: Exception) {
-                }
-            }
-            first = false
-            val camera = bind(lensSelector(facingInt, candidate))
-            if (candidate != requested) {
-                Log.status(
-                    "LensSelector",
-                    "Fell back to lens=${candidate?.labelKey} (requested=${requested?.labelKey})",
-                )
-            }
-            return candidate to camera
-        } catch (e: IllegalStateException) {
-            lastError = e
-            Log.status("LensSelector", "Bind failed on lens=${candidate?.labelKey}; trying next", e)
-        } catch (e: IllegalArgumentException) {
-            lastError = e
-            Log.status("LensSelector", "Bind failed on lens=${candidate?.labelKey}; trying next", e)
-        }
-    }
-    throw lastError ?: IllegalStateException("Lens bind failed with an empty ladder")
 }

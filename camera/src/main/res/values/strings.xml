@@ -44,9 +44,7 @@
     <string name="settings_mirror_front_description">Mirror the front camera preview and saved selfies</string>
 
     <!-- SettingsPage: section title for the Camera2 engine toggle -->
-    <string name="settings_camera2_engine">Camera2 engine</string>
     <!-- SettingsPage: summary explaining the Camera2 engine toggle -->
-    <string name="settings_camera2_engine_description">Use the Camera2 camera engine (turn off to use CameraX)</string>
 
     <!-- Post-processing toggles (SettingsPage, issue #662) -->
     <!-- SettingsPage: section title for noise-reduction toggle -->

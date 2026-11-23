@@ -5,8 +5,6 @@ import android.graphics.Bitmap
 import android.graphics.Matrix
 import android.os.SystemClock
 import com.vayunmathur.library.log.Log
-import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.ImageProxy
 import androidx.core.graphics.scale
 import com.vayunmathur.library.ml.SelfieSegmenter
 
@@ -23,7 +21,7 @@ class BokehAnalyzer(
     context: Context,
     private val isFrontFacing: Boolean = false,
     private val onMaskGenerated: (Bitmap) -> Unit
-) : ImageAnalysis.Analyzer {
+) {
 
     // Guard for the native handle and buffer fields – analyze() runs on bokehExecutor
     // while close() runs on the main composable's DisposableEffect. Without mutual
@@ -47,71 +45,57 @@ class BokehAnalyzer(
         null
     }
 
-    @androidx.annotation.OptIn(androidx.camera.core.ExperimentalGetImage::class)
-    override fun analyze(imageProxy: ImageProxy) {
+    /**
+     * Camera2 analysis entry: [bitmap] is the sensor-oriented conversion
+     * of an `AnalysisFrame` (`toBitmapFromPlanes`), [rotationDegrees]
+     * its display rotation — the same inputs the CameraX path read from
+     * `ImageProxy.toBitmap()`/`imageInfo.rotationDegrees`. Takes
+     * ownership of [bitmap].
+     */
+    fun onFrame(bitmap: Bitmap, rotationDegrees: Int) {
         try {
-            if (closed) return
+            if (closed) {
+                bitmap.recycle()
+                return
+            }
             val now = SystemClock.elapsedRealtime()
             if (now - lastSegmentMs < MIN_SEGMENT_INTERVAL_MS) {
+                bitmap.recycle()
                 return
             }
             lastSegmentMs = now
-
-            val frame = prepareFrame(imageProxy) ?: return
-            if (closed) {
-                frame.recycle()
-                return
-            }
-
-            // Synchronous forward pass; runs on dedicated bokehExecutor with KEEP_ONLY_LATEST.
-            // Hold lock across the native call so close() blocks until the submitted command
-            // buffer has been waited on, preventing the SEGV_MTESERR use-after-free seen in
-            // tombstones.
-            val result = segmentLocked(frame) ?: return
-            frame.recycle()
-            if (closed) return
-
-            smoothAndEmit(result)
+            val downscaled = downscaleIfNeeded(bitmap, MAX_PREVIEW_SIDE)
+            if (downscaled !== bitmap) bitmap.recycle()
+            val oriented = orientToDisplay(downscaled, rotationDegrees)
+            if (oriented !== downscaled) downscaled.recycle()
+            runSegmentation(oriented)
         } catch (e: IllegalStateException) {
             Log.error("BokehAnalyzer", "segmentation failed", e)
         } catch (e: IllegalArgumentException) {
             Log.error("BokehAnalyzer", "segmentation failed", e)
-        } catch (e: NullPointerException) {
-            // A frame with no decodable bitmap (null platform return from
-            // toBitmap) is a dropped frame, not a crash of the preview path.
-            Log.error("BokehAnalyzer", "segmentation failed", e)
-        } finally {
-            imageProxy.close()
         }
+    }
+
+    /** Downscale/orient/segment tail for the Camera2 analysis entry. */
+    private fun runSegmentation(frame: Bitmap) {
+        if (closed) {
+            frame.recycle()
+            return
+        }
+        // Synchronous forward pass; runs on the analysis executor.
+        // Hold lock across the native call so close() blocks until the submitted command
+        // buffer has been waited on, preventing the SEGV_MTESERR use-after-free seen in
+        // tombstones.
+        val result = segmentLocked(frame) ?: return
+        frame.recycle()
+        if (closed) return
+        smoothAndEmit(result)
     }
 
     /**
      * Copies, downscales and orients the frame for the segmenter. Returns null when there is
      * no mask this frame (throttled, closed, or GPU unavailable); recycles intermediates.
      */
-    private fun prepareFrame(imageProxy: ImageProxy): Bitmap? {
-        // Raw sensor-oriented buffer; capped to 1024x768 in portrait session,
-        // so this is ~0.8MP not 12MP. Full-res final image kept in ImageCapture.
-        var frame = imageProxy.toBitmap()
-        if (closed) {
-            frame.recycle()
-            return null
-        }
-        // Immediate downscale to <=512 max side, filter=false to avoid bilinear cost.
-        val downscaled = downscaleIfNeeded(frame, MAX_PREVIEW_SIDE)
-        if (downscaled !== frame) {
-            frame.recycle()
-        }
-        frame = downscaled
-
-        // Orient to display + mirror for front camera, filter=false (was true = bilinear).
-        val oriented = orientToDisplay(frame, imageProxy.imageInfo.rotationDegrees)
-        if (oriented !== frame) {
-            frame.recycle()
-        }
-        return oriented
-    }
-
     /** Runs the segmenter under lock; null when closed or the GPU yields no mask. */
     private fun segmentLocked(frame: Bitmap): com.vayunmathur.library.ml.SegmentationMask? {
         return synchronized(lock) {

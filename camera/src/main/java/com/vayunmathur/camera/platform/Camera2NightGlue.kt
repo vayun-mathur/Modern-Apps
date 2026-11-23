@@ -10,7 +10,6 @@ import com.vayunmathur.camera.platform.camera2.CapturedStill
 import com.vayunmathur.camera.platform.camera2.CharacteristicsFacade
 import com.vayunmathur.camera.platform.camera2.ExtensionsEngineInput
 import com.vayunmathur.camera.platform.camera2.ExtensionsEnginePolicy
-import com.vayunmathur.camera.platform.camera2.NightCamera2Gate
 import com.vayunmathur.camera.platform.camera2.NightEngine
 import com.vayunmathur.library.log.Log
 import kotlinx.coroutines.Dispatchers
@@ -62,11 +61,9 @@ internal fun CameraViewModel.camera2NightDecision(
 ): NightEngine {
     val probe = Camera2ExtensionProbe.probeNight(facade.snapshot)
     val input = ExtensionsEngineInput(
-        camera2GateOn = NightCamera2Gate.ENABLED && camera2NightEnabledMutable.value,
         mode = cameraModeMutable.value,
         camera2ProbeOk = probe.usable,
         failureCacheClear = !nightExtFailedRecently(),
-        cameraXExtensionUsable = nightExtensionUsableMutable.value,
     )
     val engine = ExtensionsEnginePolicy.select(input)
     Log.debug(
@@ -89,11 +86,9 @@ internal fun CameraViewModel.tryCaptureCamera2NightExtension(): Boolean {
     val session = activeCamera2ExtensionSession ?: return false
     val probe = session.currentProbe()
     val input = ExtensionsEngineInput(
-        camera2GateOn = NightCamera2Gate.ENABLED && camera2NightEnabledMutable.value,
         mode = cameraModeMutable.value,
         camera2ProbeOk = probe?.usable == true && session.hasJpegOutput,
         failureCacheClear = !nightExtFailedRecently(),
-        cameraXExtensionUsable = nightExtensionUsableMutable.value,
     )
     if (!ExtensionsEnginePolicy.usesCamera2Extension(input)) return false
 
@@ -142,7 +137,6 @@ internal fun CameraViewModel.tryCaptureCamera2NightExtension(): Boolean {
  * `evaluateCamera2SloMoDecision`.
  */
 internal fun CameraViewModel.evaluateCamera2NightDecision() {
-    if (!camera2NightEnabledMutable.value) return
     try {
         val facing = selectedLensMutable.value?.facing
             ?: availableLensesMutable.value

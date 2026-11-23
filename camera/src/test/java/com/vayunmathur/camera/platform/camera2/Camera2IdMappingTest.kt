@@ -19,7 +19,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowCameraCharacteristics
 
 /**
- * The CameraX-id crash seam: a selected lens contributes only its facing;
+ * The stale-id crash seam: a selected lens contributes only its facing;
  * the Camera2 id is resolved from `CameraManager.cameraIdList` entries
  * (via [CharacteristicsFacade.cameraIdFacings]) by `LENS_FACING` match.
  */
@@ -27,7 +27,7 @@ class Camera2IdMappingTest {
 
     // Pixel-9-Pro-XL-shaped list: logical back "0", front logical "1" is
     // NOT what CameraManager lists here — the front logical is "5" and the
-    // back physical sub-cameras "2"/"3" follow the logical "0". A CameraX
+    // back physical sub-cameras "2"/"3" follow the logical "0". A stale
     // enumeration can hand the preview id "1" for the selected lens; that
     // id must never be opened.
     private val pixelShaped = listOf(
@@ -44,8 +44,8 @@ class Camera2IdMappingTest {
         )
     }
 
-    @Test fun frontFacingResolvesToListedFrontIdNotCameraXId() {
-        // The selected front lens's CameraX-derived id was "1"; the only id
+    @Test fun frontFacingResolvesToListedFrontIdNotStaleId() {
+        // The selected front lens's stale derived id was "1"; the only id
         // the Camera2 stack may open is the listed front id "5".
         val resolution = Camera2IdResolver.resolve(LensFacing.FRONT, pixelShaped)
         assertEquals(Camera2IdResolution.Resolved("5"), resolution)
@@ -110,19 +110,17 @@ class Camera2IdMappingTest {
         assertTrue(latch.isLatched(bindKey))
         assertFalse(
             PreviewEnginePolicy.usesCamera2(
-                enabled = true,
-                mode = CameraMode.PHOTO,
+                CameraMode.PHOTO,
                 fallbackLatched = latch.isLatched(bindKey),
             ),
-            "latched init failure must keep this bind on CameraX",
+            "latched init failure must block this bind until retry",
         )
         // A different bind (other lens) is a fresh attempt.
         val otherKey = Camera2FallbackLatch.bindKey("5", CameraMode.PHOTO)
         assertFalse(latch.isLatched(otherKey))
         assertTrue(
             PreviewEnginePolicy.usesCamera2(
-                enabled = true,
-                mode = CameraMode.PHOTO,
+                CameraMode.PHOTO,
                 fallbackLatched = latch.isLatched(otherKey),
             ),
         )

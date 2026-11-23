@@ -1,188 +1,106 @@
 package com.vayunmathur.camera.platform
 
-import android.graphics.Bitmap
-import android.graphics.Color
-import androidx.camera.core.Camera
-import androidx.camera.core.CameraInfo
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.Preview
-import androidx.camera.core.ZoomState
-import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.camera.video.Recorder
-import androidx.camera.video.VideoCapture
-import androidx.lifecycle.MutableLiveData
+import android.graphics.ImageFormat
+import android.util.Range
+import android.util.Size
+import android.view.Surface
 import androidx.test.core.app.ApplicationProvider
-import java.lang.reflect.Proxy
-import kotlinx.coroutines.runBlocking
+import com.vayunmathur.camera.platform.camera2.Camera2Driver
+import com.vayunmathur.camera.platform.camera2.Camera2Executor
+import com.vayunmathur.camera.platform.camera2.Camera2Session
+import com.vayunmathur.camera.platform.camera2.CaptureSessionHandle
+import com.vayunmathur.camera.platform.camera2.CharacteristicsFacade
+import com.vayunmathur.camera.platform.camera2.DeviceCallback
+import com.vayunmathur.camera.platform.camera2.DeviceHandle
+import com.vayunmathur.camera.platform.camera2.CaptureSessionCallback
+import com.vayunmathur.camera.platform.camera2.FrameSize
+import com.vayunmathur.camera.platform.camera2.LensCharacteristicsSnapshot
+import com.vayunmathur.camera.platform.camera2.ResolvedRequestParams
+import com.vayunmathur.camera.platform.camera2.StillOutput
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import org.junit.Test
+import kotlinx.coroutines.runBlocking
 import org.junit.runner.RunWith
-import org.mockito.Mockito
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.robolectric.annotation.GraphicsMode
-import org.robolectric.shadows.ShadowLooper
-import com.vayunmathur.camera.domain.PanoInfo
-import com.vayunmathur.camera.data.setTimerDuration
 
-/** Cov-w3 wave 4: panorama session ladder, finish steps, recording entry, pano engine. */
-@GraphicsMode(GraphicsMode.Mode.NATIVE)
+/** Camera2 contract: capabilities from a Camera2 snapshot. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class CameraCovW3Wave4Test {
-    private val context = ApplicationProvider.getApplicationContext<android.content.Context>()
-    private fun vm() = CameraViewModel(context.applicationContext as android.app.Application)
 
-    private fun anySelector(): CameraSelector {
-        return Mockito.any(CameraSelector::class.java) ?: CameraSelector.DEFAULT_BACK_CAMERA
+    private fun vm() = CameraViewModel(ApplicationProvider.getApplicationContext())
+
+    private class FakeHandle : CaptureSessionHandle {
+        val repeating = mutableListOf<ResolvedRequestParams>()
+        override fun setRepeatingPreview(params: ResolvedRequestParams, target: Surface) { repeating += params }
+        override fun captureStill(params: com.vayunmathur.camera.platform.camera2.ResolvedStillParams, stillTarget: Surface, callback: com.vayunmathur.camera.platform.camera2.StillResultCallback) { callback.onCompleted(com.vayunmathur.camera.platform.camera2.RawStillMetadata()) }
+        override fun close() {}
+    }
+    private class FakeDevice : DeviceHandle {
+        override val cameraId: String = "0"
+        override fun createCaptureSession(surfaces: List<Surface>, callback: CaptureSessionCallback) { callback.onConfigured(FakeHandle()) }
+        override fun close() {}
+    }
+    private class FakeDriver : Camera2Driver {
+        override fun openCamera(cameraId: String, callback: DeviceCallback) { callback.onOpened(FakeDevice()) }
+        override fun createStillOutput(size: FrameSize): StillOutput? = null
+    }
+    internal fun snapshot(
+        zoom: Range<Float>? = Range(0.5f, 8f),
+        flash: Boolean = true,
+        sensitivity: Range<Int>? = Range(50, 6400),
+        ev: Range<Float>? = Range(-4f, 4f),
+    ): LensCharacteristicsSnapshot = CharacteristicsFacade.fromFakeMap(
+        cameraId = "0", zoomRatioRange = zoom, hasFlashUnit = flash,
+        sensitivityRange = sensitivity, exposureCompensationEvRange = ev,
+        exposureTimeRangeNs = Range(1_000_000L, 1_000_000_000L),
+        sizesByFormat = mapOf(ImageFormat.PRIVATE to listOf(Size(1920, 1080))),
+        activeArrayWidth = 4000, activeArrayHeight = 3000,
+        exposureCompensationStepEv = 1f / 6f, maxAfRegions = 1, maxAeRegions = 1,
+    ).snapshot
+
+    internal fun fakeSession(executor: Camera2Executor, snap: LensCharacteristicsSnapshot = snapshot()): Camera2Session =
+        Camera2Session(FakeDriver(), executor, snap)
+
+    internal fun Camera2Executor.drain() {
+        val latch = CountDownLatch(1); execute { latch.countDown() }
+        assertTrue(latch.await(5, TimeUnit.SECONDS))
+    }
+    internal fun dirtyTeardownState(v: CameraViewModel) {
+        v.isRecordingMutable.value = true; v.recordingPausedMutable.value = true
+        v.recordingDurationSecMutable.value = 42; v.timerCountdownMutable.value = 3
+        v.isCapturingMutable.value = true; v.photoSessionActiveMutable.value = true
+        v.analysisStreamActiveMutable.value = true; v.nightPreviewActiveMutable.value = true
+        v.highSpeedActiveMutable.value = true; v.videoSessionActiveMutable.value = true
+        v.videoSnapshotSupportedMutable.value = true; v.focusLockedMutable.value = true
+    }
+    internal fun assertTeardownCleared(v: CameraViewModel) {
+        assertFalse(v.isRecording.value); assertFalse(v.recordingPaused.value)
+        assertEquals(0L, v.recordingDurationSec.value); assertEquals(0, v.timerCountdown.value)
+        assertFalse(v.isCapturing.value); assertFalse(v.photoSessionActive.value)
+        assertFalse(v.analysisStreamActive.value); assertFalse(v.nightPreviewActive.value)
+        assertFalse(v.highSpeedActive.value); assertFalse(v.videoSessionActive.value)
+        assertFalse(v.videoSnapshotSupported.value); assertFalse(v.focusLocked.value)
     }
 
-    private fun anyOwner(): androidx.lifecycle.LifecycleOwner {
-        return Mockito.any(androidx.lifecycle.LifecycleOwner::class.java) ?: ManualLifecycleOwner()
+    @Test fun refreshCapabilitiesFromSnapshot() = runBlocking<Unit> {
+        val ex = Camera2Executor("wave4-cap"); val v = vm(); v.activeCamera2Session = fakeSession(ex)
+        try { v.refreshCapabilities("lens-1"); val c = v.lensCapabilities.value
+            assertNotNull(c); assertEquals("lens-1", c.lensId); assertEquals(0.5f, c.minZoom); assertEquals(8f, c.maxZoom); assertTrue(c.hasFlashUnit)
+            assertTrue(v.hasFlashUnit.value); assertEquals(listOf(50,100,200,400,800,1600,3200,6400).filter{it in 50..6400}, v.isoStops.value)
+        } finally { ex.shutdown() }
+    }
+    @Test fun refreshCapabilitiesNoSessionIsNoOp() = runBlocking<Unit> { val v = vm(); v.refreshCapabilities("x"); assertNull(v.lensCapabilities.value) }
+    @Test fun refreshCapabilitiesNullLensFallsBackToSnapshotId() = runBlocking<Unit> {
+        val ex = Camera2Executor("wave4-cap2"); val v = vm(); v.activeCamera2Session = fakeSession(ex)
+        try { v.refreshCapabilities(null); assertEquals("0", v.lensCapabilities.value?.lensId) } finally { ex.shutdown() }
     }
 
-    private fun anySessionConfig(): androidx.camera.core.SessionConfig {
-        return Mockito.any(androidx.camera.core.SessionConfig::class.java) ?: androidx.camera.core.SessionConfig.Builder(Preview.Builder().build()).build()
-    }
-
-    private fun fakeCamera(): Camera {
-        val info = Mockito.mock(CameraInfo::class.java)
-        val zoom = Proxy.newProxyInstance(
-            javaClass.classLoader, arrayOf(ZoomState::class.java),
-        ) { _, m, _ ->
-            when (m.name) {
-                "getZoomRatio" -> 1f
-                "getMinZoomRatio" -> 0.6f
-                "getMaxZoomRatio" -> 4f
-                "getLinearZoom" -> 0f
-                else -> null
-            }
-        } as ZoomState
-        Mockito.`when`(info.zoomState).thenReturn(MutableLiveData<ZoomState>(zoom))
-        Mockito.`when`(info.cameraState).thenReturn(MutableLiveData())
-        val camera = Mockito.mock(Camera::class.java)
-        Mockito.`when`(camera.cameraInfo).thenReturn(info)
-        return camera
-    }
-
-    private fun fakeProvider(): ProcessCameraProvider {
-        val provider = Mockito.mock(ProcessCameraProvider::class.java)
-        val camera = fakeCamera()
-        val info = camera.cameraInfo
-        Mockito.`when`(provider.bindToLifecycle(anyOwner(), anySelector(), anySessionConfig()))
-            .thenReturn(camera)
-        Mockito.`when`(provider.getCameraInfo(anySelector())).thenReturn(info)
-        return provider
-    }
-
-    @Test fun panoramaLadderAndFinishWithFakeProvider() = runBlocking<Unit> {
-        val viewModel = vm()
-        val provider = fakeProvider()
-        val owner = ManualLifecycleOwner().apply { start() }
-        val session = PanoSessionPrep(provider, null, emptyList(), Preview.Builder().build(), owner)
-        for (capped in listOf(true, false)) {
-            val bound = viewModel.bindPanoUseCases(session, CameraSelector.DEFAULT_BACK_CAMERA, capped)
-            assertNotNull(bound)
-            assertNotNull(viewModel.imageAnalysis)
-            assertNull(viewModel.imageCapture)
-        }
-        viewModel.bindPanoLadder(session)
-        assertNotNull(viewModel.boundCamera)
-        val defaultBound = viewModel.bindPanoDefault(session) {}
-        assertNotNull(defaultBound)
-        // Finish with no bound camera: capability refresh is skipped, session marks active.
-        viewModel.boundCamera = null
-        viewModel.finishPanoramaSession()
-        assertTrue(viewModel.photoSessionActiveMutable.value)
-    }
-
-    @Test fun finishStepsWithNoBoundCamera() = runBlocking<Unit> {
-        val viewModel = vm()
-        val provider = fakeProvider()
-        val owner = ManualLifecycleOwner().apply { start() }
-        viewModel.boundCamera = null
-        viewModel.finishPhotoSession()
-        assertTrue(viewModel.photoSessionActiveMutable.value)
-        viewModel.finishPortraitSession()
-        val mgr = Mockito.mock(androidx.camera.extensions.ExtensionsManager::class.java)
-        val night = NightPreviewPrep(
-            provider, mgr, null, CameraSelector.DEFAULT_BACK_CAMERA,
-            analysisSupported = false, preview = Preview.Builder().build(),
-            owner = owner, capture = viewModel.buildPhotoCapture(maxRes = false, ultraHdr = false),
-        )
-        viewModel.finishNightPreview(night)
-        assertTrue(viewModel.nightPreviewActiveMutable.value)
-    }
-
-    @Test fun panoramaEngineFrameHandoffAndStitchDegradation() = runBlocking<Unit> {
-        val engine = PanoramaEngine(context)
-        engine.reset()
-        // No sweep running: stitch has nothing to join.
-        assertNull(engine.stitch())
-        val frame = Bitmap.createBitmap(64, 32, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.YELLOW) }
-        engine.offerFrame(frame, 0)
-        val (taken, rotation) = engine.takeFrame()
-        assertNotNull(taken)
-        assertEquals(0, rotation)
-        assertNull(engine.takeFrame().first)
-        engine.offerFrame(null, 90)
-        assertNull(engine.takeFrame().first)
-        engine.startSweep(fullSphere = false)
-        engine.offerFrame(Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888), 90)
-        engine.stopSweep()
-        engine.reset()
-        // Saving empty bytes degrades (null or a shadow-backed row), never throws.
-        engine.saveToMediaStore(byteArrayOf(1, 2, 3), PanoInfo("Equirectangular", 64, 32, 64, 32, 0, 0))
-    }
-
-    @Test fun recordingWithRealUnboundVideoCapture() {
-        val viewModel = vm()
-        val recorder = Recorder.Builder().build()
-        viewModel.videoCapture = VideoCapture.withOutput(recorder)
-        // Unbound capture: start must either begin a shadow recording or fail
-        // into CameraX's async error path — never hang the shutter.
-        try {
-            viewModel.startRecording()
-        } catch (_: IllegalStateException) {
-            // Synchronous "not bound" surface is acceptable degradation here.
-        }
-        ShadowLooper.idleMainLooper()
-        viewModel.toggleRecording()
-        ShadowLooper.idleMainLooper()
-        // Timer-delayed recording: countdown starts, then is cancelled by a tap.
-        viewModel.setTimerDuration(TimerDuration.TEN)
-        viewModel.toggleRecording()
-        assertTrue(viewModel.timerCountdownMutable.value >= 0)
-        viewModel.toggleRecording() // cancels countdown
-        assertEquals(0, viewModel.timerCountdownMutable.value)
-        viewModel.setTimerDuration(TimerDuration.NONE)
-    }
-
-    @Test fun takePhotoTimerAndCaptureForResultEntries() {
-        val viewModel = vm()
-        viewModel.buildPhotoCapture(maxRes = false, ultraHdr = false)
-        // Shutter timer path: takePhoto during countdown cancels instead of firing.
-        viewModel.setTimerDuration(TimerDuration.TEN)
-        viewModel.takePhoto()
-        viewModel.cancelTimerCountdown()
-        assertEquals(0, viewModel.timerCountdownMutable.value)
-        viewModel.setTimerDuration(TimerDuration.NONE)
-        try {
-            viewModel.takePhoto()
-        } catch (_: IllegalStateException) {
-            // Unbound capture synchronous failure is acceptable (see above).
-        }
-        var saved: Bitmap? = null
-        var errored = false
-        try {
-            viewModel.capturePhotoForResult(onSaved = { saved = it }, onError = { errored = true })
-        } catch (_: IllegalStateException) {
-        }
-        ShadowLooper.idleMainLooper()
-        assertTrue(saved == null || errored || true)
-    }
 }

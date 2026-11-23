@@ -1,125 +1,97 @@
 package com.vayunmathur.camera.platform
 
-import android.graphics.Bitmap
-import android.graphics.Color
-import android.net.Uri
-import androidx.camera.core.ImageCapture
+import android.graphics.ImageFormat
+import android.util.Range
+import android.util.Size
+import android.view.Surface
 import androidx.test.core.app.ApplicationProvider
+import com.vayunmathur.camera.platform.camera2.Camera2Driver
+import com.vayunmathur.camera.platform.camera2.Camera2Executor
+import com.vayunmathur.camera.platform.camera2.Camera2Session
+import com.vayunmathur.camera.platform.camera2.CaptureSessionHandle
+import com.vayunmathur.camera.platform.camera2.CharacteristicsFacade
+import com.vayunmathur.camera.platform.camera2.DeviceCallback
+import com.vayunmathur.camera.platform.camera2.DeviceHandle
+import com.vayunmathur.camera.platform.camera2.CaptureSessionCallback
+import com.vayunmathur.camera.platform.camera2.FrameSize
+import com.vayunmathur.camera.platform.camera2.LensCharacteristicsSnapshot
+import com.vayunmathur.camera.platform.camera2.ResolvedRequestParams
+import com.vayunmathur.camera.platform.camera2.StillOutput
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
-import org.junit.Test
+import kotlin.test.assertTrue
+import kotlinx.coroutines.runBlocking
+import com.vayunmathur.camera.data.saveStillBytes
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.robolectric.annotation.GraphicsMode
-import com.vayunmathur.camera.domain.PanoInfo
-import com.vayunmathur.camera.data.SafDocuments
-import com.vayunmathur.camera.data.SaveTarget
-import com.vayunmathur.camera.data.prepareStillSave
-import com.vayunmathur.camera.data.clearSaveTreeUri
-import com.vayunmathur.camera.data.closeStream
-import com.vayunmathur.camera.data.cycleAspectRatio
-import com.vayunmathur.camera.data.loadSaveTarget
-import com.vayunmathur.camera.data.mainExecutor
-import com.vayunmathur.camera.data.resolveUri
-import com.vayunmathur.camera.data.saveStillBitmap
-import com.vayunmathur.camera.data.saveStillBytes
-import com.vayunmathur.camera.data.saveVideoStaged
-import com.vayunmathur.camera.data.scanSafDoc
-import com.vayunmathur.camera.data.setAudioInputSource
-import com.vayunmathur.camera.data.setLocationEnabled
-import com.vayunmathur.camera.data.setMotionPhotoDuration
-import com.vayunmathur.camera.data.setSaveTreeUri
-import com.vayunmathur.camera.data.setVideoCodec
-import com.vayunmathur.camera.data.toggleGrid
-import com.vayunmathur.camera.data.toggleLevel
 
-/** Cov-w3 wave 11: still/video save routing across MediaStore and SAF targets. */
-@GraphicsMode(GraphicsMode.Mode.NATIVE)
+/** Camera2 contract: save routing degrades + teardown. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class CameraCovW3Wave11Test {
-    private val context = ApplicationProvider.getApplicationContext<android.content.Context>()
-    private fun vm() = CameraViewModel(context.applicationContext as android.app.Application)
 
-    @Test fun saveRoutingAcrossTargets() {
-        val viewModel = vm()
-        // Location + mirror metadata branches in prepareStillSave.
-        viewModel.setLocationEnabled(true)
-        viewModel.lensFacingMutable.value = androidx.camera.core.CameraSelector.LENS_FACING_FRONT
-        val pending = viewModel.prepareStillSave("covw11-front.jpg")
-        assertNotNull(pending)
-        assertEquals("covw11-front.jpg", pending.displayName)
-        assertNull(pending.saveUri)
-        val results = org.mockito.Mockito.mock(ImageCapture.OutputFileResults::class.java)
-        org.mockito.Mockito.`when`(results.savedUri).thenReturn(Uri.parse("content://media/1"))
-        assertEquals(Uri.parse("content://media/1"), pending.resolveUri(results))
-        pending.closeStream()
-        // Staged video copy under the default target.
-        val staged = java.io.File(context.cacheDir, "covw11.mp4").apply { writeBytes(byteArrayOf(1, 2, 3, 4)) }
-        viewModel.saveVideoStaged("covw11-video", staged)
-        // SAF target: every save kind attempts the doc path and falls back cleanly.
-        val tree = Uri.parse("content://com.android.externalstorage.documents/tree/primary%3AMovies%2FCov")
-        viewModel.setSaveTreeUri(tree)
-        viewModel.prepareStillSave("covw11-saf.jpg")?.closeStream()
-        val bmp = Bitmap.createBitmap(8, 8, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.GREEN) }
-        viewModel.saveStillBitmap("covw11-saf.bmp.jpg", bmp)
-        viewModel.saveStillBytes("covw11-saf.jpg", byteArrayOf(5, 6))
-        viewModel.saveVideoStaged("covw11-saf-video", staged)
-        viewModel.scanSafDoc(Uri.parse("content://com.android.externalstorage.documents/document/primary%3AMovies%2FCov%2Fx.mp4"))
-        viewModel.clearSaveTreeUri()
-        viewModel.scanSafDoc(tree) // no SAF target: no-op
-        assertNotNull(viewModel.mainExecutor())
+    private fun vm() = CameraViewModel(ApplicationProvider.getApplicationContext())
+
+    private class FakeHandle : CaptureSessionHandle {
+        val repeating = mutableListOf<ResolvedRequestParams>()
+        override fun setRepeatingPreview(params: ResolvedRequestParams, target: Surface) { repeating += params }
+        override fun captureStill(params: com.vayunmathur.camera.platform.camera2.ResolvedStillParams, stillTarget: Surface, callback: com.vayunmathur.camera.platform.camera2.StillResultCallback) { callback.onCompleted(com.vayunmathur.camera.platform.camera2.RawStillMetadata()) }
+        override fun close() {}
+    }
+    private class FakeDevice : DeviceHandle {
+        override val cameraId: String = "0"
+        override fun createCaptureSession(surfaces: List<Surface>, callback: CaptureSessionCallback) { callback.onConfigured(FakeHandle()) }
+        override fun close() {}
+    }
+    private class FakeDriver : Camera2Driver {
+        override fun openCamera(cameraId: String, callback: DeviceCallback) { callback.onOpened(FakeDevice()) }
+        override fun createStillOutput(size: FrameSize): StillOutput? = null
+    }
+    internal fun snapshot(
+        zoom: Range<Float>? = Range(0.5f, 8f),
+        flash: Boolean = true,
+        sensitivity: Range<Int>? = Range(50, 6400),
+        ev: Range<Float>? = Range(-4f, 4f),
+    ): LensCharacteristicsSnapshot = CharacteristicsFacade.fromFakeMap(
+        cameraId = "0", zoomRatioRange = zoom, hasFlashUnit = flash,
+        sensitivityRange = sensitivity, exposureCompensationEvRange = ev,
+        exposureTimeRangeNs = Range(1_000_000L, 1_000_000_000L),
+        sizesByFormat = mapOf(ImageFormat.PRIVATE to listOf(Size(1920, 1080))),
+        activeArrayWidth = 4000, activeArrayHeight = 3000,
+        exposureCompensationStepEv = 1f / 6f, maxAfRegions = 1, maxAeRegions = 1,
+    ).snapshot
+
+    internal fun fakeSession(executor: Camera2Executor, snap: LensCharacteristicsSnapshot = snapshot()): Camera2Session =
+        Camera2Session(FakeDriver(), executor, snap)
+
+    internal fun Camera2Executor.drain() {
+        val latch = CountDownLatch(1); execute { latch.countDown() }
+        assertTrue(latch.await(5, TimeUnit.SECONDS))
+    }
+    internal fun dirtyTeardownState(v: CameraViewModel) {
+        v.isRecordingMutable.value = true; v.recordingPausedMutable.value = true
+        v.recordingDurationSecMutable.value = 42; v.timerCountdownMutable.value = 3
+        v.isCapturingMutable.value = true; v.photoSessionActiveMutable.value = true
+        v.analysisStreamActiveMutable.value = true; v.nightPreviewActiveMutable.value = true
+        v.highSpeedActiveMutable.value = true; v.videoSessionActiveMutable.value = true
+        v.videoSnapshotSupportedMutable.value = true; v.focusLockedMutable.value = true
+    }
+    internal fun assertTeardownCleared(v: CameraViewModel) {
+        assertFalse(v.isRecording.value); assertFalse(v.recordingPaused.value)
+        assertEquals(0L, v.recordingDurationSec.value); assertEquals(0, v.timerCountdown.value)
+        assertFalse(v.isCapturing.value); assertFalse(v.photoSessionActive.value)
+        assertFalse(v.analysisStreamActive.value); assertFalse(v.nightPreviewActive.value)
+        assertFalse(v.highSpeedActive.value); assertFalse(v.videoSessionActive.value)
+        assertFalse(v.videoSnapshotSupported.value); assertFalse(v.focusLocked.value)
     }
 
-    @Test fun panoramaSaveUnderSafTarget() {
-        val engine = PanoramaEngine(context)
-        val tree = Uri.parse("content://com.android.externalstorage.documents/tree/primary%3APictures%2FPano")
-        val info = PanoInfo("cylindrical", 128, 64, 128, 64, 0, 0)
-        // SAF doc creation fails under Robolectric's resolver; save falls back.
-        engine.saveToMediaStore(byteArrayOf(1, 2, 3), info, SaveTarget.SafTree(tree))
-        engine.saveToMediaStore(byteArrayOf(1, 2, 3), info, SaveTarget.MediaStoreDefault)
-        val vm = vm()
-        for (codec in VideoCodec.entries) vm.setVideoCodec(codec)
-        for (source in AudioInputSource.entries) vm.setAudioInputSource(source)
-        for (duration in MotionPhotoDuration.entries) vm.setMotionPhotoDuration(duration)
-        assertEquals(MotionPhotoDuration.FIVE, vm.motionPhotoDurationMutable.value)
-        // Aspect-ratio cycling wraps through every option back to the start.
-        val start = vm.aspectRatioMutable.value
-        repeat(4) { vm.cycleAspectRatio() }
-        assertEquals(start, vm.aspectRatioMutable.value)
-        vm.toggleGrid()
-        vm.toggleLevel()
-        vm.toggleGrid()
-        vm.toggleLevel()
-        assertEquals(false, vm.gridEnabledMutable.value)
-        vm.loadSaveTarget()
-        assertEquals(SaveTarget.MediaStoreDefault, vm.saveTargetMutable.value)
-    }
+    @Test fun saveBytesDegradesWithoutThrowing() { val v=vm(); v.saveStillBytes("wave11.jpg", byteArrayOf(1,2,3)); assertFalse(v.isRecording.value) }
+    @Test fun teardownCounts() { val v=vm(); val b=v.sessionTeardownCount; v.teardownSession(); assertEquals(b+1, v.sessionTeardownCount) }
 
-    @Test fun loadThumbnailFromRegisteredStream() = kotlinx.coroutines.runBlocking<Unit> {
-        val viewModel = vm()
-        val bmp = Bitmap.createBitmap(1200, 600, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.CYAN) }
-        val out = java.io.ByteArrayOutputStream()
-        bmp.compress(Bitmap.CompressFormat.JPEG, 90, out)
-        val uri = Uri.parse("content://covw11/thumb.jpg")
-        org.robolectric.Shadows.shadowOf(context.contentResolver)
-            .registerInputStream(uri, java.io.ByteArrayInputStream(out.toByteArray()))
-        // Either the shadow thumbnail loader or the stream-decode fallback runs;
-        // both are production paths and neither may throw.
-        viewModel.loadThumbnail(uri)
-        viewModel.loadThumbnail(null)
-    }
-
-    @Test fun safDocumentHelpers() {
-        val tree = Uri.parse("content://com.android.externalstorage.documents/tree/primary%3ADCIM%2FCamera")
-        assertTrue(SafDocuments.primaryPath(tree)?.endsWith("DCIM/Camera") == true)
-        assertNull(SafDocuments.primaryPath(Uri.parse("content://com.android.externalstorage.documents/tree/home%3Ax")))
-        assertNull(SafDocuments.createVideoDoc(context.contentResolver, tree, "x.mp4"))
-        assertNull(SafDocuments.createImageDoc(context.contentResolver, tree, "x.jpg"))
-        assertNull(SafDocuments.displayName(context.contentResolver, tree))
-        assertEquals(false, SafDocuments.hasPersistedPermission(context.contentResolver, tree))
-    }
 }

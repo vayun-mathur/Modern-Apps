@@ -1,7 +1,7 @@
 package com.vayunmathur.camera.domain
 
 /** Which pipeline feeds the per-frame analysis consumers for one session. */
-enum class AnalysisSource { CAMERAX, CAMERA2_IMAGE_READER }
+enum class AnalysisSource { CAMERA2_IMAGE_READER }
 
 /**
  * What one session asks its analysis stream to do.
@@ -16,7 +16,6 @@ enum class AnalysisSource { CAMERAX, CAMERA2_IMAGE_READER }
  *   from Y-plane views alone (luma sampling, Y-grid motion diff).
  */
 data class AnalysisSourceInput(
-    val camera2Enabled: Boolean = AnalysisSourcePolicy.CAMERA2_ENABLED,
     val needsQr: Boolean,
     val needsBitmapFrame: Boolean,
     val cheapPlaneConsumersOnly: Boolean,
@@ -73,14 +72,15 @@ data class AnalysisSourceInput(
  * alone.
  */
 object AnalysisSourcePolicy {
-    /** Master policy flag: default on (per-session exclusions still apply). */
-    const val CAMERA2_ENABLED: Boolean = true
-
-    fun select(input: AnalysisSourceInput): AnalysisSource = when {
-        !input.camera2Enabled -> AnalysisSource.CAMERAX
-        input.needsQr -> AnalysisSource.CAMERAX
-        input.needsBitmapFrame -> AnalysisSource.CAMERAX
-        !input.cheapPlaneConsumersOnly -> AnalysisSource.CAMERAX
-        else -> AnalysisSource.CAMERA2_IMAGE_READER
-    }
+    /**
+     * CameraX is removed: the Camera2 ImageReader stream is the only
+     * analysis source. QR decodes from the Y plane in place
+     * (`PhotoAnalyzer.onAnalysisFrame`), and bitmap consumers
+     * (portrait segmentation, panorama, Motion Photo) convert via
+     * `Yuv420ToArgb` with the frame's rotation/crop metadata
+     * ([AnalysisRotation]/[FrameCrop]) — the exclusions that used to
+     * keep those sessions on CameraX no longer exist.
+     */
+    fun select(input: AnalysisSourceInput): AnalysisSource =
+        AnalysisSource.CAMERA2_IMAGE_READER
 }

@@ -1,6 +1,6 @@
 package com.vayunmathur.camera.ui
 
-import androidx.camera.core.CameraSelector
+import android.hardware.camera2.CameraMetadata
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import com.vayunmathur.camera.platform.AspectRatioOption
@@ -18,14 +18,16 @@ class CameraScreenStateTest {
 
     private fun state(
         mode: CameraMode = CameraMode.PHOTO,
-        lensFacing: Int = CameraSelector.LENS_FACING_BACK,
+        lensFacing: Int = CameraMetadata.LENS_FACING_BACK,
         aspectRatio: AspectRatioOption = AspectRatioOption.RATIO_4_3,
         mirrorFront: Boolean = true,
         nightModeActive: Boolean = false,
         nightExtAvailable: Boolean = false,
         selectedLens: com.vayunmathur.camera.domain.PhysicalLens? = null,
-        camera2NightEnabled: Boolean = true,
+        extensionStrength: Int? = null,
+        camera2FallbackBindKey: String? = null,
         camera2NightFallbackBindKey: String? = null,
+        camera2SloMoFallbackBindKey: String? = null,
     ) = CameraScreenState(
         cameraMode = mode,
         lensFacing = lensFacing,
@@ -66,13 +68,12 @@ class CameraScreenStateTest {
         longExposureRemaining = "",
         lowLightDetected = false,
         nightModeActive = nightModeActive,
-        extensionStrength = null,
+        extensionStrength = extensionStrength,
         sloMoSupported = null,
         highSpeedActive = false,
         photoSessionActive = false,
         analysisStreamActive = false,
         nightExtAvailable = nightExtAvailable,
-        surfaceRequest = null,
         availableZoomLevels = listOf("1x" to 1f),
         galleryBitmap = null,
         panoSweeping = false,
@@ -84,8 +85,9 @@ class CameraScreenStateTest {
         activeSettingState = mutableStateOf(null),
         maskBitmapState = mutableStateOf(null),
         deviceRotationState = mutableIntStateOf(0),
-        camera2NightEnabled = camera2NightEnabled,
+        camera2FallbackBindKey = camera2FallbackBindKey,
         camera2NightFallbackBindKey = camera2NightFallbackBindKey,
+        camera2SloMoFallbackBindKey = camera2SloMoFallbackBindKey,
     )
 
     private fun lens(id: String = "0") = com.vayunmathur.camera.domain.PhysicalLens(
@@ -126,16 +128,40 @@ class CameraScreenStateTest {
         assertFalse(state(nightModeActive = false, nightExtAvailable = true).useNightPreview)
     }
 
-    @Test fun camera2NightPreviewRequiresPhotoNightGateAndLens() {
-        // Camera2-first: does NOT require the CameraX extension to be usable.
+    @Test fun camera2NightPreviewRequiresPhotoNightAndLens() {
+        // No gate and no other extension to be usable: PHOTO + night + lens.
         assertTrue(state(nightModeActive = true, nightExtAvailable = false, selectedLens = lens()).useCamera2NightPreview)
         assertFalse(state(nightModeActive = false, selectedLens = lens()).useCamera2NightPreview)
-        assertFalse(state(nightModeActive = true, selectedLens = lens(), camera2NightEnabled = false).useCamera2NightPreview)
         assertFalse(state(nightModeActive = true, selectedLens = null).useCamera2NightPreview)
         assertFalse(state(CameraMode.PORTRAIT, nightModeActive = true, selectedLens = lens()).useCamera2NightPreview)
         // Latched failure for this bind (cameraId:mode) suppresses retry.
         val key = com.vayunmathur.camera.platform.camera2.Camera2FallbackLatch.bindKey("0", CameraMode.PHOTO)
         assertFalse(state(nightModeActive = true, selectedLens = lens(), camera2NightFallbackBindKey = key).useCamera2NightPreview)
+    }
+
+    @Test fun camera2PreviewCoversAllModesWhenLensKnownAndUnlatched() {
+        for (mode in CameraMode.entries) {
+            assertTrue(state(mode, selectedLens = lens()).useCamera2Preview, "$mode")
+        }
+        assertFalse(state(selectedLens = null).useCamera2Preview)
+        val key = com.vayunmathur.camera.platform.camera2.Camera2FallbackLatch.bindKey("0", CameraMode.PHOTO)
+        assertFalse(state(selectedLens = lens(), camera2FallbackBindKey = key).useCamera2Preview)
+        // A latch for a different bind does not block this one.
+        val other = com.vayunmathur.camera.platform.camera2.Camera2FallbackLatch.bindKey("9", CameraMode.PHOTO)
+        assertTrue(state(selectedLens = lens(), camera2FallbackBindKey = other).useCamera2Preview)
+    }
+
+    @Test fun camera2SloMoPreviewSelectedWhenReadyAndUnlatched() {
+        assertTrue(state(CameraMode.SLOW_MO, selectedLens = lens()).useCamera2SloMoPreview)
+        assertFalse(state(CameraMode.PHOTO, selectedLens = lens()).useCamera2SloMoPreview)
+        assertFalse(state(CameraMode.SLOW_MO, selectedLens = null).useCamera2SloMoPreview)
+        val key = com.vayunmathur.camera.platform.camera2.Camera2FallbackLatch.bindKey("0", CameraMode.SLOW_MO)
+        assertFalse(state(CameraMode.SLOW_MO, selectedLens = lens(), camera2SloMoFallbackBindKey = key).useCamera2SloMoPreview)
+    }
+
+    @Test fun visibleExtensionStrengthFollowsCamera2Extension() {
+        assertEquals(42, state(extensionStrength = 42).visibleExtensionStrength)
+        assertEquals(null, state(extensionStrength = null).visibleExtensionStrength)
     }
 
     @Test fun previewAspectRatios() {
@@ -149,9 +175,9 @@ class CameraScreenStateTest {
     }
 
     @Test fun mirrorPreviewOnlyForUnmirroredFront() {
-        assertTrue(state(lensFacing = CameraSelector.LENS_FACING_FRONT, mirrorFront = false).mirrorPreview)
-        assertFalse(state(lensFacing = CameraSelector.LENS_FACING_FRONT, mirrorFront = true).mirrorPreview)
-        assertFalse(state(lensFacing = CameraSelector.LENS_FACING_BACK, mirrorFront = false).mirrorPreview)
+        assertTrue(state(lensFacing = CameraMetadata.LENS_FACING_FRONT, mirrorFront = false).mirrorPreview)
+        assertFalse(state(lensFacing = android.hardware.camera2.CameraMetadata.LENS_FACING_FRONT, mirrorFront = true).mirrorPreview)
+        assertFalse(state(lensFacing = CameraMetadata.LENS_FACING_BACK, mirrorFront = false).mirrorPreview)
     }
 
     @Test fun backedStateSurvivesHolderRecreation() {

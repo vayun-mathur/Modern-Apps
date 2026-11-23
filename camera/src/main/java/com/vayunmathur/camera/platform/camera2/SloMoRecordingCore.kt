@@ -147,21 +147,81 @@ class SharedRecordingCoreLifecycle(
  */
 object SloMoPreviewPolicy {
     fun canSupplyPreviewSurface(
-        sloMoGateEnabled: Boolean,
         isSlowMoMode: Boolean,
         fallbackLatched: Boolean,
         hasSelection: Boolean,
-    ): Boolean = sloMoGateEnabled && isSlowMoMode && !fallbackLatched && hasSelection
+    ): Boolean = isSlowMoMode && !fallbackLatched && hasSelection
 
     fun livePreviewSelected(
-        sloMoGateEnabled: Boolean,
         isSlowMoMode: Boolean,
         fallbackLatched: Boolean,
         hasSelection: Boolean,
         recordingEngineReady: Boolean,
     ): Boolean = recordingEngineReady && canSupplyPreviewSurface(
-        sloMoGateEnabled, isSlowMoMode, fallbackLatched, hasSelection,
+        isSlowMoMode, fallbackLatched, hasSelection,
     )
+}
+
+/**
+ * Piece-6 read-back math: is a finished slo-mo file actually slow?
+ * The encoder is configured `KEY_FRAME_RATE = playbackFps`,
+ * `KEY_CAPTURE_RATE = captureFps`; an encoder that honours the capture
+ * rate emits frames spaced at the playback rate, so the file's PTS
+ * span covers ~`wallDurationMs * captureFps / playbackFps` and its
+ * effective frame rate (frames / PTS span) is ~[playbackFps]. An
+ * encoder that ignores it emits realtime-spaced frames (effective
+ * rate ~captureFps, span ~wall) — visibly fast, not slow.
+ */
+object SloMoStretchMath {
+
+    /** Effective playback frame rate from frame count and PTS span. */
+    fun effectiveFps(frameCount: Int, firstPtsUs: Long, lastPtsUs: Long): Double {
+        if (frameCount < 2 || lastPtsUs <= firstPtsUs) return 0.0
+        return (frameCount - 1) * 1_000_000.0 / (lastPtsUs - firstPtsUs)
+    }
+
+    /**
+     * True when the read-back proves slow playback: effective rate
+     * within tolerance of [playbackFps] AND PTS span at least ~80% of
+     * the expected stretched span (encoders drop edge frames, so the
+     * span is allowed some slack, never a realtime span).
+     */
+    fun isStretched(
+        frameCount: Int,
+        firstPtsUs: Long,
+        lastPtsUs: Long,
+        playbackFps: Int,
+        captureFps: Int,
+        wallDurationMs: Long,
+    ): Boolean {
+        if (frameCount < 2 || wallDurationMs <= 0 || playbackFps <= 0) return false
+        val fps = effectiveFps(frameCount, firstPtsUs, lastPtsUs)
+        if (kotlin.math.abs(fps - playbackFps) > playbackFps * FPS_TOLERANCE) return false
+        val expectedSpanUs = wallDurationMs * 1000.0 * captureFps / playbackFps
+        val spanUs = (lastPtsUs - firstPtsUs).toDouble()
+        return spanUs >= expectedSpanUs * SPAN_MIN_FRACTION
+    }
+
+    private const val FPS_TOLERANCE = 0.15
+    private const val SPAN_MIN_FRACTION = 0.8
+}
+
+/**
+ * Muxer-side timestamp stretching (piece 6, muxer half). Device proof
+ * (2026-11-22, this phone): the encoder ignores `KEY_CAPTURE_RATE`
+ * for output timing AND its surface-input PTS are unusable for
+ * stretching — frames queued in the encoder surface during preview
+ * carry stale sensor-clock timestamps (one read-back spanned 488 s
+ * over 4.5 s of wall time). Slo-mo playback timing is therefore
+ * synthesized: every captured frame plays for exactly
+ * `1 / playbackFps`, which is the definition of the slowdown and
+ * produces precisely the spacing [SloMoStretchMath.isStretched]
+ * verifies on read-back.
+ */
+object SloMoTimestampStretch {
+    /** Playback PTS of the [frameIndex]-th captured frame (0-based). */
+    fun playbackPtsUs(frameIndex: Long, playbackFps: Int): Long =
+        if (playbackFps <= 0) 0L else frameIndex * 1_000_000L / playbackFps
 }
 
 /** What the save-path glue should do with one finished Camera2 slo-mo attempt (piece 7). */
@@ -169,8 +229,8 @@ enum class SloMoSaveAction {
     /** Route the staged file through the shared `saveVideoStaged` seam. */
     SAVE_STAGED,
 
-    /** Discard the file, latch this bind, and rebind the CameraX HFR ladder. */
-    DISCARD_AND_REBIND_CAMERAX,
+    /** Discard the file, latch this bind, and surface a retryable error. */
+    DISCARD_AND_ERROR,
 
     /** Discard the file; the latch already fired for this bind, so do not rebind-loop. */
     DISCARD_LATCHED,
@@ -184,7 +244,7 @@ object SloMoSavePathPolicy {
     ): SloMoSaveAction = when {
         !outcomeError && outputReadable -> SloMoSaveAction.SAVE_STAGED
         fallbackAlreadyLatched -> SloMoSaveAction.DISCARD_LATCHED
-        else -> SloMoSaveAction.DISCARD_AND_REBIND_CAMERAX
+        else -> SloMoSaveAction.DISCARD_AND_ERROR
     }
 }
 
@@ -211,8 +271,16 @@ object SloMoRecordingReadiness {
     /** 5. No-audio muxer mode (muxer starts on the video track alone). */
     const val NO_AUDIO_MUXER_READY: Boolean = true
 
-    /** 6. Timestamp stretching proof + read-back frame-rate/duration checks. */
-    const val TIMESTAMP_VERIFICATION_READY: Boolean = false
+    /**
+     * 6. Timestamp stretching proof + read-back frame-rate/duration
+     * checks. DEVICE-PROVEN 2026-11-22 (this phone, 240->30 at
+     * 1920x1080): the encoder ignores `KEY_CAPTURE_RATE` for output
+     * timing and its surface PTS include stale preview backlog, so
+     * playback timing is muxer-synthesized (`SloMoTimestampStretch`);
+     * read-back showed 897 frames at an effective 30.0 fps over a
+     * 29.9 s span for 4.5 s of wall time, ffprobe-confirmed.
+     */
+    const val TIMESTAMP_VERIFICATION_READY: Boolean = true
 
     /** 7. Save-path glue (engine + session together, staged save, CameraX fallback latch). */
     const val SAVE_PATH_GLUE_READY: Boolean = true

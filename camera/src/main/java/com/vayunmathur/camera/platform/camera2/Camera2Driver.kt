@@ -9,6 +9,7 @@ import android.hardware.camera2.CameraDevice
 import android.hardware.camera2.CameraExtensionSession
 import android.hardware.camera2.params.ExtensionSessionConfiguration
 import android.hardware.camera2.CameraManager
+import android.hardware.camera2.CameraMetadata
 import android.hardware.camera2.CaptureRequest
 import android.hardware.camera2.CaptureResult
 import android.hardware.camera2.TotalCaptureResult
@@ -224,7 +225,13 @@ internal fun CaptureRequest.Builder.applyPreviewParams(
     addTarget(target)
     set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_AUTO)
     set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE)
-    set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON)
+    if (params.manualExposureTimeNs != null || params.manualSensitivityIso != null) {
+        set(CaptureRequest.CONTROL_AE_MODE, CameraMetadata.CONTROL_AE_MODE_OFF)
+        params.manualExposureTimeNs?.let { set(CaptureRequest.SENSOR_EXPOSURE_TIME, it) }
+        params.manualSensitivityIso?.let { set(CaptureRequest.SENSOR_SENSITIVITY, it) }
+    } else {
+        set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON)
+    }
     if (params.zoomRatio != null) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             set(CaptureRequest.CONTROL_ZOOM_RATIO, params.zoomRatio)
@@ -239,6 +246,9 @@ internal fun CaptureRequest.Builder.applyPreviewParams(
         CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION,
         params.aeExposureCompensationSteps,
     )
+    set(CaptureRequest.NOISE_REDUCTION_MODE, params.noiseReductionMode)
+    set(CaptureRequest.EDGE_MODE, params.edgeMode)
+    params.tonemapMode?.let { set(CaptureRequest.TONEMAP_MODE, it) }
     if (params.afRegions.isNotEmpty()) {
         set(
             CaptureRequest.CONTROL_AF_REGIONS,
@@ -278,6 +288,11 @@ internal fun CaptureRequest.Builder.applyStillParams(
         CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION,
         params.aeExposureCompensationSteps,
     )
+    params.manualExposureTimeNs?.let { set(CaptureRequest.SENSOR_EXPOSURE_TIME, it) }
+    params.manualSensitivityIso?.let { set(CaptureRequest.SENSOR_SENSITIVITY, it) }
+    set(CaptureRequest.NOISE_REDUCTION_MODE, params.noiseReductionMode)
+    set(CaptureRequest.EDGE_MODE, params.edgeMode)
+    params.tonemapMode?.let { set(CaptureRequest.TONEMAP_MODE, it) }
     set(CaptureRequest.JPEG_ORIENTATION, params.jpegOrientationDegrees)
     if (params.afRegions.isNotEmpty()) {
         set(

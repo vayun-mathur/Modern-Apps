@@ -1,7 +1,5 @@
 package com.vayunmathur.camera.platform
 
-import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.camera.lifecycle.awaitInstance
 import androidx.lifecycle.viewModelScope
 import com.vayunmathur.camera.data.loadSettings
 import com.vayunmathur.library.log.Log
@@ -37,14 +35,13 @@ internal fun CameraViewModel.runStartupSequence() {
     viewModelScope.launch {
         lastCaptureUriMutable.collect { uri -> _galleryThumbnail.value = loadThumbnail(uri) }
     }
-    // Background enrichment AFTER first frame: CameraX initialisation +
-    // lens enumeration (per-lens Characteristics reads) refine the
-    // seeded placeholder. The Camera2 preview never waits on this: it
-    // opens via CameraManager + facing directly.
+    // Background enrichment AFTER first frame: CameraManager lens
+    // enumeration (per-lens Characteristics reads) refines the seeded
+    // placeholder. The Camera2 preview never waits on this: it opens
+    // via CameraManager + facing directly.
     viewModelScope.launch(Dispatchers.Default) {
         try {
-            val provider = ProcessCameraProvider.awaitInstance(app)
-            ensureLensesEnumerated(provider)
+            ensureLensesEnumerated()
         } catch (e: IllegalStateException) {
             Log.status("CameraStartup", "background lens enrichment failed", e)
         } catch (e: IllegalArgumentException) {
@@ -59,8 +56,7 @@ internal fun CameraViewModel.runStartupSequence() {
         }
     }
     // Probe Slo-Mo capability once (back camera only). UI hides Slo-Mo if unsupported.
-    // Deferred off the startup path: it awaits CameraX initialisation and
-    // reads Recorder capabilities — irrelevant to the PHOTO first frame.
+    // Deferred off the startup path — irrelevant to the PHOTO first frame.
     viewModelScope.launch {
         sloMoSupportedMutable.value = probeSloMoSupport()
     }

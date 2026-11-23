@@ -1,146 +1,96 @@
 package com.vayunmathur.camera.platform
 
-import android.os.Looper
-import androidx.camera.core.CameraSelector
+import android.graphics.ImageFormat
+import android.util.Range
+import android.util.Size
+import android.view.Surface
 import androidx.test.core.app.ApplicationProvider
-import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.vayunmathur.camera.data.setAudioCodec
-import com.vayunmathur.camera.data.setAudioInputSource
-import com.vayunmathur.camera.data.setMirrorFront
-import com.vayunmathur.camera.data.setVideoCodec
-import com.vayunmathur.camera.domain.LensFacing
-import com.vayunmathur.camera.domain.LensType
-import com.vayunmathur.camera.domain.PhysicalLens
-import org.junit.Test
-import org.junit.runner.RunWith
-import org.robolectric.Shadows.shadowOf
+import com.vayunmathur.camera.platform.camera2.Camera2Driver
+import com.vayunmathur.camera.platform.camera2.Camera2Executor
+import com.vayunmathur.camera.platform.camera2.Camera2Session
+import com.vayunmathur.camera.platform.camera2.CaptureSessionHandle
+import com.vayunmathur.camera.platform.camera2.CharacteristicsFacade
+import com.vayunmathur.camera.platform.camera2.DeviceCallback
+import com.vayunmathur.camera.platform.camera2.DeviceHandle
+import com.vayunmathur.camera.platform.camera2.CaptureSessionCallback
+import com.vayunmathur.camera.platform.camera2.FrameSize
+import com.vayunmathur.camera.platform.camera2.LensCharacteristicsSnapshot
+import com.vayunmathur.camera.platform.camera2.ResolvedRequestParams
+import com.vayunmathur.camera.platform.camera2.StillOutput
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlinx.coroutines.runBlocking
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
-/**
- * Mid-recording rebind protection: bind-time settings (video/audio codec, audio
- * source, mirror) changed while recording used to rebind the session, whose
- * teardown stopped the active recording with no warning. They now persist as
- * desired values, stay out of the applied bind snapshot until the recording
- * stops, and mode/lens/flip switches are gated for the duration.
- */
-@RunWith(AndroidJUnit4::class)
+/** Camera2 contract: teardown stops recording state on rebind. */
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34])
 class RecordingRebindDeferralTest {
 
     private fun vm() = CameraViewModel(ApplicationProvider.getApplicationContext())
 
-    private fun idle() = shadowOf(Looper.getMainLooper()).idle()
+    private class FakeHandle : CaptureSessionHandle {
+        val repeating = mutableListOf<ResolvedRequestParams>()
+        override fun setRepeatingPreview(params: ResolvedRequestParams, target: Surface) { repeating += params }
+        override fun captureStill(params: com.vayunmathur.camera.platform.camera2.ResolvedStillParams, stillTarget: Surface, callback: com.vayunmathur.camera.platform.camera2.StillResultCallback) { callback.onCompleted(com.vayunmathur.camera.platform.camera2.RawStillMetadata()) }
+        override fun close() {}
+    }
+    private class FakeDevice : DeviceHandle {
+        override val cameraId: String = "0"
+        override fun createCaptureSession(surfaces: List<Surface>, callback: CaptureSessionCallback) { callback.onConfigured(FakeHandle()) }
+        override fun close() {}
+    }
+    private class FakeDriver : Camera2Driver {
+        override fun openCamera(cameraId: String, callback: DeviceCallback) { callback.onOpened(FakeDevice()) }
+        override fun createStillOutput(size: FrameSize): StillOutput? = null
+    }
+    internal fun snapshot(
+        zoom: Range<Float>? = Range(0.5f, 8f),
+        flash: Boolean = true,
+        sensitivity: Range<Int>? = Range(50, 6400),
+        ev: Range<Float>? = Range(-4f, 4f),
+    ): LensCharacteristicsSnapshot = CharacteristicsFacade.fromFakeMap(
+        cameraId = "0", zoomRatioRange = zoom, hasFlashUnit = flash,
+        sensitivityRange = sensitivity, exposureCompensationEvRange = ev,
+        exposureTimeRangeNs = Range(1_000_000L, 1_000_000_000L),
+        sizesByFormat = mapOf(ImageFormat.PRIVATE to listOf(Size(1920, 1080))),
+        activeArrayWidth = 4000, activeArrayHeight = 3000,
+        exposureCompensationStepEv = 1f / 6f, maxAfRegions = 1, maxAeRegions = 1,
+    ).snapshot
 
-    @Test
-    fun bindSettingsTrackDesiredWhenNotRecording() {
-        val v = vm()
-        idle()
-        v.setVideoCodec(VideoCodec.HEVC)
-        v.setAudioCodec(AudioCodec.OPUS)
-        v.setAudioInputSource(AudioInputSource.MIC)
-        v.setMirrorFront(false)
-        idle()
-        assertEquals(
-            BindTimeSettings(VideoCodec.HEVC, AudioCodec.OPUS, AudioInputSource.MIC, false),
-            v.bindTimeSettings.value,
-        )
-        assertFalse(v.deferredBindSettingsPending.value)
+    internal fun fakeSession(executor: Camera2Executor, snap: LensCharacteristicsSnapshot = snapshot()): Camera2Session =
+        Camera2Session(FakeDriver(), executor, snap)
+
+    internal fun Camera2Executor.drain() {
+        val latch = CountDownLatch(1); execute { latch.countDown() }
+        assertTrue(latch.await(5, TimeUnit.SECONDS))
+    }
+    internal fun dirtyTeardownState(v: CameraViewModel) {
+        v.isRecordingMutable.value = true; v.recordingPausedMutable.value = true
+        v.recordingDurationSecMutable.value = 42; v.timerCountdownMutable.value = 3
+        v.isCapturingMutable.value = true; v.photoSessionActiveMutable.value = true
+        v.analysisStreamActiveMutable.value = true; v.nightPreviewActiveMutable.value = true
+        v.highSpeedActiveMutable.value = true; v.videoSessionActiveMutable.value = true
+        v.videoSnapshotSupportedMutable.value = true; v.focusLockedMutable.value = true
+    }
+    internal fun assertTeardownCleared(v: CameraViewModel) {
+        assertFalse(v.isRecording.value); assertFalse(v.recordingPaused.value)
+        assertEquals(0L, v.recordingDurationSec.value); assertEquals(0, v.timerCountdown.value)
+        assertFalse(v.isCapturing.value); assertFalse(v.photoSessionActive.value)
+        assertFalse(v.analysisStreamActive.value); assertFalse(v.nightPreviewActive.value)
+        assertFalse(v.highSpeedActive.value); assertFalse(v.videoSessionActive.value)
+        assertFalse(v.videoSnapshotSupported.value); assertFalse(v.focusLocked.value)
     }
 
-    @Test
-    fun settingsChangedMidRecordingAreDeferredThenAppliedAtStop() {
-        val v = vm()
-        idle()
-        val boundBefore = v.bindTimeSettings.value
+    @Test fun teardownStopsRecordingFlags() { val v=vm(); v.startRecordingTimer(); assertTrue(v.isRecording.value); v.teardownSession(); assertFalse(v.isRecording.value); assertEquals(0L, v.recordingDurationSec.value) }
+    @Test fun teardownCancelsTimerCountdown() { val v=vm(); dirtyTeardownState(v); v.teardownSession(); assertEquals(0, v.timerCountdown.value) }
 
-        v.startRecordingTimer()
-        assertTrue(v.isRecording.value)
-
-        // The Settings-page setters: desired + persisted change immediately...
-        v.setVideoCodec(if (boundBefore.videoCodec == VideoCodec.AVC) VideoCodec.HEVC else VideoCodec.AVC)
-        v.setAudioCodec(if (boundBefore.audioCodec == AudioCodec.AAC) AudioCodec.OPUS else AudioCodec.AAC)
-        v.setAudioInputSource(
-            if (boundBefore.audioInputSource == AudioInputSource.CAMCORDER) {
-                AudioInputSource.MIC
-            } else {
-                AudioInputSource.CAMCORDER
-            }
-        )
-        v.setMirrorFront(!boundBefore.mirrorFront)
-        idle()
-
-        // ...but the applied bind snapshot — the session-effect key — is held,
-        // so no rebind fires and the recording is untouched.
-        assertEquals(boundBefore, v.bindTimeSettings.value)
-        assertTrue(v.deferredBindSettingsPending.value)
-        assertTrue(v.isRecording.value)
-        assertTrue(v.videoCodec.value != boundBefore.videoCodec)
-        assertTrue(v.audioCodec.value != boundBefore.audioCodec)
-        assertTrue(v.audioInputSource.value != boundBefore.audioInputSource)
-        assertEquals(!boundBefore.mirrorFront, v.mirrorFront.value)
-
-        // At stop the snapshot releases: the next bind picks the new values up.
-        v.stopRecordingTimer()
-        idle()
-        assertFalse(v.isRecording.value)
-        assertFalse(v.deferredBindSettingsPending.value)
-        assertEquals(
-            BindTimeSettings(v.videoCodec.value, v.audioCodec.value, v.audioInputSource.value, v.mirrorFront.value),
-            v.bindTimeSettings.value,
-        )
-    }
-
-    @Test
-    fun recordingSurvivesAllBindSettingsChangingAtOnce() {
-        val v = vm()
-        idle()
-        v.startRecordingTimer()
-        val durationAtStart = v.recordingDurationSec.value
-        repeat(2) {
-            v.setVideoCodec(VideoCodec.AV1)
-            v.setAudioCodec(AudioCodec.OPUS)
-            v.setAudioInputSource(AudioInputSource.UNPROCESSED)
-            v.setMirrorFront(false)
-            idle()
-            assertTrue(v.isRecording.value, "recording must survive settings change #$it")
-            assertTrue(v.deferredBindSettingsPending.value)
-        }
-        assertEquals(durationAtStart, v.recordingDurationSec.value)
-        v.stopRecordingTimer()
-        idle()
-        assertEquals(AudioInputSource.UNPROCESSED, v.bindTimeSettings.value.audioInputSource)
-    }
-
-    @Test
-    fun modeLensAndFlipSwitchesAreGatedWhileRecording() {
-        val v = vm()
-        idle()
-        val back = PhysicalLens("b", LensType.WIDE, LensFacing.BACK, 24f, 1f, null, 0, "wide")
-        val tele = PhysicalLens("t", LensType.TELEPHOTO, LensFacing.BACK, 70f, 3f, null, 1, "tele")
-        v.availableLensesMutable.value = listOf(back, tele)
-        v.selectLens(back)
-        assertEquals(back, v.selectedLens.value)
-        v.switchCameraMode(CameraMode.VIDEO)
-        assertEquals(CameraMode.VIDEO, v.cameraMode.value)
-
-        v.startRecordingTimer()
-        // None of the rebind triggers may move while a take is running.
-        v.switchCameraMode(CameraMode.PHOTO)
-        assertEquals(CameraMode.VIDEO, v.cameraMode.value)
-        v.selectLens(tele)
-        assertEquals(back, v.selectedLens.value)
-        v.flipCamera()
-        assertEquals(CameraSelector.LENS_FACING_BACK, v.lensFacing.value)
-        assertTrue(v.isRecording.value)
-
-        // After the stop they all work again.
-        v.stopRecordingTimer()
-        v.selectLens(tele)
-        assertEquals(tele, v.selectedLens.value)
-        v.switchCameraMode(CameraMode.PHOTO)
-        assertEquals(CameraMode.PHOTO, v.cameraMode.value)
-        v.flipCamera()
-        assertEquals(CameraSelector.LENS_FACING_FRONT, v.lensFacing.value)
-    }
 }

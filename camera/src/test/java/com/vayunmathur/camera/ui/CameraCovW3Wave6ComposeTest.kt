@@ -73,7 +73,7 @@ class CameraCovW3Wave6ComposeTest {
         // rememberCameraScreenState inside the PreviewBox composition itself.
         return CameraScreenState(
             cameraMode = mode,
-            lensFacing = androidx.camera.core.CameraSelector.LENS_FACING_BACK,
+            lensFacing = android.hardware.camera2.CameraMetadata.LENS_FACING_BACK,
             selectedLens = null,
             availableLenses = emptyList(),
             hasFlashUnit = true,
@@ -117,7 +117,6 @@ class CameraCovW3Wave6ComposeTest {
             photoSessionActive = true,
             analysisStreamActive = true,
             nightExtAvailable = false,
-            surfaceRequest = null,
             availableZoomLevels = listOf("1x" to 1f, "2x" to 2f),
             galleryBitmap = null,
             panoSweeping = mode == CameraMode.PANORAMA,

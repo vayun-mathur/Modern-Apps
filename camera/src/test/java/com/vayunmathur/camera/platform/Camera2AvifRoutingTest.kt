@@ -9,7 +9,6 @@ import android.provider.MediaStore
 import android.util.Range
 import android.util.Size
 import android.view.Surface
-import androidx.camera.core.ImageCapture
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.camera.data.saveProcessedStill
 import com.vayunmathur.camera.platform.camera2.Camera2Driver
@@ -307,47 +306,24 @@ class Camera2AvifRoutingTest {
 
     // -- video / slo-mo snapshot + night-extension entry decisions -------------
 
-    @Test fun snapshotAndNightExtensionReadFormatAtCaptureTime() {
+    @Test fun formatReadAtCaptureTimeViaStillRouting() {
+        // Format is read at save/capture time (saveCamera2Still routing above);
+        // switching after bind changes the landed format without a rebind.
         val viewModel = vm()
-        // JPEG (default, set at bind): both entries stay on the file path.
-        assertFalse(viewModel.videoSnapshotInMemory())
-        assertFalse(viewModel.nightExtensionInMemory())
-        // Changed after bind: both entries must follow without a rebind.
+        viewModel.photoFormatMutable.value = PhotoFormat.JPEG
+        assertNotNull(viewModel.saveCamera2Still(still(jpegBytes())))
         viewModel.photoFormatMutable.value = PhotoFormat.AVIF
         if (StitchNative.isAvailable) {
-            assertTrue(viewModel.videoSnapshotInMemory())
-            assertTrue(viewModel.nightExtensionInMemory())
+            val uri = viewModel.saveCamera2Still(still(jpegBytes()))
+            assertNotNull(uri); assertEquals("image/avif", savedMime(uri))
         }
-        viewModel.photoFormatMutable.value = PhotoFormat.JPEG
-        assertFalse(viewModel.videoSnapshotInMemory())
-        assertFalse(viewModel.nightExtensionInMemory())
     }
 
-    @Test fun videoSnapshotUsesInMemoryCaptureWhenAvif() {
-        if (!StitchNative.isAvailable) return
+    @Test fun videoSnapshotWithoutSessionIsNoOpForBothFormats() {
         val viewModel = vm()
-        val capture = Mockito.mock(ImageCapture::class.java)
-        Mockito.`when`(capture.captureMode).thenReturn(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
-        viewModel.imageCapture = capture
         viewModel.photoFormatMutable.value = PhotoFormat.AVIF
-        viewModel.captureVideoSnapshot()
-        Mockito.verify(capture).takePicture(
-            Mockito.any(java.util.concurrent.Executor::class.java),
-            Mockito.any(ImageCapture.OnImageCapturedCallback::class.java),
-        )
-    }
-
-    @Test fun videoSnapshotUsesFilePathWhenJpeg() {
-        val viewModel = vm()
-        val capture = Mockito.mock(ImageCapture::class.java)
-        Mockito.`when`(capture.captureMode).thenReturn(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
-        viewModel.imageCapture = capture
+        viewModel.captureVideoSnapshot() // no Camera2 session: no-op, no crash
         viewModel.photoFormatMutable.value = PhotoFormat.JPEG
         viewModel.captureVideoSnapshot()
-        Mockito.verify(capture).takePicture(
-            Mockito.any(ImageCapture.OutputFileOptions::class.java),
-            Mockito.any(java.util.concurrent.Executor::class.java),
-            Mockito.any(ImageCapture.OnImageSavedCallback::class.java),
-        )
     }
 }

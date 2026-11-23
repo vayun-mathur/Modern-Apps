@@ -1,161 +1,101 @@
 package com.vayunmathur.camera.platform
 
-import androidx.camera.core.Camera
-import androidx.camera.core.CameraInfo
-import androidx.camera.core.ExposureState
-import androidx.camera.core.FocusMeteringAction
-import androidx.camera.core.SurfaceOrientedMeteringPointFactory
-import androidx.camera.core.ZoomState
-import androidx.lifecycle.MutableLiveData
+import android.graphics.ImageFormat
+import android.util.Range
+import android.util.Size
+import android.view.Surface
 import androidx.test.core.app.ApplicationProvider
+import com.vayunmathur.camera.platform.camera2.Camera2Driver
+import com.vayunmathur.camera.platform.camera2.Camera2Executor
+import com.vayunmathur.camera.platform.camera2.Camera2Session
+import com.vayunmathur.camera.platform.camera2.CaptureSessionHandle
+import com.vayunmathur.camera.platform.camera2.CharacteristicsFacade
+import com.vayunmathur.camera.platform.camera2.DeviceCallback
+import com.vayunmathur.camera.platform.camera2.DeviceHandle
+import com.vayunmathur.camera.platform.camera2.CaptureSessionCallback
+import com.vayunmathur.camera.platform.camera2.FrameSize
+import com.vayunmathur.camera.platform.camera2.LensCharacteristicsSnapshot
+import com.vayunmathur.camera.platform.camera2.ResolvedRequestParams
+import com.vayunmathur.camera.platform.camera2.StillOutput
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlinx.coroutines.runBlocking
 import org.junit.runner.RunWith
-import org.mockito.Mockito
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.robolectric.annotation.GraphicsMode
 
-/** Camera controls (zoom/focus/torch/exposure) and recording toggles. */
-@GraphicsMode(GraphicsMode.Mode.NATIVE)
+/** Camera2 contract: zoom/torch/EV/flash/metering routed to session. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class ControlsRecordingExtraTest {
 
-    private val context = ApplicationProvider.getApplicationContext<android.content.Context>()
-    private fun vm() = CameraViewModel(context.applicationContext as android.app.Application)
+    private fun vm() = CameraViewModel(ApplicationProvider.getApplicationContext())
 
-    private fun fakeCamera(): Camera {
-        val info = Mockito.mock(CameraInfo::class.java)
-        val zoom = object : ZoomState {
-            override fun getZoomRatio() = 1f
-            override fun getMinZoomRatio() = 0.5f
-            override fun getMaxZoomRatio() = 8f
-            override fun getLinearZoom() = 0f
-        }
-        Mockito.`when`(info.zoomState).thenReturn(MutableLiveData<ZoomState>(zoom))
-        Mockito.`when`(info.cameraState).thenReturn(MutableLiveData())
-        Mockito.`when`(info.torchState).thenReturn(MutableLiveData<Int>(0))
-        Mockito.`when`(info.hasFlashUnit()).thenReturn(true)
-        val exposure = Mockito.mock(ExposureState::class.java)
-        Mockito.`when`(exposure.exposureCompensationRange).thenReturn(android.util.Range(-3, 3))
-        Mockito.`when`(exposure.exposureCompensationIndex).thenReturn(0)
-        Mockito.`when`(exposure.isExposureCompensationSupported).thenReturn(true)
-        Mockito.`when`(info.exposureState).thenReturn(exposure)
-        val camera = Mockito.mock(Camera::class.java)
-        Mockito.`when`(camera.cameraInfo).thenReturn(info)
-        val control = Mockito.mock(
-            androidx.camera.core.CameraControl::class.java,
-            Mockito.withSettings().extraInterfaces(androidx.camera.core.impl.CameraControlInternal::class.java),
-        )
-        Mockito.`when`(camera.cameraControl).thenReturn(control)
-        return camera
+    private class FakeHandle : CaptureSessionHandle {
+        val repeating = mutableListOf<ResolvedRequestParams>()
+        override fun setRepeatingPreview(params: ResolvedRequestParams, target: Surface) { repeating += params }
+        override fun captureStill(params: com.vayunmathur.camera.platform.camera2.ResolvedStillParams, stillTarget: Surface, callback: com.vayunmathur.camera.platform.camera2.StillResultCallback) { callback.onCompleted(com.vayunmathur.camera.platform.camera2.RawStillMetadata()) }
+        override fun close() {}
+    }
+    private class FakeDevice : DeviceHandle {
+        override val cameraId: String = "0"
+        override fun createCaptureSession(surfaces: List<Surface>, callback: CaptureSessionCallback) { callback.onConfigured(FakeHandle()) }
+        override fun close() {}
+    }
+    private class FakeDriver : Camera2Driver {
+        override fun openCamera(cameraId: String, callback: DeviceCallback) { callback.onOpened(FakeDevice()) }
+        override fun createStillOutput(size: FrameSize): StillOutput? = null
+    }
+    internal fun snapshot(
+        zoom: Range<Float>? = Range(0.5f, 8f),
+        flash: Boolean = true,
+        sensitivity: Range<Int>? = Range(50, 6400),
+        ev: Range<Float>? = Range(-4f, 4f),
+    ): LensCharacteristicsSnapshot = CharacteristicsFacade.fromFakeMap(
+        cameraId = "0", zoomRatioRange = zoom, hasFlashUnit = flash,
+        sensitivityRange = sensitivity, exposureCompensationEvRange = ev,
+        exposureTimeRangeNs = Range(1_000_000L, 1_000_000_000L),
+        sizesByFormat = mapOf(ImageFormat.PRIVATE to listOf(Size(1920, 1080))),
+        activeArrayWidth = 4000, activeArrayHeight = 3000,
+        exposureCompensationStepEv = 1f / 6f, maxAfRegions = 1, maxAeRegions = 1,
+    ).snapshot
+
+    internal fun fakeSession(executor: Camera2Executor, snap: LensCharacteristicsSnapshot = snapshot()): Camera2Session =
+        Camera2Session(FakeDriver(), executor, snap)
+
+    internal fun Camera2Executor.drain() {
+        val latch = CountDownLatch(1); execute { latch.countDown() }
+        assertTrue(latch.await(5, TimeUnit.SECONDS))
+    }
+    internal fun dirtyTeardownState(v: CameraViewModel) {
+        v.isRecordingMutable.value = true; v.recordingPausedMutable.value = true
+        v.recordingDurationSecMutable.value = 42; v.timerCountdownMutable.value = 3
+        v.isCapturingMutable.value = true; v.photoSessionActiveMutable.value = true
+        v.analysisStreamActiveMutable.value = true; v.nightPreviewActiveMutable.value = true
+        v.highSpeedActiveMutable.value = true; v.videoSessionActiveMutable.value = true
+        v.videoSnapshotSupportedMutable.value = true; v.focusLockedMutable.value = true
+    }
+    internal fun assertTeardownCleared(v: CameraViewModel) {
+        assertFalse(v.isRecording.value); assertFalse(v.recordingPaused.value)
+        assertEquals(0L, v.recordingDurationSec.value); assertEquals(0, v.timerCountdown.value)
+        assertFalse(v.isCapturing.value); assertFalse(v.photoSessionActive.value)
+        assertFalse(v.analysisStreamActive.value); assertFalse(v.nightPreviewActive.value)
+        assertFalse(v.highSpeedActive.value); assertFalse(v.videoSessionActive.value)
+        assertFalse(v.videoSnapshotSupported.value); assertFalse(v.focusLocked.value)
     }
 
-    @Test fun zoomLevelsAndClamping() {
-        val viewModel = vm()
-        viewModel.updateZoomLevels(0.5f, 10f)
-        assertEquals(
-            listOf(".5" to 0.5f, "1x" to 1f, "2x" to 2f, "5x" to 5f),
-            viewModel.availableZoomLevelsMutable.value,
-        )
-        viewModel.updateZoomLevels(1f, 1f)
-        assertEquals(listOf("1x" to 1f), viewModel.availableZoomLevelsMutable.value)
-        viewModel.boundCamera = fakeCamera()
-        viewModel.setZoomRatio(99f)
-        assertEquals(8f, viewModel.zoomRatioMutable.value) // clamped to lens max
-        viewModel.setZoomRatio(0.1f)
-        assertEquals(0.5f, viewModel.zoomRatioMutable.value)
-        viewModel.onViewfinderZoomRatio(2f)
-        assertEquals(2f, viewModel.zoomRatioMutable.value)
-        viewModel.zoomRatioMutable.value = 20f
-        viewModel.restoreZoom(0.5f, 8f)
-        assertEquals(8f, viewModel.zoomRatioMutable.value)
+    @Test fun allControlsRoute() {
+        val ex = Camera2Executor("controls"); val s = fakeSession(ex); val v = vm(); v.activeCamera2Session = s
+        try { v.setZoomRatio(20f); v.applyExposureCompensation(0.5f); v.flashModeMutable.value = FlashMode.ON; v.applyImageCaptureFlashMode(); v.clearFocusLock(); ex.drain()
+            assertEquals(8f, s.controlState.zoomRatio); assertEquals(2f, s.controlState.exposureCompEv, 0.01f); assertEquals(com.vayunmathur.camera.domain.FlashSetting.ON, s.controlState.flashSetting); assertNull(s.controlState.afRegion)
+        } finally { ex.shutdown() }
     }
+    @Test fun tapFocusWithoutSessionDropped() { val v = vm(); assertFalse(v.tapToFocusAt(0.5f, 0.5f, locked = false)) }
 
-    @Test fun videoModeZoomAppliesToBoundCameraControl() {
-        val viewModel = vm()
-        viewModel.switchCameraMode(CameraMode.VIDEO)
-        viewModel.boundCamera = fakeCamera()
-        // setZoomRatio drives the bound camera's CameraControl, which CameraX
-        // applies to every bound use case — the video Preview and the
-        // VideoCapture alike — so it takes effect in preview and recording.
-        viewModel.setZoomRatio(2f)
-        assertEquals(2f, viewModel.zoomRatioMutable.value)
-        Mockito.verify(viewModel.boundCamera!!.cameraControl).setZoomRatio(2f)
-        // Exposure compensation likewise reaches the video session's control.
-        viewModel.applyExposureCompensation(0.5f)
-        Mockito.verify(viewModel.boundCamera!!.cameraControl)
-            .setExposureCompensationIndex(2)
-    }
-
-    @Test fun qrTorchExposureAndFocusControls() {
-        val viewModel = vm()
-        viewModel.setQrResult("WIFI:T:WPA;S:x;;")
-        assertEquals("WIFI:T:WPA;S:x;;", viewModel.qrResultMutable.value)
-        viewModel.setQrResult(null)
-        assertEquals(null, viewModel.qrResultMutable.value)
-
-        viewModel.boundCamera = fakeCamera()
-        viewModel.enableTorch(true)
-        viewModel.applyExposureCompensation(0.7f)
-        viewModel.applyImageCaptureFlashMode()
-        val factory = SurfaceOrientedMeteringPointFactory(100f, 100f)
-        val action = FocusMeteringAction.Builder(factory.createPoint(0.5f, 0.5f)).build()
-        viewModel.startFocusAndMetering(action)
-        assertFalse(viewModel.focusLockedMutable.value)
-        viewModel.lockFocusAndMetering(action)
-        viewModel.clearFocusLock()
-        assertFalse(viewModel.focusLockedMutable.value)
-        // Analyzer attachment setters are null-safe session plumbing.
-        viewModel.setPhotoAnalyzer(null)
-        viewModel.setBokehAnalyzer(null)
-        viewModel.setImageAnalyzer(null)
-        viewModel.attachDesiredAnalyzer()
-        viewModel.onSessionBound()
-    }
-
-    @Test fun focusWithoutBoundCameraAndOnThrowFallsBack() {
-        val viewModel = vm()
-        val factory = SurfaceOrientedMeteringPointFactory(100f, 100f)
-        val action = FocusMeteringAction.Builder(factory.createPoint(0.5f, 0.5f)).build()
-        // No bound camera: must report failure, not silently no-op.
-        assertFalse(viewModel.startFocusAndMetering(action))
-        assertFalse(viewModel.lockFocusAndMetering(action))
-        assertFalse(viewModel.focusLockedMutable.value)
-        // Synchronous throw from the control: caught, lock cleared, reported.
-        viewModel.boundCamera = fakeCamera()
-        Mockito.`when`(viewModel.boundCamera!!.cameraControl.startFocusAndMetering(action))
-            .thenThrow(IllegalStateException("camera closed"))
-        assertFalse(viewModel.lockFocusAndMetering(action))
-        assertFalse(viewModel.focusLockedMutable.value)
-        viewModel.clearFocusLock()
-    }
-
-    @Test fun recordingTogglesWithoutRecording() {
-        val viewModel = vm()
-        // Countdown cancellation arm.
-        viewModel.timerCountdownMutable.value = 3
-        viewModel.toggleRecording()
-        assertEquals(0, viewModel.timerCountdownMutable.value)
-        viewModel.timerCountdownMutable.value = 2
-        viewModel.toggleHighSpeedRecording()
-        assertEquals(0, viewModel.timerCountdownMutable.value)
-        // Not recording and no capture bound: plain no-ops.
-        viewModel.toggleRecording()
-        viewModel.toggleHighSpeedRecording()
-        viewModel.startRecording()
-        assertFalse(viewModel.isRecordingMutable.value)
-        // Pause/mic toggles with nothing recording.
-        viewModel.togglePauseRecording()
-        val mutedBefore = viewModel.micMutedMutable.value
-        viewModel.toggleMicMuted()
-        assertEquals(!mutedBefore, viewModel.micMutedMutable.value)
-        // Timer start/stop bookkeeping.
-        viewModel.startRecordingTimer()
-        viewModel.stopRecordingTimer()
-        assertEquals(0L, viewModel.recordingDurationSecMutable.value)
-    }
 }

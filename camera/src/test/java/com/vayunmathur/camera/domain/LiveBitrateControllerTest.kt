@@ -120,47 +120,16 @@ class LiveBitrateControllerTest {
         assertEquals(25_000_000, c.candidateFor(null)) // unknown motion: ceiling-wards, no cut
     }
 
-    // -- Recording-path selection ---------------------------------------------
-
-    private val customFriendly = RecordingPathInput(
-        customPathEnabled = true,
-        liveAdaptationWanted = true,
-        hlgRequested = false,
-        stabilizationRequested = false,
-        codecAv1Requested = false,
-        analysisBound = true,
-    )
+    // -- Live adaptation on the only recording path ---------------------------
 
     @Test
-    fun customPathOnlyWhenEverythingAligns() {
-        assertEquals(RecordingPath.CUSTOM_CAMERA2, RecordingPathPolicy.select(customFriendly))
-    }
-
-    @Test
-    fun cameraXFALLBACKS() {
-        assertEquals(
-            RecordingPath.CAMERAX_RECORDER,
-            RecordingPathPolicy.select(customFriendly.copy(customPathEnabled = false))
-        )
-        assertEquals(
-            RecordingPath.CAMERAX_RECORDER,
-            RecordingPathPolicy.select(customFriendly.copy(liveAdaptationWanted = false))
-        )
-        assertEquals(
-            RecordingPath.CAMERAX_RECORDER,
-            RecordingPathPolicy.select(customFriendly.copy(hlgRequested = true))
-        )
-        assertEquals(
-            RecordingPath.CAMERAX_RECORDER,
-            RecordingPathPolicy.select(customFriendly.copy(stabilizationRequested = true))
-        )
-        assertEquals(
-            RecordingPath.CAMERAX_RECORDER,
-            RecordingPathPolicy.select(customFriendly.copy(codecAv1Requested = true))
-        )
-        assertEquals(
-            RecordingPath.CAMERAX_RECORDER,
-            RecordingPathPolicy.select(customFriendly.copy(analysisBound = false))
-        )
+    fun liveAdaptationWorksWithoutAnyPathSelection() {
+        // There is no recording-path policy left to consult: the controller
+        // alone bounds live changes between the decision floor and ceiling.
+        val c = controller()
+        assertEquals(48_000_000, c.candidateFor(SceneMotion.HIGH_MOTION))
+        assertEquals(48_000_000, c.candidateFor(null))
+        assertEquals(36_000_000, drive(c, SceneMotion.STATIC, 0L))
+        assertEquals(36_000_000, c.currentBitrateBps)
     }
 }

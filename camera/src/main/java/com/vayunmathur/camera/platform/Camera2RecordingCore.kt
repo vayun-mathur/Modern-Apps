@@ -34,7 +34,7 @@ import java.nio.ByteBuffer
  * surface handoff and [SharedRecordingCoreLifecycle] for drain/EOS/finalize.
  */
 class Camera2RecordingCore(
-    private val config: CustomRecordingConfig,
+    val config: CustomRecordingConfig,
     private val initialBitrateBps: () -> Int,
     ownership: RecordingSessionOwnership = RecordingSessionOwnership.ENGINE_OWNED,
 ) {
@@ -50,6 +50,16 @@ class Camera2RecordingCore(
     @Volatile private var muxerStarted = false
     private var videoTrackIndex = -1
     private var audioTrackIndex = -1
+
+    // Per-track PTS bases: encoder output timestamps start at the
+    // sensor/monotonic clock (a huge base), audio at zero. Both tracks
+    // are rebased to their first sample so the muxed container starts
+    // at ~0 and reports a true duration.
+    private var videoBasePtsUs = -1L
+    private var audioBasePtsUs = -1L
+
+    /** Frames written on the slo-mo path (synthesized playback PTS source). */
+    private var videoFrameIndex = 0L
 
     @Volatile private var draining = false
     private var drainThread: Thread? = null
@@ -86,7 +96,12 @@ class Camera2RecordingCore(
                     MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface,
                 )
                 setInteger(MediaFormat.KEY_BIT_RATE, initialBitrateBps())
-                setInteger(MediaFormat.KEY_FRAME_RATE, config.fps)
+                // The encoder is told the rate frames actually arrive
+                // (capture rate for slo-mo): at the playback rate it
+                // frame-drops the high-speed stream down to a fraction
+                // of the captured frames (device-proven). Playback
+                // timing is carried by the muxed PTS, not this field.
+                setInteger(MediaFormat.KEY_FRAME_RATE, maxOf(config.fps, config.captureFps))
                 if (config.captureFps != config.fps) {
                     setInteger(MediaFormat.KEY_CAPTURE_RATE, config.captureFps)
                 }
@@ -169,7 +184,35 @@ class Camera2RecordingCore(
                         val buffer: ByteBuffer = codec.getOutputBuffer(index) ?: continue
                         buffer.position(info.offset)
                         buffer.limit(info.offset + info.size)
-                        muxer?.writeSampleData(if (isVideo) videoTrackIndex else audioTrackIndex, buffer, info)
+                        // Rebase PTS to the track's first sample (see
+                        // videoBasePtsUs): write with an adjusted copy,
+                        // never the codec's raw monotonic timestamp.
+                        val base = if (isVideo) {
+                            if (videoBasePtsUs < 0) videoBasePtsUs = info.presentationTimeUs
+                            videoBasePtsUs
+                        } else {
+                            if (audioBasePtsUs < 0) audioBasePtsUs = info.presentationTimeUs
+                            audioBasePtsUs
+                        }
+                        val adjusted = MediaCodec.BufferInfo().apply {
+                            set(
+                                info.offset, info.size,
+                                when {
+                                    // Slo-mo: encoder PTS are unusable
+                                    // (stale surface backlog, sensor
+                                    // clock); synthesize playback timing
+                                    // — each captured frame plays for
+                                    // 1/playbackFps (see SloMoTimestampStretch).
+                                    isVideo && config.captureFps > config.fps ->
+                                        com.vayunmathur.camera.platform.camera2.SloMoTimestampStretch
+                                            .playbackPtsUs(videoFrameIndex++, config.fps)
+                                    isVideo -> maxOf(0L, info.presentationTimeUs - base)
+                                    else -> maxOf(0L, info.presentationTimeUs - base)
+                                },
+                                info.flags,
+                            )
+                        }
+                        muxer?.writeSampleData(if (isVideo) videoTrackIndex else audioTrackIndex, buffer, adjusted)
                     }
                     codec.releaseOutputBuffer(index, false)
                     if (info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) return
@@ -281,6 +324,9 @@ class Camera2RecordingCore(
         muxerStarted = false
         videoTrackIndex = -1
         audioTrackIndex = -1
+        videoBasePtsUs = -1L
+        audioBasePtsUs = -1L
+        videoFrameIndex = 0L
         drainThread = null
         audioThread = null
     }

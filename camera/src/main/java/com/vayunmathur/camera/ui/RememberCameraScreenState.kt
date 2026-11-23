@@ -62,14 +62,11 @@ internal fun rememberCameraScreenState(viewModel: CameraViewModel): CameraScreen
     val photoSessionActive by viewModel.photoSessionActive.collectAsState()
     val analysisStreamActive by viewModel.analysisStreamActive.collectAsState()
     val nightExtAvailable by viewModel.nightExtensionUsable.collectAsState()
-    val surfaceRequest by viewModel.surfaceRequest.collectAsState()
-    val camera2PreviewEnabled by viewModel.camera2PreviewEnabled.collectAsState()
     val camera2FallbackBindKey by viewModel.camera2FallbackBindKey.collectAsState()
     val camera2NightSessionActive by viewModel.camera2NightSessionActive.collectAsState()
-    val camera2NightEnabled by viewModel.camera2NightEnabled.collectAsState()
     val camera2NightFallbackBindKey by viewModel.camera2NightFallbackBindKey.collectAsState()
-    val camera2SloMoEnabled by viewModel.camera2SloMoEnabled.collectAsState()
     val camera2SloMoFallbackBindKey by viewModel.camera2SloMoFallbackBindKey.collectAsState()
+    val camera2Recording by viewModel.camera2Recording.collectAsState()
     val sessionBindFailed by viewModel.sessionBindFailed.collectAsState()
     val sessionBindRetry by viewModel.sessionBindRetry.collectAsState()
     val availableZoomLevels by viewModel.availableZoomLevels.collectAsState()
@@ -97,9 +94,9 @@ internal fun rememberCameraScreenState(viewModel: CameraViewModel): CameraScreen
         blurStrength, exposureComp, warmth, shadows, exposureTimeIndex, manualIsoIndex,
         isoStops, longExposureProgress, longExposureRemaining, lowLightDetected,
         nightModeActive, extensionStrength, sloMoSupported, highSpeedActive,
-        photoSessionActive, analysisStreamActive, nightExtAvailable, surfaceRequest,
-        camera2PreviewEnabled, camera2FallbackBindKey, camera2NightSessionActive,
-        camera2NightEnabled, camera2NightFallbackBindKey, camera2SloMoEnabled, camera2SloMoFallbackBindKey,
+        photoSessionActive, analysisStreamActive, nightExtAvailable,
+        camera2FallbackBindKey, camera2NightSessionActive,
+        camera2NightFallbackBindKey, camera2SloMoFallbackBindKey, camera2Recording,
         sessionBindFailed, sessionBindRetry,
         availableZoomLevels, galleryBitmap, panoSweeping, panoStitching, panoDots,
         panoCurrentAngle, panoDirection, panoPitch,
@@ -151,7 +148,6 @@ internal fun rememberCameraScreenState(viewModel: CameraViewModel): CameraScreen
             photoSessionActive = photoSessionActive,
             analysisStreamActive = analysisStreamActive,
             nightExtAvailable = nightExtAvailable,
-            surfaceRequest = surfaceRequest,
             availableZoomLevels = availableZoomLevels,
             galleryBitmap = galleryBitmap,
             panoSweeping = panoSweeping,
@@ -165,13 +161,11 @@ internal fun rememberCameraScreenState(viewModel: CameraViewModel): CameraScreen
             deviceRotationState = deviceRotationState,
             sessionBindFailed = sessionBindFailed,
             sessionBindRetry = sessionBindRetry,
-            camera2PreviewEnabled = camera2PreviewEnabled,
             camera2FallbackBindKey = camera2FallbackBindKey,
             camera2NightSessionActive = camera2NightSessionActive,
-            camera2NightEnabled = camera2NightEnabled,
             camera2NightFallbackBindKey = camera2NightFallbackBindKey,
-            camera2SloMoEnabled = camera2SloMoEnabled,
             camera2SloMoFallbackBindKey = camera2SloMoFallbackBindKey,
+            camera2Recording = camera2Recording,
         )
     }
 }

@@ -5,9 +5,7 @@ import com.vayunmathur.camera.platform.CameraMode
 /** Inputs to the RAW-night selection rule. */
 data class RawNightInput(
     /** Compile-time [RawRingGate] AND the runtime explicit RAW selection. */
-    val rawGateOn: Boolean,
     /** The user explicitly selected RAW night (never inferred from "it's dark"). */
-    val explicitRawSelected: Boolean,
     val mode: CameraMode,
     /** This shutter is the night route (auto night / night mode), not plain PHOTO. */
     val nightRoute: Boolean,
@@ -36,8 +34,6 @@ object RawNightPolicy {
 
     /** Why [input] cannot use the RAW night merge, or null when it can. */
     fun exclusionReason(input: RawNightInput): String? = when {
-        !input.rawGateOn -> "raw ring gate off"
-        !input.explicitRawSelected -> "RAW night not explicitly selected"
         !input.nightRoute -> "not a night capture"
         input.mode != CameraMode.PHOTO -> "mode ${input.mode} is not PHOTO"
         !input.rawSupported -> "RAW not supported for this lens"

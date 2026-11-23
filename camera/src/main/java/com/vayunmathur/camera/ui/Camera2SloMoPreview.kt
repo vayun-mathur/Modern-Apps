@@ -55,6 +55,7 @@ internal fun Camera2SloMoPreview(
     cameraId: String,
     lensFacing: LensFacing?,
     onSessionChanged: (Camera2HighSpeedSession?) -> Unit = {},
+    onControlChanged: (com.vayunmathur.camera.platform.SloMoRecordingControl?) -> Unit = {},
     onError: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -66,6 +67,7 @@ internal fun Camera2SloMoPreview(
 
     DisposableEffect(sessionHolder) {
         onDispose {
+            onControlChanged(null)
             onSessionChanged(null)
             sessionHolder.close()
         }
@@ -73,7 +75,10 @@ internal fun Camera2SloMoPreview(
     LaunchedEffect(sessionHolder) {
         sessionHolder.build()
         session = sessionHolder.session
-        if (session != null) onSessionChanged(session)
+        if (session != null) {
+            onSessionChanged(session)
+            onControlChanged(sessionHolder.recordingControl())
+        }
         sessionHolder.deliverPendingError()
     }
 
@@ -88,142 +93,4 @@ internal fun Camera2SloMoPreview(
         },
         modifier = modifier,
     )
-}
-
-private class Camera2SloMoPreviewSession(
-    private val context: Context,
-    private val lensFacing: LensFacing?,
-    onError: (String) -> Unit = {},
-) {
-    val executor = Camera2Executor("Camera2SloMoPreview-${lensFacing?.name ?: "unknown"}")
-
-    @Volatile
-    var session: Camera2HighSpeedSession? = null
-        private set
-
-    @Volatile
-    private var core: Camera2RecordingCore? = null
-
-    @Volatile
-    private var resolvedCameraId: String? = null
-
-    @Volatile
-    private var closed = false
-
-    private val errorGate = OnceErrorReporter(onError)
-
-    @Volatile
-    private var pendingInitError: String? = null
-
-    val bridge: PreviewSurfaceBridge = PreviewSurfaceBridge { event ->
-        val liveSession = session
-        val liveCameraId = resolvedCameraId
-        val liveCore = core
-        if (liveSession == null || liveCameraId == null || liveCore == null) {
-            return@PreviewSurfaceBridge
-        }
-        when (event) {
-            is PreviewSurfaceEvent.Available -> {
-                val encoderSurface = liveCore.prepareEncoderSurface()
-                if (encoderSurface == null) {
-                    errorGate.report("slo-mo encoder surface unavailable")
-                } else {
-                    liveSession.open(liveCameraId, encoderSurface, event.surface)
-                }
-            }
-            is PreviewSurfaceEvent.SizeChanged -> {
-                liveSession.close()
-                val encoderSurface = liveCore.prepareEncoderSurface()
-                if (encoderSurface == null) {
-                    errorGate.report("slo-mo encoder surface unavailable")
-                } else {
-                    liveSession.open(liveCameraId, encoderSurface, event.surface)
-                }
-            }
-            is PreviewSurfaceEvent.Destroyed -> liveSession.close()
-        }
-    }
-
-    suspend fun build() {
-        if (session != null || closed) return
-        var built: Camera2HighSpeedSession? = null
-        var builtCore: Camera2RecordingCore? = null
-        try {
-            withContext(Dispatchers.Default) {
-                val manager = context.getSystemService(CameraManager::class.java)
-                    ?: throw IllegalStateException("no CameraManager")
-                when (
-                    val resolution = Camera2IdResolver.resolve(
-                        lensFacing,
-                        CharacteristicsFacade.cameraIdFacings(manager),
-                    )
-                ) {
-                    is Camera2IdResolution.Unavailable -> pendingInitError = resolution.reason
-                    is Camera2IdResolution.Resolved -> {
-                        resolvedCameraId = resolution.cameraId
-                        val facade = CharacteristicsFacade.tryFromCameraManager(
-                            manager, resolution.cameraId,
-                        ) ?: throw IllegalArgumentException(
-                            "getCameraCharacteristics failed for Camera2 id ${resolution.cameraId}",
-                        )
-                        val selection = HighSpeedPlanner.select(facade.snapshot)
-                        if (selection == null) {
-                            pendingInitError = "no constrained high-speed slo-mo point"
-                            return@withContext
-                        }
-                        val driver = AndroidCamera2Driver(
-                            manager,
-                            android.os.Handler(executor.looper),
-                        )
-                        builtCore = Camera2RecordingCore(
-                            config = selection.toCustomRecordingConfig()
-                                .copy(audioEnabled = false),
-                            initialBitrateBps = { SLOMO_PREVIEW_BITRATE_BPS },
-                            ownership = RecordingSessionOwnership.EXTERNALLY_OWNED,
-                        )
-                        built = Camera2HighSpeedSession(
-                            driver = driver,
-                            executor = executor,
-                            snapshot = facade.snapshot,
-                            listener = object : Camera2HighSpeedSession.Listener {
-                                override fun onError(message: String) {
-                                    Log.status("Camera2SloMoPreview", message)
-                                    errorGate.report(message)
-                                }
-                            },
-                        )
-                    }
-                }
-            }
-        } catch (e: RuntimeException) {
-            pendingInitError = "Camera2 slo-mo preview init failed for facing $lensFacing: ${e.message}"
-        }
-        if (closed) {
-            built?.close()
-            builtCore?.release()
-            return
-        }
-        session = built
-        core = builtCore
-    }
-
-    fun deliverPendingError() {
-        val message = pendingInitError ?: return
-        pendingInitError = null
-        Log.status("Camera2SloMoPreview", message)
-        errorGate.report(message)
-    }
-
-    fun close() {
-        closed = true
-        session?.close()
-        session = null
-        core?.release()
-        core = null
-        executor.shutdown()
-    }
-
-    private companion object {
-        const val SLOMO_PREVIEW_BITRATE_BPS = 20_000_000
-    }
 }

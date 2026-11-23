@@ -10,20 +10,10 @@ import android.hardware.SensorManager
 import android.location.Location
 import android.net.Uri
 import com.vayunmathur.library.log.Log
-import androidx.camera.core.CameraSelector
 import com.vayunmathur.camera.domain.MotionSaveQueue
-import androidx.camera.core.Camera
-import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.ImageCapture
-import androidx.camera.core.SurfaceRequest
-import androidx.camera.lifecycle.ProcessCameraProvider
 import java.util.concurrent.Executor
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
-import androidx.camera.extensions.ExtensionsManager
-import androidx.camera.video.Recorder
-import androidx.camera.video.Recording
-import androidx.camera.video.VideoCapture
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.vayunmathur.library.util.DataStoreUtils
@@ -47,7 +37,7 @@ import com.vayunmathur.camera.data.SaveTarget
 import com.vayunmathur.camera.data.loadSettings
 
 /**
- * State and session owner for the single camera screen: the bound CameraX session, every
+ * State and session owner for the single camera screen: the Camera2 sessions, every
  * capture setting, and the capture paths (implemented as extensions in the sibling files).
  */
 class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
@@ -122,31 +112,14 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
 
     // Camera2 gate setters/fallback live in CameraViewModelCamera2Gates.kt as extensions.
 
-    /**
-     * Gate for the Camera2 preview engine. Default ON — Camera2 is the
-     * live path and CameraX is the opt-out / fallback. Persisted as
-     * `camera_camera2_engine`; `PreviewEnginePolicy` restricts it to PHOTO.
-     */
-    internal val camera2PreviewEnabledMutable = MutableStateFlow(true)
-    val camera2PreviewEnabled = camera2PreviewEnabledMutable.asStateFlow()
-
-    /** One-shot CameraX fallback latch for a failed Camera2 bind attempt. */
+    /** One-shot latch for a failed Camera2 bind attempt (surfaces the retryable bind error). */
     internal val camera2FallbackLatch =
         com.vayunmathur.camera.platform.camera2.Camera2FallbackLatch()
     internal val camera2FallbackBindKeyMutable = MutableStateFlow<String?>(null)
     val camera2FallbackBindKey = camera2FallbackBindKeyMutable.asStateFlow()
 
 
-    /**
-     * Gate for the Camera2 slo-mo path. Default ON — the Camera2 decision
-     * in `Camera2SloMoGlue` is evaluated; `SloMoEnginePolicy` still keeps
-     * recording on CameraX until a coupled, device-verified recording
-     * engine exists (`recordingEngineReady`).
-     */
-    internal val camera2SloMoEnabledMutable = MutableStateFlow(true)
-    val camera2SloMoEnabled = camera2SloMoEnabledMutable.asStateFlow()
-
-    /** One-shot CameraX fallback latch for a failed Camera2 slo-mo attempt (piece 7). */
+    /** One-shot latch for a failed Camera2 slo-mo attempt (surfaces the retryable bind error). */
     internal val camera2SloMoFallbackLatch =
         com.vayunmathur.camera.platform.camera2.Camera2FallbackLatch()
     internal val camera2SloMoFallbackBindKeyMutable = MutableStateFlow<String?>(null)
@@ -155,27 +128,6 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
     /** Live Camera2 high-speed session while the gated slo-mo preview is composed; null otherwise. */
     internal var activeCamera2HighSpeedSession:
         com.vayunmathur.camera.platform.camera2.Camera2HighSpeedSession? = null
-
-
-    /**
-     * Gate for the Camera2 NIGHT path. Default ON — the Camera2 decision
-     * in `Camera2NightGlue` is evaluated; `ExtensionsEnginePolicy` still
-     * requires a passing probe, a clear failure cache and a live
-     * extension session, else CameraX extension / own burst serves.
-     */
-    internal val camera2NightEnabledMutable = MutableStateFlow(true)
-    val camera2NightEnabled = camera2NightEnabledMutable.asStateFlow()
-
-
-    /**
-     * RAW-night selection on the Camera2 dual ring. Default ON as the
-     * Camera2 night route; it is never inferred from darkness alone —
-     * [com.vayunmathur.camera.platform.camera2.RawNightPolicy] still
-     * requires a night route, RAW support and a live RAW ring, else the
-     * existing night routing serves.
-     */
-    internal val camera2RawNightEnabledMutable = MutableStateFlow(true)
-    val camera2RawNightEnabled = camera2RawNightEnabledMutable.asStateFlow()
 
 
     /**
@@ -215,7 +167,7 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
     internal val cameraModeMutable = MutableStateFlow(CameraMode.PHOTO)
     val cameraMode = cameraModeMutable.asStateFlow()
 
-    internal val lensFacingMutable = MutableStateFlow(CameraSelector.LENS_FACING_BACK)
+    internal val lensFacingMutable = MutableStateFlow(android.hardware.camera2.CameraMetadata.LENS_FACING_BACK)
     val lensFacing = lensFacingMutable.asStateFlow()
 
     internal val availableLensesMutable =
@@ -484,44 +436,11 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
     @Volatile internal var lowLumaFrames = 0
     @Volatile internal var highLumaFrames = 0
 
-    // Preferred night detection: CameraX's getNightModeIndicator() (1.7.0-alpha02) — the OS/vendor
-    // reports when the scene is dark enough that night mode is RECOMMENDED. We observe the bound
-    // camera's indicator LiveData and drive lowLightDetectedMutable from it. Where the device doesn't
-    // support the indicator, onLuminance()'s luminance heuristic is used as a fallback instead.
-    internal var nightIndicatorLiveData: androidx.lifecycle.LiveData<Int>? = null
-    var nightIndicatorSupported = false
-        internal set
-    internal val nightIndicatorObserver = androidx.lifecycle.Observer<Int> { state ->
-        // Don't override a manual "off" for the current dark scene; the moon button owns that.
-        if (nightModeOverriddenOffMutable.value) return@Observer
-        // RECOMMENDED engages; anything else (NOT_RECOMMENDED / UNKNOWN) disengages, so night turns
-        // off again when the scene brightens. (The toggle loop this used to cause on unusable devices
-        // is now prevented by the daily failure cache in nightExtensionUsable instead.)
-        lowLightDetectedMutable.value = state == androidx.camera.core.NightModeIndicator.RECOMMENDED
-    }
-
-    // Live NIGHT-extension processing strength (0..100) from CameraExtensionsInfo.getExtensionStrength(),
-    // for a "night processing" indicator in the UI. Null when unavailable / not in an extension session.
+    // Live NIGHT-extension processing strength (0..100) when a session
+    // reports one; null when unavailable. The Camera2 extension session
+    // has no strength flow, so this stays null on that path (hidden, not faked).
     internal val extensionStrengthMutable = MutableStateFlow<Int?>(null)
     val extensionStrength = extensionStrengthMutable.asStateFlow()
-
-    // The vendor NIGHT extension can bind "successfully" (bindToLifecycle returns) yet fail
-    // asynchronously when camera-pipe configures the ExtensionCaptureSession (GrapheneOS/Pixel:
-    // ERROR_STREAM_CONFIG). That never throws from setupNightPreviewSession, so we watch the bound
-    // extension camera's CameraState and treat any error as a real failure → cache it for a week.
-    internal var extensionStrengthLiveData: androidx.lifecycle.LiveData<Int>? = null
-    internal val extensionStrengthObserver =
-        androidx.lifecycle.Observer<Int> { s -> extensionStrengthMutable.value = s }
-    internal var extensionCameraStateLiveData: androidx.lifecycle.LiveData<androidx.camera.core.CameraState>? = null
-    internal val extensionCameraStateObserver = androidx.lifecycle.Observer<androidx.camera.core.CameraState> { st ->
-        val err = st.error ?: return@Observer
-        Log.status(
-            "NightPreview",
-            "night extension camera error type=${st.type} code=${err.code} – " +
-                "disabling night extension (cached)"
-        )
-        recordNightExtensionFailure()
-    }
 
     internal val longExposureProgressMutable = MutableStateFlow(0f)
     val longExposureProgress = longExposureProgressMutable.asStateFlow()
@@ -532,28 +451,12 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
     internal var longExposureTimerJob: kotlinx.coroutines.Job? = null
 
     internal var lastLocation: Location? = null
-    internal var currentRecording: Recording? = null
     internal var sloMoFps: Int = 30
 
-    /** Live Camera2 recording engine (video modes); null when not recording. */
-    internal var activeVideoEngine: Camera2VideoRecordingEngine? = null
-
-    /** Staged output file of the in-flight Camera2 recording. */
-    internal var activeVideoOutputFile: java.io.File? = null
-
-    /** Display name / mode of the in-flight Camera2 recording, for finalize. */
-    internal var activeVideoDisplayName: String? = null
-    internal var activeVideoMode: CameraMode? = null
-    internal var activeVideoTimestamp: String? = null
-
-    /** True while a Camera2 recording owns the camera (UI shows its preview). */
-    internal val camera2RecordingMutable = MutableStateFlow(false)
-    val camera2Recording = camera2RecordingMutable.asStateFlow()
-
-    /** Live Camera2 slo-mo recording core/session state; null when idle. */
-    internal var activeSloMoCore: Camera2RecordingCore? = null
-    internal var activeSloMoOutputFile: java.io.File? = null
-    internal var activeSloMoDisplayName: String? = null
+    /** Camera2 recording state (video + slo-mo engines/cores); see Camera2RecordingState. */
+    internal val camera2RecordingState = Camera2RecordingState()
+    internal val camera2RecordingMutable get() = camera2RecordingState.recordingActive
+    val camera2Recording = camera2RecordingState.recordingActive.asStateFlow()
 
     // IMAGE_CAPTURE (system "take a photo") intent state. When capturing for a caller, we either
     // write the full-res JPEG to their EXTRA_OUTPUT Uri, or hand back a downscaled thumbnail.
@@ -572,10 +475,6 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
     // Guards panorama stitching so a second stop request can't start a concurrent stitch.
     // Written from CameraVideoRecording.kt's finishPanoramaSweep() extension.
     @Volatile internal var isFinishingPano = false
-
-    // Unified manual session state (all modes bind through one CameraXViewfinder).
-    internal val surfaceRequestMutable = MutableStateFlow<SurfaceRequest?>(null)
-    val surfaceRequest = surfaceRequestMutable.asStateFlow()
 
     // Session bind exhausted its bounded retries: the preview has no surface,
     // so the UI shows an error with a manual retry instead of a black frame.
@@ -596,26 +495,8 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
     // strand the UI on a photo session in e.g. VIDEO mode (frozen/black preview).
     internal var sessionTeardownCount: Int = 0
 
-    internal var cameraProvider: ProcessCameraProvider? = null
-    // Cached per ProcessCameraProvider instance; ExtensionsManager must be tied to the same provider.
-    internal var extensionsManager: ExtensionsManager? = null
-    internal var sessionLifecycleOwner: ManualLifecycleOwner? = null
-    internal var boundCamera: Camera? = null
-    internal var imageCapture: ImageCapture? = null
-
-    // The Compose viewfinder's CameraX ScreenFlash (white overlay + window
-    // brightness, owned by CameraXViewfinder), handed over via
-    // onScreenFlashReady. Attached to ImageCapture only when the front lens
-    // has no flash unit and the resolution is SCREEN (see FlashModePolicy).
-    internal var screenFlash: ImageCapture.ScreenFlash? = null
-    internal var imageAnalysis: ImageAnalysis? = null
-
-    // The analyzer the UI wants running, kept across teardown/rebind. Every session bind re-attaches
-    // it via [attachDesiredAnalyzer], so a new ImageAnalysis is never left bare: the UI's attach
-    // effect is keyed on photoSessionActive, and that StateFlow conflates, so a false->true rebind
-    // inside one frame used to leave the analyzer detached until the next mode switch.
-    internal var desiredAnalyzer: ImageAnalysis.Analyzer? = null
-    internal var desiredAnalyzerExecutor: Executor? = null
+    /** Per-mode Camera2 analysis sink; see Camera2AnalysisGlue. */
+    @Volatile internal var analysisSink: ((com.vayunmathur.camera.platform.camera2.AnalysisFrame) -> Unit)? = null
 
     /** True once the photo session's use cases (incl. ImageAnalysis) are bound. */
     internal val photoSessionActiveMutable = MutableStateFlow(false)
@@ -675,19 +556,12 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
     internal val motionFrames = ArrayDeque<MotionFrame>()
     internal val motionLock = Any()
 
-    // High-speed session state — Slo-Mo-only (back camera, true HFR, no fallbacks)
-    internal var highSpeedVideoCapture: VideoCapture<Recorder>? = null
-    internal var highSpeedRecording: Recording? = null
-
     internal val highSpeedActiveMutable = MutableStateFlow(false)
     val highSpeedActive = highSpeedActiveMutable.asStateFlow()
 
     /** Whether the back camera supports true HFR slo-mo on this device. */
     internal val sloMoSupportedMutable = MutableStateFlow<Boolean?>(null)
     val sloMoSupported = sloMoSupportedMutable.asStateFlow()
-
-    // Manual video session state (VIDEO / TIMELAPSE modes)
-    internal var videoCapture: VideoCapture<Recorder>? = null
 
     internal val videoSessionActiveMutable = MutableStateFlow(false)
     val videoSessionActive = videoSessionActiveMutable.asStateFlow()

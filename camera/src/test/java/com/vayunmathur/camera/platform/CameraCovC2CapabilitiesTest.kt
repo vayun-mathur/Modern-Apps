@@ -1,159 +1,102 @@
 package com.vayunmathur.camera.platform
 
+import android.graphics.ImageFormat
 import android.util.Range
-import androidx.camera.core.Camera
-import androidx.camera.core.CameraControl
-import androidx.camera.core.CameraInfo
-import androidx.camera.core.ExposureState
-import androidx.camera.core.ZoomState
-import androidx.lifecycle.MutableLiveData
+import android.util.Size
+import android.view.Surface
 import androidx.test.core.app.ApplicationProvider
-import com.vayunmathur.camera.platform.refreshCapabilities
-import java.lang.reflect.Proxy
+import com.vayunmathur.camera.platform.camera2.Camera2Driver
+import com.vayunmathur.camera.platform.camera2.Camera2Executor
+import com.vayunmathur.camera.platform.camera2.Camera2Session
+import com.vayunmathur.camera.platform.camera2.CaptureSessionHandle
+import com.vayunmathur.camera.platform.camera2.CharacteristicsFacade
+import com.vayunmathur.camera.platform.camera2.DeviceCallback
+import com.vayunmathur.camera.platform.camera2.DeviceHandle
+import com.vayunmathur.camera.platform.camera2.CaptureSessionCallback
+import com.vayunmathur.camera.platform.camera2.FrameSize
+import com.vayunmathur.camera.platform.camera2.LensCharacteristicsSnapshot
+import com.vayunmathur.camera.platform.camera2.ResolvedRequestParams
+import com.vayunmathur.camera.platform.camera2.StillOutput
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.runBlocking
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/** Cov-c2: capability queries against fake Camera/CameraInfo implementations. */
+/** Camera2 contract: refreshCapabilities(lensId) from snapshot (new signature). */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class CameraCovC2CapabilitiesTest {
 
     private fun vm() = CameraViewModel(ApplicationProvider.getApplicationContext())
 
-    private fun proxy(iface: Class<*>, handler: (String) -> Any?): Any {
-        return Proxy.newProxyInstance(javaClass.classLoader, arrayOf(iface)) { _, method, _ ->
-            handler(method.name) ?: when {
-                method.returnType == java.lang.Boolean.TYPE -> false
-                method.returnType == java.lang.Integer.TYPE -> 0
-                method.returnType == java.lang.Float.TYPE -> 0f
-                method.returnType == java.lang.Long.TYPE -> 0L
-                java.util.Set::class.java.isAssignableFrom(method.returnType) -> emptySet<Any>()
-                java.util.List::class.java.isAssignableFrom(method.returnType) -> emptyList<Any>()
-                else -> null
-            }
-        }
+    private class FakeHandle : CaptureSessionHandle {
+        val repeating = mutableListOf<ResolvedRequestParams>()
+        override fun setRepeatingPreview(params: ResolvedRequestParams, target: Surface) { repeating += params }
+        override fun captureStill(params: com.vayunmathur.camera.platform.camera2.ResolvedStillParams, stillTarget: Surface, callback: com.vayunmathur.camera.platform.camera2.StillResultCallback) { callback.onCompleted(com.vayunmathur.camera.platform.camera2.RawStillMetadata()) }
+        override fun close() {}
+    }
+    private class FakeDevice : DeviceHandle {
+        override val cameraId: String = "0"
+        override fun createCaptureSession(surfaces: List<Surface>, callback: CaptureSessionCallback) { callback.onConfigured(FakeHandle()) }
+        override fun close() {}
+    }
+    private class FakeDriver : Camera2Driver {
+        override fun openCamera(cameraId: String, callback: DeviceCallback) { callback.onOpened(FakeDevice()) }
+        override fun createStillOutput(size: FrameSize): StillOutput? = null
+    }
+    internal fun snapshot(
+        zoom: Range<Float>? = Range(0.5f, 8f),
+        flash: Boolean = true,
+        sensitivity: Range<Int>? = Range(50, 6400),
+        ev: Range<Float>? = Range(-4f, 4f),
+    ): LensCharacteristicsSnapshot = CharacteristicsFacade.fromFakeMap(
+        cameraId = "0", zoomRatioRange = zoom, hasFlashUnit = flash,
+        sensitivityRange = sensitivity, exposureCompensationEvRange = ev,
+        exposureTimeRangeNs = Range(1_000_000L, 1_000_000_000L),
+        sizesByFormat = mapOf(ImageFormat.PRIVATE to listOf(Size(1920, 1080))),
+        activeArrayWidth = 4000, activeArrayHeight = 3000,
+        exposureCompensationStepEv = 1f / 6f, maxAfRegions = 1, maxAeRegions = 1,
+    ).snapshot
+
+    internal fun fakeSession(executor: Camera2Executor, snap: LensCharacteristicsSnapshot = snapshot()): Camera2Session =
+        Camera2Session(FakeDriver(), executor, snap)
+
+    internal fun Camera2Executor.drain() {
+        val latch = CountDownLatch(1); execute { latch.countDown() }
+        assertTrue(latch.await(5, TimeUnit.SECONDS))
+    }
+    internal fun dirtyTeardownState(v: CameraViewModel) {
+        v.isRecordingMutable.value = true; v.recordingPausedMutable.value = true
+        v.recordingDurationSecMutable.value = 42; v.timerCountdownMutable.value = 3
+        v.isCapturingMutable.value = true; v.photoSessionActiveMutable.value = true
+        v.analysisStreamActiveMutable.value = true; v.nightPreviewActiveMutable.value = true
+        v.highSpeedActiveMutable.value = true; v.videoSessionActiveMutable.value = true
+        v.videoSnapshotSupportedMutable.value = true; v.focusLockedMutable.value = true
+    }
+    internal fun assertTeardownCleared(v: CameraViewModel) {
+        assertFalse(v.isRecording.value); assertFalse(v.recordingPaused.value)
+        assertEquals(0L, v.recordingDurationSec.value); assertEquals(0, v.timerCountdown.value)
+        assertFalse(v.isCapturing.value); assertFalse(v.photoSessionActive.value)
+        assertFalse(v.analysisStreamActive.value); assertFalse(v.nightPreviewActive.value)
+        assertFalse(v.highSpeedActive.value); assertFalse(v.videoSessionActive.value)
+        assertFalse(v.videoSnapshotSupported.value); assertFalse(v.focusLocked.value)
     }
 
-    private fun zoomState(min: Float, max: Float): ZoomState =
-        proxy(ZoomState::class.java) { name ->
-            when (name) {
-                "getMinZoomRatio" -> min
-                "getMaxZoomRatio" -> max
-                "getZoomRatio" -> min
-                "getLinearZoom" -> 0f
-                else -> null
-            }
-        } as ZoomState
-
-    private fun exposureState(): ExposureState =
-        proxy(ExposureState::class.java) { name ->
-            when (name) {
-                "getExposureCompensationRange" -> Range(-4, 4)
-                "getExposureCompensationStep" -> android.util.Rational(1, 2)
-                else -> null
-            }
-        } as ExposureState
-
-    private fun cameraInfo(zoom: ZoomState?, flash: Boolean): CameraInfo =
-        proxy(CameraInfo::class.java) { name ->
-            when (name) {
-                "getZoomState" -> MutableLiveData(zoom)
-                "hasFlashUnit" -> flash
-                "getExposureState" -> exposureState()
-                "getCameraState" -> MutableLiveData(null)
-                else -> null
-            }
-        } as CameraInfo
-
-    private fun camera(info: CameraInfo): Camera =
-        proxy(Camera::class.java) { name ->
-            when (name) {
-                "getCameraInfo" -> info
-                "getCameraControl" -> proxy(CameraControl::class.java) { null }
-                else -> null
-            }
-        } as Camera
-
-    @Test fun refreshCapabilitiesReadsZoomFlashAndExposure() = runBlocking<Unit> {
-        val viewModel = vm()
-        viewModel.cameraModeMutable.value = CameraMode.VIDEO
-        viewModel.refreshCapabilities(camera(cameraInfo(zoomState(0.5f, 8f), flash = true)), "lens-1")
-        val caps = viewModel.lensCapabilitiesMutable.value
-        assertEquals("lens-1", caps?.lensId)
-        assertEquals(0.5f, caps?.minZoom)
-        assertEquals(8f, caps?.maxZoom)
-        assertEquals(true, caps?.hasFlashUnit)
-        assertTrue(viewModel.hasFlashUnitMutable.value)
+    @Test fun refreshReadsZoomFlashExposureAndIso() = runBlocking<Unit> {
+        val ex = Camera2Executor("c2cap"); val v = vm(); v.activeCamera2Session = fakeSession(ex)
+        try { v.refreshCapabilities("lens-1"); val c = v.lensCapabilities.value; assertNotNull(c)
+            assertEquals(0.5f, c.minZoom); assertEquals(8f, c.maxZoom); assertTrue(c.hasFlashUnit); assertEquals(-4f, c.exposureCompRange?.start)
+        } finally { ex.shutdown() }
     }
+    @Test fun refreshWithoutSessionNoOp() = runBlocking<Unit> { val v = vm(); v.refreshCapabilities(null); assertNull(v.lensCapabilities.value) }
+    @Test fun readManualRangesWithoutSessionDegrades() { val v = vm(); v.readManualControlRanges(); assertTrue(v.isoStops.value.isEmpty()) }
 
-    @Test fun refreshCapabilitiesReassertsTorchFromUiState() = runBlocking<Unit> {
-        val viewModel = vm()
-        viewModel.cameraModeMutable.value = CameraMode.VIDEO
-        // Recording control so the re-assert onto the fresh bind is observable.
-        val control = org.mockito.Mockito.mock(CameraControl::class.java)
-        val info = cameraInfo(zoomState(0.5f, 8f), flash = true)
-        val bound = proxy(Camera::class.java) { name ->
-            when (name) {
-                "getCameraInfo" -> info
-                "getCameraControl" -> control
-                else -> null
-            }
-        } as Camera
-        // Torch left on in the UI across a mode/lens rebind must be re-applied
-        // to the new bind (the torch effect only fires on value change).
-        viewModel.torchEnabledMutable.value = true
-        viewModel.refreshCapabilities(bound, "lens-1")
-        org.mockito.Mockito.verify(control).enableTorch(true)
-        // And a torch-off UI state is re-asserted off, not left as the
-        // previous bind's hardware state.
-        org.mockito.Mockito.clearInvocations(control)
-        viewModel.torchEnabledMutable.value = false
-        viewModel.refreshCapabilities(bound, "lens-1")
-        org.mockito.Mockito.verify(control).enableTorch(false)
-    }
-
-    @Test fun refreshCapabilitiesDefaultsWhenZoomUnreadable() = runBlocking<Unit> {
-        val viewModel = vm()
-        viewModel.cameraModeMutable.value = CameraMode.TIMELAPSE
-        viewModel.refreshCapabilities(camera(cameraInfo(null, flash = false)), null)
-        val caps = viewModel.lensCapabilitiesMutable.value
-        assertEquals(1f, caps?.minZoom)
-        assertEquals(1f, caps?.maxZoom)
-        assertFalse(viewModel.hasFlashUnitMutable.value)
-    }
-
-    @Test fun codecSupportQueriesDegradeWithEmptyCameraInfo() {
-        val viewModel = vm()
-        var self: Any? = null
-        val info = Proxy.newProxyInstance(
-            javaClass.classLoader,
-            arrayOf(CameraInfo::class.java, androidx.camera.core.impl.CameraInfoInternal::class.java),
-        ) { _, method, _ ->
-            when (method.name) {
-                "getImplementation" -> self
-                else -> null
-            }
-        }.also { self = it } as CameraInfo
-        // Recorder capability queries need a real CameraX internals stack
-        // (see CameraSessionsExtraTest), so only the Camera2-interop queries
-        // are exercised: with no characteristics they must return null.
-        assertEquals(null, viewModel.highestFpsRange(info))
-        assertEquals(null, viewModel.preferredStabilizationMode(info))
-    }
-
-    @Test fun manualControlRangesWithoutBoundCamera() {
-        val viewModel = vm()
-        assertEquals(null, viewModel.camera2ControlOrNull())
-        viewModel.readManualControlRanges()
-        assertTrue(viewModel.isoStopsMutable.value.isEmpty() || true)
-        viewModel.setExposureTimeIndex(0)
-        assertTrue(viewModel.isExposureAuto())
-        assertEquals(null, viewModel.manualIso())
-    }
 }

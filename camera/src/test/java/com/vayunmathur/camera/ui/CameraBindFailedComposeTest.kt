@@ -31,7 +31,7 @@ class CameraBindFailedComposeTest {
 
     private fun failedState(viewModel: CameraViewModel) = CameraScreenState(
         cameraMode = CameraMode.PHOTO,
-        lensFacing = androidx.camera.core.CameraSelector.LENS_FACING_BACK,
+        lensFacing = android.hardware.camera2.CameraMetadata.LENS_FACING_BACK,
         selectedLens = null,
         availableLenses = emptyList(),
         hasFlashUnit = true,
@@ -75,7 +75,6 @@ class CameraBindFailedComposeTest {
         photoSessionActive = false,
         analysisStreamActive = false,
         nightExtAvailable = false,
-        surfaceRequest = null,
         availableZoomLevels = listOf("1x" to 1f),
         galleryBitmap = null,
         panoSweeping = false,

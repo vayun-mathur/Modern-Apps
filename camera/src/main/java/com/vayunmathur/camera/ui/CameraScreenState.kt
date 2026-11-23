@@ -1,7 +1,6 @@
 package com.vayunmathur.camera.ui
 
 import android.graphics.Bitmap
-import androidx.camera.core.CameraSelector
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.MutableIntState
 import androidx.compose.runtime.MutableState
@@ -70,7 +69,6 @@ import com.vayunmathur.camera.platform.VideoCodec
     val photoSessionActive: Boolean,
     val analysisStreamActive: Boolean,
     val nightExtAvailable: Boolean,
-    val surfaceRequest: androidx.camera.core.SurfaceRequest?,
     val availableZoomLevels: List<Pair<String, Float>>,
     val galleryBitmap: Bitmap?,
     val panoSweeping: Boolean,
@@ -90,20 +88,16 @@ import com.vayunmathur.camera.platform.VideoCodec
     deviceRotationState: MutableIntState,
     val sessionBindFailed: Boolean = false,
     val sessionBindRetry: Int = 0,
-    /** Camera2 preview gate (default ON); policy-gated to PHOTO in the getter below. */
-    val camera2PreviewEnabled: Boolean = true,
-    /** Bind key latched to CameraX after a Camera2 failure, or null. */
+    /** Bind key latched after a Camera2 failure (bind error shows), or null. */
     val camera2FallbackBindKey: String? = null,
     /** Phase 6: a Camera2 NIGHT extension session is live (strength hides). */
     val camera2NightSessionActive: Boolean = false,
-    /** Camera2 NIGHT gate (default ON, persisted); policy still decides. */
-    val camera2NightEnabled: Boolean = true,
     /** Bind key latched after a Camera2 extension preview failure, or null. */
     val camera2NightFallbackBindKey: String? = null,
-    /** Camera2 slo-mo gate (default ON, persisted); policy still decides. */
-    val camera2SloMoEnabled: Boolean = true,
     /** Bind key latched after a Camera2 slo-mo failure, or null. */
     val camera2SloMoFallbackBindKey: String? = null,
+    /** True while a Camera2 recording engine owns the camera. */
+    val camera2Recording: Boolean = false,
 ) {
     var activeSetting by activeSettingState
     var maskBitmap by maskBitmapState
@@ -140,7 +134,7 @@ import com.vayunmathur.camera.platform.VideoCodec
             val bindKey = com.vayunmathur.camera.platform.camera2.Camera2FallbackLatch
                 .bindKey(cameraId, cameraMode)
             return com.vayunmathur.camera.platform.camera2.PreviewEnginePolicy.usesCamera2(
-                camera2PreviewEnabled, cameraMode,
+                cameraMode,
                 fallbackLatched = camera2FallbackBindKey == bindKey,
             )
         }
@@ -159,8 +153,6 @@ import com.vayunmathur.camera.platform.VideoCodec
     val useCamera2NightPreview: Boolean
         get() {
             if (cameraMode != CameraMode.PHOTO || !nightModeActive) return false
-            if (!camera2NightEnabled) return false
-            if (!com.vayunmathur.camera.platform.camera2.NightCamera2Gate.ENABLED) return false
             val cameraId = selectedLens?.logicalCameraId
             if (cameraId.isNullOrEmpty()) return false
             val bindKey = com.vayunmathur.camera.platform.camera2.Camera2FallbackLatch
@@ -184,8 +176,6 @@ import com.vayunmathur.camera.platform.VideoCodec
             val bindKey = com.vayunmathur.camera.platform.camera2.Camera2FallbackLatch
                 .bindKey(cameraId, cameraMode)
             return com.vayunmathur.camera.platform.camera2.SloMoPreviewPolicy.livePreviewSelected(
-                sloMoGateEnabled = camera2SloMoEnabled &&
-                    com.vayunmathur.camera.platform.camera2.SloMoCamera2Gate.ENABLED,
                 isSlowMoMode = true,
                 fallbackLatched = camera2SloMoFallbackBindKey == bindKey,
                 hasSelection = true,
@@ -203,11 +193,7 @@ import com.vayunmathur.camera.platform.VideoCodec
         get() {
             // A strength value only ever exists on a CameraX extension bind;
             // the policy hides it whenever the serving engine is Camera2.
-            val engine = if (camera2NightSessionActive) {
-                com.vayunmathur.camera.platform.camera2.NightEngine.CAMERA2_EXTENSION
-            } else {
-                com.vayunmathur.camera.platform.camera2.NightEngine.CAMERAX_EXTENSION
-            }
+            val engine = com.vayunmathur.camera.platform.camera2.NightEngine.CAMERA2_EXTENSION
             return if (
                 com.vayunmathur.camera.platform.camera2.ExtensionsEnginePolicy
                     .showsExtensionStrength(engine, extensionStrength)
@@ -231,11 +217,11 @@ import com.vayunmathur.camera.platform.VideoCodec
         else -> 3f / 4f
     }
 
-    val mirrorPreview get() = lensFacing == CameraSelector.LENS_FACING_FRONT && !mirrorFront
+    val mirrorPreview get() = lensFacing == android.hardware.camera2.CameraMetadata.LENS_FACING_FRONT && !mirrorFront
 
     /** Front lens with no LED unit: stills flash via the screen instead. */
     val screenFlashAvailable get() = com.vayunmathur.camera.domain.FlashModePolicy.usesScreenFlash(
-        if (lensFacing == CameraSelector.LENS_FACING_FRONT) {
+        if (lensFacing == android.hardware.camera2.CameraMetadata.LENS_FACING_FRONT) {
             com.vayunmathur.camera.domain.LensFacing.FRONT
         } else {
             com.vayunmathur.camera.domain.LensFacing.BACK

@@ -1,47 +1,33 @@
 package com.vayunmathur.camera.platform
 
-import com.vayunmathur.camera.domain.AnalysisSource
-import com.vayunmathur.camera.domain.AnalysisSourceInput
-import com.vayunmathur.camera.domain.AnalysisSourcePolicy
 import com.vayunmathur.camera.platform.camera2.AnalysisConsumer
+import com.vayunmathur.camera.platform.camera2.AnalysisFrame
 
 /**
- * Camera2 analysis wiring: the plane consumer for a Camera2 session's YUV
- * analysis stream.
+ * Camera2 analysis wiring: the single plane consumer handed to every
+ * Camera2 session's YUV analysis stream. It dispatches each frame to
+ * the mode's current sink ([analysisSink]), which the screen effects
+ * install per mode:
+ * - PHOTO modes: [PhotoAnalyzer.onAnalysisFrame] (luma + QR + Motion
+ *   Photo copies from planes/bitmaps),
+ * - PORTRAIT: the bokeh segmenter over converted bitmaps,
+ * - PANORAMA/PHOTOSPHERE: `PanoramaEngine.offerFrame` bitmaps,
+ * - VIDEO modes: the Y-plane motion grid,
+ * - SLOW_MO / NIGHT extension: no sink (null).
  *
- * The consumer is luma-only by construction: it feeds each frame's Y plane
- * to [PhotoAnalyzer.onYPlane] (luma stats via the Rust plane-stats work in
- * `StitchNative.lumaStats`, Kotlin fallback identical), which drives the
- * night hysteresis through [onLuminance]. QR decode has no plane entry
- * point here, and bitmap frame copies — although a conversion now exists
- * (`AnalysisFrame.toBitmapFromPlanes`) — are not fed from this glue: the
- * frame carries no rotation/crop metadata and those sessions never
- * compose a Camera2 session (see [AnalysisSourcePolicy]). Sessions
- * needing them — QR, PORTRAIT, PANORAMA/PHOTOSPHERE, Motion-Photo frame
- * copies — stay on the CameraX ImageAnalysis path, exactly as before.
+ * One stable consumer for the session's whole life: the sink behind it
+ * swaps with the mode, so a mode switch never reconfigures the session.
  */
-internal fun CameraViewModel.camera2AnalysisConsumer(): AnalysisConsumer {
-    val analyzer = PhotoAnalyzer(
-        onLuminance = { onLuminance(it) },
-        onQrDetected = {},
-    )
-    return AnalysisConsumer { frame -> analyzer.onYPlane(frame.yPlane) }
+internal fun CameraViewModel.camera2AnalysisConsumer(): AnalysisConsumer =
+    AnalysisConsumer { frame -> dispatchAnalysisFrame(frame) }
+
+/** Routes one Camera2 analysis frame to the installed mode sink. */
+internal fun CameraViewModel.dispatchAnalysisFrame(frame: AnalysisFrame) {
+    analysisSink?.invoke(frame)
 }
 
-/**
- * True when this session's analysis stream may serve from Camera2: the
- * persisted Camera2 preview toggle (the session only exists when that
- * gate selected Camera2) AND the [AnalysisSourcePolicy] master flag, for a
- * cheap-plane-only consumer. Excluded (QR/bitmap) sessions are not
- * classified here — they never compose a Camera2 session.
- */
-internal fun CameraViewModel.camera2AnalysisServes(): Boolean =
-    AnalysisSourcePolicy.select(
-        AnalysisSourceInput(
-            camera2Enabled = AnalysisSourcePolicy.CAMERA2_ENABLED &&
-                camera2PreviewEnabledMutable.value,
-            needsQr = false,
-            needsBitmapFrame = false,
-            cheapPlaneConsumersOnly = true,
-        ),
-    ) == AnalysisSource.CAMERA2_IMAGE_READER
+/** Installs (or clears, with null) the per-mode analysis sink. */
+internal fun CameraViewModel.setAnalysisSink(sink: ((AnalysisFrame) -> Unit)?) {
+    analysisSink = sink
+    analysisStreamActiveMutable.value = sink != null
+}

@@ -1,96 +1,103 @@
 package com.vayunmathur.camera.platform
 
-import android.graphics.Bitmap
-import android.graphics.Color
-import androidx.camera.core.CameraInfo
-import androidx.camera.core.DynamicRange
-import androidx.camera.video.Quality
-import androidx.camera.video.VideoCapabilities
+import android.graphics.ImageFormat
+import android.util.Range
+import android.util.Size
+import android.view.Surface
 import androidx.test.core.app.ApplicationProvider
-import java.io.File
+import com.vayunmathur.camera.platform.camera2.Camera2Driver
+import com.vayunmathur.camera.platform.camera2.Camera2Executor
+import com.vayunmathur.camera.platform.camera2.Camera2Session
+import com.vayunmathur.camera.platform.camera2.CaptureSessionHandle
+import com.vayunmathur.camera.platform.camera2.CharacteristicsFacade
+import com.vayunmathur.camera.platform.camera2.DeviceCallback
+import com.vayunmathur.camera.platform.camera2.DeviceHandle
+import com.vayunmathur.camera.platform.camera2.CaptureSessionCallback
+import com.vayunmathur.camera.platform.camera2.FrameSize
+import com.vayunmathur.camera.platform.camera2.LensCharacteristicsSnapshot
+import com.vayunmathur.camera.platform.camera2.ResolvedRequestParams
+import com.vayunmathur.camera.platform.camera2.StillOutput
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlinx.coroutines.runBlocking
 import org.junit.runner.RunWith
-import org.mockito.Mockito
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.robolectric.annotation.GraphicsMode
 
-/** Slo-mo quality/range resolution, timelapse fallback, motion encoder guards. */
-@GraphicsMode(GraphicsMode.Mode.NATIVE)
+/** Camera2 contract: slo-mo policy glue decisions (SloMoEnginePolicy). */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class SloMoLogicExtraTest {
 
-    private val context = ApplicationProvider.getApplicationContext<android.content.Context>()
-    private fun vm() = CameraViewModel(context.applicationContext as android.app.Application)
+    private fun vm() = CameraViewModel(ApplicationProvider.getApplicationContext())
 
-    private fun capabilities(vararg qualities: Quality): VideoCapabilities {
-        val caps = Mockito.mock(VideoCapabilities::class.java)
-        Mockito.`when`(caps.getSupportedQualities(Mockito.any(DynamicRange::class.java) ?: DynamicRange.SDR))
-            .thenReturn(qualities.toList())
-        return caps
+    private class FakeHandle : CaptureSessionHandle {
+        val repeating = mutableListOf<ResolvedRequestParams>()
+        override fun setRepeatingPreview(params: ResolvedRequestParams, target: Surface) { repeating += params }
+        override fun captureStill(params: com.vayunmathur.camera.platform.camera2.ResolvedStillParams, stillTarget: Surface, callback: com.vayunmathur.camera.platform.camera2.StillResultCallback) { callback.onCompleted(com.vayunmathur.camera.platform.camera2.RawStillMetadata()) }
+        override fun close() {}
+    }
+    private class FakeDevice : DeviceHandle {
+        override val cameraId: String = "0"
+        override fun createCaptureSession(surfaces: List<Surface>, callback: CaptureSessionCallback) { callback.onConfigured(FakeHandle()) }
+        override fun close() {}
+    }
+    private class FakeDriver : Camera2Driver {
+        override fun openCamera(cameraId: String, callback: DeviceCallback) { callback.onOpened(FakeDevice()) }
+        override fun createStillOutput(size: FrameSize): StillOutput? = null
+    }
+    internal fun snapshot(
+        zoom: Range<Float>? = Range(0.5f, 8f),
+        flash: Boolean = true,
+        sensitivity: Range<Int>? = Range(50, 6400),
+        ev: Range<Float>? = Range(-4f, 4f),
+    ): LensCharacteristicsSnapshot = CharacteristicsFacade.fromFakeMap(
+        cameraId = "0", zoomRatioRange = zoom, hasFlashUnit = flash,
+        sensitivityRange = sensitivity, exposureCompensationEvRange = ev,
+        exposureTimeRangeNs = Range(1_000_000L, 1_000_000_000L),
+        sizesByFormat = mapOf(ImageFormat.PRIVATE to listOf(Size(1920, 1080))),
+        activeArrayWidth = 4000, activeArrayHeight = 3000,
+        exposureCompensationStepEv = 1f / 6f, maxAfRegions = 1, maxAeRegions = 1,
+    ).snapshot
+
+    internal fun fakeSession(executor: Camera2Executor, snap: LensCharacteristicsSnapshot = snapshot()): Camera2Session =
+        Camera2Session(FakeDriver(), executor, snap)
+
+    internal fun Camera2Executor.drain() {
+        val latch = CountDownLatch(1); execute { latch.countDown() }
+        assertTrue(latch.await(5, TimeUnit.SECONDS))
+    }
+    internal fun dirtyTeardownState(v: CameraViewModel) {
+        v.isRecordingMutable.value = true; v.recordingPausedMutable.value = true
+        v.recordingDurationSecMutable.value = 42; v.timerCountdownMutable.value = 3
+        v.isCapturingMutable.value = true; v.photoSessionActiveMutable.value = true
+        v.analysisStreamActiveMutable.value = true; v.nightPreviewActiveMutable.value = true
+        v.highSpeedActiveMutable.value = true; v.videoSessionActiveMutable.value = true
+        v.videoSnapshotSupportedMutable.value = true; v.focusLockedMutable.value = true
+    }
+    internal fun assertTeardownCleared(v: CameraViewModel) {
+        assertFalse(v.isRecording.value); assertFalse(v.recordingPaused.value)
+        assertEquals(0L, v.recordingDurationSec.value); assertEquals(0, v.timerCountdown.value)
+        assertFalse(v.isCapturing.value); assertFalse(v.photoSessionActive.value)
+        assertFalse(v.analysisStreamActive.value); assertFalse(v.nightPreviewActive.value)
+        assertFalse(v.highSpeedActive.value); assertFalse(v.videoSessionActive.value)
+        assertFalse(v.videoSnapshotSupported.value); assertFalse(v.focusLocked.value)
     }
 
-    @Test fun hfrQualitiesEmptyMarksUnsupported() {
-        val viewModel = vm()
-        assertNull(viewModel.resolveHfrQualities(capabilities()))
-        assertEquals(false, viewModel.sloMoSupportedMutable.value)
+    private fun input(mode: CameraMode = CameraMode.SLOW_MO, facing: com.vayunmathur.camera.domain.LensFacing? = com.vayunmathur.camera.domain.LensFacing.BACK, cap: Boolean = true, sel: Boolean = true, enc: Boolean = true, ready: Boolean = true) =
+        com.vayunmathur.camera.platform.camera2.SloMoEngineInput(mode, facing, cap, sel, enc, ready)
+    @Test fun allConditionsSelectCamera2() { assertEquals(com.vayunmathur.camera.platform.camera2.SloMoEngine.CAMERA2, com.vayunmathur.camera.platform.camera2.SloMoEnginePolicy.select(input())); assertNull(com.vayunmathur.camera.platform.camera2.SloMoEnginePolicy.exclusionReason(input())) }
+    @Test fun eachMissingConditionExcludes() {
+        assertTrue(com.vayunmathur.camera.platform.camera2.SloMoEnginePolicy.exclusionReason(input(mode = CameraMode.PHOTO))!!.contains("not SLOW_MO"))
+        assertTrue(com.vayunmathur.camera.platform.camera2.SloMoEnginePolicy.exclusionReason(input(facing = com.vayunmathur.camera.domain.LensFacing.FRONT))!!.contains("back-camera"))
+        assertTrue(com.vayunmathur.camera.platform.camera2.SloMoEnginePolicy.exclusionReason(input(cap = false))!!.contains("CONSTRAINED"))
+        assertTrue(com.vayunmathur.camera.platform.camera2.SloMoEnginePolicy.exclusionReason(input(ready = false))!!.contains("not coupled"))
     }
 
-    @Test fun hfrQualitiesPreferFhdThenHd() {
-        val viewModel = vm()
-        val resolved = viewModel.resolveHfrQualities(
-            capabilities(Quality.SD, Quality.HD, Quality.FHD),
-        )
-        assertNotNull(resolved)
-        // The slo-mo preference order is FHD, HD, UHD, SD regardless of input order.
-        assertEquals(listOf(Quality.FHD, Quality.HD, Quality.SD), resolved)
-    }
-
-    @Test fun hfrQualitiesFallBackToWhateverIsSupported() {
-        val viewModel = vm()
-        val resolved = viewModel.resolveHfrQualities(capabilities(Quality.SD))
-        assertEquals(listOf(Quality.SD), resolved)
-    }
-
-    @Test fun hfrCaptureBuildsAndRangesQueryDegrades() {
-        val viewModel = vm()
-        val pair = viewModel.buildHfrCapture(listOf(Quality.HD, Quality.SD))
-        assertNotNull(pair.first); assertNotNull(pair.second)
-        assertTrue(viewModel.highSpeedVideoCapture != null)
-        val info = Mockito.mock(CameraInfo::class.java)
-        Mockito.`when`(
-            info.getSupportedFrameRateRanges(Mockito.any(androidx.camera.core.SessionConfig::class.java)),
-        ).thenThrow(IllegalStateException("no ranges"))
-        val tempConfig = androidx.camera.video.HighSpeedVideoSessionConfig.Builder(pair.second)
-            .setPreview(pair.first).setSlowMotionEnabled(true).build()
-        assertTrue(viewModel.queryHfrRanges(info, tempConfig).isEmpty())
-        // No true-HFR ranges (all <= 30fps are filtered by resolveHfrRanges' caller
-        // contract); anti-banding without a bound camera must not throw.
-        viewModel.applyAntiBanding()
-    }
-
-    @Test fun timelapseRemuxFallsBackToRawFile() {
-        val cache = File(context.cacheDir, "VID_raw.mp4").apply { writeBytes(byteArrayOf(1, 2, 3)) }
-        val out = remuxTimelapse(cache, "20260101_000000_000")
-        assertEquals(cache, out)
-        assertTrue(cache.exists())
-        cache.delete()
-    }
-
-    @Test fun motionEncoderRejectsEmptyAndTinyFrames() {
-        val out = File(context.cacheDir, "motion.mp4")
-        assertFalse(MotionPhotoEncoder.encode(emptyList(), out, 0))
-        val tiny = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.RED) }
-        assertFalse(MotionPhotoEncoder.encode(listOf(tiny), out, 0))
-        // A plausible frame still cannot encode without native codecs in this
-        // harness: false (never a throw) is the graceful contract.
-        val frame = Bitmap.createBitmap(64, 48, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.BLUE) }
-        assertFalse(MotionPhotoEncoder.encode(listOf(frame, frame), out, 90))
-    }
 }

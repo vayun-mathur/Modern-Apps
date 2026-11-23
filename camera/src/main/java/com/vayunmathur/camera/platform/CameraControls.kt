@@ -1,13 +1,9 @@
 package com.vayunmathur.camera.platform
 
 import com.vayunmathur.library.log.Log
-import androidx.camera.core.FocusMeteringAction
-import androidx.camera.core.ImageAnalysis
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.util.concurrent.Executor
 import kotlin.math.roundToInt
 
 /** Zoom-out floor for offering the wide-angle zoom-bar entry. */
@@ -32,33 +28,12 @@ fun CameraViewModel.onViewfinderZoomRatio(ratio: Float) {
 }
 
 fun CameraViewModel.setZoomRatio(ratio: Float) {
-    val cam = boundCamera
-    val zs = cam?.cameraInfo?.zoomState?.value
-    Log.dev(
-        "NightPreview",
-        "setZoomRatio() requested=$ratio clamped? min=${zs?.minZoomRatio} max=${zs?.maxZoomRatio} " +
-            "current=${zs?.zoomRatio} nightPreviewActive=${nightPreviewActiveMutable.value} " +
-            "photoActive=${photoSessionActiveMutable.value} boundCamera=${cam != null}"
-    )
-    val clamped = zs?.let {
-        ratio.coerceIn(it.minZoomRatio, it.maxZoomRatio)
-    } ?: ratio
-    if (clamped != ratio) {
-        Log.status(
-            "NightPreview",
-            "setZoomRatio() CLAMPED $ratio -> $clamped due to zoomState min/max – " +
-                "vendor NIGHT often reports max=1x, causing bar to show only 1x"
-        )
-    }
+    val session = activeCamera2Session
+    val range = session?.characteristics?.zoomRatioRange
+    val clamped = if (range != null) ratio.coerceIn(range.lower, range.upper) else ratio
     zoomRatioMutable.value = clamped
     viewModelScope.launch { ds.setString("camera_zoom_ratio", clamped.toString()) }
-    try {
-        cam?.cameraControl?.setZoomRatio(clamped)
-    } catch (e: IllegalStateException) {
-        Log.error("NightPreview", "setZoomRatio() setZoomRatio() threw (was hidden before)", e)
-    } catch (e: IllegalArgumentException) {
-        Log.error("NightPreview", "setZoomRatio() setZoomRatio() threw (was hidden before)", e)
-    }
+    session?.setZoomRatio(clamped)
 }
 
 /**
@@ -70,13 +45,7 @@ fun CameraViewModel.setZoomRatio(ratio: Float) {
 internal fun CameraViewModel.restoreZoom(minZoom: Float, maxZoom: Float) {
     val desired = zoomRatioMutable.value.coerceIn(minZoom, maxZoom)
     zoomRatioMutable.value = desired
-    try {
-        boundCamera?.cameraControl?.setZoomRatio(desired)
-    } catch (e: IllegalStateException) {
-        Log.error("NightPreview", "restoreZoom() setZoomRatio() threw", e)
-    } catch (e: IllegalArgumentException) {
-        Log.error("NightPreview", "restoreZoom() setZoomRatio() threw", e)
-    }
+    activeCamera2Session?.setZoomRatio(desired)
 }
 
 fun CameraViewModel.updateZoomLevels(minZoom: Float, maxZoom: Float) {
@@ -104,111 +73,57 @@ fun CameraViewModel.updateZoomLevels(minZoom: Float, maxZoom: Float) {
     availableZoomLevelsMutable.value = levels
 }
 
-fun CameraViewModel.startFocusAndMetering(action: FocusMeteringAction): Boolean {
-    // A fresh tap clears any existing AE/AF lock.
-    focusLockedMutable.value = false
-    return runFocusAndMetering(action, locked = false)
-}
-
 /**
- * Locks focus + exposure at the metered point by disabling auto-cancel, so 3A stays put until
- * the user taps again (long-press-to-lock). Sets [focusLocked] for the on-screen indicator.
+ * Tap-to-focus entry for the overlay gesture layer: routes the tap to
+ * the live Camera2 session's metering transform. Returns false when no
+ * session is live (the tap is dropped, as before). [locked] keeps the
+ * metered point until the next tap (the session holds AF/AE regions
+ * until cleared or replaced — there is no auto-cancel timer on this
+ * path, so a plain tap also persists; the focus ring UI reflects it).
  */
-fun CameraViewModel.lockFocusAndMetering(action: FocusMeteringAction): Boolean {
-    val submitted = runFocusAndMetering(action, locked = true)
-    if (submitted) focusLockedMutable.value = true
-    return submitted
-}
-
-/**
- * Shared tap/long-press metering dispatch. Returns false (after logging) when
- * there is no bound camera or the control throws synchronously — the silent
- * `boundCamera?.` no-op this replaces gave the user no focus and no signal.
- *
- * The returned future is observed, not discarded: an asynchronous failure
- * (unsupported metering point, camera closed mid-tap) falls back to the
- * default continuous AF/AE via [fallbackToDefaultMetering] instead of leaving
- * metering in whatever half-applied state the failure stopped at. A focus
- * attempt that completes but does not converge ([androidx.camera.core
- * .FocusMeteringResult.isFocusSuccessful] false) is NOT a failure: metering
- * was still applied at the point, so it is only logged. Cancellation is the
- * normal superseded-by-the-next-tap case and needs no fallback either.
- */
-internal fun CameraViewModel.runFocusAndMetering(action: FocusMeteringAction, locked: Boolean): Boolean {
-    val cam = boundCamera
-    if (cam == null) {
-        Log.status("TapToFocus", "focus requested with no bound camera (locked=$locked); tap dropped")
+fun CameraViewModel.tapToFocusAt(xFraction: Float, yFraction: Float, locked: Boolean): Boolean {
+    val session = activeCamera2Session ?: run {
+        Log.status("TapToFocus", "focus requested with no live Camera2 session (locked=$locked); tap dropped")
         return false
     }
-    val future: com.google.common.util.concurrent.ListenableFuture<androidx.camera.core.FocusMeteringResult>? = try {
-        cam.cameraControl.startFocusAndMetering(action)
-    } catch (e: Exception) {
-        Log.status("TapToFocus", "startFocusAndMetering threw (locked=$locked); falling back to default metering", e)
-        if (locked) focusLockedMutable.value = false
-        fallbackToDefaultMetering()
-        return false
-    }
-    // Real CameraX never returns null; fakes/mocks in unit tests may.
-    if (future == null) return true
-    com.google.common.util.concurrent.Futures.addCallback(
-        future,
-        object : com.google.common.util.concurrent.FutureCallback<androidx.camera.core.FocusMeteringResult> {
-            override fun onSuccess(result: androidx.camera.core.FocusMeteringResult?) {
-                if (result != null && !result.isFocusSuccessful) {
-                    Log.dev("TapToFocus", "focus did not converge at metered point (locked=$locked)")
-                }
-            }
-
-            override fun onFailure(t: Throwable) {
-                if (t is androidx.camera.core.CameraControl.OperationCanceledException) {
-                    Log.dev("TapToFocus", "focus superseded by a newer request (locked=$locked)")
-                    return
-                }
-                Log.status("TapToFocus", "focus metering failed (locked=$locked); falling back to default metering", t)
-                if (locked) focusLockedMutable.value = false
-                fallbackToDefaultMetering()
-            }
-        },
-        ContextCompat.getMainExecutor(app),
-    )
+    session.tapToFocus(xFraction, yFraction)
+    focusLockedMutable.value = locked
     return true
 }
 
-/**
- * Returns metering to the camera's default continuous AF/AE (the centre-
- * weighted behaviour a plain `cancelFocusAndMetering` restores) after a
- * failed tap. Best-effort: a dead camera must not crash the tap path.
- */
+fun CameraViewModel.startFocusAndMeteringAt(xFraction: Float, yFraction: Float): Boolean {
+    focusLockedMutable.value = false
+    return tapToFocusAt(xFraction, yFraction, locked = false)
+}
+
+fun CameraViewModel.lockFocusAndMeteringAt(xFraction: Float, yFraction: Float): Boolean =
+    tapToFocusAt(xFraction, yFraction, locked = true)
+
+/** Returns metering to the session's default continuous AF/AE. */
 internal fun CameraViewModel.fallbackToDefaultMetering() {
-    try {
-        boundCamera?.cameraControl?.cancelFocusAndMetering()
-    } catch (e: Exception) {
-        Log.status("TapToFocus", "fallback cancelFocusAndMetering threw", e)
-    }
+    activeCamera2Session?.clearMetering()
 }
 
 fun CameraViewModel.clearFocusLock() {
-    try {
-        boundCamera?.cameraControl?.cancelFocusAndMetering()
-    } catch (e: Exception) {
-        Log.status("TapToFocus", "cancelFocusAndMetering threw while clearing lock", e)
-    }
+    activeCamera2Session?.clearMetering()
     focusLockedMutable.value = false
 }
 
 fun CameraViewModel.enableTorch(enabled: Boolean) {
-    boundCamera?.cameraControl?.enableTorch(enabled)
+    activeCamera2Session?.setTorch(enabled)
 }
 
 fun CameraViewModel.applyExposureCompensation(value: Float) {
-    val cam = boundCamera ?: return
-    val range = cam.cameraInfo.exposureState.exposureCompensationRange
-    // The slider is normalized to -1..1, so scale each half against its own
-    // end of the (usually asymmetric) range; round, never truncate, so the
-    // midpoint of an odd-sized half lands on the nearer index.
-    val scaled = if (value >= 0f) value * range.upper else -value * range.lower
-    val index = scaled.roundToInt().coerceIn(range.lower, range.upper)
-    cam.cameraControl.setExposureCompensationIndex(index)
+    val session = activeCamera2Session ?: return
+    // The slider is normalized to -1..1; scale each half against its own
+    // end of the lens's EV range (as the CameraX index path did).
+    val range = session.characteristics.exposureCompensationEvRange
+    val ev = if (range != null) {
+        if (value >= 0f) value * range.upper else -value * range.lower
+    } else {
+        value * 2f
+    }
+    session.setExposureCompEv(ev)
 }
 
 /**
@@ -216,63 +131,28 @@ fun CameraViewModel.applyExposureCompensation(value: Float) {
  * The ScreenFlash is attached first (and cleared on hardware lenses) so a
  * FLASH_MODE_SCREEN capture never fires without its UI mechanism in place.
  */
+/**
+ * Flash mode is pushed onto the Camera2 session by the preview
+ * composable (flashSetting parameter) and resolved per still by
+ * StillCapturePlanner; this no-op keeps the legacy effect call sites
+ * compiling until they are removed with the session layer.
+ */
 fun CameraViewModel.applyImageCaptureFlashMode() {
-    val capture = imageCapture ?: return
-    capture.setScreenFlash(getScreenFlashForCapture())
-    capture.flashMode = getImageCaptureFlashMode()
-}
-
-/**
- * Receives the [androidx.camera.core.ImageCapture.ScreenFlash] created by
- * the Compose viewfinder (its overlay + window-brightness mechanism) and
- * re-applies it to the bound capture. Brightness is CameraX's job, not ours.
- */
-fun CameraViewModel.setScreenFlash(screenFlash: androidx.camera.core.ImageCapture.ScreenFlash?) {
-    this.screenFlash = screenFlash
-    applyImageCaptureFlashMode()
-}
-
-/** Swaps the analyzer on the bound ImageAnalysis without rebinding. */
-fun CameraViewModel.setImageAnalyzer(analyzer: ImageAnalysis.Analyzer?) {
-    setImageAnalyzer(analyzer, ContextCompat.getMainExecutor(app))
-}
-
-fun CameraViewModel.setImageAnalyzer(analyzer: ImageAnalysis.Analyzer?, executor: Executor) {
-    desiredAnalyzer = analyzer
-    desiredAnalyzerExecutor = executor
-    attachDesiredAnalyzer()
-}
-
-/** Convenience for portrait bokeh – always runs off the dedicated bokeh thread. */
-fun CameraViewModel.setBokehAnalyzer(analyzer: ImageAnalysis.Analyzer?) {
-    setImageAnalyzer(analyzer, bokehExecutor)
-}
-
-/** Convenience for the photo stream – always runs off the dedicated analysis thread. */
-fun CameraViewModel.setPhotoAnalyzer(analyzer: ImageAnalysis.Analyzer?) {
-    setImageAnalyzer(analyzer, analysisExecutor)
-}
-
-/**
- * Pushes [desiredAnalyzer] onto whatever ImageAnalysis is currently bound. A no-op while none
- * is, which is why the desired analyzer survives teardown: the next successful bind calls this
- * again and picks it back up.
- */
-internal fun CameraViewModel.attachDesiredAnalyzer() {
-    val analysis = imageAnalysis ?: return
-    val analyzer = desiredAnalyzer
-    val executor = desiredAnalyzerExecutor
-    if (analyzer == null || executor == null) analysis.clearAnalyzer()
-    else analysis.setAnalyzer(executor, analyzer)
+    activeCamera2Session?.setFlashSetting(
+        when (flashModeMutable.value) {
+            FlashMode.ON -> com.vayunmathur.camera.domain.FlashSetting.ON
+            FlashMode.AUTO -> com.vayunmathur.camera.domain.FlashSetting.AUTO
+            FlashMode.OFF -> com.vayunmathur.camera.domain.FlashSetting.OFF
+        }
+    )
 }
 
 /** Recording-timer tick (1s). */
 private const val RECORDING_TIMER_TICK_MS = 1000L
 
-/** Publishes whether the session just bound has an analysis stream, and re-arms the analyzer. */
+/** Publishes whether the live session carries an analysis stream. */
 internal fun CameraViewModel.onSessionBound() {
-    analysisStreamActiveMutable.value = imageAnalysis != null
-    attachDesiredAnalyzer()
+    analysisStreamActiveMutable.value = analysisSink != null
 }
 
 internal fun CameraViewModel.startRecordingTimer() {

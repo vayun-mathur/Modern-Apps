@@ -3,8 +3,6 @@ package com.vayunmathur.camera.ui
 import android.content.Context
 import com.vayunmathur.library.log.Log
 import android.view.OrientationEventListener
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.ImageAnalysis
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -28,21 +26,14 @@ import com.vayunmathur.camera.platform.enableTorch
 import com.vayunmathur.camera.platform.onLuminance
 import com.vayunmathur.camera.platform.refreshNightExtensionUsable
 import com.vayunmathur.camera.platform.runSessionBindWithRetry
-import com.vayunmathur.camera.platform.setBokehAnalyzer
-import com.vayunmathur.camera.platform.setImageAnalyzer
-import com.vayunmathur.camera.platform.setPhotoAnalyzer
 import com.vayunmathur.camera.platform.setQrResult
-import com.vayunmathur.camera.platform.setupHighSpeedSession
-import com.vayunmathur.camera.platform.setupNightPreviewSession
-import com.vayunmathur.camera.platform.setupPanoramaSession
-import com.vayunmathur.camera.platform.setupPhotoSession
-import com.vayunmathur.camera.platform.setupPortraitSession
-import com.vayunmathur.camera.platform.setupVideoSession
+import com.vayunmathur.camera.platform.setAnalysisSink
+import com.vayunmathur.camera.platform.onSceneMotionSample
+import com.vayunmathur.camera.platform.camera2.toBitmapFromPlanes
 import com.vayunmathur.camera.platform.teardownSession
 import com.vayunmathur.camera.data.updateLocation
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
-import com.vayunmathur.camera.platform.ManualLifecycleOwner
 
 /**
  * All side-effects owned by [CameraScreen]: orientation tracking, one-shot VM sync,
@@ -126,16 +117,6 @@ internal fun CameraScreenEffects(
     LaunchedEffect(selectedLens, cameraMode) {
         viewModel.clearCamera2NightFallback()
     }
-    val surfaceRequest = state.surfaceRequest
-    LaunchedEffect(surfaceRequest) {
-        Log.dev("NightPreview", "CameraScreen surfaceRequest changed res=${surfaceRequest?.resolution} frameType=${surfaceRequest?.javaClass?.simpleName} useNightPreview=$useNightPreview sessionKind=$sessionKind thread=${Thread.currentThread().name} lensFacing=${lensFacing}")
-        if (surfaceRequest == null && useNightPreview) {
-            Log.status("NightPreview", "CameraScreen WARNING: surfaceRequest is NULL while useNightPreview=true – preview will be black until Provider re-emits. This is the black-frame trap you described: teardown -> delay(250) -> setupNightPreviewSession() tears down standard photo session surface before extension emits!")
-        }
-        if (surfaceRequest == null && !useNightPreview) {
-            Log.status("NightPreview", "CameraScreen tracing maybe delayed rebind? surface null while normal photo – expected during 250ms delay window")
-        }
-    }
     LaunchedEffect(state.availableZoomLevels) {
         Log.dev("NightPreview", "CameraScreen availableZoomLevels changed=${state.availableZoomLevels} currentZoom=${state.zoomRatio} useNightPreview=$useNightPreview – vendor NIGHT often reports only [1x], making zoom bar appear to 'disappear' except 1x")
     }
@@ -144,50 +125,49 @@ internal fun CameraScreenEffects(
     // re-applied to the freshly-bound ImageAnalysis after every (re)bind (mode switch / flip), and
     // on lensFacing + selectedLens to match the DisposableEffect below, which detaches on a
     // flip or lens switch.
-    LaunchedEffect(cameraMode, state.photoSessionActive, lensFacing, selectedLens) {
+    LaunchedEffect(cameraMode, lensFacing, selectedLens) {
         when {
             cameraMode == CameraMode.SLOW_MO -> {
                 state.maskBitmap = null
-                viewModel.setImageAnalyzer(null)
+                viewModel.setAnalysisSink(null)
                 viewModel.setQrResult(null)
             }
-            state.isPhotoType -> {
-                when (cameraMode) {
-                    CameraMode.PORTRAIT -> {
-                        // Analyzer lifecycle (create/close) managed by DisposableEffect below.
-                    }
-                    CameraMode.PANORAMA, CameraMode.PHOTOSPHERE -> {
-                        state.maskBitmap = null
-                        viewModel.setImageAnalyzer(
-                            ImageAnalysis.Analyzer { imageProxy ->
-                                // Atomic publish; captureFrame() takes ownership exactly once, and
-                                // offerFrame() recycles any undelivered previous bitmap (no leak,
-                                // no use-after-free across the analyzer/sensor threads).
-                                viewModel.panoramaEngine.offerFrame(
-                                    imageProxy.toBitmap(),
-                                    imageProxy.imageInfo.rotationDegrees
-                                )
-                                imageProxy.close()
-                            }
-                        )
-                    }
-                    else -> {
-                        state.maskBitmap = null
-                        viewModel.setPhotoAnalyzer(
-                            PhotoAnalyzer(
-                                onLuminance = { viewModel.onLuminance(it) },
-                                onQrDetected = { viewModel.setQrResult(it) },
-                                // Motion-Photo ring buffer only in plain PHOTO mode.
-                                onMotionFrame = if (cameraMode == CameraMode.PHOTO) {
-                                    { bmp, ts, rot -> viewModel.addMotionFrame(bmp, ts, rot) }
-                                } else null
-                            )
-                        )
+            cameraMode == CameraMode.PORTRAIT -> {
+                // Bokeh sink lifecycle (create/close) managed by DisposableEffect below.
+            }
+            cameraMode == CameraMode.PANORAMA || cameraMode == CameraMode.PHOTOSPHERE -> {
+                state.maskBitmap = null
+                // Converted bitmaps off the Camera2 analysis stream;
+                // offerFrame takes ownership and recycles undelivered
+                // previous bitmaps (no leak across threads).
+                viewModel.setAnalysisSink { frame ->
+                    frame.toBitmapFromPlanes()?.let { bmp ->
+                        viewModel.panoramaEngine.offerFrame(bmp, frame.rotationDegrees)
                     }
                 }
             }
+            state.isVideoType -> {
+                state.maskBitmap = null
+                val motion = com.vayunmathur.camera.platform.VideoMotionAnalyzer { sample ->
+                    viewModel.onSceneMotionSample(sample)
+                }
+                viewModel.setAnalysisSink { frame -> motion.onYPlane(frame.yPlane) }
+            }
+            state.isPhotoType -> {
+                state.maskBitmap = null
+                val analyzer = PhotoAnalyzer(
+                    onLuminance = { viewModel.onLuminance(it) },
+                    onQrDetected = { viewModel.setQrResult(it) },
+                    // Motion-Photo ring buffer only in plain PHOTO mode.
+                    onMotionFrame = if (cameraMode == CameraMode.PHOTO) {
+                        { bmp, ts, rot -> viewModel.addMotionFrame(bmp, ts, rot) }
+                    } else null,
+                )
+                viewModel.setAnalysisSink(analyzer::onAnalysisFrame)
+            }
             else -> {
                 state.maskBitmap = null
+                viewModel.setAnalysisSink(null)
                 viewModel.setQrResult(null)
             }
         }
@@ -205,7 +185,7 @@ internal fun CameraScreenEffects(
         val analyzer = if (cameraMode == CameraMode.PORTRAIT) {
             BokehAnalyzer(
                 context,
-                isFrontFacing = lensFacing == CameraSelector.LENS_FACING_FRONT
+                isFrontFacing = lensFacing == android.hardware.camera2.CameraMetadata.LENS_FACING_FRONT
             ) { mask ->
                 Log.dev("BokehDebug", "mask arrived ${mask.width}x${mask.height} recycled=${mask.isRecycled}")
                 if (mask.isRecycled) return@BokehAnalyzer
@@ -222,8 +202,14 @@ internal fun CameraScreenEffects(
                     state.maskBitmap = mask
                     Log.dev("BokehDebug", "mask stored ${mask.width}x${mask.height}")
                 }
-            }.also {
-                viewModel.setBokehAnalyzer(it)
+            }.also { bokeh ->
+                // Converted bitmaps off the Camera2 analysis stream,
+                // rotated by the frame's metadata (BokehAnalyzer.onFrame).
+                viewModel.setAnalysisSink { frame ->
+                    frame.toBitmapFromPlanes()?.let { bmp ->
+                        bokeh.onFrame(bmp, frame.rotationDegrees)
+                    }
+                }
             }
         } else null
         onDispose {
@@ -231,7 +217,7 @@ internal fun CameraScreenEffects(
             // analyzer-selection effect above does not, so an unconditional clear stripped
             // PhotoAnalyzer off the photo stream on every camera flip.
             if (analyzer != null) {
-                viewModel.setImageAnalyzer(null)
+                viewModel.setAnalysisSink(null)
                 analyzer.close()
             }
             // Post recycle to avoid racing with graphicsLayer reading maskBitmap
@@ -275,69 +261,18 @@ internal fun CameraScreenEffects(
             lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.sessionBindFailedMutable.value = false
                 viewModel.teardownSession()
+                // Session-active flags the analyzer/UI effects key on;
+                // the Camera2 composables own the actual sessions.
+                viewModel.photoSessionActiveMutable.value =
+                    sessionKind == SessionKind.PHOTO || sessionKind == SessionKind.PORTRAIT ||
+                    sessionKind == SessionKind.PANORAMA
+                viewModel.videoSessionActiveMutable.value = sessionKind == SessionKind.VIDEO
+                viewModel.highSpeedActiveMutable.value = sessionKind == SessionKind.HIGH_SPEED
+                viewModel.nightPreviewActiveMutable.value = useCamera2NightPreview
                 try { awaitCancellation() } finally { viewModel.teardownSession() }
             }
             Log.dev("NightPreview", "CameraScreen repeatOnLifecycle block EXIT – lifecycle dropped below STARTED")
             return@LaunchedEffect
-        }
-        Log.dev("NightPreview", "CameraScreen session LaunchedEffect START keys zsl=$zslKey lensFacing=$lensFacing selectedLens=${selectedLens?.labelKey} sessionKind=$sessionKind useNightPreview=$useNightPreview codec=${bindSettings.videoCodec} audioCodec=${bindSettings.audioCodec} audio=${bindSettings.audioInputSource} mirror=${bindSettings.mirrorFront} lifecycle=${lifecycleOwner.lifecycle.currentState} thread=${Thread.currentThread().name}")
-        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            // A fresh (re)bind supersedes any earlier exhausted-retry failure.
-            viewModel.sessionBindFailedMutable.value = false
-            // Bounded retry: a failed setup used to park here on a black
-            // preview until the next key change. Retry twice with a short
-            // delay (teardown before each attempt clears a partial bind),
-            // then surface a visible error with a manual retry instead.
-            // Cancellation (key change / lifecycle drop) aborts the ladder.
-            val bindSuccess = runSessionBindWithRetry {
-                Log.dev("NightPreview", "CameraScreen repeatOnLifecycle STARTED – calling teardownSession()")
-                viewModel.teardownSession()
-                // Brief yield so the previous session's surface detaches before the next binds; short
-                // enough that a mode switch reads as instant, long enough to avoid a bind-over-teardown race.
-                delay(40)
-                val bindStart = System.currentTimeMillis()
-                val success = try {
-                    when (sessionKind) {
-                        SessionKind.HIGH_SPEED -> viewModel.setupHighSpeedSession()
-                        SessionKind.VIDEO -> viewModel.setupVideoSession()
-                        SessionKind.PANORAMA -> viewModel.setupPanoramaSession()
-                        SessionKind.PORTRAIT -> viewModel.setupPortraitSession()
-                        SessionKind.PHOTO ->
-                            if (useNightPreview) viewModel.setupNightPreviewSession()
-                            else viewModel.setupPhotoSession()
-                    }
-                } catch (e: IllegalStateException) {
-                    Log.error("NightPreview", "CameraScreen session binding THREW (was not logged before) kind=$sessionKind useNightPreview=$useNightPreview nightExtAvailable=${state.nightExtAvailable}", e)
-                    false
-                } catch (e: IllegalArgumentException) {
-                    Log.error("NightPreview", "CameraScreen session binding THREW (was not logged before) kind=$sessionKind useNightPreview=$useNightPreview nightExtAvailable=${state.nightExtAvailable}", e)
-                    false
-                }
-                Log.dev("NightPreview", "CameraScreen session bind finished success=$success took=${System.currentTimeMillis() - bindStart}ms surface after=${viewModel.surfaceRequest.value?.resolution} zoomLevels=${viewModel.availableZoomLevels.value} zoomRatio=${viewModel.zoomRatio.value}")
-                success
-            }
-            if (!bindSuccess) {
-                Log.error("NightPreview", "CameraScreen BIND FAILED after retries – showing bind error instead of a solid black preview")
-                viewModel.sessionBindFailedMutable.value = true
-            }
-            try {
-                awaitCancellation()
-            } finally {
-                Log.dev("NightPreview", "CameraScreen session coroutine cancelled/finished, calling teardownSession()")
-                viewModel.teardownSession()
-            }
-        }
-        Log.dev("NightPreview", "CameraScreen repeatOnLifecycle block EXIT – lifecycle dropped below STARTED")
-    }
-
-    // Hardware volume-key shutter.
-    val currentCapture = rememberUpdatedState(onCapture)
-    LaunchedEffect(Unit) {
-        viewModel.foregroundRoute = "camera"
-        try {
-            viewModel.shutterEvents.collect { currentCapture.value() }
-        } finally {
-            viewModel.foregroundRoute = null
         }
     }
 }

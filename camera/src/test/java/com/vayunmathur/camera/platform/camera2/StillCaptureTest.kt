@@ -160,29 +160,37 @@ class StillCaptureTest {
 
     // -- policy ---------------------------------------------------------------
 
-    @Test fun policyAllowsOnlyPlainPhotoStillsBehindGate() {
-        val plain = StillEngineInput(
-            camera2Enabled = true, mode = CameraMode.PHOTO, hasJpegOutput = true,
-        )
+    @Test fun policyPlainPhotoUsesCamera2AndRoutesEverythingElse() {
+        val plain = StillEngineInput(mode = CameraMode.PHOTO, hasJpegOutput = true)
+        assertEquals(StillEngine.CAMERA2, StillEnginePolicy.select(plain))
         assertTrue(StillEnginePolicy.usesCamera2(plain))
         assertNull(StillEnginePolicy.exclusionReason(plain))
 
-        assertFalse(StillEnginePolicy.usesCamera2(plain.copy(camera2Enabled = false)))
+        // No off switch: without a JPEG output the shot is routed, not demoted.
+        assertEquals(
+            StillEngine.CAMERA2_ROUTED,
+            StillEnginePolicy.select(plain.copy(hasJpegOutput = false)),
+        )
         assertFalse(StillEnginePolicy.usesCamera2(plain.copy(hasJpegOutput = false)))
         for (mode in CameraMode.entries - CameraMode.PHOTO) {
-            assertFalse(
-                StillEnginePolicy.usesCamera2(plain.copy(mode = mode)),
-                "$mode must stay on CameraX",
+            assertEquals(
+                StillEngine.CAMERA2_ROUTED,
+                StillEnginePolicy.select(plain.copy(mode = mode)),
+                "$mode takes its dedicated Camera2 route",
             )
         }
-        assertTrue(
-            StillEnginePolicy.exclusionReason(plain.copy(nightRoute = true))
-                .orEmpty().contains("night"),
-        )
+        val nightReason = StillEnginePolicy.exclusionReason(plain.copy(nightRoute = true)).orEmpty()
+        assertTrue(nightReason.contains("night captures take the night route"), nightReason)
         assertFalse(StillEnginePolicy.usesCamera2(plain.copy(processedRoute = true)))
         assertFalse(StillEnginePolicy.usesCamera2(plain.copy(motionPhotoRoute = true)))
         assertFalse(StillEnginePolicy.usesCamera2(plain.copy(captureForResult = true)))
         assertFalse(StillEnginePolicy.usesCamera2(plain.copy(burst = true)))
+        for (routed in listOf(
+            plain.copy(processedRoute = true), plain.copy(motionPhotoRoute = true),
+            plain.copy(captureForResult = true), plain.copy(burst = true),
+        )) {
+            assertEquals(StillEngine.CAMERA2_ROUTED, StillEnginePolicy.select(routed))
+        }
     }
 
     // -- session pairing over fakes --------------------------------------------

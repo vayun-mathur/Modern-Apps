@@ -1,87 +1,104 @@
 package com.vayunmathur.camera.platform
 
-import androidx.camera.core.CameraSelector
-import androidx.camera.extensions.ExtensionMode
-import androidx.camera.extensions.ExtensionsManager
+import android.graphics.ImageFormat
+import android.util.Range
+import android.util.Size
+import android.view.Surface
 import androidx.test.core.app.ApplicationProvider
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeoutOrNull
+import com.vayunmathur.camera.platform.camera2.Camera2Driver
+import com.vayunmathur.camera.platform.camera2.Camera2Executor
+import com.vayunmathur.camera.platform.camera2.Camera2Session
+import com.vayunmathur.camera.platform.camera2.CaptureSessionHandle
+import com.vayunmathur.camera.platform.camera2.CharacteristicsFacade
+import com.vayunmathur.camera.platform.camera2.DeviceCallback
+import com.vayunmathur.camera.platform.camera2.DeviceHandle
+import com.vayunmathur.camera.platform.camera2.CaptureSessionCallback
+import com.vayunmathur.camera.platform.camera2.FrameSize
+import com.vayunmathur.camera.platform.camera2.LensCharacteristicsSnapshot
+import com.vayunmathur.camera.platform.camera2.ResolvedRequestParams
+import com.vayunmathur.camera.platform.camera2.StillOutput
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlinx.coroutines.runBlocking
 import org.junit.runner.RunWith
-import org.mockito.Mockito
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.robolectric.annotation.GraphicsMode
 
-/** Night session entry points with a cached (mock) ExtensionsManager. */
-@GraphicsMode(GraphicsMode.Mode.NATIVE)
+/** Camera2 contract: night decision from facade probe. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class NightSessionEntryExtraTest {
 
-    private val context = ApplicationProvider.getApplicationContext<android.content.Context>()
-    private fun vm() = CameraViewModel(context.applicationContext as android.app.Application)
+    private fun vm() = CameraViewModel(ApplicationProvider.getApplicationContext())
 
-    private fun anySelector(): CameraSelector =
-        Mockito.any(CameraSelector::class.java) ?: CameraSelector.DEFAULT_BACK_CAMERA
+    private class FakeHandle : CaptureSessionHandle {
+        val repeating = mutableListOf<ResolvedRequestParams>()
+        override fun setRepeatingPreview(params: ResolvedRequestParams, target: Surface) { repeating += params }
+        override fun captureStill(params: com.vayunmathur.camera.platform.camera2.ResolvedStillParams, stillTarget: Surface, callback: com.vayunmathur.camera.platform.camera2.StillResultCallback) { callback.onCompleted(com.vayunmathur.camera.platform.camera2.RawStillMetadata()) }
+        override fun close() {}
+    }
+    private class FakeDevice : DeviceHandle {
+        override val cameraId: String = "0"
+        override fun createCaptureSession(surfaces: List<Surface>, callback: CaptureSessionCallback) { callback.onConfigured(FakeHandle()) }
+        override fun close() {}
+    }
+    private class FakeDriver : Camera2Driver {
+        override fun openCamera(cameraId: String, callback: DeviceCallback) { callback.onOpened(FakeDevice()) }
+        override fun createStillOutput(size: FrameSize): StillOutput? = null
+    }
+    internal fun snapshot(
+        zoom: Range<Float>? = Range(0.5f, 8f),
+        flash: Boolean = true,
+        sensitivity: Range<Int>? = Range(50, 6400),
+        ev: Range<Float>? = Range(-4f, 4f),
+    ): LensCharacteristicsSnapshot = CharacteristicsFacade.fromFakeMap(
+        cameraId = "0", zoomRatioRange = zoom, hasFlashUnit = flash,
+        sensitivityRange = sensitivity, exposureCompensationEvRange = ev,
+        exposureTimeRangeNs = Range(1_000_000L, 1_000_000_000L),
+        sizesByFormat = mapOf(ImageFormat.PRIVATE to listOf(Size(1920, 1080))),
+        activeArrayWidth = 4000, activeArrayHeight = 3000,
+        exposureCompensationStepEv = 1f / 6f, maxAfRegions = 1, maxAeRegions = 1,
+    ).snapshot
 
-    private fun mgr(available: Boolean, analysis: Boolean = false): ExtensionsManager {
-        val mgr = Mockito.mock(ExtensionsManager::class.java)
-        Mockito.`when`(mgr.isExtensionAvailable(anySelector(), Mockito.eq(ExtensionMode.NIGHT)))
-            .thenReturn(available)
-        Mockito.`when`(mgr.isImageAnalysisSupported(anySelector(), Mockito.eq(ExtensionMode.NIGHT)))
-            .thenReturn(analysis)
-        Mockito.`when`(mgr.getExtensionEnabledCameraSelector(anySelector(), Mockito.eq(ExtensionMode.NIGHT)))
-            .thenReturn(CameraSelector.DEFAULT_BACK_CAMERA)
-        return mgr
+    internal fun fakeSession(executor: Camera2Executor, snap: LensCharacteristicsSnapshot = snapshot()): Camera2Session =
+        Camera2Session(FakeDriver(), executor, snap)
+
+    internal fun Camera2Executor.drain() {
+        val latch = CountDownLatch(1); execute { latch.countDown() }
+        assertTrue(latch.await(5, TimeUnit.SECONDS))
+    }
+    internal fun dirtyTeardownState(v: CameraViewModel) {
+        v.isRecordingMutable.value = true; v.recordingPausedMutable.value = true
+        v.recordingDurationSecMutable.value = 42; v.timerCountdownMutable.value = 3
+        v.isCapturingMutable.value = true; v.photoSessionActiveMutable.value = true
+        v.analysisStreamActiveMutable.value = true; v.nightPreviewActiveMutable.value = true
+        v.highSpeedActiveMutable.value = true; v.videoSessionActiveMutable.value = true
+        v.videoSnapshotSupportedMutable.value = true; v.focusLockedMutable.value = true
+    }
+    internal fun assertTeardownCleared(v: CameraViewModel) {
+        assertFalse(v.isRecording.value); assertFalse(v.recordingPaused.value)
+        assertEquals(0L, v.recordingDurationSec.value); assertEquals(0, v.timerCountdown.value)
+        assertFalse(v.isCapturing.value); assertFalse(v.photoSessionActive.value)
+        assertFalse(v.analysisStreamActive.value); assertFalse(v.nightPreviewActive.value)
+        assertFalse(v.highSpeedActive.value); assertFalse(v.videoSessionActive.value)
+        assertFalse(v.videoSnapshotSupported.value); assertFalse(v.focusLocked.value)
     }
 
-    @Test fun nightPreviewUnavailableFallsBackToPhoto() = runBlocking {
-        val viewModel = vm()
-        viewModel.extensionsManager = mgr(available = false)
-        assertEquals(false, withTimeoutOrNull(20_000) { viewModel.setupNightPreviewSession() })
-        assertFalse(viewModel.nightPreviewActiveMutable.value)
+    @Test fun nightDecisionUsesExtensionWhenProbed() {
+        val night = android.hardware.camera2.CameraExtensionCharacteristics.EXTENSION_NIGHT
+        val facade = CharacteristicsFacade.fromFakeMap(cameraId="0", availableExtensionModes=listOf(night), extensionSupport=mapOf(night to com.vayunmathur.camera.platform.camera2.ExtensionModeSupport(night, jpegSizes=listOf(Size(1920,1080)), previewSizes=listOf(Size(1280,720)))))
+        val v = vm(); v.cameraModeMutable.value = CameraMode.PHOTO
+        assertEquals(com.vayunmathur.camera.platform.camera2.NightEngine.CAMERA2_EXTENSION, v.camera2NightDecision(facade))
+    }
+    @Test fun nightDecisionFallsBackWithoutExtension() {
+        val facade = CharacteristicsFacade.fromFakeMap(cameraId="0"); val v = vm(); v.cameraModeMutable.value = CameraMode.PHOTO
+        assertEquals(com.vayunmathur.camera.platform.camera2.NightEngine.OWN_BURST, v.camera2NightDecision(facade))
     }
 
-    @Test fun nightPreviewBindFailureFallsBack() = runBlocking {
-        val viewModel = vm()
-        viewModel.extensionsManager = mgr(available = true, analysis = true)
-        // The extension selector resolves, but the real provider has no
-        // camera to bind: setup must fall back and report false.
-        assertEquals(false, withTimeoutOrNull(20_000) { viewModel.setupNightPreviewSession() })
-        assertFalse(viewModel.nightPreviewActiveMutable.value)
-    }
-
-    @Test fun nightExtensionCaptureWithCachedManagerRestores() = runBlocking {
-        val viewModel = vm()
-        viewModel.extensionsManager = mgr(available = true, analysis = false)
-        withTimeoutOrNull(20_000) { viewModel.captureNightPhotoExtension() }
-        assertFalse(viewModel.isCapturingMutable.value)
-    }
-
-    @Test fun nightAvailabilityProbeWithCachedManager() = runBlocking {
-        val viewModel = vm()
-        viewModel.extensionsManager = mgr(available = false)
-        assertEquals(false, withTimeoutOrNull(20_000) { viewModel.isNightExtensionAvailable() })
-        val viewModel2 = vm()
-        viewModel2.extensionsManager = mgr(available = true)
-        // Available on the selector, but the session-config probe cannot be
-        // satisfied without a real camera: false, never a throw.
-        val result = withTimeoutOrNull(20_000) { viewModel2.isNightExtensionAvailable() }
-        assertTrue(result == false || result == null)
-    }
-
-    @Test fun extensionProbesDegradeOnThrowingManager() {
-        val viewModel = vm()
-        val throwing = Mockito.mock(ExtensionsManager::class.java)
-        Mockito.`when`(throwing.isExtensionAvailable(anySelector(), Mockito.eq(ExtensionMode.NIGHT)))
-            .thenThrow(IllegalStateException("extender dead"))
-        Mockito.`when`(throwing.isImageAnalysisSupported(anySelector(), Mockito.eq(ExtensionMode.NIGHT)))
-            .thenThrow(IllegalArgumentException("extender dead"))
-        assertFalse(viewModel.isNightExtensionSupported(throwing, CameraSelector.DEFAULT_BACK_CAMERA))
-        assertFalse(viewModel.isNightAnalysisSupported(throwing, CameraSelector.DEFAULT_BACK_CAMERA))
-    }
 }

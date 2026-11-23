@@ -68,7 +68,7 @@ fun CameraScreen(
             state.cameraMode == CameraMode.PANORAMA -> {
                 if (state.panoSweeping) viewModel.stopPanorama() else viewModel.startPanorama()
             }
-            state.isSloMo && state.highSpeedActive -> viewModel.toggleHighSpeedRecording()
+            state.isSloMo -> viewModel.toggleHighSpeedRecording()
             state.isPhotoType -> {
                 if (onCaptureResult != null) {
                     viewModel.capturePhotoForResult(

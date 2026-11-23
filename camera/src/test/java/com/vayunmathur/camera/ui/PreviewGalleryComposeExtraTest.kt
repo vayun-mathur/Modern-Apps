@@ -39,7 +39,7 @@ class PreviewGalleryComposeExtraTest {
 
     private fun stateFor(mode: CameraMode, viewModel: CameraViewModel, mask: Bitmap? = null) = CameraScreenState(
         cameraMode = mode,
-        lensFacing = androidx.camera.core.CameraSelector.LENS_FACING_BACK,
+        lensFacing = android.hardware.camera2.CameraMetadata.LENS_FACING_BACK,
         selectedLens = null, availableLenses = emptyList(), hasFlashUnit = true,
         flashMode = FlashMode.AUTO, torchEnabled = false,
         videoCodec = viewModel.videoCodecMutable.value,
@@ -57,7 +57,7 @@ class PreviewGalleryComposeExtraTest {
         longExposureProgress = 0.5f, longExposureRemaining = "2.0s",
         lowLightDetected = true, nightModeActive = true, extensionStrength = 50,
         sloMoSupported = true, highSpeedActive = false, photoSessionActive = true,
-        analysisStreamActive = true, nightExtAvailable = true, surfaceRequest = null,
+        analysisStreamActive = true, nightExtAvailable = true,
         availableZoomLevels = listOf("1x" to 1f), galleryBitmap = null,
         panoSweeping = mode == CameraMode.PANORAMA, panoStitching = false,
         panoDots = listOf(

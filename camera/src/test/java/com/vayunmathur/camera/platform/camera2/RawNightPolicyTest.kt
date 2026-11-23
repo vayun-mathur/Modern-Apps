@@ -19,29 +19,35 @@ import org.robolectric.annotation.Config
 class RawNightPolicyTest {
 
     private fun rawInput(
-        gate: Boolean = true,
-        explicit: Boolean = true,
         night: Boolean = true,
         mode: CameraMode = CameraMode.PHOTO,
         supported: Boolean = true,
         ring: Boolean = true,
     ) = RawNightInput(
-        rawGateOn = gate, explicitRawSelected = explicit, mode = mode,
+        mode = mode,
         nightRoute = night, rawSupported = supported, hasRawRingOutput = ring,
     )
 
-    @Test fun rawNightNeedsGateExplicitNightRawAndRing() {
+    @Test fun rawNightNeedsNightPhotoRawAndRing() {
         assertTrue(RawNightPolicy.usesRawNight(rawInput()))
-        // Every requirement removed individually disables RAW.
-        assertFalse(RawNightPolicy.usesRawNight(rawInput(gate = false)))
-        assertFalse(RawNightPolicy.usesRawNight(rawInput(explicit = false)))
+        assertNull(RawNightPolicy.exclusionReason(rawInput()))
+        // Every requirement removed individually disables RAW; there is no
+        // separate gate or explicit-selection switch left to turn off.
         assertFalse(RawNightPolicy.usesRawNight(rawInput(night = false)))
         assertFalse(RawNightPolicy.usesRawNight(rawInput(supported = false)))
         assertFalse(RawNightPolicy.usesRawNight(rawInput(ring = false)))
         assertFalse(RawNightPolicy.usesRawNight(rawInput(mode = CameraMode.PORTRAIT)))
         assertTrue(
-            RawNightPolicy.exclusionReason(rawInput(explicit = false))
-                .orEmpty().contains("explicitly"),
+            RawNightPolicy.exclusionReason(rawInput(night = false))
+                .orEmpty().contains("not a night capture"),
+        )
+        assertTrue(
+            RawNightPolicy.exclusionReason(rawInput(supported = false))
+                .orEmpty().contains("RAW not supported"),
+        )
+        assertTrue(
+            RawNightPolicy.exclusionReason(rawInput(ring = false))
+                .orEmpty().contains("no RAW ring output"),
         )
     }
 

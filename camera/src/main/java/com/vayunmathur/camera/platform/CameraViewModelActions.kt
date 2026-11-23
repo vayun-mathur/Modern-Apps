@@ -4,7 +4,6 @@ import android.hardware.Sensor
 import android.hardware.SensorManager
 import com.vayunmathur.library.log.Log
 import android.util.Rational
-import androidx.camera.core.CameraSelector
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
 
@@ -49,7 +48,7 @@ internal fun CameraViewModel.unregisterLevelSensor() {
  * front lens.
  */
 internal val CameraViewModel.mirrorCaptures: Boolean
-    get() = lensFacingMutable.value == CameraSelector.LENS_FACING_FRONT && mirrorFrontMutable.value
+    get() = lensFacingMutable.value == android.hardware.camera2.CameraMetadata.LENS_FACING_FRONT && mirrorFrontMutable.value
 
 /**
  * Debug flow logging for the night-preview resolution question: whether the extension
@@ -68,22 +67,6 @@ internal fun CameraViewModel.startDebugLogging() {
                         "if only [1x], zoom bar appears disappeared"
                 )
                 last = levels
-            }
-        }
-    }
-    viewModelScope.launch {
-        var lastRes: android.util.Size? = null
-        surfaceRequest.collect { req ->
-            val res = req?.resolution
-            if (res != lastRes) {
-                Log.dev(
-                    "NightPreview",
-                    "CameraViewModel surfaceRequest FLOW emitted res=$res previous=$lastRes " +
-                        "nightPreviewActive=${nightPreviewActiveMutable.value} " +
-                        "photoActive=${photoSessionActiveMutable.value} – " +
-                        "null->val during extension bind, black if stuck null"
-                )
-                lastRes = res
             }
         }
     }

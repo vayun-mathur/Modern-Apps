@@ -3,7 +3,6 @@ package com.vayunmathur.camera.domain
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import com.vayunmathur.camera.platform.formatZoomLabel
-import com.vayunmathur.camera.platform.highestFpsRange
 import com.vayunmathur.camera.platform.readManualControlRanges
 import com.vayunmathur.camera.platform.updateZoomLevels
 

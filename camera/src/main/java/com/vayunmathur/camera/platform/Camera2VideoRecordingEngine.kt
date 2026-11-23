@@ -14,37 +14,10 @@ import android.os.Handler
 import android.os.HandlerThread
 import android.view.Surface
 import com.vayunmathur.camera.domain.LiveBitrateController
-import com.vayunmathur.camera.domain.RecordingPath
-import com.vayunmathur.camera.domain.RecordingPathPolicy
 import com.vayunmathur.camera.domain.SceneMotion
 import com.vayunmathur.camera.platform.camera2.RecordingSessionOwnership
 import com.vayunmathur.library.log.Log
 import java.io.File
-
-/**
- * Gate for the custom recording path. Default OFF: every recording uses the
- * CameraX Recorder until this path has been device-verified end to end
- * (see the verification note on [Camera2VideoRecordingEngine]).
- */
-object CustomRecordingGate {
-    const val ENABLED: Boolean = false
-}
-
-/** Selection inputs for the currently bound session, via [RecordingPathPolicy]. */
-internal fun CameraViewModel.recordingPathFor(
-    liveAdaptationWanted: Boolean,
-    hlgBound: Boolean,
-    stabilizationBound: Boolean,
-): RecordingPath = RecordingPathPolicy.select(
-    com.vayunmathur.camera.domain.RecordingPathInput(
-        customPathEnabled = CustomRecordingGate.ENABLED,
-        liveAdaptationWanted = liveAdaptationWanted,
-        hlgRequested = hlgBound,
-        stabilizationRequested = stabilizationBound,
-        codecAv1Requested = recordingWithAv1,
-        analysisBound = analysisStreamActiveMutable.value,
-    )
-)
 
 /** Configuration for one custom-path recording. AVC/HEVC video + AAC audio only. */
 data class CustomRecordingConfig(
@@ -105,8 +78,6 @@ class Camera2VideoRecordingEngine(
     private val onMotionSample: (com.vayunmathur.camera.domain.FrameDiffSample) -> Unit,
     private val onError: (Exception) -> Unit,
 ) : VideoRecordingEngine {
-    override val path: RecordingPath = RecordingPath.CUSTOM_CAMERA2
-
     private var cameraThread: HandlerThread? = null
     private var cameraHandler: Handler? = null
     private var cameraDevice: CameraDevice? = null
@@ -243,7 +214,13 @@ class Camera2VideoRecordingEngine(
         // TextureView to render once the UI migrates off CameraX preview).
         val effectivePreview = previewSurface ?: run {
             val texture = android.graphics.SurfaceTexture(PREVIEW_TEXTURE_ID).apply {
-                setDefaultBufferSize(config.width, config.height)
+                // Preview never needs encoder resolution: cap at 1080p so
+                // the (encoder + preview + analysis) stream combination
+                // stays within guaranteed HAL limits at UHD tiers.
+                setDefaultBufferSize(
+                    minOf(config.width, PREVIEW_MAX_WIDTH),
+                    minOf(config.height, PREVIEW_MAX_HEIGHT),
+                )
             }
             ownedPreviewTexture = texture
             Surface(texture).also { ownedPreviewSurface = it }
@@ -292,18 +269,21 @@ class Camera2VideoRecordingEngine(
                         override fun onConfigured(session: CameraCaptureSession) {
                             captureSession = session
                             core.markSessionStreaming()
-                            val request = device.createCaptureRequest(CameraDevice.TEMPLATE_RECORD).apply {
-                                addTarget(encoderSurface)
-                                addTarget(effectivePreview)
-                                addTarget(reader.surface)
-                                set(
-                                    CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE,
-                                    android.util.Range(config.captureFps, config.captureFps)
-                                )
-                            }.build()
                             try {
+                                val request = device.createCaptureRequest(CameraDevice.TEMPLATE_RECORD).apply {
+                                    addTarget(encoderSurface)
+                                    addTarget(effectivePreview)
+                                    addTarget(reader.surface)
+                                    set(
+                                        CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE,
+                                        android.util.Range(config.captureFps, config.captureFps)
+                                    )
+                                }.build()
                                 session.setRepeatingRequest(request, null, cameraHandler)
                             } catch (e: IllegalStateException) {
+                                // Device closed under us (a competing
+                                // session took the camera): surface as an
+                                // engine error, never an uncaught crash.
                                 onError(e)
                             }
                         }
@@ -342,7 +322,13 @@ class Camera2VideoRecordingEngine(
         adaptationThread = Thread({
             var tickMs = 0L
             while (running) {
-                Thread.sleep(LiveBitrateController.DEFAULT_EVALUATE_INTERVAL_MS)
+                try {
+                    Thread.sleep(LiveBitrateController.DEFAULT_EVALUATE_INTERVAL_MS)
+                } catch (_: InterruptedException) {
+                    // stop() interrupts to end the loop: exit quietly,
+                    // never as an uncaught exception.
+                    break
+                }
                 tickMs += LiveBitrateController.DEFAULT_EVALUATE_INTERVAL_MS
                 val target = controller.evaluate(motionSupplier(), tickMs) ?: continue
                 try {
@@ -375,6 +361,8 @@ class Camera2VideoRecordingEngine(
 
     companion object {
         private const val PREVIEW_TEXTURE_ID = 1
+        private const val PREVIEW_MAX_WIDTH = 1920
+        private const val PREVIEW_MAX_HEIGHT = 1080
         private const val ANALYSIS_WIDTH = 640
         private const val ANALYSIS_HEIGHT = 480
         private const val ANALYSIS_MAX_IMAGES = 3

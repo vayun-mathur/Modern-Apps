@@ -1,8 +1,5 @@
 package com.vayunmathur.camera.platform
 
-import androidx.annotation.OptIn
-import androidx.camera.camera2.interop.ExperimentalCamera2Interop
-
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.camera.domain.PreviewExposurePolicy
 
@@ -15,22 +12,6 @@ fun CameraViewModel.setExposureTimeIndex(index: Int) {
 fun CameraViewModel.setManualIsoIndex(index: Int) {
     manualIsoIndexMutable.value = index.coerceIn(0, isoStopsMutable.value.size)
     applyManualControls()
-}
-
-@Suppress("DEPRECATION")
-@OptIn(ExperimentalCamera2Interop::class)
-internal fun CameraViewModel.camera2ControlOrNull(): androidx.camera.camera2.interop.Camera2CameraControl? = try {
-    boundCamera?.cameraControl?.let {
-        androidx.camera.camera2.interop.Camera2CameraControl.from(it)
-    }
-} catch (e: IllegalArgumentException) {
-    Log.status("CameraViewModel", "Camera2 control unavailable", e)
-    null
-} catch (e: NullPointerException) {
-    // The interop null-checks its implementation internally; a control with
-    // no Camera2 implementation is "unavailable", not a crash.
-    Log.status("CameraViewModel", "Camera2 control unavailable", e)
-    null
 }
 
 /** The manual ISO for the current index, or null when set to Auto. */
@@ -60,29 +41,6 @@ internal fun CameraViewModel.currentExposureSplit(): PreviewExposurePolicy.Split
 internal fun CameraViewModel.stillExposureOverrideRequired(): Boolean =
     currentExposureSplit()?.stillOverrideRequired == true
 
-/** AE-off + [nanos]/[iso] capture options for one still, shared by the capture paths. */
-@Suppress("DEPRECATION")
-@OptIn(ExperimentalCamera2Interop::class)
-internal fun stillCaptureRequestOptions(
-    nanos: Long,
-    iso: Int?
-): androidx.camera.camera2.interop.CaptureRequestOptions {
-    val builder = androidx.camera.camera2.interop.CaptureRequestOptions.Builder()
-        .setCaptureRequestOption(
-            android.hardware.camera2.CaptureRequest.CONTROL_AE_MODE,
-            android.hardware.camera2.CameraMetadata.CONTROL_AE_MODE_OFF
-        )
-        .setCaptureRequestOption(
-            android.hardware.camera2.CaptureRequest.SENSOR_EXPOSURE_TIME, nanos
-        )
-    if (iso != null) {
-        builder.setCaptureRequestOption(
-            android.hardware.camera2.CaptureRequest.SENSOR_SENSITIVITY, iso
-        )
-    }
-    return builder.build()
-}
-
 /**
  * Rebuilds a single [CaptureRequestOptions] from the current manual exposure/ISO state and
  * pushes it to the bound camera. This drives the LIVE (repeating) request shared by preview
@@ -93,121 +51,45 @@ internal fun stillCaptureRequestOptions(
  * auto behavior (including tap-to-focus). Called on every manual-control change and
  * re-applied after a session rebind.
  */
-@Suppress("DEPRECATION")
-@OptIn(ExperimentalCamera2Interop::class)
 fun CameraViewModel.applyManualControls() {
-    val cam2 = camera2ControlOrNull() ?: return
-    val builder = androidx.camera.camera2.interop.CaptureRequestOptions.Builder()
-
-    // Manual exposure / ISO with linkage: if either is manual, lock AE off and set both.
-    // Only the preview half goes on this live request (long shutters capped, ISO boosted
-    // to compensate); the still half is applied at capture time.
+    val session = activeCamera2Session ?: return
+    // Seed the un-set half of a half-manual exposure from the session's
+    // latest AE-converged preview values (as the interop path seeded
+    // from its CaptureResult snapshots).
+    val (aeNs, aeIso) = session.latestAeSnapshot()
+    if (aeNs != null) lastAeExposureNanos = aeNs
+    if (aeIso != null) lastAeIso = aeIso
+    // Only the preview half goes on the live request: a long manual
+    // shutter is capped at 1/30s with a compensating ISO boost, keeping
+    // the viewfinder smooth; stills resolve the same state through
+    // StillCapturePlanner (manual wins over AE/flash modes there).
     val split = currentExposureSplit()
-    if (split != null) {
-        builder.setCaptureRequestOption(
-            android.hardware.camera2.CaptureRequest.CONTROL_AE_MODE,
-            android.hardware.camera2.CameraMetadata.CONTROL_AE_MODE_OFF
-        )
-        builder.setCaptureRequestOption(
-            android.hardware.camera2.CaptureRequest.SENSOR_EXPOSURE_TIME, split.previewNanos
-        )
-        builder.setCaptureRequestOption(
-            android.hardware.camera2.CaptureRequest.SENSOR_SENSITIVITY, split.previewIso
-        )
-    }
-
-    // Post-processing toggles (issue #662): OFF explicitly disables the HAL's noise
-    // reduction / edge sharpening. ON now explicitly requests the high-quality
-    // modes instead of leaving the keys unset, where the HAL default may be
-    // FAST. Tonemap joins the high-quality request when either toggle is on,
-    // so turning both off does not force a high-quality tonemap either.
-    if (noiseReductionEnabledMutable.value) {
-        builder.setCaptureRequestOption(
-            android.hardware.camera2.CaptureRequest.NOISE_REDUCTION_MODE,
-            android.hardware.camera2.CameraMetadata.NOISE_REDUCTION_MODE_HIGH_QUALITY
-        )
-    } else {
-        builder.setCaptureRequestOption(
-            android.hardware.camera2.CaptureRequest.NOISE_REDUCTION_MODE,
-            android.hardware.camera2.CameraMetadata.NOISE_REDUCTION_MODE_OFF
-        )
-    }
-    if (edgeSharpeningEnabledMutable.value) {
-        builder.setCaptureRequestOption(
-            android.hardware.camera2.CaptureRequest.EDGE_MODE,
-            android.hardware.camera2.CameraMetadata.EDGE_MODE_HIGH_QUALITY
-        )
-    } else {
-        builder.setCaptureRequestOption(
-            android.hardware.camera2.CaptureRequest.EDGE_MODE,
-            android.hardware.camera2.CameraMetadata.EDGE_MODE_OFF
-        )
-    }
-    if (noiseReductionEnabledMutable.value || edgeSharpeningEnabledMutable.value) {
-        builder.setCaptureRequestOption(
-            android.hardware.camera2.CaptureRequest.TONEMAP_MODE,
-            android.hardware.camera2.CameraMetadata.TONEMAP_MODE_HIGH_QUALITY
-        )
-    }
-
-    try {
-        // An empty options set clears any previously-applied manual 3A → full auto.
-        cam2.setCaptureRequestOptions(builder.build())
-    } catch (e: IllegalStateException) {
-        Log.status("CameraViewModel", "Failed to apply manual controls", e)
-    } catch (e: IllegalArgumentException) {
-        Log.status("CameraViewModel", "Failed to apply manual controls", e)
-    }
+    session.setManualExposure(split?.previewNanos, split?.previewIso)
+    session.setPostProcessing(
+        noiseReductionEnabledMutable.value,
+        edgeSharpeningEnabledMutable.value,
+    )
 }
 
 /** Reads the bound sensor's ISO range → stop list for the manual ISO control. */
-@Suppress("DEPRECATION")
-@OptIn(ExperimentalCamera2Interop::class)
 internal fun CameraViewModel.readManualControlRanges() {
-    Log.dev(
-        "NightPreview",
-        "readManualControlRanges() called bound=${boundCamera != null} " +
-            "thread=${Thread.currentThread().name}"
-    )
-    val cam = boundCamera ?: run {
-        Log.status("NightPreview", "readManualControlRanges() no bound camera, returning")
+    val session = activeCamera2Session ?: run {
+        Log.status("NightPreview", "readManualControlRanges() no live Camera2 session, returning")
         return
     }
-    try {
-        val info = androidx.camera.camera2.interop.Camera2CameraInfo.from(cam.cameraInfo)
-        val isoRange = info.getCameraCharacteristic(
-            android.hardware.camera2.CameraCharacteristics.SENSOR_INFO_SENSITIVITY_RANGE
-        )
-        Log.dev("NightPreview", "readManualControlRanges() isoRange=$isoRange")
-        isoStopsMutable.value = if (isoRange != null) {
-            val filtered = listOf(50, 100, 200, 400, 800, 1600, 3200, 6400, 12800)
-                .filter { it in isoRange.lower..isoRange.upper }
-                .ifEmpty { listOf(isoRange.lower, isoRange.upper) }
-            Log.dev("NightPreview", "readManualControlRanges() filtered stops=$filtered")
-            filtered
-        } else {
-            Log.status(
-                "NightPreview",
-                "readManualControlRanges() isoRange null, emitting emptyList -> ISO bar notAvailable",
-            )
-            emptyList()
-        }
-        // The stop list is per-lens: a new lens can be shorter, so re-clamp the persisted
-        // index instead of pointing past the end (ISO bar read getOrNull → blank label).
-        manualIsoIndexMutable.value = manualIsoIndexMutable.value.coerceIn(0, isoStopsMutable.value.size)
-    } catch (e: IllegalStateException) {
-        Log.error(
+    val isoRange = session.characteristics.sensitivityRange
+    isoStopsMutable.value = if (isoRange != null) {
+        listOf(50, 100, 200, 400, 800, 1600, 3200, 6400, 12800)
+            .filter { it in isoRange.lower..isoRange.upper }
+            .ifEmpty { listOf(isoRange.lower, isoRange.upper) }
+    } else {
+        Log.status(
             "NightPreview",
-            "readManualControlRanges() FAILED (was Warn, hidden) – " +
-                "could affect ISO bar + manual controls",
-            e
+            "readManualControlRanges() isoRange null, emitting emptyList -> ISO bar notAvailable",
         )
-    } catch (e: IllegalArgumentException) {
-        Log.error(
-            "NightPreview",
-            "readManualControlRanges() FAILED (was Warn, hidden) – " +
-                "could affect ISO bar + manual controls",
-            e
-        )
+        emptyList()
     }
+    // The stop list is per-lens: a new lens can be shorter, so re-clamp the persisted
+    // index instead of pointing past the end (ISO bar read getOrNull -> blank label).
+    manualIsoIndexMutable.value = manualIsoIndexMutable.value.coerceIn(0, isoStopsMutable.value.size)
 }

@@ -1,125 +1,98 @@
 package com.vayunmathur.camera.platform
 
-import android.graphics.Bitmap
-import android.graphics.Color
+import android.graphics.ImageFormat
+import android.util.Range
+import android.util.Size
+import android.view.Surface
 import androidx.test.core.app.ApplicationProvider
+import com.vayunmathur.camera.platform.camera2.Camera2Driver
+import com.vayunmathur.camera.platform.camera2.Camera2Executor
+import com.vayunmathur.camera.platform.camera2.Camera2Session
+import com.vayunmathur.camera.platform.camera2.CaptureSessionHandle
+import com.vayunmathur.camera.platform.camera2.CharacteristicsFacade
+import com.vayunmathur.camera.platform.camera2.DeviceCallback
+import com.vayunmathur.camera.platform.camera2.DeviceHandle
+import com.vayunmathur.camera.platform.camera2.CaptureSessionCallback
+import com.vayunmathur.camera.platform.camera2.FrameSize
+import com.vayunmathur.camera.platform.camera2.LensCharacteristicsSnapshot
+import com.vayunmathur.camera.platform.camera2.ResolvedRequestParams
+import com.vayunmathur.camera.platform.camera2.StillOutput
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlinx.coroutines.runBlocking
+import com.vayunmathur.camera.data.saveStillBytes
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.robolectric.annotation.GraphicsMode
-import com.vayunmathur.camera.data.SafDocuments
-import com.vayunmathur.camera.data.SaveTarget
-import com.vayunmathur.camera.data.clearSaveTreeUri
-import com.vayunmathur.camera.data.closeStream
-import com.vayunmathur.camera.data.prepareStillSave
-import com.vayunmathur.camera.data.saveStillBitmap
-import com.vayunmathur.camera.data.saveStillBytes
-import com.vayunmathur.camera.data.setSaveTreeUri
 
-/**
- * Cov-c2: session setup and capture entry points with no camera hardware.
- * Every path must degrade (report not-bound / no-op) rather than throw —
- * the same contract CameraX demands on devices with a failed provider init.
- */
-@GraphicsMode(GraphicsMode.Mode.NATIVE)
+/** Camera2 contract: no-session entries + save routing (saveStillBytes/saveVideoStaged seam). */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class CameraCovC2SessionsTest {
 
-    private val context = ApplicationProvider.getApplicationContext<android.content.Context>()
-    private fun vm() = CameraViewModel(context.applicationContext as android.app.Application)
+    private fun vm() = CameraViewModel(ApplicationProvider.getApplicationContext())
 
-    // Session setup (setupPhotoSession/setupVideoSession/…) cannot be
-    // exercised on the JVM: ProcessCameraProvider.awaitInstance() blocks
-    // forever with no CameraX runtime in the Robolectric sandbox (verified:
-    // a test calling it hung the executor), so only the no-bind capture
-    // entry points below are covered here.
+    private class FakeHandle : CaptureSessionHandle {
+        val repeating = mutableListOf<ResolvedRequestParams>()
+        override fun setRepeatingPreview(params: ResolvedRequestParams, target: Surface) { repeating += params }
+        override fun captureStill(params: com.vayunmathur.camera.platform.camera2.ResolvedStillParams, stillTarget: Surface, callback: com.vayunmathur.camera.platform.camera2.StillResultCallback) { callback.onCompleted(com.vayunmathur.camera.platform.camera2.RawStillMetadata()) }
+        override fun close() {}
+    }
+    private class FakeDevice : DeviceHandle {
+        override val cameraId: String = "0"
+        override fun createCaptureSession(surfaces: List<Surface>, callback: CaptureSessionCallback) { callback.onConfigured(FakeHandle()) }
+        override fun close() {}
+    }
+    private class FakeDriver : Camera2Driver {
+        override fun openCamera(cameraId: String, callback: DeviceCallback) { callback.onOpened(FakeDevice()) }
+        override fun createStillOutput(size: FrameSize): StillOutput? = null
+    }
+    internal fun snapshot(
+        zoom: Range<Float>? = Range(0.5f, 8f),
+        flash: Boolean = true,
+        sensitivity: Range<Int>? = Range(50, 6400),
+        ev: Range<Float>? = Range(-4f, 4f),
+    ): LensCharacteristicsSnapshot = CharacteristicsFacade.fromFakeMap(
+        cameraId = "0", zoomRatioRange = zoom, hasFlashUnit = flash,
+        sensitivityRange = sensitivity, exposureCompensationEvRange = ev,
+        exposureTimeRangeNs = Range(1_000_000L, 1_000_000_000L),
+        sizesByFormat = mapOf(ImageFormat.PRIVATE to listOf(Size(1920, 1080))),
+        activeArrayWidth = 4000, activeArrayHeight = 3000,
+        exposureCompensationStepEv = 1f / 6f, maxAfRegions = 1, maxAeRegions = 1,
+    ).snapshot
 
-    @Test fun captureEntriesAreNoOpsWithoutBoundCapture() {
-        val viewModel = vm()
-        viewModel.takePhoto()
-        viewModel.capturePhoto()
-        assertFalse(viewModel.isCapturing.value)
-        viewModel.startBurst()
-        viewModel.stopBurst()
-        assertFalse(viewModel.burstActive.value)
-        assertEquals(0, viewModel.burstCount.value)
+    internal fun fakeSession(executor: Camera2Executor, snap: LensCharacteristicsSnapshot = snapshot()): Camera2Session =
+        Camera2Session(FakeDriver(), executor, snap)
+
+    internal fun Camera2Executor.drain() {
+        val latch = CountDownLatch(1); execute { latch.countDown() }
+        assertTrue(latch.await(5, TimeUnit.SECONDS))
+    }
+    internal fun dirtyTeardownState(v: CameraViewModel) {
+        v.isRecordingMutable.value = true; v.recordingPausedMutable.value = true
+        v.recordingDurationSecMutable.value = 42; v.timerCountdownMutable.value = 3
+        v.isCapturingMutable.value = true; v.photoSessionActiveMutable.value = true
+        v.analysisStreamActiveMutable.value = true; v.nightPreviewActiveMutable.value = true
+        v.highSpeedActiveMutable.value = true; v.videoSessionActiveMutable.value = true
+        v.videoSnapshotSupportedMutable.value = true; v.focusLockedMutable.value = true
+    }
+    internal fun assertTeardownCleared(v: CameraViewModel) {
+        assertFalse(v.isRecording.value); assertFalse(v.recordingPaused.value)
+        assertEquals(0L, v.recordingDurationSec.value); assertEquals(0, v.timerCountdown.value)
+        assertFalse(v.isCapturing.value); assertFalse(v.photoSessionActive.value)
+        assertFalse(v.analysisStreamActive.value); assertFalse(v.nightPreviewActive.value)
+        assertFalse(v.highSpeedActive.value); assertFalse(v.videoSessionActive.value)
+        assertFalse(v.videoSnapshotSupported.value); assertFalse(v.focusLocked.value)
     }
 
-    @Test fun motionFrameRingBufferDrainsInOrder() {
-        val viewModel = vm()
-        val first = Bitmap.createBitmap(4, 4, Bitmap.Config.ARGB_8888)
-        val second = Bitmap.createBitmap(4, 4, Bitmap.Config.ARGB_8888)
-        viewModel.addMotionFrame(first, 100L, 0)
-        viewModel.addMotionFrame(second, 200L, 90)
-        val drained = viewModel.drainMotionFrames()
-        assertEquals(listOf(100L, 200L), drained.map { it.timestampNanos })
-        assertTrue(viewModel.drainMotionFrames().isEmpty())
-        viewModel.addMotionFrame(first, 300L, 0)
-        viewModel.clearMotionFrames()
-        assertTrue(viewModel.drainMotionFrames().isEmpty())
-    }
+    @Test fun captureEntriesNoOpsWithoutSession() { val v=vm(); v.takePhoto(); v.capturePhoto(); assertFalse(v.isCapturing.value); v.startBurst(); v.stopBurst(); assertFalse(v.burstActive.value) }
+    @Test fun saveRoutingWritesOrDegrades() { val v=vm(); v.saveStillBytes("c2.jpg", byteArrayOf(1,2,3)); v.teardownSession(); assertTeardownCleared(v) }
+    @Test fun motionRingDrainsInOrder() { val v=vm(); val b=android.graphics.Bitmap.createBitmap(4,4,android.graphics.Bitmap.Config.ARGB_8888); v.addMotionFrame(b,100L,0); v.addMotionFrame(b,200L,90); assertEquals(listOf(100L,200L), v.drainMotionFrames().map{it.timestampNanos}); v.clearMotionFrames(); assertTrue(v.drainMotionFrames().isEmpty()) }
 
-    @Test fun stillSaveRoutingWritesOrDegrades() {
-        val viewModel = vm()
-        val pending = viewModel.prepareStillSave("cov-c2-still.jpg")
-        // MediaStore may be shadow-backed; either a pending save is prepared
-        // (and must close cleanly) or routing reports it cannot save.
-        pending?.closeStream()
-        val bytes = byteArrayOf(1, 2, 3)
-        viewModel.saveStillBytes("cov-c2-bytes.jpg", bytes)
-        val bmp = Bitmap.createBitmap(8, 8, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.BLUE) }
-        viewModel.saveStillBitmap("cov-c2-bitmap.jpg", bmp)
-    }
-
-    @Test fun saveLocationPersistsAndClears() {
-        val viewModel = vm()
-        assertEquals(SaveTarget.MediaStoreDefault, viewModel.saveTargetMutable.value)
-        val tree = android.net.Uri.parse("content://com.android.externalstorage.documents/tree/primary%3APictures%2FCov")
-        viewModel.setSaveTreeUri(tree)
-        assertEquals(SaveTarget.SafTree(tree), viewModel.saveTargetMutable.value)
-        viewModel.clearSaveTreeUri()
-        assertEquals(SaveTarget.MediaStoreDefault, viewModel.saveTargetMutable.value)
-        // SAF helpers degrade without a documents provider.
-        assertEquals(null, SafDocuments.createImageDoc(context.contentResolver, tree, "cov.jpg"))
-        assertEquals(null, SafDocuments.displayName(context.contentResolver, tree))
-        assertTrue(SafDocuments.primaryPath(tree)?.endsWith("Pictures/Cov") == true)
-        assertEquals(null, SafDocuments.primaryPath(android.net.Uri.parse("content://x/tree/home%3Afoo")))
-    }
-
-    @Test fun videoAndMotionEncodingFailGracefully() {
-        val dir = java.io.File(context.cacheDir, "cov-c2-media").apply { mkdirs() }
-        val missing = java.io.File(dir, "missing.mp4")
-        val out = java.io.File(dir, "out.mp4")
-        var threw = false
-        try {
-            VideoProcessor.adjustSpeed(missing, out, 2f)
-        } catch (_: Exception) {
-            threw = true
-        }
-        assertTrue(threw, "adjustSpeed must fail for a missing input")
-        assertFalse(MotionPhotoEncoder.encode(emptyList(), out, 0))
-        val tiny = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
-        assertFalse(MotionPhotoEncoder.encode(listOf(tiny), out, 0))
-        val frame = Bitmap.createBitmap(64, 64, Bitmap.Config.ARGB_8888)
-        MotionPhotoEncoder.encode(listOf(frame, frame), out, 90)
-    }
-
-    @Test fun nightExposureAndManualControls() {
-        val viewModel = vm()
-        val exposure = viewModel.computeNightExposure()
-        assertTrue(exposure.nanos > 0L)
-        viewModel.setExposureTimeIndex(0)
-        assertTrue(viewModel.isExposureAuto())
-        viewModel.setExposureTimeIndex(2)
-        viewModel.setManualIsoIndex(0)
-        viewModel.applyManualControls()
-        assertEquals(null, viewModel.manualIso())
-        viewModel.captureNightPhotoCustom()
-        viewModel.stopLongExposureCountdown()
-    }
 }

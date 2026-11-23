@@ -153,19 +153,6 @@ fun buildColorAdjustmentMatrix(warmth: Float, shadows: Float): ColorMatrix = Col
     )
 )
 
-internal class ManualLifecycleOwner : LifecycleOwner {
-    private val registry = LifecycleRegistry(this)
-    override val lifecycle: Lifecycle get() = registry
-
-    fun start() {
-        registry.currentState = Lifecycle.State.RESUMED
-    }
-
-    fun destroy() {
-        registry.currentState = Lifecycle.State.DESTROYED
-    }
-}
-
 /** One [CameraViewModel.zslCompatible] input sample: wanted value plus whether a shot is in flight. */
 internal class ZslGate(val compatible: Boolean, val capturing: Boolean)
 

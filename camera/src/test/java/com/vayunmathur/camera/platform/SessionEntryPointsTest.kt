@@ -1,93 +1,96 @@
 package com.vayunmathur.camera.platform
 
-import android.graphics.Bitmap
+import android.graphics.ImageFormat
+import android.util.Range
+import android.util.Size
+import android.view.Surface
 import androidx.test.core.app.ApplicationProvider
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeoutOrNull
+import com.vayunmathur.camera.platform.camera2.Camera2Driver
+import com.vayunmathur.camera.platform.camera2.Camera2Executor
+import com.vayunmathur.camera.platform.camera2.Camera2Session
+import com.vayunmathur.camera.platform.camera2.CaptureSessionHandle
+import com.vayunmathur.camera.platform.camera2.CharacteristicsFacade
+import com.vayunmathur.camera.platform.camera2.DeviceCallback
+import com.vayunmathur.camera.platform.camera2.DeviceHandle
+import com.vayunmathur.camera.platform.camera2.CaptureSessionCallback
+import com.vayunmathur.camera.platform.camera2.FrameSize
+import com.vayunmathur.camera.platform.camera2.LensCharacteristicsSnapshot
+import com.vayunmathur.camera.platform.camera2.ResolvedRequestParams
+import com.vayunmathur.camera.platform.camera2.StillOutput
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlinx.coroutines.runBlocking
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.robolectric.annotation.GraphicsMode
 
-/**
- * Session entry points on a provider-less JVM: CameraX cannot initialize,
- * so every setup must fail cleanly (false / restored state), never hang or
- * throw out of its documented catch-and-fallback shape.
- */
-@GraphicsMode(GraphicsMode.Mode.NATIVE)
+/** Camera2 contract: entry points degrade with no live session. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class SessionEntryPointsTest {
 
-    private val context = ApplicationProvider.getApplicationContext<android.content.Context>()
-    private fun vm() = CameraViewModel(context.applicationContext as android.app.Application)
+    private fun vm() = CameraViewModel(ApplicationProvider.getApplicationContext())
 
-    @Test fun photoSessionFailsCleanly() = runBlocking {
-        assertEquals(false, withTimeoutOrNull(20_000) { vm().setupPhotoSession() })
+    private class FakeHandle : CaptureSessionHandle {
+        val repeating = mutableListOf<ResolvedRequestParams>()
+        override fun setRepeatingPreview(params: ResolvedRequestParams, target: Surface) { repeating += params }
+        override fun captureStill(params: com.vayunmathur.camera.platform.camera2.ResolvedStillParams, stillTarget: Surface, callback: com.vayunmathur.camera.platform.camera2.StillResultCallback) { callback.onCompleted(com.vayunmathur.camera.platform.camera2.RawStillMetadata()) }
+        override fun close() {}
+    }
+    private class FakeDevice : DeviceHandle {
+        override val cameraId: String = "0"
+        override fun createCaptureSession(surfaces: List<Surface>, callback: CaptureSessionCallback) { callback.onConfigured(FakeHandle()) }
+        override fun close() {}
+    }
+    private class FakeDriver : Camera2Driver {
+        override fun openCamera(cameraId: String, callback: DeviceCallback) { callback.onOpened(FakeDevice()) }
+        override fun createStillOutput(size: FrameSize): StillOutput? = null
+    }
+    internal fun snapshot(
+        zoom: Range<Float>? = Range(0.5f, 8f),
+        flash: Boolean = true,
+        sensitivity: Range<Int>? = Range(50, 6400),
+        ev: Range<Float>? = Range(-4f, 4f),
+    ): LensCharacteristicsSnapshot = CharacteristicsFacade.fromFakeMap(
+        cameraId = "0", zoomRatioRange = zoom, hasFlashUnit = flash,
+        sensitivityRange = sensitivity, exposureCompensationEvRange = ev,
+        exposureTimeRangeNs = Range(1_000_000L, 1_000_000_000L),
+        sizesByFormat = mapOf(ImageFormat.PRIVATE to listOf(Size(1920, 1080))),
+        activeArrayWidth = 4000, activeArrayHeight = 3000,
+        exposureCompensationStepEv = 1f / 6f, maxAfRegions = 1, maxAeRegions = 1,
+    ).snapshot
+
+    internal fun fakeSession(executor: Camera2Executor, snap: LensCharacteristicsSnapshot = snapshot()): Camera2Session =
+        Camera2Session(FakeDriver(), executor, snap)
+
+    internal fun Camera2Executor.drain() {
+        val latch = CountDownLatch(1); execute { latch.countDown() }
+        assertTrue(latch.await(5, TimeUnit.SECONDS))
+    }
+    internal fun dirtyTeardownState(v: CameraViewModel) {
+        v.isRecordingMutable.value = true; v.recordingPausedMutable.value = true
+        v.recordingDurationSecMutable.value = 42; v.timerCountdownMutable.value = 3
+        v.isCapturingMutable.value = true; v.photoSessionActiveMutable.value = true
+        v.analysisStreamActiveMutable.value = true; v.nightPreviewActiveMutable.value = true
+        v.highSpeedActiveMutable.value = true; v.videoSessionActiveMutable.value = true
+        v.videoSnapshotSupportedMutable.value = true; v.focusLockedMutable.value = true
+    }
+    internal fun assertTeardownCleared(v: CameraViewModel) {
+        assertFalse(v.isRecording.value); assertFalse(v.recordingPaused.value)
+        assertEquals(0L, v.recordingDurationSec.value); assertEquals(0, v.timerCountdown.value)
+        assertFalse(v.isCapturing.value); assertFalse(v.photoSessionActive.value)
+        assertFalse(v.analysisStreamActive.value); assertFalse(v.nightPreviewActive.value)
+        assertFalse(v.highSpeedActive.value); assertFalse(v.videoSessionActive.value)
+        assertFalse(v.videoSnapshotSupported.value); assertFalse(v.focusLocked.value)
     }
 
-    @Test fun panoramaSessionFailsCleanly() = runBlocking {
-        assertEquals(false, withTimeoutOrNull(20_000) { vm().setupPanoramaSession() })
-    }
+    @Test fun allCaptureEntriesNoSessionSafe() { val v=vm(); v.takePhoto(); v.capturePhoto(); v.startBurst(); v.stopBurst(); assertFalse(v.isCapturing.value); assertFalse(v.burstActive.value) }
+    @Test fun sloMoAndNightDecisionsWithoutSessionSafe() { val v=vm(); assertFalse(v.tryCaptureCamera2NightExtension()); assertFalse(v.tryCaptureCamera2Still()) }
 
-    @Test fun nightPreviewFallsBackAndFailsCleanly() = runBlocking {
-        val viewModel = vm()
-        // The ExtensionsManager future never completes on a provider-less
-        // JVM, so this either fails cleanly (false) or is still awaiting the
-        // manager when the timeout lands (null) — never a throw, and night
-        // preview never activates.
-        val result = withTimeoutOrNull(8_000) { viewModel.setupNightPreviewSession() }
-        assertTrue(result == false || result == null)
-        assertFalse(viewModel.nightPreviewActiveMutable.value)
-    }
-
-    @Test fun portraitSessionFailsCleanly() = runBlocking {
-        assertEquals(false, withTimeoutOrNull(20_000) { vm().setupPortraitSession() })
-    }
-
-    @Test fun highSpeedSessionFailsCleanly() = runBlocking {
-        assertEquals(false, withTimeoutOrNull(20_000) { vm().setupHighSpeedSession() })
-    }
-
-    @Test fun videoSessionFailsCleanly() = runBlocking {
-        assertEquals(false, withTimeoutOrNull(20_000) { vm().setupVideoSession() })
-    }
-
-    @Test fun sloMoProbeReportsUnsupported() = runBlocking {
-        assertEquals(false, withTimeoutOrNull(20_000) { vm().probeSloMoSupport() })
-    }
-
-    @Test fun nightExtensionCaptureRestoresState() = runBlocking {
-        val viewModel = vm()
-        withTimeoutOrNull(20_000) { viewModel.captureNightPhotoExtension() }
-        // The finally block always clears the in-flight flag.
-        assertFalse(viewModel.isCapturingMutable.value)
-    }
-
-    @Test fun nightBurstWithoutCaptureCompletesEmpty() {
-        val viewModel = vm()
-        var done: List<Bitmap>? = null
-        viewModel.captureNightBurst(NightExposure(1_000_000L, null)) { done = it }
-        assertNotNull(done)
-        assertEquals(emptyList(), done)
-        // The empty-burst fallback stops the countdown and attempts a single.
-        viewModel.onNightBurstDone(emptyList())
-        assertEquals("", viewModel.longExposureRemainingMutable.value)
-    }
-
-    @Test fun extensionsManagerMissingDegrades() = runBlocking {
-        val viewModel = vm()
-        val provider = org.mockito.Mockito.mock(androidx.camera.lifecycle.ProcessCameraProvider::class.java)
-        // No cached manager and the async ExtensionsManager cannot come up
-        // against a mock provider: null, never a throw.
-        val mgr = withTimeoutOrNull(8_000) { viewModel.getExtensionsManager(provider) }
-        assertEquals(null, mgr)
-        val available = withTimeoutOrNull(8_000) { viewModel.isNightExtensionAvailable() }
-        assertTrue(available == false || available == null)
-    }
 }

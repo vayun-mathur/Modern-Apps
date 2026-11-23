@@ -7,27 +7,12 @@ enum class NightEngine {
     /** Camera2 `CameraExtensionSession` with `EXTENSION_NIGHT` (Phase 6). */
     CAMERA2_EXTENSION,
 
-    /** CameraX Extensions NIGHT (the long-standing live path). */
-    CAMERAX_EXTENSION,
-
     /** Our own burst + Rust merge (`captureNightPhotoCustom`, unchanged). */
     OWN_BURST,
 }
 
-/**
- * Gate for the Camera2 NIGHT-extension path. Default ON in two places,
- * mirroring [SloMoCamera2Gate]: this compile-time master switch and the
- * ViewModel's runtime flow. Either being off keeps every night capture
- * on today's routing (CameraX extension, else own burst).
- */
-object NightCamera2Gate {
-    const val ENABLED: Boolean = true
-}
-
 /** Inputs to the night-engine selection rule. */
 data class ExtensionsEngineInput(
-    /** The Phase-6 gate (master switch AND runtime flow). Default ON. */
-    val camera2GateOn: Boolean,
     val mode: CameraMode,
     /** [Camera2ExtensionProbe] result for this lens (probe ok = usable). */
     val camera2ProbeOk: Boolean = false,
@@ -38,8 +23,6 @@ data class ExtensionsEngineInput(
      * engine suppresses *both* extensions, exactly as today.
      */
     val failureCacheClear: Boolean = true,
-    /** CameraX NIGHT probe result (`nightExtensionUsable`, cache-gated). */
-    val cameraXExtensionUsable: Boolean = false,
 )
 
 /**
@@ -64,9 +47,8 @@ object ExtensionsEnginePolicy {
 
     fun select(input: ExtensionsEngineInput): NightEngine = when {
         !input.failureCacheClear -> NightEngine.OWN_BURST
-        input.camera2GateOn && input.mode == CameraMode.PHOTO && input.camera2ProbeOk ->
+        input.mode == CameraMode.PHOTO && input.camera2ProbeOk ->
             NightEngine.CAMERA2_EXTENSION
-        input.cameraXExtensionUsable -> NightEngine.CAMERAX_EXTENSION
         else -> NightEngine.OWN_BURST
     }
 
@@ -76,7 +58,6 @@ object ExtensionsEnginePolicy {
     /** Why Camera2 did not take this capture, or null when it did. */
     fun camera2ExclusionReason(input: ExtensionsEngineInput): String? = when {
         !input.failureCacheClear -> "night extension failure cache still warm (7-day TTL)"
-        !input.camera2GateOn -> "camera2 night gate off"
         input.mode != CameraMode.PHOTO -> "mode ${input.mode} is not PHOTO"
         !input.camera2ProbeOk -> "Camera2 NIGHT extension probe failed for this lens"
         else -> null
@@ -88,5 +69,5 @@ object ExtensionsEnginePolicy {
      * the Camera2 path the indicator is hidden (no equivalent flow).
      */
     fun showsExtensionStrength(engine: NightEngine, strength: Int?): Boolean =
-        engine == NightEngine.CAMERAX_EXTENSION && strength != null
+        engine == NightEngine.CAMERA2_EXTENSION && strength != null
 }

@@ -2,13 +2,7 @@ package com.vayunmathur.camera.platform
 
 import android.graphics.Bitmap
 import android.net.Uri
-import androidx.annotation.OptIn
 import com.vayunmathur.library.log.Log
-import androidx.camera.core.ExperimentalZeroShutterLag
-import androidx.camera.core.ImageCapture
-import androidx.camera.core.ImageCaptureException
-import androidx.camera.core.ImageProxy
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -19,12 +13,9 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.roundToInt
 import com.vayunmathur.camera.data.MediaStoreSaver
 import com.vayunmathur.camera.domain.MotionPhotoWriter
-import com.vayunmathur.camera.data.prepareStillSave
 import com.vayunmathur.camera.data.saveProcessedStill
 import com.vayunmathur.camera.data.saveStillBytes
 import com.vayunmathur.camera.data.setLastCaptureUri
-import com.vayunmathur.camera.data.closeStream
-import com.vayunmathur.camera.data.resolveUri
 
 /** Shutter-timer countdown tick (1s). */
 internal const val TIMER_TICK_MS = 1000L
@@ -97,30 +88,23 @@ fun CameraViewModel.takePhoto() {
 
 internal fun CameraViewModel.capturePhoto() {
     if (isCapturingMutable.value || burstActiveMutable.value) return
-    // Phase 4a: a gated Camera2 session takes plain PHOTO stills itself
-    // (StillEnginePolicy excludes night/processed/Motion/burst/result
-    // shots, which fall through to the CameraX routing below unchanged).
-    // This runs before the imageCapture check: with the gate on, CameraX
-    // may not be bound at all.
-    if (activeCamera2Session != null) {
-        isCapturingMutable.value = true
-        if (tryCaptureCamera2Still()) return
-        isCapturingMutable.value = false
-    }
-    if (imageCapture == null) return
-    // Claim in-flight synchronously so a second shutter tap (or a stacked timer firing)
-    // can't start a concurrent capture. Every path clears it once its frame is captured
-    // (Motion Photo) or saved (the other paths) — never later.
+    val session = activeCamera2Session ?: return
+    // Claim in-flight synchronously so a second shutter tap (or a stacked
+    // timer firing) can't start a concurrent capture.
     isCapturingMutable.value = true
-    // A ZSL press reprocesses the ring buffer's newest converged frame. While AE is
-    // still searching after a lighting change that frame is exposed for the previous
-    // scene (the intermittent strong overexposure in auto mode), so hold the shutter
-    // until AE converges — zero added latency in steady light, where it already has.
+    // Plain stills take the direct Camera2 route; everything
+    // StillEnginePolicy excludes (night/processed/Motion/burst/result)
+    // routes to its dedicated Camera2 path below.
+    if (tryCaptureCamera2Still()) return
+    // A ring (ZSL) press reprocesses the newest converged frame. While AE
+    // is still searching after a lighting change that frame is exposed
+    // for the previous scene, so hold the shutter until AE converges —
+    // zero added latency in steady light, where it already has.
     if (stillCaptureIsZsl() && !isAeConvergedForCapture()) {
         viewModelScope.launch {
             awaitAeConvergence()
             // Teardown claims the flag while we wait; a dead session must not capture.
-            if (!isCapturingMutable.value || imageCapture == null) return@launch
+            if (!isCapturingMutable.value || activeCamera2Session !== session) return@launch
             routeAndCapture()
         }
     } else {
@@ -181,10 +165,9 @@ internal fun CameraViewModel.nightCaptureApplies(): Boolean {
     return nightAuto && flashModeMutable.value == FlashMode.OFF && !stillCaptureIsZsl()
 }
 
-/** True when the bound ImageCapture was built for zero-shutter-lag capture. */
-@OptIn(ExperimentalZeroShutterLag::class)
+/** True when the live Camera2 session holds a YUV ring (zero-shutter-lag) output. */
 internal fun CameraViewModel.stillCaptureIsZsl(): Boolean =
-    imageCapture?.captureMode == ImageCapture.CAPTURE_MODE_ZERO_SHUTTER_LAG
+    activeCamera2Session?.hasRingOutput == true
 
 /**
  * Motion Photo for plain PHOTO captures (no warmth/shadows bake, not capturing for a caller).
@@ -213,23 +196,19 @@ private fun CameraViewModel.motionPhotoEligible(): Boolean {
  * flight at a time) with `IMG_<ts>_BURSTn` names, until [stopBurst] or [CameraViewModel.BURST_MAX]
  * is reached. Uses the plain capture path (no night/manual special-casing).
  */
-@Suppress("DEPRECATION")
-@OptIn(androidx.camera.camera2.interop.ExperimentalCamera2Interop::class)
 fun CameraViewModel.startBurst() {
     if (burstActiveMutable.value || isCapturingMutable.value) return
     // A burst is immediate: an armed shutter timer no longer applies.
     cancelTimerCountdown()
-    val capture = imageCapture ?: return
+    val session = activeCamera2Session ?: return
     // Mark both in-flight: a single capture must not start mid-burst and a burst must not
     // start mid-capture. Releasing the shutter always goes through finishBurst().
     isCapturingMutable.value = true
     burstActiveMutable.value = true
     burstCountMutable.value = 0
-    val ts = MediaStoreSaver.timestamp()
     // Long manual shutter: lock the full still exposure for the burst's frames (the
     // live preview otherwise runs the capped split) and restore it when the burst ends.
     val burstSplit = currentExposureSplit()?.takeIf { it.stillOverrideRequired }
-    val burstCam2 = if (burstSplit != null) camera2ControlOrNull() else null
     var burstExposureLocked = false
 
     fun finishBurst() {
@@ -241,139 +220,59 @@ fun CameraViewModel.startBurst() {
         }
     }
 
-    // AVIF bursts cannot use the JPEG file path: each frame is captured
-    // in memory and encoded like a plain AVIF single (Ultra HDR frames
-    // stay JPEG_R, as for singles). JPEG bursts keep the fast file path.
-    val burstAvif = com.vayunmathur.camera.domain.StillFormatRouting.plainSingleNeedsInMemory(
-        if (photoFormatMutable.value == PhotoFormat.AVIF) {
-            com.vayunmathur.camera.domain.StillFormat.AVIF
-        } else {
-            com.vayunmathur.camera.domain.StillFormat.JPEG
-        },
-        StitchNative.isAvailable,
-    )
-
     fun shootNext(n: Int) {
         if (!burstActiveMutable.value || n > CameraViewModel.BURST_MAX) {
             finishBurst()
             return
         }
-        if (burstAvif) {
-            val mirror = mirrorCaptures
-            capture.takePicture(
-                ContextCompat.getMainExecutor(app),
-                object : ImageCapture.OnImageCapturedCallback() {
-                    override fun onCaptureSuccess(image: ImageProxy) {
-                        val degrees = image.imageInfo.rotationDegrees
-                        val cropRect = android.graphics.Rect(image.cropRect)
-                        val sourceJpeg = try {
-                            image.planes[0].buffer.let { buf ->
-                                ByteArray(buf.remaining()).also { buf.get(it) }
-                            }
-                        } finally {
-                            image.close()
+        // Every frame lands through saveCamera2Still, which routes the
+        // selected format (AVIF via the processed encoder, JPEG/JPEG_R
+        // as bytes) exactly like a plain single.
+        session.capture(
+            mirrored = mirrorCaptures,
+            callback = object : com.vayunmathur.camera.platform.camera2.Camera2Session.StillCallback {
+                override fun onStillCaptured(still: com.vayunmathur.camera.platform.camera2.CapturedStill) {
+                    viewModelScope.launch {
+                        val uri = kotlinx.coroutines.withContext(Dispatchers.IO) {
+                            runCatching { saveCamera2Still(still) }
+                                .onFailure { Log.error("CameraViewModel", "Burst frame $n save failed", it) }
+                                .getOrNull()
                         }
-                        viewModelScope.launch {
-                            val uri = kotlinx.coroutines.withContext(Dispatchers.IO) {
-                                runCatching {
-                                    if (com.vayunmathur.camera.domain.StillFormatRouting
-                                            .isUltraHdrJpeg(sourceJpeg)
-                                    ) {
-                                        saveStillBytes(
-                                            "IMG_${ts}_BURST${n}.jpg",
-                                            stampStillBytes(sourceJpeg, degrees, mirror),
-                                        )
-                                    } else {
-                                        val decodedRaw = android.graphics.BitmapFactory
-                                            .decodeByteArray(sourceJpeg, 0, sourceJpeg.size)
-                                            ?: error("Could not decode burst frame")
-                                        val decoded = cropToRect(decodedRaw, cropRect)
-                                        val adjusted = applyColorAdjustments(decoded, 0f, 0f, mirror)
-                                        val saved = saveProcessedStill(
-                                            adjusted, degrees, sourceJpeg, "IMG_${ts}_BURST${n}"
-                                        )
-                                        adjusted.recycle()
-                                        if (saved != null &&
-                                            saved.format == com.vayunmathur.camera.domain.StillFormat.JPEG
-                                        ) {
-                                            writeCaptureExif(saved.uri, sourceJpeg, degrees, mirrored = mirror)
-                                        }
-                                        saved?.uri
-                                    }
-                                }.getOrNull()
-                            }
-                            burstCountMutable.value = n
-                            uri?.let { setLastCaptureUri(it) }
-                            shootNext(n + 1)
-                        }
-                    }
-                    override fun onError(exception: ImageCaptureException) {
-                        Log.error("CameraViewModel", "Burst frame $n failed", exception)
+                        burstCountMutable.value = n
+                        uri?.let { setLastCaptureUri(it) }
                         shootNext(n + 1)
                     }
                 }
-            )
-            return
-        }
-        // prepareStillSave falls back to MediaStore, so null is unexpected — but a null
-        // here must terminate, never retry (the old `?: run { shootNext(n + 1) }` looped
-        // forever when the save target was unusable).
-        val pending = prepareStillSave("IMG_${ts}_BURST${n}.jpg") ?: run {
-            finishBurst()
-            return
-        }
-        val outputOptions = pending.outputOptions
 
-        capture.takePicture(
-            outputOptions,
-            ContextCompat.getMainExecutor(app),
-            object : ImageCapture.OnImageSavedCallback {
-                override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
-                    burstCountMutable.value = n
-                    pending.closeStream()
-                    pending.resolveUri(outputFileResults)?.let { setLastCaptureUri(it) }
+                override fun onStillFailed(message: String) {
+                    Log.error("CameraViewModel", "Burst frame $n failed: $message")
                     shootNext(n + 1)
                 }
-                override fun onError(exception: ImageCaptureException) {
-                    Log.error("CameraViewModel", "Burst frame $n failed", exception)
-                    pending.closeStream()
-                    shootNext(n + 1)
-                }
-            }
+            },
         )
     }
-    fun beginBurst() {
-        if (burstSplit == null || burstCam2 == null) {
-            shootNext(1)
-            return
-        }
-        try {
-            burstCam2.setCaptureRequestOptions(
-                stillCaptureRequestOptions(burstSplit.stillNanos, burstSplit.stillIso)
-            ).addListener({
-                burstExposureLocked = true
-                if (burstActiveMutable.value) shootNext(1) else finishBurst()
-            }, ContextCompat.getMainExecutor(app))
-        } catch (e: IllegalStateException) {
-            Log.status("CameraViewModel", "Failed to lock burst exposure", e)
-            shootNext(1)
-        } catch (e: IllegalArgumentException) {
-            Log.status("CameraViewModel", "Failed to lock burst exposure", e)
-            shootNext(1)
-        }
-    }
 
-    // Same ZSL stale-frame gate as capturePhoto(): only the first frame can predate
-    // AE convergence — once it lands, AE has settled for the rest of the burst.
-    if (stillCaptureIsZsl() && !isAeConvergedForCapture()) {
-        viewModelScope.launch {
-            awaitAeConvergence()
-            if (burstActiveMutable.value) beginBurst() else finishBurst()
-        }
-    } else {
-        beginBurst()
+    if (burstSplit != null) {
+        session.setManualExposure(burstSplit.stillNanos, burstSplit.stillIso)
+        burstExposureLocked = true
     }
+    shootNext(1)
 }
+
+/**
+ * A captured Motion Photo still waiting for its clip: the JPEG bytes, the ring-buffer frames
+ * drained at capture time (owned by the request and recycled once the save finishes), and the
+ * capture-time orientation, mirroring and file name, so a camera flip or a later shot while
+ * this one waits in the queue can't change how it is saved.
+ */
+internal class MotionSaveRequest(
+    val jpegBytes: ByteArray,
+    val frames: List<CameraViewModel.MotionFrame>,
+    val rotationDegrees: Int,
+    val mirrored: Boolean,
+    val displayName: String
+)
+
 
 fun CameraViewModel.stopBurst() {
     // Release path for the press-and-hold gesture: only clears the loop flag. The in-flight
@@ -412,20 +311,6 @@ internal fun CameraViewModel.clearMotionFrames() = synchronized(motionLock) {
 }
 
 /**
- * A captured Motion Photo still waiting for its clip: the JPEG bytes, the ring-buffer frames
- * drained at capture time (owned by the request and recycled once the save finishes), and the
- * capture-time orientation, mirroring and file name, so a camera flip or a later shot while
- * this one waits in the queue can't change how it is saved.
- */
-internal class MotionSaveRequest(
-    val jpegBytes: ByteArray,
-    val frames: List<CameraViewModel.MotionFrame>,
-    val rotationDegrees: Int,
-    val mirrored: Boolean,
-    val displayName: String
-)
-
-/**
  * Captures a Motion Photo: the still (captured in-memory so its bytes can carry the trailer) plus
  * the buffered ring-buffer frames encoded to a short MP4 and appended as a Google Motion Photo
  * trailer. Falls back to saving the plain still if no frames are buffered or encoding fails.
@@ -436,7 +321,7 @@ internal class MotionSaveRequest(
  * background by [onMotionStillCaptured] (#914).
  */
 internal fun CameraViewModel.captureMotionPhoto() {
-    val capture = imageCapture ?: run {
+    val session = activeCamera2Session ?: run {
         motionSaveQueue.release()
         isCapturingMutable.value = false
         return
@@ -445,38 +330,26 @@ internal fun CameraViewModel.captureMotionPhoto() {
     // Name, mirroring and orientation are fixed at the shutter press, not when the save runs.
     val displayName = "IMG_${MediaStoreSaver.timestamp()}.jpg"
     val mirrored = mirrorCaptures
-    capture.takePicture(
-        ContextCompat.getMainExecutor(app),
-        object : ImageCapture.OnImageCapturedCallback() {
-            private var feedbackSent = false
-
-            override fun onCaptureStarted() {
-                feedbackSent = true
+    session.capture(
+        mirrored = mirrored,
+        callback = object : com.vayunmathur.camera.platform.camera2.Camera2Session.StillCallback {
+            override fun onStillCaptured(still: com.vayunmathur.camera.platform.camera2.CapturedStill) {
                 emitShutterFeedback()
-            }
-
-            override fun onCaptureSuccess(image: ImageProxy) {
-                if (!feedbackSent) emitShutterFeedback()
-                val degrees = image.imageInfo.rotationDegrees
-                val jpegBytes = try {
-                    image.planes[0].buffer.let { buf ->
-                        ByteArray(buf.remaining()).also { buf.get(it) }
-                    }
-                } finally {
-                    image.close()
-                }
                 onMotionStillCaptured(
-                    MotionSaveRequest(jpegBytes, drainMotionFrames(), degrees, mirrored, displayName)
+                    MotionSaveRequest(
+                        still.jpegBytes, drainMotionFrames(),
+                        still.metadata.rotationDegrees, mirrored, displayName,
+                    )
                 )
             }
 
-            override fun onError(exception: ImageCaptureException) {
-                Log.error("CameraViewModel", "Motion Photo capture failed; falling back to still", exception)
+            override fun onStillFailed(message: String) {
+                Log.error("CameraViewModel", "Motion Photo capture failed; falling back to still: $message")
                 motionSaveQueue.release()
                 isCapturingMutable.value = false
                 captureSinglePhoto()
             }
-        }
+        },
     )
 }
 
@@ -554,11 +427,7 @@ internal fun CameraViewModel.captureNightPhoto() {
     // Gate-default-on; a policy miss returns false and routing below
     // (extension, then YUV burst) runs exactly as before.
     if (tryCaptureCamera2RawNight()) return
-    viewModelScope.launch {
-        if (nightExtensionUsableMutable.value) {
-            captureNightPhotoExtension()
-        } else {
-            captureNightPhotoCustom()
-        }
-    }
+    // Custom burst + Rust merge on the Camera2 session (the CameraX
+    // extension route is gone with CameraX).
+    captureNightPhotoCustom()
 }

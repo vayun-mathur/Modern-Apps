@@ -44,7 +44,7 @@ class CameraCovX4ComposeTest {
 
     private fun stateFor(mode: CameraMode, viewModel: CameraViewModel) = CameraScreenState(
         cameraMode = mode,
-        lensFacing = androidx.camera.core.CameraSelector.LENS_FACING_BACK,
+        lensFacing = android.hardware.camera2.CameraMetadata.LENS_FACING_BACK,
         selectedLens = null, availableLenses = emptyList(), hasFlashUnit = true,
         flashMode = com.vayunmathur.camera.platform.FlashMode.AUTO, torchEnabled = false,
         videoCodec = viewModel.videoCodecMutable.value,
@@ -62,7 +62,7 @@ class CameraCovX4ComposeTest {
         longExposureProgress = 0.4f, longExposureRemaining = "1.0s",
         lowLightDetected = false, nightModeActive = false, extensionStrength = null,
         sloMoSupported = true, highSpeedActive = false, photoSessionActive = true,
-        analysisStreamActive = true, nightExtAvailable = false, surfaceRequest = null,
+        analysisStreamActive = true, nightExtAvailable = false,
         availableZoomLevels = listOf("1x" to 1f, "2x" to 2f), galleryBitmap = null,
         panoSweeping = mode == CameraMode.PANORAMA, panoStitching = false,
         panoDots = if (mode == CameraMode.PANORAMA) listOf(

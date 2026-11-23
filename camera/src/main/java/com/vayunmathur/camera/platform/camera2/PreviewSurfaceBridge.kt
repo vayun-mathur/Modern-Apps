@@ -45,7 +45,21 @@ class PreviewSurfaceBridge(
     /** The current preview surface, or null between destroy and the next available. */
     val surface: Surface? get() = state.surface
 
+    private var texture: SurfaceTexture? = null
+
+    /**
+     * Sets the buffer size the texture produces. Constrained high-speed
+     * sessions reject any output whose size is outside the HFR list, so
+     * the slo-mo holder pins the preview texture to the selection size
+     * before the session configures; regular sessions leave the view
+     * size alone (the HAL scaler handles it).
+     */
+    fun setDefaultBufferSize(width: Int, height: Int) {
+        texture?.setDefaultBufferSize(width, height)
+    }
+
     override fun onSurfaceTextureAvailable(texture: SurfaceTexture, width: Int, height: Int) {
+        this.texture = texture
         val created = Surface(texture)
         state = PreviewSurfaceState(created, width, height)
         onEvent(PreviewSurfaceEvent.Available(created, width, height))
@@ -58,6 +72,7 @@ class PreviewSurfaceBridge(
     }
 
     override fun onSurfaceTextureDestroyed(texture: SurfaceTexture): Boolean {
+        this.texture = null
         val current = state.surface
         state = PreviewSurfaceState()
         if (current != null) {

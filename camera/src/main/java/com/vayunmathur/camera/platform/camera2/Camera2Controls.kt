@@ -24,6 +24,16 @@ data class Camera2ControlState(
     val aeRegion: MeteringRegion? = null,
     /** User still-flash setting; preview ignores it, stills resolve it. */
     val flashSetting: FlashSetting = FlashSetting.OFF,
+    /**
+     * Manual exposure (both null = AE on). When either is set the
+     * request locks AE off and carries the pair, clamped to the lens's
+     * advertised ranges at resolve time.
+     */
+    val exposureTimeNs: Long? = null,
+    val sensitivityIso: Int? = null,
+    /** Post-processing toggles (#662): true requests HIGH_QUALITY, false OFF. */
+    val noiseReductionHighQuality: Boolean = true,
+    val edgeHighQuality: Boolean = true,
 ) {
     companion object {
         val DEFAULT = Camera2ControlState()
@@ -49,6 +59,13 @@ data class ResolvedRequestParams(
     val aeRegions: List<MeteringRegion>,
     /** True when a tap point is being metered (AF/AE triggered at a point). */
     val meteringActive: Boolean,
+    /** Manual exposure pair (clamped); both null keeps AE on. */
+    val manualExposureTimeNs: Long? = null,
+    val manualSensitivityIso: Int? = null,
+    /** NOISE_REDUCTION_MODE / EDGE_MODE values; TONEMAP_MODE or null to leave unset. */
+    val noiseReductionMode: Int = android.hardware.camera2.CameraMetadata.NOISE_REDUCTION_MODE_HIGH_QUALITY,
+    val edgeMode: Int = android.hardware.camera2.CameraMetadata.EDGE_MODE_HIGH_QUALITY,
+    val tonemapMode: Int? = android.hardware.camera2.CameraMetadata.TONEMAP_MODE_HIGH_QUALITY,
 )
 
 object Camera2Controls {
@@ -92,6 +109,41 @@ object Camera2Controls {
                 emptyList()
             },
             meteringActive = state.afRegion != null || state.aeRegion != null,
+            manualExposureTimeNs = if (state.exposureTimeNs != null || state.sensitivityIso != null) {
+                val range = snapshot.exposureTimeRangeNs
+                if (range != null && state.exposureTimeNs != null) {
+                    state.exposureTimeNs.coerceIn(range.lower, range.upper)
+                } else {
+                    state.exposureTimeNs
+                }
+            } else {
+                null
+            },
+            noiseReductionMode = if (state.noiseReductionHighQuality) {
+                android.hardware.camera2.CameraMetadata.NOISE_REDUCTION_MODE_HIGH_QUALITY
+            } else {
+                android.hardware.camera2.CameraMetadata.NOISE_REDUCTION_MODE_OFF
+            },
+            edgeMode = if (state.edgeHighQuality) {
+                android.hardware.camera2.CameraMetadata.EDGE_MODE_HIGH_QUALITY
+            } else {
+                android.hardware.camera2.CameraMetadata.EDGE_MODE_OFF
+            },
+            tonemapMode = if (state.noiseReductionHighQuality || state.edgeHighQuality) {
+                android.hardware.camera2.CameraMetadata.TONEMAP_MODE_HIGH_QUALITY
+            } else {
+                null
+            },
+            manualSensitivityIso = if (state.exposureTimeNs != null || state.sensitivityIso != null) {
+                val range = snapshot.sensitivityRange
+                if (range != null && state.sensitivityIso != null) {
+                    state.sensitivityIso.coerceIn(range.lower, range.upper)
+                } else {
+                    state.sensitivityIso
+                }
+            } else {
+                null
+            },
         )
     }
 

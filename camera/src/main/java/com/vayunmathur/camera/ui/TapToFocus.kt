@@ -1,11 +1,6 @@
 package com.vayunmathur.camera.ui
 
 import android.os.SystemClock
-import androidx.camera.core.FocusMeteringAction
-import androidx.camera.core.MeteringPoint
-import androidx.camera.core.SurfaceOrientedMeteringPointFactory
-import androidx.camera.core.SurfaceRequest
-import androidx.camera.viewfinder.compose.MutableCoordinateTransformer
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -75,35 +70,6 @@ internal class TapToFocusState {
     }
 }
 
-private fun meteringPoint(
-    tapOffset: Offset,
-    surfaceRequest: SurfaceRequest?,
-    coordinateTransformer: MutableCoordinateTransformer,
-): MeteringPoint? {
-    val request = surfaceRequest ?: return null
-    return try {
-        val transformed = with(coordinateTransformer) { tapOffset.transform() }
-        val width = request.resolution.width.toFloat()
-        val height = request.resolution.height.toFloat()
-        val (nx, ny) = normalizedMeteringCoordinates(transformed.x, transformed.y, width, height)
-        val factory = if (width > 0f && height > 0f) {
-            SurfaceOrientedMeteringPointFactory(width, height)
-        } else {
-            SurfaceOrientedMeteringPointFactory(1f, 1f)
-        }
-        val surfaceW = if (width > 0f) width else 1f
-        val surfaceH = if (height > 0f) height else 1f
-        factory.createPoint(nx * surfaceW, ny * surfaceH)
-    } catch (e: Exception) {
-        Log.status("TapToFocus", "metering-point conversion failed; using centre point", e)
-        try {
-            SurfaceOrientedMeteringPointFactory(1f, 1f).createPoint(0.5f, 0.5f)
-        } catch (_: Exception) {
-            null
-        }
-    }
-}
-
 /**
  * Tap-to-focus gestures on the preview surface itself, in the same single
  * detector as long-press-to-lock. CameraXViewfinder's built-in tap gesture
@@ -117,13 +83,11 @@ private fun meteringPoint(
  */
 internal fun Modifier.tapToFocus(
     state: TapToFocusState,
-    surfaceRequest: SurfaceRequest?,
     mirrorPreview: Boolean,
-    coordinateTransformer: MutableCoordinateTransformer,
-    onFocus: (FocusMeteringAction) -> Unit,
-    onLockFocus: (FocusMeteringAction) -> Unit,
+    onFocus: (Float, Float) -> Unit,
+    onLockFocus: (Float, Float) -> Unit,
     onFallback: () -> Unit,
-): Modifier = pointerInput(surfaceRequest, mirrorPreview) {
+): Modifier = pointerInput(mirrorPreview) {
     fun showIndicator(tapOffset: Offset, locked: Boolean) {
         // tapOffset is in the (possibly extra-mirrored) preview layer's
         // coordinates; the indicator is drawn by a sibling outside that
@@ -143,22 +107,18 @@ internal fun Modifier.tapToFocus(
             // Indicator first, regardless of AF outcome: it proves the tap
             // registered even if metering then fails.
             showIndicator(tapOffset, locked = false)
-            val point = meteringPoint(tapOffset, surfaceRequest, coordinateTransformer)
-            if (point == null) {
-                Log.status("TapToFocus", "tap with no surface request; falling back to default metering")
-                onFallback()
+            if (size.width > 0 && size.height > 0) {
+                onFocus(tapOffset.x / size.width, tapOffset.y / size.height)
             } else {
-                onFocus(FocusMeteringAction.Builder(point).build())
+                onFallback()
             }
         },
         onLongPress = { tapOffset ->
             showIndicator(tapOffset, locked = true)
-            val point = meteringPoint(tapOffset, surfaceRequest, coordinateTransformer)
-            if (point == null) {
-                Log.status("TapToFocus", "long-press with no surface request; cannot lock metering")
-                onFallback()
+            if (size.width > 0 && size.height > 0) {
+                onLockFocus(tapOffset.x / size.width, tapOffset.y / size.height)
             } else {
-                onLockFocus(FocusMeteringAction.Builder(point).disableAutoCancel().build())
+                onFallback()
             }
         }
     )

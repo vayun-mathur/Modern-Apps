@@ -4,20 +4,11 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import com.vayunmathur.library.log.Log
+import android.hardware.camera2.CameraManager
 import android.util.Size
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.Preview
-import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.camera.lifecycle.awaitInstance
-import androidx.camera.video.FallbackStrategy
-import androidx.camera.video.HighSpeedVideoSessionConfig
-import androidx.camera.video.Quality
-import androidx.camera.video.QualitySelector
-import androidx.camera.video.Recorder
-import androidx.camera.video.VideoCapture
 import com.vayunmathur.camera.domain.LensFacing
-import com.vayunmathur.camera.platform.ensureLensesEnumerated
-import com.vayunmathur.camera.platform.lensSelector
+import com.vayunmathur.camera.platform.camera2.CharacteristicsFacade
+import com.vayunmathur.camera.platform.camera2.HighSpeedPlanner
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -30,48 +21,28 @@ private const val THUMBNAIL_SIDE_PX = 96
  * Does not affect other modes' quality.
  */
 internal suspend fun CameraViewModel.probeSloMoSupport(): Boolean {
-    // Whole probe off the main/startup path: it awaits CameraX init and
-    // reads Recorder capabilities, none of which the first preview frame
-    // needs. Lens enumeration (when it runs from here) likewise stays off
-    // main; the startup enrichment normally beats it to it.
+    // Camera2 probe: the BACK lens offers a constrained high-speed
+    // operating point (planner selection over the characteristics
+    // snapshot). Runs off the startup path; the first preview frame
+    // never waits on it.
     return withContext(Dispatchers.Default) {
-    try {
-        val provider = ProcessCameraProvider.awaitInstance(app)
-        ensureLensesEnumerated(provider)
-        val selector = lensSelector(
-            CameraSelector.LENS_FACING_BACK,
-            selectedLensMutable.value?.takeIf { it.facing == LensFacing.BACK }
-        )
-        val cameraInfo = provider.getCameraInfo(selector)
-        val caps = Recorder.getHighSpeedVideoCapabilities(cameraInfo)
-        val quals = caps?.getSupportedQualities(androidx.camera.core.DynamicRange.SDR).orEmpty()
-        if (caps == null || quals.isEmpty()) {
+        try {
+            ensureLensesEnumerated()
+            val manager = app.getSystemService(CameraManager::class.java)
+                ?: return@withContext false
+            val lensId = CharacteristicsFacade.resolveCamera2Id(manager, LensFacing.BACK)
+                ?: return@withContext false
+            val facade = CharacteristicsFacade.tryFromCameraManager(manager, lensId)
+                ?: return@withContext false
+            val selection = HighSpeedPlanner.select(facade.snapshot)
+            selection != null && selection.captureFps >= HFR_MIN_FPS
+        } catch (e: IllegalStateException) {
+            Log.status("SloMo", "Slo-Mo probe failed", e)
             false
-        } else {
-        // Need at least one FHD/HD HFR range
-        val preview = Preview.Builder().build()
-        val qualitySelector = QualitySelector.fromOrderedList(
-            listOf(Quality.FHD, Quality.HD),
-            FallbackStrategy.lowerQualityOrHigherThan(Quality.HD)
-        )
-        val recorder = Recorder.Builder().setQualitySelector(qualitySelector).build()
-        val vc = VideoCapture.Builder(recorder).build()
-        val tempConfig = HighSpeedVideoSessionConfig.Builder(vc)
-            .setPreview(preview)
-            .setSlowMotionEnabled(true)
-            .build()
-        val ranges = try {
-            cameraInfo.getSupportedFrameRateRanges(tempConfig)
-        } catch (_: IllegalStateException) { emptyList() } catch (_: IllegalArgumentException) { emptyList() }
-        ranges.isNotEmpty() && ranges.any { it.upper >= HFR_MIN_FPS }
+        } catch (e: IllegalArgumentException) {
+            Log.status("SloMo", "Slo-Mo probe failed", e)
+            false
         }
-    } catch (e: IllegalStateException) {
-        Log.status("SloMo", "Slo-Mo probe failed", e)
-        false
-    } catch (e: IllegalArgumentException) {
-        Log.status("SloMo", "Slo-Mo probe failed", e)
-        false
-    }
     }
 }
 

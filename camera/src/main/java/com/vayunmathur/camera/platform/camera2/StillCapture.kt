@@ -130,6 +130,13 @@ data class ResolvedStillParams(
     /** `JPEG_ORIENTATION`: clockwise degrees, matching [StillCaptureMetadata]. */
     val jpegOrientationDegrees: Int,
     val mirrored: Boolean,
+    /** Manual exposure pair (AE off); both null keeps the AE/flash mode above. */
+    val manualExposureTimeNs: Long? = null,
+    val manualSensitivityIso: Int? = null,
+    /** Post-processing modes copied from the preview resolution. */
+    val noiseReductionMode: Int = android.hardware.camera2.CameraMetadata.NOISE_REDUCTION_MODE_HIGH_QUALITY,
+    val edgeMode: Int = android.hardware.camera2.CameraMetadata.EDGE_MODE_HIGH_QUALITY,
+    val tonemapMode: Int? = null,
 )
 
 object StillCapturePlanner {
@@ -173,7 +180,10 @@ object StillCapturePlanner {
         val facing = snapshot.lensFacing ?: LensFacing.BACK
         val resolution = FlashModePolicy.resolve(facing, snapshot.hasFlashUnit, state.flashSetting)
         val torchLit = preview.flashMode == CameraMetadata.FLASH_MODE_TORCH
+        val manual = preview.manualExposureTimeNs != null || preview.manualSensitivityIso != null
         val (aeMode, flashMode) = when {
+            manual -> CameraMetadata.CONTROL_AE_MODE_OFF to
+                if (torchLit) CameraMetadata.FLASH_MODE_TORCH else CameraMetadata.FLASH_MODE_OFF
             torchLit -> CameraMetadata.CONTROL_AE_MODE_ON to CameraMetadata.FLASH_MODE_TORCH
             resolution == FlashResolution.HARDWARE && state.flashSetting == FlashSetting.AUTO ->
                 CameraMetadata.CONTROL_AE_MODE_ON_AUTO_FLASH to CameraMetadata.FLASH_MODE_SINGLE
@@ -196,6 +206,11 @@ object StillCapturePlanner {
                 snapshot.sensorOrientationDegrees, displayRotationDegrees,
             ),
             mirrored = mirrored,
+            manualExposureTimeNs = preview.manualExposureTimeNs,
+            manualSensitivityIso = preview.manualSensitivityIso,
+            noiseReductionMode = preview.noiseReductionMode,
+            edgeMode = preview.edgeMode,
+            tonemapMode = preview.tonemapMode,
         )
     }
 }

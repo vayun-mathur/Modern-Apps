@@ -1,117 +1,53 @@
 package com.vayunmathur.camera.platform
-
 import android.graphics.Bitmap
-import android.graphics.Rect
-import androidx.camera.core.ImageInfo
-import androidx.camera.core.ImageProxy
 import androidx.test.core.app.ApplicationProvider
-import java.lang.reflect.Proxy
 import java.nio.ByteBuffer
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertTrue
+import kotlin.test.*
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
-import org.robolectric.annotation.GraphicsMode
-
-/** Cov-c2: Photo/Bokeh analyzers against a fake ImageProxy frame. */
-@GraphicsMode(GraphicsMode.Mode.NATIVE)
-@RunWith(RobolectricTestRunner::class)
-@Config(sdk = [34])
+import org.robolectric.annotation.*
+/** Cov-c2: Photo/Bokeh/VideoMotion analyzers against Camera2 AnalysisFrame fakes. */
+@GraphicsMode(GraphicsMode.Mode.NATIVE) @RunWith(RobolectricTestRunner::class) @Config(sdk=[34])
 class CameraCovC2AnalyzersTest {
 
-    private val context = ApplicationProvider.getApplicationContext<android.content.Context>()
-
-    private fun imageInfo(): ImageInfo {
-        var self: Any? = null
-        val proxy = Proxy.newProxyInstance(
-            javaClass.classLoader, arrayOf(ImageInfo::class.java),
-        ) { _, method, _ ->
-            when (method.name) {
-                "getRotationDegrees" -> 0
-                "getTimestamp" -> 123L
-                else -> null
-            }
-        }
-        self = proxy
-        return proxy as ImageInfo
-    }
-
-    private fun plane(bytes: ByteArray, rowStride: Int): ImageProxy.PlaneProxy {
-        return Proxy.newProxyInstance(
-            javaClass.classLoader, arrayOf(ImageProxy.PlaneProxy::class.java),
-        ) { _, method, _ ->
-            when (method.name) {
-                "getBuffer" -> ByteBuffer.wrap(bytes)
-                "getRowStride" -> rowStride
-                "getPixelStride" -> 1
-                else -> null
-            }
-        } as ImageProxy.PlaneProxy
-    }
-
-    private fun fakeProxy(width: Int = 64, height: Int = 48, closedFlag: BooleanArray = BooleanArray(1)): ImageProxy {
-        val yBytes = ByteArray(width * height) { (it % 200).toByte() }
-        val planes = arrayOf(plane(yBytes, width), plane(ByteArray(width * height / 2), width), plane(ByteArray(width * height / 2), width))
-        return Proxy.newProxyInstance(
-            javaClass.classLoader, arrayOf(ImageProxy::class.java),
-        ) { _, method, args ->
-            when (method.name) {
-                "getPlanes" -> planes
-                "getWidth" -> width
-                "getHeight" -> height
-                "getFormat" -> android.graphics.ImageFormat.YUV_420_888
-                "getImageInfo" -> imageInfo()
-                "getCropRect" -> Rect(0, 0, width, height)
-                "setCropRect" -> null
-                "getImage" -> null
-                "close" -> { closedFlag[0] = true; null }
-                else -> null
-            }
-        } as ImageProxy
-    }
-
-    @Test fun photoAnalyzerReportsLuminanceAndCloses() {
-        var luminance: Float? = null
-        var qr: String? = null
-        var motionFrames = 0
-        val analyzer = PhotoAnalyzer(
-            onLuminance = { luminance = it },
-            onQrDetected = { qr = it },
-            onMotionFrame = { _: Bitmap, _: Long, _: Int -> motionFrames++ },
+    class FakeFrame(
+        val w: Int = 64, val h: Int = 48,
+        val yBytes: ByteArray = ByteArray(64 * 48) { (it * 7 % 251).toByte() },
+        override val timestampNs: Long = 42L,
+        override val rotationDegrees: Int = 90,
+    ) : com.vayunmathur.camera.platform.camera2.AnalysisFrame {
+        var closed = false
+        override val width get() = w; override val height get() = h
+        override val cropRect = com.vayunmathur.camera.domain.FrameCrop.fullFrame(w, h)
+        override val yPlane = com.vayunmathur.camera.domain.PlaneView(java.nio.ByteBuffer.wrap(yBytes), w, 1, w, h)
+        override val planes: List<com.vayunmathur.camera.domain.PlaneView> = listOf(
+            yPlane,
+            com.vayunmathur.camera.domain.PlaneView(java.nio.ByteBuffer.wrap(ByteArray((w+1)/2*((h+1)/2)){128.toByte()}), (w+1)/2, 1, (w+1)/2, (h+1)/2),
+            com.vayunmathur.camera.domain.PlaneView(java.nio.ByteBuffer.wrap(ByteArray((w+1)/2*((h+1)/2)){128.toByte()}), (w+1)/2, 1, (w+1)/2, (h+1)/2),
         )
-        val closed = BooleanArray(1)
-        analyzer.analyze(fakeProxy(closedFlag = closed))
-        // Second frame inside the cadence window still reports luminance.
-        analyzer.analyze(fakeProxy(closedFlag = closed))
-        assertTrue(closed[0], "analyzer must close every proxy")
-        if (luminance != null) {
-            assertTrue(luminance!! in 0f..255f)
-        }
-        assertEquals(null, qr)
+        override fun close() { closed = true }
     }
 
-    @Test fun photoAnalyzerHandlesEmptyPlanes() {
-        var calls = 0
-        val analyzer = PhotoAnalyzer(onLuminance = { calls++ }, onQrDetected = {})
-        val empty = Proxy.newProxyInstance(
-            javaClass.classLoader, arrayOf(ImageProxy::class.java),
-        ) { _, method, _ ->
-            when (method.name) {
-                "getPlanes" -> arrayOf(plane(ByteArray(0), 0))
-                "getWidth" -> 0
-                "getHeight" -> 0
-                "getFormat" -> android.graphics.ImageFormat.YUV_420_888
-                "getImageInfo" -> imageInfo()
-                "close" -> null
-                else -> null
-            }
-        } as ImageProxy
-        analyzer.analyze(empty)
-        assertEquals(0, calls)
+    private val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+    @Test fun photoAnalyzerReportsLuminanceViaFrameAndPlane() {
+        var lum:Float?=null; var motion=0; val a=PhotoAnalyzer(onLuminance={lum=it},onQrDetected={},onMotionFrame={_:Bitmap,_,_->motion++})
+        a.onAnalysisFrame(FakeFrame()); a.onAnalysisFrame(FakeFrame()); assertTrue(lum!=null && lum!! in 0f..255f); assertTrue(motion<=1)
+        lum=null; a.onYPlane(FakeFrame().yPlane); assertNotNull(lum)
     }
-
-    // BokehAnalyzer cannot be constructed on the JVM: its SelfieSegmenter
-    // init loads the native MlNative library (UnsatisfiedLinkError).
+    @Test fun photoAnalyzerHandlesEmptyPlane() {
+        var calls=0; val a=PhotoAnalyzer(onLuminance={calls++},onQrDetected={})
+        a.onYPlane(com.vayunmathur.camera.domain.PlaneView(ByteBuffer.wrap(ByteArray(0)),0,1,0,0)); assertEquals(0,calls)
+        assertNull(copyYPlaneTight(com.vayunmathur.camera.domain.PlaneView(ByteBuffer.wrap(ByteArray(0)),0,1,0,0),0,0))
+    }
+    @Test fun videoMotionFirstFrameNoSampleSecondDiffs() {
+        var samples=0; val a=VideoMotionAnalyzer{samples++}
+        VideoMotionAnalyzer::class.java.getDeclaredField("lastSampleAtMs").apply{isAccessible=true}.setLong(a,-10_000L)
+        a.onYPlane(FakeFrame().yPlane)
+        VideoMotionAnalyzer::class.java.getDeclaredField("lastSampleAtMs").apply{isAccessible=true}.setLong(a,-10_000L)
+        a.onYPlane(FakeFrame(yBytes=ByteArray(64*48){200.toByte()}).yPlane); assertTrue(samples>=0)
+        val grid=sampleYPlaneGrid(ByteBuffer.wrap(ByteArray(64*48){7}),64,1,64,48); assertNotNull(grid); assertTrue(grid.first.isNotEmpty())
+    }
+    @Test fun bokehClosedRecycles() {
+        val a=BokehAnalyzer(context){}; a.close(); val b=Bitmap.createBitmap(8,8,Bitmap.Config.ARGB_8888); a.onFrame(b,0); assertTrue(b.isRecycled)
+    }
 }

@@ -9,13 +9,11 @@ import android.graphics.Paint
 import android.graphics.Rect
 import android.net.Uri
 import com.vayunmathur.library.log.Log
-import androidx.camera.core.ImageProxy
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.scale
 import androidx.exifinterface.media.ExifInterface
 import java.io.ByteArrayInputStream
 import kotlin.math.roundToInt
-import com.vayunmathur.camera.data.prepareStillSave
 import com.vayunmathur.camera.data.updateLocation
 
 /** EXIF orientation buckets (degrees clockwise). */
@@ -63,21 +61,16 @@ internal fun uprightCopy(src: Bitmap, rotationDegrees: Int, maxSide: Int): Bitma
 }
 
 /**
- * Rotates the captured frame upright (mirroring for the front camera) and scales it down
- * for the result "data" thumbnail.
+ * Rotates a decoded captured frame upright (mirroring for the front
+ * camera) and scales it down for the result "data" thumbnail.
  */
-internal fun downscaledThumbnail(image: ImageProxy, mirror: Boolean): Bitmap {
-    // toBitmap() is a platform type: a frame that fails YUV->RGB conversion
-    // comes back null, which must surface as a decode failure (the caller
-    // routes it to onError), not as an intrinsic-null NPE crash.
-    val raw: Bitmap? = image.toBitmap()
-    requireNotNull(raw) { "captured frame did not decode to a bitmap" }
+internal fun downscaledThumbnail(rawFrame: Bitmap, rotationDegrees: Int, mirror: Boolean): Bitmap {
     val matrix = Matrix().apply {
-        postRotate(image.imageInfo.rotationDegrees.toFloat())
+        postRotate(rotationDegrees.toFloat())
         if (mirror) postScale(-1f, 1f)
     }
-    val upright = Bitmap.createBitmap(raw, 0, 0, raw.width, raw.height, matrix, true)
-    if (upright !== raw) raw.recycle()
+    val upright = Bitmap.createBitmap(rawFrame, 0, 0, rawFrame.width, rawFrame.height, matrix, true)
+    if (upright !== rawFrame) rawFrame.recycle()
     val maxSide = 512
     val scale = maxSide.toFloat() / maxOf(upright.width, upright.height)
     if (scale >= 1f) return upright

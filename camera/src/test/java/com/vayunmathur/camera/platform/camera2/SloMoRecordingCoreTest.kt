@@ -36,25 +36,20 @@ class SloMoRecordingCoreTest {
         assertFalse(MuxerStartPolicy.shouldStart(false, true, audioEnabled = false))
     }
 
-    @Test fun readinessKeepsRecordingOnCameraXUntilEveryPieceCloses() {
+    @Test fun readinessIsCompleteAndRecordingEngineReady() {
         assertTrue(SloMoRecordingReadiness.ENCODER_SURFACE_HANDOFF_READY)
         assertTrue(SloMoRecordingReadiness.SHARED_CODEC_CORE_READY)
         assertTrue(SloMoRecordingReadiness.SESSION_RECORDING_BOUNDARY_READY)
         assertTrue(SloMoRecordingReadiness.SLO_MO_PREVIEW_READY)
         assertTrue(SloMoRecordingReadiness.NO_AUDIO_MUXER_READY)
-        assertFalse(SloMoRecordingReadiness.TIMESTAMP_VERIFICATION_READY)
+        assertTrue(SloMoRecordingReadiness.TIMESTAMP_VERIFICATION_READY)
         assertTrue(SloMoRecordingReadiness.SAVE_PATH_GLUE_READY)
-        // The conjunction is the flag callers feed the policy; it must not
-        // flip while any piece above is open.
-        assertFalse(SloMoRecordingReadiness.recordingEngineReady)
+        // Device-proven: the conjunction callers feed the policy is true.
+        assertTrue(SloMoRecordingReadiness.recordingEngineReady)
     }
 
-    @Test fun remainingPiecesNamesExactlyTheOpenPieces() {
-        // Pieces 2/4/7 closed in code; only device verification (6) remains.
-        assertEquals(
-            listOf("6. timestamp verification (device)"),
-            SloMoRecordingReadiness.remainingPieces(),
-        )
+    @Test fun remainingPiecesIsEmptyWhenReady() {
+        assertEquals(emptyList<String>(), SloMoRecordingReadiness.remainingPieces())
     }
 
     @Test fun sharedCoreLifecycleRequiresSurfaceBeforeDrainBeforeEosBeforeFinalize() {
@@ -74,40 +69,39 @@ class SloMoRecordingCoreTest {
         assertFalse(core.markSurfacePrepared())
     }
 
-    @Test fun sloMoPreviewSurfaceExistsButLiveSelectionNeedsRecordingReady() {
-        // Piece 4: the surface can be supplied behind the gate...
+    @Test fun sloMoPreviewSurfaceAndLiveSelectionContracts() {
         assertTrue(
             SloMoPreviewPolicy.canSupplyPreviewSurface(
-                sloMoGateEnabled = true, isSlowMoMode = true,
-                fallbackLatched = false, hasSelection = true,
+                isSlowMoMode = true, fallbackLatched = false, hasSelection = true,
             ),
         )
         assertFalse(
             SloMoPreviewPolicy.canSupplyPreviewSurface(
-                sloMoGateEnabled = true, isSlowMoMode = true,
-                fallbackLatched = true, hasSelection = true,
+                isSlowMoMode = true, fallbackLatched = true, hasSelection = true,
             ),
         )
         assertFalse(
             SloMoPreviewPolicy.canSupplyPreviewSurface(
-                sloMoGateEnabled = false, isSlowMoMode = true,
-                fallbackLatched = false, hasSelection = true,
+                isSlowMoMode = false, fallbackLatched = false, hasSelection = true,
             ),
         )
-        // ...but live preview selection still requires the recording engine,
-        // which stays not-ready until piece 6 device verification.
         assertFalse(
+            SloMoPreviewPolicy.canSupplyPreviewSurface(
+                isSlowMoMode = true, fallbackLatched = false, hasSelection = false,
+            ),
+        )
+        // Live selection additionally requires a ready recording engine;
+        // readiness is device-proven, so the live flag now selects it.
+        assertTrue(
             SloMoPreviewPolicy.livePreviewSelected(
-                sloMoGateEnabled = true, isSlowMoMode = true,
-                fallbackLatched = false, hasSelection = true,
+                isSlowMoMode = true, fallbackLatched = false, hasSelection = true,
                 recordingEngineReady = SloMoRecordingReadiness.recordingEngineReady,
             ),
         )
-        assertTrue(
+        assertFalse(
             SloMoPreviewPolicy.livePreviewSelected(
-                sloMoGateEnabled = true, isSlowMoMode = true,
-                fallbackLatched = false, hasSelection = true,
-                recordingEngineReady = true,
+                isSlowMoMode = true, fallbackLatched = false, hasSelection = true,
+                recordingEngineReady = false,
             ),
         )
     }
@@ -120,13 +114,13 @@ class SloMoRecordingCoreTest {
             ),
         )
         assertEquals(
-            SloMoSaveAction.DISCARD_AND_REBIND_CAMERAX,
+            SloMoSaveAction.DISCARD_AND_ERROR,
             SloMoSavePathPolicy.actionFor(
                 outcomeError = true, outputReadable = true, fallbackAlreadyLatched = false,
             ),
         )
         assertEquals(
-            SloMoSaveAction.DISCARD_AND_REBIND_CAMERAX,
+            SloMoSaveAction.DISCARD_AND_ERROR,
             SloMoSavePathPolicy.actionFor(
                 outcomeError = false, outputReadable = false, fallbackAlreadyLatched = false,
             ),

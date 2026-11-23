@@ -3,10 +3,6 @@ package com.vayunmathur.camera.platform
 import android.graphics.Bitmap
 import android.os.SystemClock
 import com.vayunmathur.library.log.Log
-import androidx.annotation.OptIn
-import androidx.camera.core.ExperimentalGetImage
-import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.ImageProxy
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.BinaryBitmap
 import com.google.zxing.DecodeHintType
@@ -16,6 +12,7 @@ import com.google.zxing.PlanarYUVLuminanceSource
 import com.google.zxing.common.HybridBinarizer
 import com.vayunmathur.camera.domain.LumaPlaneMath
 import com.vayunmathur.camera.domain.PlaneView
+import com.vayunmathur.camera.platform.camera2.toBitmapFromPlanes
 
 /**
  * Combined PHOTO-stream analyzer. The ImageAnalysis use case can only host one analyzer, so this
@@ -49,7 +46,7 @@ class PhotoAnalyzer(
     private val onLuminance: (Float) -> Unit,
     private val onQrDetected: (String) -> Unit,
     private val onMotionFrame: ((Bitmap, Long, Int) -> Unit)? = null
-) : ImageAnalysis.Analyzer {
+) {
     private val reader = MultiFormatReader().apply {
         // Restrict to 2D codes only. Without this, ZXing's default MultiFormatReader
         // also decodes 1D linear barcodes (EAN/UPC/Code-128/ITF) which yield purely
@@ -66,6 +63,81 @@ class PhotoAnalyzer(
     // the single analysis executor, so plain fields are sufficient.
     private var lastDecodeAtMs = 0L
     private var lastMotionAtMs = 0L
+
+    /**
+     * Camera2 analysis-frame entry: the full consumer set (luma, QR,
+     * Motion-Photo copies) fed from an [AnalysisFrame]'s planes. Luma
+     * runs per frame from the Y plane in place; the two expensive ops
+     * (bitmap conversion for the Motion-Photo ring, ZXing decode) run
+     * at the same capped cadences as the legacy CameraX analyzer. The
+     * frame's [AnalysisFrame.rotationDegrees] replaces
+     * `imageInfo.rotationDegrees` for the Motion-Photo copies.
+     */
+    fun onAnalysisFrame(frame: com.vayunmathur.camera.platform.camera2.AnalysisFrame) {
+        onYPlane(frame.yPlane)
+        val nowMs = SystemClock.elapsedRealtime()
+        if (onMotionFrame != null && nowMs - lastMotionAtMs >= MOTION_FRAME_INTERVAL_MS) {
+            lastMotionAtMs = nowMs
+            try {
+                val bmp = frame.toBitmapFromPlanes()
+                if (bmp != null) {
+                    try {
+                        onMotionFrame.invoke(bmp, frame.timestampNs, frame.rotationDegrees)
+                    } catch (e: IllegalStateException) {
+                        Log.error("PhotoAnalyzer", "onMotionFrame emit threw", e)
+                    } catch (e: IllegalArgumentException) {
+                        Log.error("PhotoAnalyzer", "onMotionFrame emit threw", e)
+                    }
+                }
+            } catch (e: IllegalStateException) {
+                Log.error("PhotoAnalyzer", "toBitmapFromPlanes threw", e)
+            } catch (e: IllegalArgumentException) {
+                Log.error("PhotoAnalyzer", "toBitmapFromPlanes threw", e)
+            }
+        }
+        if (nowMs - lastDecodeAtMs >= QR_DECODE_INTERVAL_MS) {
+            lastDecodeAtMs = nowMs
+            val bytes = copyYPlaneTight(frame.yPlane, frame.width, frame.height)
+            if (bytes != null) {
+                decodeQrBytes(bytes, frame.width, frame.height)
+            }
+        }
+    }
+
+    /**
+     * ZXing decode over a tightly-packed Y copy (dataWidth == width).
+     * [PlanarYUVLuminanceSource] takes the backing array's stride as
+     * its dataWidth; packing rows tight makes that the image width, so
+     * the historical rowStride shear (see the legacy note) cannot
+     * occur. Rotation is not applied: ZXing hunts finder patterns in
+     * any orientation for the square 2D codes enabled here.
+     */
+    private fun decodeQrBytes(bytes: ByteArray, width: Int, height: Int) {
+        val source = PlanarYUVLuminanceSource(bytes, width, height, 0, 0, width, height, false)
+        val bitmap = BinaryBitmap(HybridBinarizer(source))
+        try {
+            val result = reader.decodeWithState(bitmap)
+            try {
+                onQrDetected(result.text)
+            } catch (e: IllegalStateException) {
+                Log.error("PhotoAnalyzer", "onQrDetected threw", e)
+            } catch (e: IllegalArgumentException) {
+                Log.error("PhotoAnalyzer", "onQrDetected threw", e)
+            }
+        } catch (_: NotFoundException) {
+            // expected – no QR in frame, NOT an error
+        } catch (e: com.google.zxing.ChecksumException) {
+            Log.error("PhotoAnalyzer", "ZXing decode threw", e)
+        } catch (e: com.google.zxing.FormatException) {
+            Log.error("PhotoAnalyzer", "ZXing decode threw", e)
+        } finally {
+            try {
+                reader.reset()
+            } catch (e: IllegalStateException) {
+                Log.error("PhotoAnalyzer", "reader.reset() threw", e)
+            }
+        }
+    }
 
     /**
      * Plane-based entry point shared by the CameraX analyzer below and the
@@ -87,233 +159,33 @@ class PhotoAnalyzer(
         }
     }
 
-    @OptIn(ExperimentalGetImage::class)
-    override fun analyze(imageProxy: ImageProxy) {
-        val startMs = System.currentTimeMillis()
-        try {
-            // Luminance stays per-frame: it is a cheap strided sum and the
-            // night-mode debounce counts frames, so skipping here would
-            // silently retune its engage/disengage timing. It now reads the
-            // plane buffer in place (no ByteArray copy); only the cadence-
-            // gated QR decode below still copies, because ZXing needs a
-            // contiguous byte array.
-            sampleLuminance(imageProxy, startMs)
-            // The two expensive ops — the YUV->RGB conversion for the
-            // Motion-Photo ring buffer and the full-frame ZXing decode — run
-            // at a capped cadence instead of on every frame. Unthrottled they
-            // saturate this single analysis thread (photo-only; video binds no
-            // analyzer) and the allocation churn stalls the UI thread during
-            // pinch zoom (#881). Luminance above keeps night detection live.
-            val nowMs = SystemClock.elapsedRealtime()
-            if (nowMs - lastMotionAtMs >= MOTION_FRAME_INTERVAL_MS) {
-                lastMotionAtMs = nowMs
-                emitMotionFrame(imageProxy)
-            }
-            if (nowMs - lastDecodeAtMs >= QR_DECODE_INTERVAL_MS) {
-                lastDecodeAtMs = nowMs
-                // ZXing needs a contiguous byte array, so this copy stays —
-                // but only on a decode tick, not on every frame.
-                val frame = readYPlane(imageProxy)
-                if (frame == null) {
-                    closeQuietly(imageProxy, "Y plane unreadable")
-                    return
-                }
-                decodeQr(frame, imageProxy, startMs)
-            } else {
-                // decodeQr() closes the frame in its finally; on a skipped
-                // tick close here so the pipeline never stalls.
-                closeQuietly(imageProxy, "decode skipped by cadence cap")
-            }
-        } catch (e: IllegalStateException) {
-            Log.error(
-                "NightPreview",
-                "PhotoAnalyzer analyze() OUTER threw – was not logged, " +
-                    "causes black preview and only 1x zoom because analyzer crashes",
-                e
-            )
-            closeQuietly(imageProxy, "outer close() also failed (double hidden)")
-        } catch (e: IllegalArgumentException) {
-            Log.error(
-                "NightPreview",
-                "PhotoAnalyzer analyze() OUTER threw – was not logged, " +
-                    "causes black preview and only 1x zoom because analyzer crashes",
-                e
-            )
-            closeQuietly(imageProxy, "outer close() also failed (double hidden)")
-        }
-    }
+}
 
-    /** Y-plane bytes plus row stride; null when the plane can't be read. */
-    private data class YFrame(val bytes: ByteArray, val rowStride: Int)
-
-    /** Copies the Y plane; rethrows buffer errors after logging (handled by the outer catch). */
-    @OptIn(ExperimentalGetImage::class)
-    private fun readYPlane(imageProxy: ImageProxy): YFrame? {
-        val plane = imageProxy.planes[0]
-        val rowStride = plane.rowStride
-        val buffer = plane.buffer.duplicate()
-        val bytes = ByteArray(buffer.remaining())
-        try {
-            buffer.get(bytes)
-        } catch (e: java.nio.BufferUnderflowException) {
-            Log.error(
-                "NightPreview",
-                "PhotoAnalyzer buffer.get() threw (swallowed before) " +
-                    "plane0Remaining? ${buffer.remaining()}",
-                e
-            )
-            throw e
-        }
-        return YFrame(bytes, rowStride)
-    }
-
-    /** Samples average luminance over a strided subsample and forwards it. */
-    @OptIn(ExperimentalGetImage::class)
-    private fun sampleLuminance(imageProxy: ImageProxy, startMs: Long) {
-        val plane = imageProxy.planes.firstOrNull()
-        if (plane == null) {
-            Log.status("NightPreview", "PhotoAnalyzer no Y plane – preview may be black?")
-            return
-        }
-        val view = PlaneView(
-            buffer = plane.buffer.duplicate(),
-            rowStride = plane.rowStride,
-            pixelStride = plane.pixelStride,
-            width = imageProxy.width,
-            height = imageProxy.height,
-        )
-        val avg = LumaPlaneMath.mean(view)
-        if (avg != null) {
-            Log.dev(
-                "NightPreview",
-                "PhotoAnalyzer luma avg=$avg width=${imageProxy.width} height=${imageProxy.height} " +
-                    "rowStride=${plane.rowStride} timestamp=${imageProxy.imageInfo.timestamp} " +
-                    "rot=${imageProxy.imageInfo.rotationDegrees} " +
-                    "took=${System.currentTimeMillis() - startMs}ms"
-            )
-            onYPlane(view)
+/**
+ * Copies a Y plane into a tightly packed `width * height` array
+ * (rowStride == width), honouring the source row/pixel strides so HAL
+ * row padding and semi-planar layouts never shear the image. Null when
+ * the plane cannot describe the full frame.
+ */
+internal fun copyYPlaneTight(plane: PlaneView, width: Int, height: Int): ByteArray? {
+    if (width <= 0 || height <= 0 || plane.rowStride <= 0 || plane.pixelStride <= 0) return null
+    val buffer = plane.buffer.duplicate()
+    val last = (height - 1).toLong() * plane.rowStride +
+        (width - 1).toLong() * plane.pixelStride
+    if (last >= buffer.limit()) return null
+    val out = ByteArray(width * height)
+    var offset = 0
+    for (row in 0 until height) {
+        val rowBase = row * plane.rowStride
+        if (plane.pixelStride == 1) {
+            buffer.position(rowBase)
+            buffer.get(out, offset, width)
+            offset += width
         } else {
-            Log.status("NightPreview", "PhotoAnalyzer no luma samples – preview may be black?")
-        }
-    }
-
-    /** Feeds the Motion-Photo ring buffer with an RGB copy of this frame. */
-    @OptIn(ExperimentalGetImage::class)
-    private fun emitMotionFrame(imageProxy: ImageProxy) {
-        val emit = onMotionFrame ?: return
-        try {
-            val bmp = try {
-                imageProxy.toBitmap()
-            } catch (e: IllegalStateException) {
-                Log.error("NightPreview", "PhotoAnalyzer toBitmap() for Motion-Photo threw (hidden before)", e)
-                null
-            } catch (e: IllegalArgumentException) {
-                Log.error("NightPreview", "PhotoAnalyzer toBitmap() for Motion-Photo threw (hidden before)", e)
-                null
+            for (col in 0 until width) {
+                out[offset++] = buffer.get(rowBase + col * plane.pixelStride)
             }
-            if (bmp != null) {
-                try {
-                    emit(bmp, imageProxy.imageInfo.timestamp, imageProxy.imageInfo.rotationDegrees)
-                } catch (e: IllegalStateException) {
-                    Log.error("NightPreview", "PhotoAnalyzer onMotionFrame emit threw (hidden)", e)
-                } catch (e: IllegalArgumentException) {
-                    Log.error("NightPreview", "PhotoAnalyzer onMotionFrame emit threw (hidden)", e)
-                }
-            }
-        } catch (e: IllegalStateException) {
-            Log.error("NightPreview", "PhotoAnalyzer Motion-Photo outer threw (hidden)", e)
-        } catch (e: IllegalArgumentException) {
-            Log.error("NightPreview", "PhotoAnalyzer Motion-Photo outer threw (hidden)", e)
         }
     }
-
-    /**
-     * Runs the ZXing QR decode over the Y plane.
-     *
-     * dataWidth (arg 2) is the stride of the backing array, NOT the image width — the
-     * two only coincide when the HAL packs Y rows tightly. Most camera HALs pad each
-     * row out to a 32/64-byte boundary, so for a 1440-wide analysis frame rowStride
-     * comes back as 1472 or 1536. Passing width there makes ZXing start each row
-     * (rowStride - width) bytes early, shearing the frame progressively down the
-     * image and destroying the finder patterns, so nothing ever decodes. It fails
-     * silently and only on devices whose analysis width isn't already aligned, which
-     * is why QR scanning worked on some phones and not others.
-     */
-    @OptIn(ExperimentalGetImage::class)
-    private fun decodeQr(frame: YFrame, imageProxy: ImageProxy, startMs: Long) {
-        val source = PlanarYUVLuminanceSource(
-            frame.bytes,
-            frame.rowStride,
-            imageProxy.height,
-            0, 0,
-            imageProxy.width,
-            imageProxy.height,
-            false
-        )
-        val bitmap = BinaryBitmap(HybridBinarizer(source))
-
-        try {
-            val result = reader.decodeWithState(bitmap)
-            Log.dev(
-                "NightPreview",
-                "PhotoAnalyzer QR decoded text=${result.text} " +
-                    "width=${imageProxy.width} height=${imageProxy.height}"
-            )
-            try {
-                onQrDetected(result.text)
-            } catch (e: IllegalStateException) {
-                Log.error("NightPreview", "PhotoAnalyzer onQrDetected threw (hidden)", e)
-            } catch (e: IllegalArgumentException) {
-                Log.error("NightPreview", "PhotoAnalyzer onQrDetected threw (hidden)", e)
-            }
-        } catch (_: NotFoundException) {
-            // expected – no QR in frame, NOT an error
-        } catch (e: com.google.zxing.ChecksumException) {
-            Log.error(
-                "NightPreview",
-                "PhotoAnalyzer ZXing decodeWithState threw OTHER than NotFound (was swallowed)",
-                e
-            )
-        } catch (e: com.google.zxing.FormatException) {
-            Log.error(
-                "NightPreview",
-                "PhotoAnalyzer ZXing decodeWithState threw OTHER than NotFound (was swallowed)",
-                e
-            )
-        } finally {
-            resetAndClose(imageProxy, startMs)
-        }
-    }
-
-    /** Resets the ZXing reader and closes the frame (a stall here freezes the preview). */
-    private fun resetAndClose(imageProxy: ImageProxy, startMs: Long) {
-        try {
-            reader.reset()
-        } catch (e: IllegalStateException) {
-            Log.error("NightPreview", "PhotoAnalyzer reader.reset() threw (hidden)", e)
-        }
-        try {
-            imageProxy.close()
-            Log.dev(
-                "NightPreview",
-                "PhotoAnalyzer imageProxy.close() took=${System.currentTimeMillis() - startMs}ms " +
-                    "total – if not closed, pipeline stalls -> black preview!"
-            )
-        } catch (e: IllegalStateException) {
-            Log.error(
-                "NightPreview",
-                "PhotoAnalyzer imageProxy.close() threw – pipeline stall -> black preview root!",
-                e
-            )
-        }
-    }
-
-    /** Best-effort frame close from catch blocks, logging [context] on failure. */
-    private fun closeQuietly(imageProxy: ImageProxy, context: String) {
-        try {
-            imageProxy.close()
-        } catch (e2: IllegalStateException) {
-            Log.error("NightPreview", "PhotoAnalyzer $context", e2)
-        }
-    }
+    return out
 }

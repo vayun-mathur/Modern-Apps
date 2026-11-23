@@ -31,7 +31,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.camera.R
 import com.vayunmathur.camera.platform.CameraViewModel
-import com.vayunmathur.camera.platform.setCamera2PreviewEnabled
 import com.vayunmathur.camera.platform.MotionPhotoDuration
 import com.vayunmathur.camera.data.SafDocuments
 import com.vayunmathur.camera.data.SaveTarget
@@ -65,7 +64,6 @@ fun <T : NavKey> SettingsPage(backStack: NavBackStack<T>, viewModel: CameraViewM
     val mirrorFront by viewModel.mirrorFront.collectAsState()
     val noiseReductionEnabled by viewModel.noiseReductionEnabled.collectAsState()
     val edgeSharpeningEnabled by viewModel.edgeSharpeningEnabled.collectAsState()
-    val camera2PreviewEnabled by viewModel.camera2PreviewEnabled.collectAsState()
     val motionPhotoDuration by viewModel.motionPhotoDuration.collectAsState()
     val saveTarget by viewModel.saveTarget.collectAsState()
     val context = LocalContext.current
@@ -155,14 +153,6 @@ fun <T : NavKey> SettingsPage(backStack: NavBackStack<T>, viewModel: CameraViewM
                     title = stringResource(R.string.settings_mirror_front_description),
                     checked = mirrorFront,
                     onCheckedChange = { viewModel.setMirrorFront(it); noteIfDeferred() },
-                )
-            }
-
-            SettingsSection(title = stringResource(R.string.settings_camera2_engine)) {
-                SettingsSwitchRow(
-                    title = stringResource(R.string.settings_camera2_engine_description),
-                    checked = camera2PreviewEnabled,
-                    onCheckedChange = { viewModel.setCamera2PreviewEnabled(it) },
                 )
             }
 

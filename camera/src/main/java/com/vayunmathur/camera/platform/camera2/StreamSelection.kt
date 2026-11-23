@@ -47,6 +47,15 @@ object StreamSelection {
     const val MAX_RAW_RING_PIXELS: Long = 12_000_000L
 
     /**
+     * Pixel cap for the YUV ring stream (see [selectRingSize]). A
+     * full-sensor YUV stream beside the full-sensor JPEG (and any
+     * JPEG_R/RAW outputs) exceeds what many HALs will configure — the
+     * device can die at configure time — while the ring only needs
+     * enough resolution for a ZSL reprocess/direct-encode still.
+     */
+    const val MAX_RING_PIXELS: Long = 4_000_000L
+
+    /**
      * Supported preview sizes for a TextureView surface, in facade order:
      * the explicit `SurfaceTexture` list when the HAL reported one, else the
      * PRIVATE list (what a preview surface consumes), else YUV.
@@ -162,7 +171,12 @@ object StreamSelection {
         val inputSizes = snapshot.reprocessInputSizes.map { FrameSize.from(it) }
         val reprocessable = yuv.filter { it in inputSizes }
         val pool = if (reprocessable.isNotEmpty()) reprocessable else yuv
-        return pool.maxWithOrNull(compareBy({ it.area }, { it.width }, { it.height }))
+        val underCap = pool.filter { it.area.toLong() <= MAX_RING_PIXELS }
+        return if (underCap.isNotEmpty()) {
+            underCap.maxWithOrNull(compareBy({ it.area }, { it.width }, { it.height }))
+        } else {
+            pool.minWithOrNull(compareBy({ it.area }, { it.width }, { it.height }))
+        }
     }
 
     /** Pixel cap for the analysis stream: the CameraX analysis cap (~1.2 MP, 1280x960). */

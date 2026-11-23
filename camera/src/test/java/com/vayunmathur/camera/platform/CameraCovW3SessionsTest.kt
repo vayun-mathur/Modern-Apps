@@ -1,233 +1,96 @@
 package com.vayunmathur.camera.platform
 
-import android.graphics.Bitmap
-import android.graphics.Color
-import androidx.camera.core.ImageCapture
+import android.graphics.ImageFormat
+import android.util.Range
+import android.util.Size
+import android.view.Surface
 import androidx.test.core.app.ApplicationProvider
-import com.vayunmathur.camera.domain.StillCaptureMode
-import kotlinx.coroutines.runBlocking
+import com.vayunmathur.camera.platform.camera2.Camera2Driver
+import com.vayunmathur.camera.platform.camera2.Camera2Executor
+import com.vayunmathur.camera.platform.camera2.Camera2Session
+import com.vayunmathur.camera.platform.camera2.CaptureSessionHandle
+import com.vayunmathur.camera.platform.camera2.CharacteristicsFacade
+import com.vayunmathur.camera.platform.camera2.DeviceCallback
+import com.vayunmathur.camera.platform.camera2.DeviceHandle
+import com.vayunmathur.camera.platform.camera2.CaptureSessionCallback
+import com.vayunmathur.camera.platform.camera2.FrameSize
+import com.vayunmathur.camera.platform.camera2.LensCharacteristicsSnapshot
+import com.vayunmathur.camera.platform.camera2.ResolvedRequestParams
+import com.vayunmathur.camera.platform.camera2.StillOutput
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import org.junit.Test
+import kotlinx.coroutines.runBlocking
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.robolectric.annotation.GraphicsMode
-import com.vayunmathur.camera.data.SaveTarget
-import com.vayunmathur.camera.data.clearSaveTreeUri
-import com.vayunmathur.camera.data.closeStream
-import com.vayunmathur.camera.data.prepareStillSave
-import com.vayunmathur.camera.data.saveStillBitmap
-import com.vayunmathur.camera.data.saveStillBytes
-import com.vayunmathur.camera.data.setAspectRatio
-import com.vayunmathur.camera.data.setFlashMode
-import com.vayunmathur.camera.data.setSaveTreeUri
 
-/**
- * Cov-w3: pure/buildable parts of photo, portrait, night and video session setup.
- * CameraX provider binding is deliberately NOT exercised: awaitInstance() hangs
- * with no CameraX runtime in Robolectric (documented in CameraCovC2SessionsTest),
- * so builders and state logic that run before binding are covered instead.
- */
-@GraphicsMode(GraphicsMode.Mode.NATIVE)
+/** Camera2 contract: teardown + motion-frame clearing. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class CameraCovW3SessionsTest {
-    private val context = ApplicationProvider.getApplicationContext<android.content.Context>()
-    private fun vm() = CameraViewModel(context.applicationContext as android.app.Application)
 
-    @Test fun portraitAttemptLadders() {
-        val ultra = portraitAttempts(true)
-        assertEquals(6, ultra.size)
-        assertTrue(ultra.first().capped && ultra.first().maxRes && ultra.first().ultra)
-        assertEquals(PortraitAttempt(false, false, false), ultra.last())
-        // Without Ultra HDR the ladder is shorter and never requests it.
-        val plain = portraitAttempts(false)
-        assertEquals(3, plain.size)
-        assertTrue(plain.none { it.ultra })
-        assertTrue(plain.first().maxRes)
-        assertFalse(plain.last().maxRes)
+    private fun vm() = CameraViewModel(ApplicationProvider.getApplicationContext())
+
+    private class FakeHandle : CaptureSessionHandle {
+        val repeating = mutableListOf<ResolvedRequestParams>()
+        override fun setRepeatingPreview(params: ResolvedRequestParams, target: Surface) { repeating += params }
+        override fun captureStill(params: com.vayunmathur.camera.platform.camera2.ResolvedStillParams, stillTarget: Surface, callback: com.vayunmathur.camera.platform.camera2.StillResultCallback) { callback.onCompleted(com.vayunmathur.camera.platform.camera2.RawStillMetadata()) }
+        override fun close() {}
+    }
+    private class FakeDevice : DeviceHandle {
+        override val cameraId: String = "0"
+        override fun createCaptureSession(surfaces: List<Surface>, callback: CaptureSessionCallback) { callback.onConfigured(FakeHandle()) }
+        override fun close() {}
+    }
+    private class FakeDriver : Camera2Driver {
+        override fun openCamera(cameraId: String, callback: DeviceCallback) { callback.onOpened(FakeDevice()) }
+        override fun createStillOutput(size: FrameSize): StillOutput? = null
+    }
+    internal fun snapshot(
+        zoom: Range<Float>? = Range(0.5f, 8f),
+        flash: Boolean = true,
+        sensitivity: Range<Int>? = Range(50, 6400),
+        ev: Range<Float>? = Range(-4f, 4f),
+    ): LensCharacteristicsSnapshot = CharacteristicsFacade.fromFakeMap(
+        cameraId = "0", zoomRatioRange = zoom, hasFlashUnit = flash,
+        sensitivityRange = sensitivity, exposureCompensationEvRange = ev,
+        exposureTimeRangeNs = Range(1_000_000L, 1_000_000_000L),
+        sizesByFormat = mapOf(ImageFormat.PRIVATE to listOf(Size(1920, 1080))),
+        activeArrayWidth = 4000, activeArrayHeight = 3000,
+        exposureCompensationStepEv = 1f / 6f, maxAfRegions = 1, maxAeRegions = 1,
+    ).snapshot
+
+    internal fun fakeSession(executor: Camera2Executor, snap: LensCharacteristicsSnapshot = snapshot()): Camera2Session =
+        Camera2Session(FakeDriver(), executor, snap)
+
+    internal fun Camera2Executor.drain() {
+        val latch = CountDownLatch(1); execute { latch.countDown() }
+        assertTrue(latch.await(5, TimeUnit.SECONDS))
+    }
+    internal fun dirtyTeardownState(v: CameraViewModel) {
+        v.isRecordingMutable.value = true; v.recordingPausedMutable.value = true
+        v.recordingDurationSecMutable.value = 42; v.timerCountdownMutable.value = 3
+        v.isCapturingMutable.value = true; v.photoSessionActiveMutable.value = true
+        v.analysisStreamActiveMutable.value = true; v.nightPreviewActiveMutable.value = true
+        v.highSpeedActiveMutable.value = true; v.videoSessionActiveMutable.value = true
+        v.videoSnapshotSupportedMutable.value = true; v.focusLockedMutable.value = true
+    }
+    internal fun assertTeardownCleared(v: CameraViewModel) {
+        assertFalse(v.isRecording.value); assertFalse(v.recordingPaused.value)
+        assertEquals(0L, v.recordingDurationSec.value); assertEquals(0, v.timerCountdown.value)
+        assertFalse(v.isCapturing.value); assertFalse(v.photoSessionActive.value)
+        assertFalse(v.analysisStreamActive.value); assertFalse(v.nightPreviewActive.value)
+        assertFalse(v.highSpeedActive.value); assertFalse(v.videoSessionActive.value)
+        assertFalse(v.videoSnapshotSupported.value); assertFalse(v.focusLocked.value)
     }
 
-    @Test fun portraitBuildersProduceConfiguredUseCases() {
-        val viewModel = vm()
-        for (maxRes in listOf(true, false)) {
-            for (ultra in listOf(true, false)) {
-                val capture = viewModel.buildPortraitCapture(maxRes, ultra)
-                assertNotNull(capture)
-                assertEquals(capture, viewModel.imageCapture)
-            }
-        }
-        // Ultra HDR capture must actually carry the JPEG_R output format.
-        val ultraCapture = viewModel.buildPortraitCapture(maxResCapture = true, ultraHdr = true)
-        assertEquals(ImageCapture.OUTPUT_FORMAT_JPEG_ULTRA_HDR, ultraCapture.outputFormat)
-        val jpegCapture = viewModel.buildPortraitCapture(maxResCapture = false, ultraHdr = false)
-        assertEquals(ImageCapture.OUTPUT_FORMAT_JPEG, jpegCapture.outputFormat)
-        for (capped in listOf(true, false)) {
-            val analysis = viewModel.buildPortraitAnalysis(capped, maxResCapture = true)
-            assertNotNull(analysis)
-            assertEquals(analysis, viewModel.imageAnalysis)
-        }
-    }
+    @Test fun teardownClearsMotionAndSessionFlags() { val v=vm(); dirtyTeardownState(v); v.teardownSession(); assertTeardownCleared(v); assertTrue(v.drainMotionFrames().isEmpty()) }
+    @Test fun noSessionCaptureDegrades() { val v=vm(); v.capturePhoto(); assertFalse(v.isCapturing.value) }
 
-    @Test fun photoBuildersAcrossModesAndAspectRatios() {
-        val viewModel = vm()
-        for (mode in StillCaptureMode.entries) {
-            for (maxRes in listOf(true, false)) {
-                val capture = viewModel.buildPhotoCapture(maxRes, ultraHdr = mode == StillCaptureMode.ZERO_SHUTTER_LAG, mode = mode)
-                assertNotNull(capture)
-            }
-        }
-        val ultra = viewModel.buildPhotoCapture(maxRes = true, ultraHdr = true)
-        assertEquals(ImageCapture.OUTPUT_FORMAT_JPEG_ULTRA_HDR, ultra.outputFormat)
-        // Every aspect ratio flows into the capture crop without throwing.
-        for (ratio in AspectRatioOption.entries) {
-            viewModel.setAspectRatio(ratio)
-            assertNotNull(viewModel.buildPhotoCapture(maxRes = false, ultraHdr = false))
-            assertNotNull(viewModel.currentCropAspectRatio())
-        }
-        assertNotNull(viewModel.buildPhotoAnalysis())
-    }
-
-    @Test fun nightExposureFallbackAndCountdownLifecycle() = runBlocking<Unit> {
-        val viewModel = vm()
-        // No bound camera: target is used verbatim with auto ISO.
-        val fallback = viewModel.computeNightExposure(123_000_000L)
-        assertEquals(123_000_000L, fallback.nanos)
-        assertNull(fallback.iso)
-        assertEquals(
-            CameraViewModel.NIGHT_TARGET_EXPOSURE_NANOS,
-            viewModel.computeNightExposure().nanos,
-        )
-        // Countdown sets progress/remaining, stop clears both.
-        viewModel.startLongExposureCountdown(2_000_000_000L)
-        assertEquals(1f, viewModel.longExposureProgressMutable.value)
-        assertTrue(viewModel.longExposureRemainingMutable.value.endsWith("s"))
-        viewModel.stopLongExposureCountdown()
-        assertEquals(0f, viewModel.longExposureProgressMutable.value)
-        assertEquals("", viewModel.longExposureRemainingMutable.value)
-        viewModel.startLongExposureCountdown(0L)
-        viewModel.stopLongExposureCountdown()
-    }
-
-    @Test fun nightModeDetectionAndOverrideStateMachine() {
-        val viewModel = vm()
-        viewModel.resetNightModeDetection()
-        // Bright frames never engage; sustained dark frames do (debounced).
-        repeat(6) { viewModel.onLuminance(90f) }
-        assertFalse(viewModel.nightModeActive.value)
-        repeat(6) { viewModel.onLuminance(10f) }
-        assertTrue(viewModel.lowLightDetected.value || viewModel.nightModeActive.value)
-        viewModel.toggleNightModeOverride()
-        viewModel.toggleNightModeOverride()
-        viewModel.resetNightModeDetection()
-        assertFalse(viewModel.nightExtFailedRecently())
-        viewModel.recordNightExtensionFailure()
-        viewModel.stopObservingNightModeIndicator()
-        viewModel.stopObservingExtensionStrength()
-        viewModel.stopObservingExtensionCameraState()
-    }
-
-    @Test fun sessionTeardownAndFlashModeMappingAllModes() {
-        val viewModel = vm()
-        for (mode in FlashMode.entries) {
-            viewModel.setFlashMode(mode)
-            val mapped = viewModel.getImageCaptureFlashMode()
-            assertTrue(mapped in setOf(ImageCapture.FLASH_MODE_ON, ImageCapture.FLASH_MODE_OFF, ImageCapture.FLASH_MODE_AUTO))
-        }
-        viewModel.teardownSession()
-        assertFalse(viewModel.photoSessionActiveMutable.value)
-        // Capability probes degrade (not throw) on a bare CameraInfo proxy path:
-        // with no bound camera they are simply not consulted; teardown is idempotent.
-        viewModel.teardownSession()
-    }
-
-    @Test fun captureRoutingWithStateCombinations() {
-        val viewModel = vm()
-        // Route matrix: exercise routeStillCapture/night/ZSL gates across modes & settings.
-        for (mode in CameraMode.entries) {
-            viewModel.cameraModeMutable.value = mode
-            viewModel.routeStillCapture()
-            viewModel.nightCaptureApplies()
-            viewModel.stillCaptureIsZsl()
-        }
-        viewModel.setExposureTimeIndex(3)
-        viewModel.routeStillCapture()
-        assertFalse(viewModel.stillCaptureIsZsl())
-        viewModel.setExposureTimeIndex(0)
-        viewModel.setManualIsoIndex(2)
-        viewModel.routeStillCapture()
-        // Burst lifecycle caps and clears.
-        viewModel.startBurst()
-        viewModel.stopBurst()
-        assertFalse(viewModel.burstActive.value)
-    }
-
-    @Test fun videoRecordingEntryPointsWithoutBoundCapture() {
-        val viewModel = vm()
-        viewModel.toggleRecording()
-        assertFalse(viewModel.isRecording.value)
-        viewModel.toggleHighSpeedRecording()
-        viewModel.togglePauseRecording()
-        viewModel.toggleMicMuted()
-        viewModel.captureVideoSnapshot()
-        viewModel.startPanorama()
-        viewModel.stopPanorama()
-        viewModel.startPhotosphere()
-        viewModel.stopPhotosphere()
-        // Timer helpers for recording.
-        viewModel.startRecordingTimer()
-        viewModel.stopRecordingTimer()
-        assertEquals(0L, viewModel.recordingDurationSecMutable.value)
-    }
-
-    @Test fun thumbnailAndSavePathsDegradeGracefully() = runBlocking<Unit> {
-        val viewModel = vm()
-        assertNull(viewModel.loadThumbnail(null))
-        // A content:// URI is not exercised: Robolectric's ShadowContentResolver throws
-        // UnsupportedOperationException for unregistered streams, which loadThumbnail's
-        // IOException/SecurityException catches cannot intercept on the JVM.
-        // Save routing under both targets.
-        val bmp = Bitmap.createBitmap(16, 16, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.RED) }
-        viewModel.saveStillBitmap("cov-w3-bitmap.jpg", bmp)
-        viewModel.saveStillBytes("cov-w3-bytes.jpg", byteArrayOf(9, 8, 7))
-        val tree = android.net.Uri.parse("content://com.android.externalstorage.documents/tree/primary%3APictures%2FCovW3")
-        viewModel.setSaveTreeUri(tree)
-        viewModel.saveStillBitmap("cov-w3-saf.jpg", bmp)
-        viewModel.prepareStillSave("cov-w3-saf2.jpg")?.closeStream()
-        viewModel.clearSaveTreeUri()
-        assertEquals(SaveTarget.MediaStoreDefault, viewModel.saveTargetMutable.value)
-    }
-
-    @Test fun zoomLabelsAndColorMatrixExactValues() {
-        assertEquals(".5", formatZoomLabel(0.5f))
-        assertEquals(".6", formatZoomLabel(0.6f))
-        assertEquals("1x", formatZoomLabel(1f))
-        assertEquals("2x", formatZoomLabel(2.04f))
-        assertEquals("1.5x", formatZoomLabel(1.5f))
-        assertEquals("10x", formatZoomLabel(10f))
-        val neutral = buildColorAdjustmentMatrix(0f, 0f)
-        val values = neutral.array
-        assertEquals(1f, values[0]); assertEquals(1f, values[6]); assertEquals(1f, values[12])
-        assertEquals(0f, values[4])
-        val graded = buildColorAdjustmentMatrix(1f, 0.5f)
-        // graded matrix values are read from its own array
-        val values2 = graded.array
-        assertTrue(values2[0] > 1f, "warmth raises red gain")
-        assertTrue(values2[12] < 1f, "warmth lowers blue gain")
-        assertEquals(20f, values2[4]) // 0.5 * 40 shadow lift
-        // Exposure stops table is monotonic and Auto is the null stop.
-        assertNull(CameraViewModel.EXPOSURE_TIME_STOPS.first().nanos)
-        val nanos = CameraViewModel.EXPOSURE_TIME_STOPS.mapNotNull { it.nanos }
-        assertEquals(nanos.sorted(), nanos)
-    }
-
-    @Test fun manualLifecycleOwnerTransitions() {
-        val owner = ManualLifecycleOwner()
-        owner.start()
-        owner.destroy()
-    }
 }

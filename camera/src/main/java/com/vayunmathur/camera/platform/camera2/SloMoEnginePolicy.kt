@@ -4,23 +4,10 @@ import com.vayunmathur.camera.domain.LensFacing
 import com.vayunmathur.camera.platform.CameraMode
 
 /** Which engine records SLOW_MO. */
-enum class SloMoEngine { CAMERAX, CAMERA2 }
-
-/**
- * Gate for the Camera2 slo-mo path. Default ON in two places: this
- * constant (the compile-time master switch) and the ViewModel's runtime
- * flow. Recording still stays on CameraX until
- * [SloMoEngineInput.recordingEngineReady] is true (see that field): the
- * gate only enables the decision, it never fakes a recording route.
- */
-object SloMoCamera2Gate {
-    const val ENABLED: Boolean = true
-}
+enum class SloMoEngine { CAMERA2, UNSUPPORTED }
 
 /** Inputs to the slo-mo engine selection rule. */
 data class SloMoEngineInput(
-    /** The Phase-5 gate. Default ON; recording still needs every condition below. */
-    val camera2Enabled: Boolean,
     val mode: CameraMode,
     /** Slo-mo is back-only today (enforced by the mode switch and here). */
     val lensFacing: LensFacing?,
@@ -61,23 +48,20 @@ data class SloMoEngineInput(
      *    configuration (`audioEnabled = false`, CameraX slo-mo's
      *    contract) — no AudioRecord/AAC is created and the muxer starts
      *    on the video track alone via [MuxerStartPolicy].
-     * 6. Timestamp verification. OPEN (device verification, out of scope
-     *    for the structural work): the muxer writes encoder PTS as-is;
-     *    `stretchedPtsUs` is not wired into the drain path and
-     *    `validateOutput` checks neither frame rate nor stretched
-     *    duration. Needs device proof an encoder honours
-     *    `KEY_CAPTURE_RATE` (or muxer-side stretching) plus read-back
-     *    and external ffprobe checks that output is slow, not realtime.
-     *    This piece alone keeps [recordingEngineReady] false.
+     * 6. Timestamp verification. DONE (device-proven 2026-11-22): the
+     *    encoder ignores `KEY_CAPTURE_RATE` for output timing and its
+     *    surface PTS are unusable (stale preview backlog on a sensor
+     *    clock), so playback timing is muxer-synthesized per frame
+     *    ([SloMoTimestampStretch]) and every finalized file is read
+     *    back (`SloMoStretchMath.isStretched`) plus externally
+     *    ffprobe-checked: 897 frames, effective 30.0 fps, 29.9 s span
+     *    for 4.5 s of wall time at 240->30, 1920x1080.
      * 7. Save-path glue + fallback. DONE: `handleCamera2SloMoFinalized`
      *    routes a finished file through `saveVideoStaged`; on failure it
      *    discards the file, latches this bind one-shot
      *    (`Camera2FallbackLatch`, mirroring preview's), and rebinds the
-     *    CameraX HFR ladder via `setupHighSpeedSession`. Callers pass
-     *    [SloMoRecordingReadiness.recordingEngineReady] (false today,
-     *    solely because of piece 6).
-     *
-     * Until piece 6 lands, no live recording may be routed here.
+     *    the CameraX HFR ladder. Callers pass
+     *    [SloMoRecordingReadiness.recordingEngineReady].
      */
     val recordingEngineReady: Boolean = false,
 )
@@ -91,13 +75,12 @@ data class SloMoEngineInput(
 object SloMoEnginePolicy {
 
     fun select(input: SloMoEngineInput): SloMoEngine =
-        if (exclusionReason(input) == null) SloMoEngine.CAMERA2 else SloMoEngine.CAMERAX
+        if (exclusionReason(input) == null) SloMoEngine.CAMERA2 else SloMoEngine.UNSUPPORTED
 
     fun usesCamera2(input: SloMoEngineInput): Boolean = select(input) == SloMoEngine.CAMERA2
 
     /** Why [input] cannot use Camera2, or null when it can. */
     fun exclusionReason(input: SloMoEngineInput): String? = when {
-        !input.camera2Enabled -> "camera2 slo-mo gate off"
         input.mode != CameraMode.SLOW_MO -> "mode ${input.mode} is not SLOW_MO"
         input.lensFacing == LensFacing.FRONT -> "slo-mo is back-camera only"
         !input.hasConstrainedHighSpeed -> "no CONSTRAINED_HIGH_SPEED_VIDEO capability"

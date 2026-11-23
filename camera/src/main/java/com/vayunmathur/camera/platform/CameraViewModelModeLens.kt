@@ -1,6 +1,5 @@
 package com.vayunmathur.camera.platform
 
-import androidx.camera.core.CameraSelector
 
 /**
  * Mode and lens actions for [CameraViewModel]: mode switches, lens flip
@@ -22,10 +21,21 @@ fun CameraViewModel.switchCameraMode(newMode: CameraMode) {
         cancelTimerCountdown()
         resetNightModeDetection()
     }
-    // Slo-Mo is back-camera only; enforce it when entering Slo-Mo.
+    // Slo-Mo is back-camera only; enforce it when entering Slo-Mo. The
+    // selected lens must move too, not just the facing flag: Camera2
+    // preview holders key on the selected lens's facing, and a stale
+    // front lens there builds a front high-speed session that can
+    // never configure (the CameraX setup masked this by re-seeking
+    // the back lens at bind time).
     if (newMode == CameraMode.SLOW_MO) {
-        if (lensFacingMutable.value != CameraSelector.LENS_FACING_BACK) {
-            lensFacingMutable.value = CameraSelector.LENS_FACING_BACK
+        if (lensFacingMutable.value != android.hardware.camera2.CameraMetadata.LENS_FACING_BACK) {
+            lensFacingMutable.value = android.hardware.camera2.CameraMetadata.LENS_FACING_BACK
+            selectedLensMutable.value =
+                com.vayunmathur.camera.domain.LensSelectionLogic.filterByFacing(
+                    availableLensesMutable.value,
+                    com.vayunmathur.camera.domain.LensFacing.BACK,
+                ).minByOrNull { it.fallbackPriority }
+            selectedLensMutable.value?.let { persistStartupLens(it) }
             resetNightModeDetection()
         }
     }
@@ -38,11 +48,11 @@ fun CameraViewModel.flipCamera() {
     // A flip rebinds the session and teardown would stop an active recording
     // (the shutter row already hides flip while recording; this is the backstop).
     if (isRecordingMutable.value) return
-    lensFacingMutable.value = if (lensFacingMutable.value == CameraSelector.LENS_FACING_BACK)
-        CameraSelector.LENS_FACING_FRONT else CameraSelector.LENS_FACING_BACK
+    lensFacingMutable.value = if (lensFacingMutable.value == android.hardware.camera2.CameraMetadata.LENS_FACING_BACK)
+        android.hardware.camera2.CameraMetadata.LENS_FACING_FRONT else android.hardware.camera2.CameraMetadata.LENS_FACING_BACK
     // Preserve the lens family across the flip: e.g. UW back -> front lens,
     // tele back -> front lens (front has a single family, anchored at its default).
-    val facing = if (lensFacingMutable.value == CameraSelector.LENS_FACING_BACK)
+    val facing = if (lensFacingMutable.value == android.hardware.camera2.CameraMetadata.LENS_FACING_BACK)
         com.vayunmathur.camera.domain.LensFacing.BACK
     else com.vayunmathur.camera.domain.LensFacing.FRONT
     selectedLensMutable.value =
@@ -64,7 +74,7 @@ fun CameraViewModel.selectLens(lens: com.vayunmathur.camera.domain.PhysicalLens)
     // recording; gated while recording (the lens bar explains why in the UI).
     if (isRecordingMutable.value) return
     if (lens.facing != (
-        if (lensFacingMutable.value == CameraSelector.LENS_FACING_BACK)
+        if (lensFacingMutable.value == android.hardware.camera2.CameraMetadata.LENS_FACING_BACK)
             com.vayunmathur.camera.domain.LensFacing.BACK
         else com.vayunmathur.camera.domain.LensFacing.FRONT
         )

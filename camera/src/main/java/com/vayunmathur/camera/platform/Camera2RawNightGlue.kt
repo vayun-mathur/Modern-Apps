@@ -34,8 +34,6 @@ internal fun CameraViewModel.tryCaptureCamera2RawNight(): Boolean {
     val session = activeCamera2Session ?: return false
     val snapshot = session.characteristics
     val input = RawNightInput(
-        rawGateOn = RawRingGate.ENABLED && camera2RawNightEnabledMutable.value,
-        explicitRawSelected = camera2RawNightEnabledMutable.value,
         mode = cameraModeMutable.value,
         nightRoute = true,
         rawSupported = session.rawSupported,

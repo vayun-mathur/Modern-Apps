@@ -45,6 +45,9 @@ import kotlinx.coroutines.withContext
 /** Registers the live gated Camera2 session (null when it leaves composition). */
 internal fun CameraViewModel.registerCamera2Session(session: Camera2Session?) {
     activeCamera2Session = session
+    if (session != null) {
+        viewModelScope.launch { refreshCapabilities(session.characteristics.cameraId) }
+    }
 }
 
 private fun FlashMode.toFlashSetting(): FlashSetting = when (this) {
@@ -63,7 +66,6 @@ private fun FlashMode.toFlashSetting(): FlashSetting = when (this) {
 internal fun CameraViewModel.tryCaptureCamera2Still(): Boolean {
     val session = activeCamera2Session ?: return false
     val input = StillEngineInput(
-        camera2Enabled = camera2PreviewEnabledMutable.value,
         mode = cameraModeMutable.value,
         hasJpegOutput = session.hasJpegOutput,
         nightRoute = nightPreviewActiveMutable.value || nightCaptureApplies(),
@@ -86,7 +88,7 @@ internal fun CameraViewModel.tryCaptureCamera2Still(): Boolean {
     )
     // Depth-phase ring inputs: gate + facade reprocess + live ring output.
     val ringInput = input.copy(
-        ringEnabled = ReprocessRingGate.ENABLED && camera2PreviewEnabledMutable.value,
+        ringEnabled = ReprocessRingGate.ENABLED,
         reprocessSupported = session.reprocessSupported,
         hasRingOutput = session.hasRingOutput,
     )

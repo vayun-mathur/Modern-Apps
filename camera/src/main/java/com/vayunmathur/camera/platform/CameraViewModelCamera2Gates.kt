@@ -1,64 +1,47 @@
 package com.vayunmathur.camera.platform
 
-import androidx.lifecycle.viewModelScope
 import com.vayunmathur.library.log.Log
-import kotlinx.coroutines.launch
 
 /**
- * Camera2 engine gate actions for [CameraViewModel]: preview fallback
- * handling and the persisted on/off setters for the preview, slo-mo,
- * night and RAW-night Camera2 routes. The gate state flows themselves
- * stay on the ViewModel; these extensions only mutate them, exactly as
- * the former member functions did.
+ * Camera2 bind-failure handling for [CameraViewModel]. Camera2 is the
+ * only engine: a failure latches one-shot for its bind key and surfaces
+ * the bind-failed error UI with a manual retry (which clears the
+ * latch), instead of switching engines.
  */
 
 /**
  * Records a Camera2 preview configure/bind failure. First failure for
- * this bind key latches (returns true) and the UI switches that
- * session to CameraX; repeat failures for the same key are ignored.
+ * this bind key latches (returns true) and the UI shows the retryable
+ * bind error; repeat failures for the same key are ignored.
  */
 fun CameraViewModel.onCamera2PreviewFailed(cameraId: String): Boolean {
     // Key on the CURRENT selected lens, not the (possibly stale) id the
-    // failing composable captured: the startup seed is reconciled to the
-    // enumerated lens in the background, and the UI gate builds its key
-    // from the current selection — the latch must agree or it never reads
-    // as latched.
+    // failing composable captured: the startup seed is reconciled to
+    // the enumerated lens in the background, and the UI builds its key
+    // from the current selection — the latch must agree or it never
+    // reads as latched.
     val keyId = selectedLensMutable.value?.logicalCameraId
         ?.takeIf { it.isNotEmpty() } ?: cameraId
     val key = com.vayunmathur.camera.platform.camera2.Camera2FallbackLatch
         .bindKey(keyId, cameraModeMutable.value)
     if (!camera2FallbackLatch.recordFailure(key)) return false
     camera2FallbackBindKeyMutable.value = key
-    Log.status("Camera2Preview", "Camera2 bind failed for $key; falling back to CameraX for this session")
+    sessionBindFailedMutable.value = true
+    Log.status("Camera2Preview", "Camera2 bind failed for $key; showing retryable bind error")
     return true
 }
 
-/** Clears the fallback latch (manual retry / gate re-enable / new bind). */
+/** Clears the fallback latch (manual retry / new bind). */
 fun CameraViewModel.clearCamera2Fallback() {
     camera2FallbackLatch.reset()
     camera2FallbackBindKeyMutable.value = null
 }
 
-/** Turns the Camera2 engine on/off (PHOTO only; see PreviewEnginePolicy). */
-fun CameraViewModel.setCamera2PreviewEnabled(enabled: Boolean) {
-    camera2PreviewEnabledMutable.value = enabled
-    if (enabled) clearCamera2Fallback()
-    viewModelScope.launch { ds.setString("camera_camera2_engine", enabled.toString()) }
-}
-
-/** Turns the Camera2 slo-mo gate on/off (SLOW_MO only; see SloMoEnginePolicy). */
-fun CameraViewModel.setCamera2SloMoEnabled(enabled: Boolean) {
-    camera2SloMoEnabledMutable.value = enabled
-    if (enabled) clearCamera2SloMoFallback()
-    viewModelScope.launch { ds.setString("camera_camera2_slomo", enabled.toString()) }
-}
-
 /**
  * Records a Camera2 slo-mo preview/recording failure. First failure for
- * this bind key latches (returns true) and the caller rebinds the CameraX
- * high-speed session; repeat failures for the same key are ignored so a
- * failing device cannot loop Camera2 -> CameraX -> Camera2 (piece 7,
- * mirroring the preview latch).
+ * this bind key latches (returns true) and surfaces the retryable bind
+ * error; repeat failures for the same key are ignored so a failing
+ * device cannot loop.
  */
 fun CameraViewModel.onCamera2SloMoFailed(cameraId: String): Boolean {
     val keyId = selectedLensMutable.value?.logicalCameraId
@@ -67,17 +50,18 @@ fun CameraViewModel.onCamera2SloMoFailed(cameraId: String): Boolean {
         .bindKey(keyId, cameraModeMutable.value)
     if (!camera2SloMoFallbackLatch.recordFailure(key)) return false
     camera2SloMoFallbackBindKeyMutable.value = key
-    Log.status("SloMo", "Camera2 slo-mo failed for $key; falling back to CameraX for this session")
+    sessionBindFailedMutable.value = true
+    Log.status("SloMo", "Camera2 slo-mo failed for $key; showing retryable bind error")
     return true
 }
 
-/** Clears the slo-mo fallback latch (manual retry / gate re-enable / new bind). */
+/** Clears the slo-mo latch (manual retry / new bind). */
 fun CameraViewModel.clearCamera2SloMoFallback() {
     camera2SloMoFallbackLatch.reset()
     camera2SloMoFallbackBindKeyMutable.value = null
 }
 
-/** Registers the live gated slo-mo high-speed session (null when it leaves composition). */
+/** Registers the live slo-mo high-speed session (null when it leaves composition). */
 internal fun CameraViewModel.registerCamera2HighSpeedSession(
     session: com.vayunmathur.camera.platform.camera2.Camera2HighSpeedSession?,
 ) {
@@ -87,39 +71,24 @@ internal fun CameraViewModel.registerCamera2HighSpeedSession(
 /**
  * Records a Camera2 NIGHT extension preview configure/open failure for
  * [cameraId]: latches this bind key so the UI stops composing the
- * extension preview and falls back to the regular preview path. Does
- * NOT write the persisted 7-day failure cache — a probe/configure miss
- * here must not suppress the CameraX extension at capture time; only a
+ * extension preview and serves the regular Camera2 preview instead.
+ * Does NOT write the persisted 7-day failure cache — a probe/configure
+ * miss here must not suppress the extension at capture time; only a
  * real capture failure does that (see `tryCaptureCamera2NightExtension`).
  */
 fun CameraViewModel.onCamera2NightPreviewFailed(cameraId: String) {
     // Key on the CURRENT selected lens, not the (possibly stale) id the
-    // failing composable captured — same contract as onCamera2PreviewFailed:
-    // the UI gate builds its key from the current selection, so the latch
-    // must agree or it never reads as latched after reconciliation.
+    // failing composable captured — same contract as onCamera2PreviewFailed.
     val keyId = selectedLensMutable.value?.logicalCameraId
         ?.takeIf { it.isNotEmpty() } ?: cameraId
     val key = com.vayunmathur.camera.platform.camera2.Camera2FallbackLatch
         .bindKey(keyId, cameraModeMutable.value)
     if (camera2NightFallbackBindKeyMutable.value == key) return
     camera2NightFallbackBindKeyMutable.value = key
-    Log.status("Camera2Night", "Camera2 extension preview failed for $key; falling back for this session")
+    Log.status("Camera2Night", "Camera2 extension preview failed for $key; regular preview serves this session")
 }
 
-/** Clears the Camera2 night fallback latch (new lens/mode/gate re-enable). */
+/** Clears the Camera2 night latch (new lens/mode or manual retry). */
 fun CameraViewModel.clearCamera2NightFallback() {
     camera2NightFallbackBindKeyMutable.value = null
-}
-
-/** Turns the Camera2 night gate on/off (PHOTO only; see ExtensionsEnginePolicy). */
-fun CameraViewModel.setCamera2NightEnabled(enabled: Boolean) {
-    camera2NightEnabledMutable.value = enabled
-    if (enabled) clearCamera2NightFallback()
-    viewModelScope.launch { ds.setString("camera_camera2_night", enabled.toString()) }
-}
-
-/** Turns the RAW-night Camera2 route on/off (see RawNightPolicy). */
-fun CameraViewModel.setCamera2RawNightEnabled(enabled: Boolean) {
-    camera2RawNightEnabledMutable.value = enabled
-    viewModelScope.launch { ds.setString("camera_camera2_raw_night", enabled.toString()) }
 }

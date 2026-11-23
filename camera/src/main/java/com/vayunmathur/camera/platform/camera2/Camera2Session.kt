@@ -51,6 +51,8 @@ class Camera2Session(
     internal val rawRingConfig: RawRingConfig = RawRingConfig.DISABLED,
     /** Plane consumer for the analysis stream; null = no analysis output. */
     internal val analysisConsumer: AnalysisConsumer? = null,
+    /** Whether the JPEG_R (Ultra HDR) output may be configured at all. */
+    internal val ultraHdrEnabled: Boolean = true,
 ) {
 
     /** Session lifecycle notifications; all fire on the executor thread. */
@@ -102,6 +104,9 @@ class Camera2Session(
     private val rawRing = ReprocessRing<RawHeldFrame>(rawRingConfig.capacity)
     private var latestPreviewTimestampNs: Long? = null
     private val previewMetas = LinkedHashMap<Long, RawStillMetadata>()
+
+    @Volatile
+    private var latestPreviewMeta: RawStillMetadata? = null
     internal var pendingStill: PendingStill? = null
     internal var displayRotationDegrees: Int = 0
     private var controls: Camera2ControlState = Camera2ControlState.DEFAULT
@@ -179,6 +184,32 @@ class Camera2Session(
     }
 
     /** Applies exposure compensation in EV stops, keeping other controls. */
+    /** Manual exposure pair (both null returns to AE); preview + stills inherit it. */
+    fun setManualExposure(exposureTimeNs: Long?, sensitivityIso: Int?) {
+        executor.execute {
+            controls = controls.copy(
+                exposureTimeNs = exposureTimeNs,
+                sensitivityIso = sensitivityIso,
+            )
+            issueRepeatingRequest()
+        }
+    }
+
+    /** Post-processing toggles (#662); preview + stills inherit them. */
+    fun setPostProcessing(noiseReductionHighQuality: Boolean, edgeHighQuality: Boolean) {
+        executor.execute {
+            controls = controls.copy(
+                noiseReductionHighQuality = noiseReductionHighQuality,
+                edgeHighQuality = edgeHighQuality,
+            )
+            issueRepeatingRequest()
+        }
+    }
+
+    /** Latest AE-converged (exposureNs, iso) from preview results, for manual seeding. */
+    fun latestAeSnapshot(): Pair<Long?, Int?> =
+        latestPreviewMeta.let { (it?.exposureTimeNs) to (it?.iso) }
+
     fun setExposureCompEv(ev: Float) {
         executor.execute {
             controls = controls.copy(exposureCompEv = ev)
@@ -550,6 +581,7 @@ class Camera2Session(
     private fun onPreviewResult(raw: RawStillMetadata) {
         val timestamp = raw.sensorTimestampNs ?: return
         latestPreviewTimestampNs = timestamp
+        latestPreviewMeta = raw
         previewMetas[timestamp] = raw
         while (previewMetas.size > PREVIEW_META_CAP) {
             previewMetas.remove(previewMetas.keys.first())

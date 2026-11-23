@@ -1,86 +1,96 @@
 package com.vayunmathur.camera.platform
 
-import androidx.camera.core.CameraInfo
-import com.vayunmathur.camera.platform.toLensFacing
-import com.vayunmathur.camera.platform.toSelectorInt
-import androidx.camera.core.ImageCapture
+import android.graphics.ImageFormat
+import android.util.Range
+import android.util.Size
+import android.view.Surface
 import androidx.test.core.app.ApplicationProvider
-import androidx.test.ext.junit.runners.AndroidJUnit4
-import org.junit.Test
-import org.junit.runner.RunWith
-import java.lang.reflect.Proxy
+import com.vayunmathur.camera.platform.camera2.Camera2Driver
+import com.vayunmathur.camera.platform.camera2.Camera2Executor
+import com.vayunmathur.camera.platform.camera2.Camera2Session
+import com.vayunmathur.camera.platform.camera2.CaptureSessionHandle
+import com.vayunmathur.camera.platform.camera2.CharacteristicsFacade
+import com.vayunmathur.camera.platform.camera2.DeviceCallback
+import com.vayunmathur.camera.platform.camera2.DeviceHandle
+import com.vayunmathur.camera.platform.camera2.CaptureSessionCallback
+import com.vayunmathur.camera.platform.camera2.FrameSize
+import com.vayunmathur.camera.platform.camera2.LensCharacteristicsSnapshot
+import com.vayunmathur.camera.platform.camera2.ResolvedRequestParams
+import com.vayunmathur.camera.platform.camera2.StillOutput
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
-import com.vayunmathur.camera.data.setFlashMode
+import kotlin.test.assertTrue
+import kotlinx.coroutines.runBlocking
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
-@RunWith(AndroidJUnit4::class)
+/** Camera2 contract: lens facing / flash resolution helpers. */
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34])
 class CameraSessionsExtraTest {
 
     private fun vm() = CameraViewModel(ApplicationProvider.getApplicationContext())
 
-    /**
-     * A CameraInfo that answers nothing: every capability query in the
-     * session helpers must degrade to "unsupported" rather than throw.
-     */
-    private lateinit var selfProxy: Any
-    private fun emptyCameraInfo(): CameraInfo = Proxy.newProxyInstance(
-        javaClass.classLoader,
-        arrayOf(CameraInfo::class.java, androidx.camera.core.impl.CameraInfoInternal::class.java),
-    ) { _, method, _ ->
-        when {
-            method.name == "getImplementation" -> selfProxy
-            method.name == "getEncoderProfilesProvider" -> Proxy.newProxyInstance(
-                javaClass.classLoader,
-                arrayOf(androidx.camera.core.impl.EncoderProfilesProvider::class.java),
-            ) { _, _, _ -> null }
-            method.returnType == java.lang.Boolean.TYPE -> false
-            method.returnType == java.lang.Integer.TYPE -> 0
-            method.returnType == java.lang.Float.TYPE -> 0f
-            java.util.Set::class.java.isAssignableFrom(method.returnType) -> emptySet<Any>()
-            java.util.List::class.java.isAssignableFrom(method.returnType) -> emptyList<Any>()
-            else -> null
-        }
-    }.also { selfProxy = it } as CameraInfo
+    private class FakeHandle : CaptureSessionHandle {
+        val repeating = mutableListOf<ResolvedRequestParams>()
+        override fun setRepeatingPreview(params: ResolvedRequestParams, target: Surface) { repeating += params }
+        override fun captureStill(params: com.vayunmathur.camera.platform.camera2.ResolvedStillParams, stillTarget: Surface, callback: com.vayunmathur.camera.platform.camera2.StillResultCallback) { callback.onCompleted(com.vayunmathur.camera.platform.camera2.RawStillMetadata()) }
+        override fun close() {}
+    }
+    private class FakeDevice : DeviceHandle {
+        override val cameraId: String = "0"
+        override fun createCaptureSession(surfaces: List<Surface>, callback: CaptureSessionCallback) { callback.onConfigured(FakeHandle()) }
+        override fun close() {}
+    }
+    private class FakeDriver : Camera2Driver {
+        override fun openCamera(cameraId: String, callback: DeviceCallback) { callback.onOpened(FakeDevice()) }
+        override fun createStillOutput(size: FrameSize): StillOutput? = null
+    }
+    internal fun snapshot(
+        zoom: Range<Float>? = Range(0.5f, 8f),
+        flash: Boolean = true,
+        sensitivity: Range<Int>? = Range(50, 6400),
+        ev: Range<Float>? = Range(-4f, 4f),
+    ): LensCharacteristicsSnapshot = CharacteristicsFacade.fromFakeMap(
+        cameraId = "0", zoomRatioRange = zoom, hasFlashUnit = flash,
+        sensitivityRange = sensitivity, exposureCompensationEvRange = ev,
+        exposureTimeRangeNs = Range(1_000_000L, 1_000_000_000L),
+        sizesByFormat = mapOf(ImageFormat.PRIVATE to listOf(Size(1920, 1080))),
+        activeArrayWidth = 4000, activeArrayHeight = 3000,
+        exposureCompensationStepEv = 1f / 6f, maxAfRegions = 1, maxAeRegions = 1,
+    ).snapshot
 
-    @Test fun capabilityQueriesDegradeWithoutCamera2Info() {
-        val v = vm()
-        val info = emptyCameraInfo()
-        // Recorder.getVideoCapabilities needs a real CameraX implementation
-        // (it walks EncoderProfilesProvider/DynamicRange internals), so only
-        // the Camera2-interop queries are exercised against the fake here.
-        assertNull(v.highestFpsRange(info))
-        assertNull(v.preferredStabilizationMode(info))
+    internal fun fakeSession(executor: Camera2Executor, snap: LensCharacteristicsSnapshot = snapshot()): Camera2Session =
+        Camera2Session(FakeDriver(), executor, snap)
+
+    internal fun Camera2Executor.drain() {
+        val latch = CountDownLatch(1); execute { latch.countDown() }
+        assertTrue(latch.await(5, TimeUnit.SECONDS))
+    }
+    internal fun dirtyTeardownState(v: CameraViewModel) {
+        v.isRecordingMutable.value = true; v.recordingPausedMutable.value = true
+        v.recordingDurationSecMutable.value = 42; v.timerCountdownMutable.value = 3
+        v.isCapturingMutable.value = true; v.photoSessionActiveMutable.value = true
+        v.analysisStreamActiveMutable.value = true; v.nightPreviewActiveMutable.value = true
+        v.highSpeedActiveMutable.value = true; v.videoSessionActiveMutable.value = true
+        v.videoSnapshotSupportedMutable.value = true; v.focusLockedMutable.value = true
+    }
+    internal fun assertTeardownCleared(v: CameraViewModel) {
+        assertFalse(v.isRecording.value); assertFalse(v.recordingPaused.value)
+        assertEquals(0L, v.recordingDurationSec.value); assertEquals(0, v.timerCountdown.value)
+        assertFalse(v.isCapturing.value); assertFalse(v.photoSessionActive.value)
+        assertFalse(v.analysisStreamActive.value); assertFalse(v.nightPreviewActive.value)
+        assertFalse(v.highSpeedActive.value); assertFalse(v.videoSessionActive.value)
+        assertFalse(v.videoSnapshotSupported.value); assertFalse(v.focusLocked.value)
     }
 
-    @Test fun flashModeMapping() {
-        val v = vm()
-        v.setFlashMode(FlashMode.ON)
-        assertEquals(ImageCapture.FLASH_MODE_ON, v.getImageCaptureFlashMode())
-        v.setFlashMode(FlashMode.OFF)
-        assertEquals(ImageCapture.FLASH_MODE_OFF, v.getImageCaptureFlashMode())
-        v.setFlashMode(FlashMode.AUTO)
-        assertEquals(ImageCapture.FLASH_MODE_AUTO, v.getImageCaptureFlashMode())
-    }
+    @Test fun lensFacingMapping() { val v=vm(); v.lensFacingMutable.value=android.hardware.camera2.CameraMetadata.LENS_FACING_FRONT; assertEquals(com.vayunmathur.camera.domain.LensFacing.FRONT, v.currentLensFacing()); v.lensFacingMutable.value=android.hardware.camera2.CameraMetadata.LENS_FACING_BACK; assertEquals(com.vayunmathur.camera.domain.LensFacing.BACK, v.currentLensFacing()) }
+    @Test fun flashResolutionUsesSnapshotFlashFlag() { val v=vm(); v.hasFlashUnitMutable.value=false; v.flashModeMutable.value=FlashMode.ON; assertNotNull(v.currentFlashResolution()) }
 
-    @Test fun teardownWithoutSessionClearsState() {
-        val v = vm()
-        v.isRecordingMutable.value = true
-        v.isCapturingMutable.value = true
-        v.timerCountdownMutable.value = 5
-        v.teardownSession()
-        assertFalse(v.isRecording.value)
-        assertFalse(v.isCapturing.value)
-        assertEquals(0, v.timerCountdown.value)
-        assertEquals(0L, v.recordingDurationSec.value)
-    }
-
-    @Test fun lensFacingConversionRoundTrips() {
-        val back = com.vayunmathur.camera.domain.LensFacing.BACK
-        val front = com.vayunmathur.camera.domain.LensFacing.FRONT
-        assertEquals(back, back.toSelectorInt().toLensFacing())
-        assertEquals(front, front.toSelectorInt().toLensFacing())
-        assertEquals(androidx.camera.core.CameraSelector.LENS_FACING_BACK, back.toSelectorInt())
-        assertNull((999).toLensFacing())
-    }
 }

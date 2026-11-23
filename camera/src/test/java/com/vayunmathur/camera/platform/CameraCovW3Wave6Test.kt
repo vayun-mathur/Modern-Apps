@@ -1,91 +1,97 @@
 package com.vayunmathur.camera.platform
 
+import android.graphics.ImageFormat
 import android.util.Range
-import androidx.camera.core.Camera
-import androidx.camera.core.CameraInfo
-import androidx.camera.core.ImageCapture
-import androidx.camera.core.Preview
-import androidx.camera.lifecycle.ProcessCameraProvider
+import android.util.Size
+import android.view.Surface
 import androidx.test.core.app.ApplicationProvider
-import java.lang.reflect.Proxy
+import com.vayunmathur.camera.platform.camera2.Camera2Driver
+import com.vayunmathur.camera.platform.camera2.Camera2Executor
+import com.vayunmathur.camera.platform.camera2.Camera2Session
+import com.vayunmathur.camera.platform.camera2.CaptureSessionHandle
+import com.vayunmathur.camera.platform.camera2.CharacteristicsFacade
+import com.vayunmathur.camera.platform.camera2.DeviceCallback
+import com.vayunmathur.camera.platform.camera2.DeviceHandle
+import com.vayunmathur.camera.platform.camera2.CaptureSessionCallback
+import com.vayunmathur.camera.platform.camera2.FrameSize
+import com.vayunmathur.camera.platform.camera2.LensCharacteristicsSnapshot
+import com.vayunmathur.camera.platform.camera2.ResolvedRequestParams
+import com.vayunmathur.camera.platform.camera2.StillOutput
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
-import org.junit.Test
+import kotlin.test.assertTrue
+import kotlinx.coroutines.runBlocking
 import org.junit.runner.RunWith
-import org.mockito.Mockito
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.robolectric.annotation.GraphicsMode
 
-/** Cov-w3 wave 6: Camera2 capability degradation and video builder options. */
-@GraphicsMode(GraphicsMode.Mode.NATIVE)
+/** Camera2 contract: bind retry ladder (runSessionBindWithRetry). */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class CameraCovW3Wave6Test {
-    private val context = ApplicationProvider.getApplicationContext<android.content.Context>()
-    private fun vm() = CameraViewModel(context.applicationContext as android.app.Application)
 
-    private lateinit var selfProxy: Any
-    private fun emptyCameraInfo(): CameraInfo = Proxy.newProxyInstance(
-        javaClass.classLoader,
-        arrayOf(CameraInfo::class.java, androidx.camera.core.impl.CameraInfoInternal::class.java),
-    ) { _, method, _ ->
-        when {
-            method.name == "getImplementation" -> selfProxy
-            method.name == "getEncoderProfilesProvider" -> Proxy.newProxyInstance(
-                javaClass.classLoader,
-                arrayOf(androidx.camera.core.impl.EncoderProfilesProvider::class.java),
-            ) { _, _, _ -> null }
-            method.returnType == java.lang.Boolean.TYPE -> false
-            method.returnType == java.lang.Integer.TYPE -> 0
-            method.returnType == java.lang.Float.TYPE -> 0f
-            java.util.Set::class.java.isAssignableFrom(method.returnType) -> emptySet<Any>()
-            java.util.List::class.java.isAssignableFrom(method.returnType) -> emptyList<Any>()
-            else -> null
-        }
-    }.also { selfProxy = it } as CameraInfo
+    private fun vm() = CameraViewModel(ApplicationProvider.getApplicationContext())
 
-    @Test fun capabilityQueriesAllDegrade() {
-        val viewModel = vm()
-        val info = emptyCameraInfo()
-        // Every Camera2/Recorder capability probe must answer "unsupported".
-        assertEquals(false, viewModel.av1SupportedByCamera(info))
-        assertEquals(false, viewModel.hevcSupportedByCamera(info))
-        assertEquals(false, viewModel.hlgSupportedByCamera(info))
-        assertNull(viewModel.highestFpsRange(info))
-        assertNull(viewModel.preferredStabilizationMode(info))
-        // Cinematic mode takes the other fps-pick branch, same degradation.
-        viewModel.cameraModeMutable.value = CameraMode.CINEMATIC
-        assertNull(viewModel.highestFpsRange(info))
-        viewModel.cameraModeMutable.value = CameraMode.VIDEO
-        // Bound-camera manual ranges with an unanswerable info: no throw, empty stops.
-        val camera = Mockito.mock(Camera::class.java)
-        Mockito.`when`(camera.cameraInfo).thenReturn(info)
-        viewModel.boundCamera = camera
-        viewModel.readManualControlRanges()
-        viewModel.boundCamera = null
+    private class FakeHandle : CaptureSessionHandle {
+        val repeating = mutableListOf<ResolvedRequestParams>()
+        override fun setRepeatingPreview(params: ResolvedRequestParams, target: Surface) { repeating += params }
+        override fun captureStill(params: com.vayunmathur.camera.platform.camera2.ResolvedStillParams, stillTarget: Surface, callback: com.vayunmathur.camera.platform.camera2.StillResultCallback) { callback.onCompleted(com.vayunmathur.camera.platform.camera2.RawStillMetadata()) }
+        override fun close() {}
+    }
+    private class FakeDevice : DeviceHandle {
+        override val cameraId: String = "0"
+        override fun createCaptureSession(surfaces: List<Surface>, callback: CaptureSessionCallback) { callback.onConfigured(FakeHandle()) }
+        override fun close() {}
+    }
+    private class FakeDriver : Camera2Driver {
+        override fun openCamera(cameraId: String, callback: DeviceCallback) { callback.onOpened(FakeDevice()) }
+        override fun createStillOutput(size: FrameSize): StillOutput? = null
+    }
+    internal fun snapshot(
+        zoom: Range<Float>? = Range(0.5f, 8f),
+        flash: Boolean = true,
+        sensitivity: Range<Int>? = Range(50, 6400),
+        ev: Range<Float>? = Range(-4f, 4f),
+    ): LensCharacteristicsSnapshot = CharacteristicsFacade.fromFakeMap(
+        cameraId = "0", zoomRatioRange = zoom, hasFlashUnit = flash,
+        sensitivityRange = sensitivity, exposureCompensationEvRange = ev,
+        exposureTimeRangeNs = Range(1_000_000L, 1_000_000_000L),
+        sizesByFormat = mapOf(ImageFormat.PRIVATE to listOf(Size(1920, 1080))),
+        activeArrayWidth = 4000, activeArrayHeight = 3000,
+        exposureCompensationStepEv = 1f / 6f, maxAfRegions = 1, maxAeRegions = 1,
+    ).snapshot
+
+    internal fun fakeSession(executor: Camera2Executor, snap: LensCharacteristicsSnapshot = snapshot()): Camera2Session =
+        Camera2Session(FakeDriver(), executor, snap)
+
+    internal fun Camera2Executor.drain() {
+        val latch = CountDownLatch(1); execute { latch.countDown() }
+        assertTrue(latch.await(5, TimeUnit.SECONDS))
+    }
+    internal fun dirtyTeardownState(v: CameraViewModel) {
+        v.isRecordingMutable.value = true; v.recordingPausedMutable.value = true
+        v.recordingDurationSecMutable.value = 42; v.timerCountdownMutable.value = 3
+        v.isCapturingMutable.value = true; v.photoSessionActiveMutable.value = true
+        v.analysisStreamActiveMutable.value = true; v.nightPreviewActiveMutable.value = true
+        v.highSpeedActiveMutable.value = true; v.videoSessionActiveMutable.value = true
+        v.videoSnapshotSupportedMutable.value = true; v.focusLockedMutable.value = true
+    }
+    internal fun assertTeardownCleared(v: CameraViewModel) {
+        assertFalse(v.isRecording.value); assertFalse(v.recordingPaused.value)
+        assertEquals(0L, v.recordingDurationSec.value); assertEquals(0, v.timerCountdown.value)
+        assertFalse(v.isCapturing.value); assertFalse(v.photoSessionActive.value)
+        assertFalse(v.analysisStreamActive.value); assertFalse(v.nightPreviewActive.value)
+        assertFalse(v.highSpeedActive.value); assertFalse(v.videoSessionActive.value)
+        assertFalse(v.videoSnapshotSupported.value); assertFalse(v.focusLocked.value)
     }
 
-    @Test fun videoCaptureRequestOptionsOnBuilders() {
-        val viewModel = vm()
-        val previewBuilder = Preview.Builder()
-        viewModel.applyVideoCaptureRequestOptions(previewBuilder, Range(30, 30), null)
-        viewModel.applyVideoCaptureRequestOptions(
-            previewBuilder, Range(60, 60),
-            android.hardware.camera2.CameraMetadata.CONTROL_VIDEO_STABILIZATION_MODE_ON,
-        )
-        viewModel.applyVideoCaptureRequestOptions(previewBuilder, null, null)
-        val captureBuilder = ImageCapture.Builder()
-        viewModel.applyVideoCaptureRequestOptions(captureBuilder, Range(24, 24), 1)
-    }
+    @Test fun retryUntilSuccess() = runBlocking<Unit> { var a=0; val delays=mutableListOf<Long>(); assertTrue(runSessionBindWithRetry(2,7L,{delays+=it}){ ++a>=3 }); assertEquals(3,a); assertEquals(listOf(7L,7L),delays) }
+    @Test fun boundedFailure() = runBlocking<Unit> { var a=0; assertFalse(runSessionBindWithRetry(2,1L,{}){ a++; false }); assertEquals(3,a) }
+    @Test fun immediateSuccessNoDelay() = runBlocking<Unit> { var d=0; assertTrue(runSessionBindWithRetry(2,5L,{d++}){true}); assertEquals(0,d) }
 
-    @Test fun unbindQuietlySwallowsAndSucceeds() {
-        val provider = Mockito.mock(ProcessCameraProvider::class.java)
-        unbindQuietly(provider)
-        unbindQuietly(provider, "CovW3")
-        Mockito.doThrow(IllegalStateException("unbind fail")).`when`(provider).unbindAll()
-        unbindQuietly(provider)
-        Mockito.doThrow(IllegalArgumentException("unbind fail")).`when`(provider).unbindAll()
-        unbindQuietly(provider, "CovW3Throwing")
-    }
 }
