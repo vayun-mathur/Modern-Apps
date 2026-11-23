@@ -352,12 +352,14 @@ class ArrowsViewModel(application: Application) : AndroidViewModel(application),
      * from [ArrowsUiState.level]: [load] bumps the latter as soon as the new level is requested,
      * while the cleared board — and its button — are still showing, so a quick second tap used to
      * read the already-advanced level and skip one. Counting from the loaded board makes a repeat
-     * tap write the same level again, and the guard ignores taps once loading has started or the
-     * board on screen is not a cleared one.
+     * tap write the same level again, so there is deliberately no `generating` guard: a tap that
+     * lands while the won board is being reloaded (a store edit re-emits the session and
+     * [load] runs again over the same board) must not be dropped, and once the next board
+     * replaces this one its not-won state is what stops further taps.
      */
     override fun nextLevel() {
         val state = _uiState.value
-        if (state.mode == GameMode.DAILY || state.generating) return
+        if (state.mode == GameMode.DAILY) return
         val game = state.game ?: return
         if (!game.isWon) return
         lastBlockedId = -1

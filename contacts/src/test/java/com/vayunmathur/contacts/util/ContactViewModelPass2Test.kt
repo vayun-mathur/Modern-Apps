@@ -84,7 +84,11 @@ class ContactViewModelPass2Test {
      * Waits until [ContactViewModel.contacts] equals [expected], idling Robolectric's
      * main looper so the WhileSubscribed stateIn collectors can run.
      */
-    private fun awaitContacts(vm: ContactViewModel, expected: List<Contact>) {
+    private fun awaitContacts(
+        vm: ContactViewModel,
+        expected: List<Contact>,
+        source: List<Contact> = expected,
+    ) {
         // subscribing is what starts the WhileSubscribed upstreams
         val job = kotlinx.coroutines.CoroutineScope(Dispatchers.Default).launch {
             vm.contacts.collect {}
@@ -92,6 +96,18 @@ class ContactViewModelPass2Test {
         try {
             val deadline = System.nanoTime() + 15_000_000_000L
             while (System.nanoTime() < deadline) {
+                // The ViewModel's init sync (and the runBlocking sync
+                // below) publish the provider's list whenever their IO
+                // lands; a straggler publish can land after the fixture
+                // was injected and erase it, leaving contacts == [] for
+                // the rest of the wait (CI run 598beb90f: expected the
+                // fixture, was [], after the full 15s). Re-seat the
+                // fixture whenever it has been overwritten: the number
+                // of in-flight syncs is finite and none is triggered
+                // after this point, so the fixture then sticks.
+                if (vm.allContactsState.value != source) {
+                    vm.allContactsState.value = source
+                }
                 org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
                 if (vm.contacts.value == expected) return
                 Thread.sleep(10)
@@ -111,18 +127,19 @@ class ContactViewModelPass2Test {
         val bob = contact(2, "Bob")
         vm.allContactsState.value = listOf(aisha, bob)
 
-        awaitContacts(vm, listOf(aisha, bob))
+        val fixture = listOf(aisha, bob)
+        awaitContacts(vm, fixture, source = fixture)
         vm.setSearchQuery("aisha")
         assertEquals("aisha", vm.searchQuery.value)
-        awaitContacts(vm, listOf(aisha))
+        awaitContacts(vm, listOf(aisha), source = fixture)
         // multi-token: name token + phone fragment must both match
         vm.setSearchQuery("bob 555")
-        awaitContacts(vm, listOf(bob))
+        awaitContacts(vm, listOf(bob), source = fixture)
         // searching by email domain fragment works too
         vm.setSearchQuery("aisha@x")
-        awaitContacts(vm, listOf(aisha))
+        awaitContacts(vm, listOf(aisha), source = fixture)
         vm.setSearchQuery("no-such-person")
-        awaitContacts(vm, emptyList())
+        awaitContacts(vm, emptyList(), source = fixture)
         assertEquals(aisha, vm.getContact(1))
         assertEquals(bob, vm.getContact(2))
         assertNull(vm.getContact(999))

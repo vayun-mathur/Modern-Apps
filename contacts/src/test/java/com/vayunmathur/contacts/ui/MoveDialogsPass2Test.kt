@@ -149,18 +149,33 @@ class MoveDialogsPass2Test {
                 MoveDialogHost(vm, listOf(7L), onDismiss = { dismissed++ }, onTransferred = { transferred++ })
             }
         }
-        rule.awaitSemantics("account rows listed") {
-            rule.onAllNodesWithText("a@gmail.com", substring = true).fetchSemanticsNodes().isNotEmpty()
+        // A straggler loadAccountsInternal from the ViewModel's init
+        // (init launches a sync and a separate loadAccounts, and this
+        // test's runBlocking sync is a third) can land after the
+        // injection above and overwrite accountsState with the
+        // provider-derived list — which contains the google account
+        // (fake provider) but not the SIM account, so the SIM row
+        // vanishes while the google row stays (CI run 598beb90f:
+        // no node containing '5' at the click). Re-seat the injected
+        // accounts inside the wait, and wait for the SIM row itself,
+        // whose label depends on whether the SIM display labels have
+        // landed: the raw account name "5", a "SIM n" label, or the
+        // on-device string ("On-Device", hyphenated).
+        val rowLabels = listOf("On-Device", "SIM", "5")
+        fun simRow() = rowLabels.firstNotNullOfOrNull { label ->
+            rule.onAllNodesWithText(label, substring = true)
+                .fetchSemanticsNodes().takeIf { it.isNotEmpty() }?.let { label }
+        }
+        rule.awaitSemantics("SIM account row listed") {
+            if (vm.accountsState.value != listOf(google, sim)) {
+                vm.accountsState.value = listOf(google, sim)
+            }
+            simRow() != null
         }
         // Aisha's own (google) account is the disabled source; pick the SIM
         // account instead, which switches the dialog to its loss-warning page
-        val simRow = rule.onAllNodesWithText("On device", substring = true)
-        if (simRow.fetchSemanticsNodes().isNotEmpty()) {
-            simRow[0].performClick()
-        } else {
-            // SIM row may be labelled by its account name "5"
-            rule.onAllNodesWithText("5", substring = true)[0].performClick()
-        }
+        val label = simRow()!!
+        rule.onAllNodesWithText(label, substring = true)[0].performClick()
         // The SIM destination switches to the loss-warning page ("Move
         // anyway"); that switch is a recomposition on the main looper, so
         // wait on the page itself rather than idling once.

@@ -18,6 +18,7 @@ import com.vayunmathur.contacts.data.Name
 import com.vayunmathur.contacts.data.PhoneNumber
 import com.vayunmathur.contacts.data.SIM_ACCOUNT_TYPE
 import com.vayunmathur.contacts.data.SimProviderPass2Test
+import com.vayunmathur.testsupport.awaitWithMainIdle
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -46,6 +47,12 @@ class ViewModelDeleteCalendarW5Test {
             ContactsContract.AUTHORITY, FakeProviderPass2Test.FakeContactsProvider()
         )
         ShadowContentResolver.registerProviderInternal("icc", SimProviderPass2Test.FakeIccProvider())
+        // The fake's delete record is a class-wide static: a previous
+        // method's (or class's) delete would satisfy the assert below
+        // without this method deleting anything, and a stale record
+        // cannot distinguish "not yet" from "never".
+        SimProviderPass2Test.FakeIccProvider.lastDeleteUri = null
+        SimProviderPass2Test.FakeIccProvider.lastDeleteSelection = null
         try {
             androidx.work.WorkManager.initialize(app, androidx.work.Configuration.Builder().build())
         } catch (_: IllegalStateException) {
@@ -83,11 +90,16 @@ class ViewModelDeleteCalendarW5Test {
     }
 
     private fun assertNotNullDelete() {
-        assertTrue(
+        // deleteContact launches the delete on viewModelScope/IO;
+        // settle()'s syncFromSystem is a concurrent IO call, not a
+        // barrier for that launch, so under load the sync can finish
+        // before the delete coroutine is even scheduled (CI run
+        // 598beb90f failed in 0.024s with no delete recorded). Wait
+        // on the delete reaching the provider itself.
+        awaitWithMainIdle("SIM delete should reach the ICC provider", maxSteps = 30_000) {
             SimProviderPass2Test.FakeIccProvider.lastDeleteUri != null ||
-                SimProviderPass2Test.FakeIccProvider.lastDeleteSelection != null,
-            "SIM delete should reach the ICC provider",
-        )
+                SimProviderPass2Test.FakeIccProvider.lastDeleteSelection != null
+        }
     }
 
     @Test
