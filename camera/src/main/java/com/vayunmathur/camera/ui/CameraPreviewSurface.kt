@@ -19,7 +19,9 @@ import com.vayunmathur.camera.platform.CameraViewModel
 import com.vayunmathur.camera.platform.noteCamera2BindRequested
 import com.vayunmathur.camera.platform.onCamera2NightPreviewFailed
 import com.vayunmathur.camera.platform.onCamera2PreviewFailed
+import com.vayunmathur.camera.platform.onCamera2SloMoFailed
 import com.vayunmathur.camera.platform.registerCamera2ExtensionSession
+import com.vayunmathur.camera.platform.registerCamera2HighSpeedSession
 import com.vayunmathur.camera.platform.onViewfinderZoomRatio
 import com.vayunmathur.camera.platform.retrySessionBind
 import com.vayunmathur.camera.platform.camera2AnalysisConsumer
@@ -45,7 +47,27 @@ internal fun CameraPreviewSurface(
 ) {
     val useCamera2Preview = state.useCamera2Preview
     val useCamera2NightPreview = state.useCamera2NightPreview
+    val useCamera2SloMoPreview = state.useCamera2SloMoPreview
     val surfaceRequest = state.surfaceRequest
+
+    if (useCamera2SloMoPreview) {
+        // Camera2 slo-mo preview (piece 4): behind the slo-mo gate and
+        // SloMoRecordingReadiness — not composed live until piece 6.
+        val sloMoCamera2Id = state.selectedLens?.logicalCameraId.orEmpty()
+        if (sloMoCamera2Id.isNotEmpty()) {
+            Camera2SloMoPreview(
+                cameraId = sloMoCamera2Id,
+                lensFacing = state.selectedLens?.facing,
+                onSessionChanged = { session ->
+                    viewModel.registerCamera2HighSpeedSession(session)
+                },
+                onError = { viewModel.onCamera2SloMoFailed(sloMoCamera2Id) },
+                modifier = previewModifier,
+            )
+        } else {
+            Box(modifier = previewModifier.background(Color.Black))
+        }
+    }
 
     if (useCamera2NightPreview) {
         // Camera2 NIGHT extension preview: registers the live extension
@@ -67,7 +89,7 @@ internal fun CameraPreviewSurface(
             Box(modifier = previewModifier.background(Color.Black))
         }
     }
-    if (useCamera2Preview && !useCamera2NightPreview) {
+    if (useCamera2Preview && !useCamera2NightPreview && !useCamera2SloMoPreview) {
         // Camera2 preview behind gate (CameraScreenState.useCamera2Preview, PHOTO only).
         // TextureView-backed, same overlay tree / RenderEffects below.
         // Guard: never compose with empty cameraId — fall back to CameraX black/error branch below.
@@ -106,7 +128,7 @@ internal fun CameraPreviewSurface(
             Box(modifier = previewModifier.background(Color.Black))
         }
     }
-    if (!useCamera2Preview && !useCamera2NightPreview) {
+    if (!useCamera2Preview && !useCamera2NightPreview && !useCamera2SloMoPreview) {
     surfaceRequest?.let { request ->
         LaunchedEffect(request) {
             Log.dev("NightPreview", "CameraXViewfinder COMPOSED with request res=${request.resolution} dynamicRange=${request.dynamicRange} useNightPreview=${state.useNightPreview} sessionKind=${state.sessionKind} zoomRatio=${state.zoomRatio} levels=${state.availableZoomLevels} thread=${Thread.currentThread().name}")
@@ -155,7 +177,7 @@ internal fun CameraPreviewSurface(
             onScreenFlashReady = { screenFlash -> viewModel.setScreenFlash(screenFlash) },
         )
     }
-    if (!useCamera2Preview && !useCamera2NightPreview && surfaceRequest == null) {
+    if (!useCamera2Preview && !useCamera2NightPreview && !useCamera2SloMoPreview && surfaceRequest == null) {
         if (state.sessionBindFailed) {
             // Bind exhausted its retries: a visible, retryable error instead
             // of parking on a black preview until the next mode/lens change.

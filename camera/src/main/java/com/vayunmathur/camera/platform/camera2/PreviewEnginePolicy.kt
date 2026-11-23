@@ -56,10 +56,13 @@ data class PreviewEngineInput(
  *   not exist today; showing Camera2 preview until the press and then
  *   going black for the rebind is a worse, unverified trade, not a
  *   reduction. Revisit only with that rebind implemented end to end.
- * - SLOW_MO: blocked. Preview, capture and recording are one CameraX
- *   high-speed session. The Camera2 constrained session exists but its
- *   recording coupling is incomplete (see `SloMoEnginePolicy`), and it
- *   has no preview-only surface to show before a recording exists.
+ * - SLOW_MO: blocked for live selection. Preview, capture and recording
+ *   are one CameraX high-speed session. The Camera2 preview surface now
+ *   exists (`Camera2SloMoPreview`, piece 4), but selecting it would
+ *   unbind the CameraX session that still owns recording until the
+ *   Camera2 recording engine is device-verified (piece 6); see
+ *   `SloMoEnginePolicy` and `SloMoPreviewPolicy`, which gate the
+ *   slo-mo preview's own live selection on `recordingEngineReady`.
  *
  * Adding a mode to [supportedModes] therefore requires, in the same
  * change, its capture/analysis route on the Camera2 session (or a
@@ -86,8 +89,9 @@ object PreviewEnginePolicy {
             "panorama capture needs CameraX analysis bitmap frames; " +
                 "a Camera2 preview would leave no analysis stream bound"
         input.mode == CameraMode.SLOW_MO ->
-            "slo-mo preview is part of the CameraX high-speed session; " +
-                "the Camera2 constrained session has no preview-only surface"
+            "slo-mo preview stays with the CameraX high-speed session until the " +
+                "Camera2 recording engine is device-verified; the Camera2 preview " +
+                "surface exists but selecting it would unbind CameraX recording"
         else ->
             "video-mode recording stays on the CameraX Recorder; " +
                 "a Camera2 preview would leave no Recorder bound to record into"

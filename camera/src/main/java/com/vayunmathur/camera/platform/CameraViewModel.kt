@@ -146,6 +146,16 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
     internal val camera2SloMoEnabledMutable = MutableStateFlow(true)
     val camera2SloMoEnabled = camera2SloMoEnabledMutable.asStateFlow()
 
+    /** One-shot CameraX fallback latch for a failed Camera2 slo-mo attempt (piece 7). */
+    internal val camera2SloMoFallbackLatch =
+        com.vayunmathur.camera.platform.camera2.Camera2FallbackLatch()
+    internal val camera2SloMoFallbackBindKeyMutable = MutableStateFlow<String?>(null)
+    val camera2SloMoFallbackBindKey = camera2SloMoFallbackBindKeyMutable.asStateFlow()
+
+    /** Live Camera2 high-speed session while the gated slo-mo preview is composed; null otherwise. */
+    internal var activeCamera2HighSpeedSession:
+        com.vayunmathur.camera.platform.camera2.Camera2HighSpeedSession? = null
+
 
     /**
      * Gate for the Camera2 NIGHT path. Default ON — the Camera2 decision

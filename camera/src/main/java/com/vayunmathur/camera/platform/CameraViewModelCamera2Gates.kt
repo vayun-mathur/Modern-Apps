@@ -49,7 +49,39 @@ fun CameraViewModel.setCamera2PreviewEnabled(enabled: Boolean) {
 /** Turns the Camera2 slo-mo gate on/off (SLOW_MO only; see SloMoEnginePolicy). */
 fun CameraViewModel.setCamera2SloMoEnabled(enabled: Boolean) {
     camera2SloMoEnabledMutable.value = enabled
+    if (enabled) clearCamera2SloMoFallback()
     viewModelScope.launch { ds.setString("camera_camera2_slomo", enabled.toString()) }
+}
+
+/**
+ * Records a Camera2 slo-mo preview/recording failure. First failure for
+ * this bind key latches (returns true) and the caller rebinds the CameraX
+ * high-speed session; repeat failures for the same key are ignored so a
+ * failing device cannot loop Camera2 -> CameraX -> Camera2 (piece 7,
+ * mirroring the preview latch).
+ */
+fun CameraViewModel.onCamera2SloMoFailed(cameraId: String): Boolean {
+    val keyId = selectedLensMutable.value?.logicalCameraId
+        ?.takeIf { it.isNotEmpty() } ?: cameraId
+    val key = com.vayunmathur.camera.platform.camera2.Camera2FallbackLatch
+        .bindKey(keyId, cameraModeMutable.value)
+    if (!camera2SloMoFallbackLatch.recordFailure(key)) return false
+    camera2SloMoFallbackBindKeyMutable.value = key
+    Log.status("SloMo", "Camera2 slo-mo failed for $key; falling back to CameraX for this session")
+    return true
+}
+
+/** Clears the slo-mo fallback latch (manual retry / gate re-enable / new bind). */
+fun CameraViewModel.clearCamera2SloMoFallback() {
+    camera2SloMoFallbackLatch.reset()
+    camera2SloMoFallbackBindKeyMutable.value = null
+}
+
+/** Registers the live gated slo-mo high-speed session (null when it leaves composition). */
+internal fun CameraViewModel.registerCamera2HighSpeedSession(
+    session: com.vayunmathur.camera.platform.camera2.Camera2HighSpeedSession?,
+) {
+    activeCamera2HighSpeedSession = session
 }
 
 /**

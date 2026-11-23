@@ -1,6 +1,7 @@
 package com.vayunmathur.camera.platform.camera2
 
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -37,14 +38,105 @@ class SloMoRecordingCoreTest {
 
     @Test fun readinessKeepsRecordingOnCameraXUntilEveryPieceCloses() {
         assertTrue(SloMoRecordingReadiness.ENCODER_SURFACE_HANDOFF_READY)
+        assertTrue(SloMoRecordingReadiness.SHARED_CODEC_CORE_READY)
         assertTrue(SloMoRecordingReadiness.SESSION_RECORDING_BOUNDARY_READY)
+        assertTrue(SloMoRecordingReadiness.SLO_MO_PREVIEW_READY)
         assertTrue(SloMoRecordingReadiness.NO_AUDIO_MUXER_READY)
-        assertFalse(SloMoRecordingReadiness.SHARED_CODEC_CORE_READY)
-        assertFalse(SloMoRecordingReadiness.SLO_MO_PREVIEW_READY)
         assertFalse(SloMoRecordingReadiness.TIMESTAMP_VERIFICATION_READY)
-        assertFalse(SloMoRecordingReadiness.SAVE_PATH_GLUE_READY)
+        assertTrue(SloMoRecordingReadiness.SAVE_PATH_GLUE_READY)
         // The conjunction is the flag callers feed the policy; it must not
         // flip while any piece above is open.
         assertFalse(SloMoRecordingReadiness.recordingEngineReady)
+    }
+
+    @Test fun remainingPiecesNamesExactlyTheOpenPieces() {
+        // Pieces 2/4/7 closed in code; only device verification (6) remains.
+        assertEquals(
+            listOf("6. timestamp verification (device)"),
+            SloMoRecordingReadiness.remainingPieces(),
+        )
+    }
+
+    @Test fun sharedCoreLifecycleRequiresSurfaceBeforeDrainBeforeEosBeforeFinalize() {
+        val core = SharedRecordingCoreLifecycle(RecordingSessionOwnership.EXTERNALLY_OWNED)
+        assertFalse(core.markDraining(), "drain before surface must be rejected")
+        assertFalse(core.markEosSignalled())
+        assertFalse(core.markFinalized())
+        assertTrue(core.markSurfacePrepared())
+        assertFalse(core.markSurfacePrepared(), "surface prepare is not repeatable")
+        assertFalse(core.markEosSignalled(), "EOS before draining must be rejected")
+        assertTrue(core.markDraining())
+        assertTrue(core.markEosSignalled())
+        assertFalse(core.markDraining(), "no re-drain after EOS")
+        assertTrue(core.markFinalized())
+        assertTrue(core.markReleased())
+        assertFalse(core.markReleased(), "release is terminal")
+        assertFalse(core.markSurfacePrepared())
+    }
+
+    @Test fun sloMoPreviewSurfaceExistsButLiveSelectionNeedsRecordingReady() {
+        // Piece 4: the surface can be supplied behind the gate...
+        assertTrue(
+            SloMoPreviewPolicy.canSupplyPreviewSurface(
+                sloMoGateEnabled = true, isSlowMoMode = true,
+                fallbackLatched = false, hasSelection = true,
+            ),
+        )
+        assertFalse(
+            SloMoPreviewPolicy.canSupplyPreviewSurface(
+                sloMoGateEnabled = true, isSlowMoMode = true,
+                fallbackLatched = true, hasSelection = true,
+            ),
+        )
+        assertFalse(
+            SloMoPreviewPolicy.canSupplyPreviewSurface(
+                sloMoGateEnabled = false, isSlowMoMode = true,
+                fallbackLatched = false, hasSelection = true,
+            ),
+        )
+        // ...but live preview selection still requires the recording engine,
+        // which stays not-ready until piece 6 device verification.
+        assertFalse(
+            SloMoPreviewPolicy.livePreviewSelected(
+                sloMoGateEnabled = true, isSlowMoMode = true,
+                fallbackLatched = false, hasSelection = true,
+                recordingEngineReady = SloMoRecordingReadiness.recordingEngineReady,
+            ),
+        )
+        assertTrue(
+            SloMoPreviewPolicy.livePreviewSelected(
+                sloMoGateEnabled = true, isSlowMoMode = true,
+                fallbackLatched = false, hasSelection = true,
+                recordingEngineReady = true,
+            ),
+        )
+    }
+
+    @Test fun savePathPolicyRoutesSuccessAndLatchesFailureOnce() {
+        assertEquals(
+            SloMoSaveAction.SAVE_STAGED,
+            SloMoSavePathPolicy.actionFor(
+                outcomeError = false, outputReadable = true, fallbackAlreadyLatched = false,
+            ),
+        )
+        assertEquals(
+            SloMoSaveAction.DISCARD_AND_REBIND_CAMERAX,
+            SloMoSavePathPolicy.actionFor(
+                outcomeError = true, outputReadable = true, fallbackAlreadyLatched = false,
+            ),
+        )
+        assertEquals(
+            SloMoSaveAction.DISCARD_AND_REBIND_CAMERAX,
+            SloMoSavePathPolicy.actionFor(
+                outcomeError = false, outputReadable = false, fallbackAlreadyLatched = false,
+            ),
+        )
+        // Already latched for this bind: discard without a rebind loop.
+        assertEquals(
+            SloMoSaveAction.DISCARD_LATCHED,
+            SloMoSavePathPolicy.actionFor(
+                outcomeError = true, outputReadable = false, fallbackAlreadyLatched = true,
+            ),
+        )
     }
 }

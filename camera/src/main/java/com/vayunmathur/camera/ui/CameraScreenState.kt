@@ -100,6 +100,10 @@ import com.vayunmathur.camera.platform.VideoCodec
     val camera2NightEnabled: Boolean = true,
     /** Bind key latched after a Camera2 extension preview failure, or null. */
     val camera2NightFallbackBindKey: String? = null,
+    /** Camera2 slo-mo gate (default ON, persisted); policy still decides. */
+    val camera2SloMoEnabled: Boolean = true,
+    /** Bind key latched after a Camera2 slo-mo failure, or null. */
+    val camera2SloMoFallbackBindKey: String? = null,
 ) {
     var activeSetting by activeSettingState
     var maskBitmap by maskBitmapState
@@ -162,6 +166,32 @@ import com.vayunmathur.camera.platform.VideoCodec
             val bindKey = com.vayunmathur.camera.platform.camera2.Camera2FallbackLatch
                 .bindKey(cameraId, cameraMode)
             return camera2NightFallbackBindKey != bindKey
+        }
+
+    /**
+     * True when the Camera2 slo-mo preview owns the viewfinder. Requires
+     * SLOW_MO, the slo-mo gate, no latched fallback, and
+     * `SloMoRecordingReadiness.recordingEngineReady` — false until device
+     * verification (piece 6), so this is false today and the CameraX
+     * high-speed preview serves. The preview surface plumbing itself
+     * (piece 4) is ready behind this gate.
+     */
+    val useCamera2SloMoPreview: Boolean
+        get() {
+            if (cameraMode != CameraMode.SLOW_MO) return false
+            val cameraId = selectedLens?.logicalCameraId
+            if (cameraId.isNullOrEmpty()) return false
+            val bindKey = com.vayunmathur.camera.platform.camera2.Camera2FallbackLatch
+                .bindKey(cameraId, cameraMode)
+            return com.vayunmathur.camera.platform.camera2.SloMoPreviewPolicy.livePreviewSelected(
+                sloMoGateEnabled = camera2SloMoEnabled &&
+                    com.vayunmathur.camera.platform.camera2.SloMoCamera2Gate.ENABLED,
+                isSlowMoMode = true,
+                fallbackLatched = camera2SloMoFallbackBindKey == bindKey,
+                hasSelection = true,
+                recordingEngineReady =
+                    com.vayunmathur.camera.platform.camera2.SloMoRecordingReadiness.recordingEngineReady,
+            )
         }
 
     /**

@@ -68,8 +68,9 @@ class SloMoEnginePolicyTest {
     }
 
     @Test fun liveReadinessFlagStillKeepsRecordingOnCameraX() {
-        // Pieces 1/3/5 are structural-done, 2/4/6/7 are open, so the flag
-        // callers should feed the policy must still select CameraX.
+        // Pieces 1-5 and 7 are done in code, 6 (device verification) is
+        // open, so the flag callers should feed the policy must still
+        // select CameraX.
         assertEquals(
             SloMoEngine.CAMERAX,
             SloMoEnginePolicy.select(readyInput(recordingEngineReady = SloMoRecordingReadiness.recordingEngineReady)),

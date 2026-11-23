@@ -9,8 +9,19 @@ import com.vayunmathur.camera.platform.camera2.HighSpeedSelection
 import com.vayunmathur.camera.platform.camera2.SloMoCamera2Gate
 import com.vayunmathur.camera.platform.camera2.SloMoEngine
 import com.vayunmathur.camera.platform.camera2.SloMoEngineInput
+import androidx.lifecycle.viewModelScope
+import com.vayunmathur.camera.data.saveVideoStaged
+import com.vayunmathur.camera.data.setLastCaptureUri
+import com.vayunmathur.camera.platform.camera2.RecordingSessionOwnership
 import com.vayunmathur.camera.platform.camera2.SloMoEnginePolicy
+import com.vayunmathur.camera.platform.camera2.SloMoRecordingReadiness
+import com.vayunmathur.camera.platform.camera2.SloMoSaveAction
+import com.vayunmathur.camera.platform.camera2.SloMoSavePathPolicy
 import com.vayunmathur.library.log.Log
+import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Camera2 migration Phase 5: slo-mo glue between the gated Camera2
@@ -21,23 +32,21 @@ import com.vayunmathur.library.log.Log
  * With the gates on (the default), the lens snapshot, planner
  * selection and AVC encoder probe are assembled and [SloMoEnginePolicy]
  * decides; the reason is logged either way. Today the policy always keeps
- * recording on CameraX because `recordingEngineReady` is false: the
- * constrained session (`Camera2HighSpeedSession`) is not yet coupled to
- * the Phase-1 codec/muxer engine and the output has not been
- * device-verified. Flipping the gate therefore changes logging, never the
- * recording path, until that coupling lands.
+ * recording on CameraX because `recordingEngineReady` is false: pieces
+ * 2/4/7 are now in place (shared core, preview bridge, save-path glue),
+ * but the output has not been device-verified (piece 6). Flipping the
+ * gate therefore changes logging, never the recording path, until that
+ * verification lands.
  */
 
 /** Encoder mime the Phase-1 engine would record slo-mo with. */
 private const val SLOMO_ENCODER_MIME = MediaFormat.MIMETYPE_VIDEO_AVC
 
 /**
- * The Phase-1 engine configuration for [selection]: its size, playback
- * rate as the encoder frame rate, and capture rate as `KEY_CAPTURE_RATE`.
- * Building this config does not route any recording — the engine still
- * opens its own (regular) device, so the policy's
- * `recordingEngineReady` stays false until it can be driven by
- * `Camera2HighSpeedSession`'s constrained session.
+ * The recording configuration for [selection]: its size, playback rate
+ * as the encoder frame rate, and capture rate as `KEY_CAPTURE_RATE`.
+ * No-audio (CameraX slo-mo's contract, piece 5). Building this config
+ * does not route any recording.
  */
 internal fun HighSpeedSelection.toCustomRecordingConfig(): CustomRecordingConfig =
     CustomRecordingConfig(
@@ -46,7 +55,24 @@ internal fun HighSpeedSelection.toCustomRecordingConfig(): CustomRecordingConfig
         fps = playbackFps,
         captureFps = captureFps,
         videoMime = SLOMO_ENCODER_MIME,
+        audioEnabled = false,
     )
+
+/**
+ * Builds the shared codec/muxer/drain core for one Camera2 slo-mo
+ * recording (piece 2 + 7): externally owned, so the constrained
+ * high-speed session — not a regular engine session — drives it.
+ * The caller prepares its encoder surface before opening the session.
+ */
+internal fun buildCamera2SloMoRecordingCore(
+    selection: HighSpeedSelection,
+): Camera2RecordingCore = Camera2RecordingCore(
+    config = selection.toCustomRecordingConfig(),
+    initialBitrateBps = { SLOMO_RECORDING_BITRATE_BPS },
+    ownership = RecordingSessionOwnership.EXTERNALLY_OWNED,
+)
+
+private const val SLOMO_RECORDING_BITRATE_BPS = 20_000_000
 
 /** The Camera2 slo-mo decision for one lens snapshot; pure but for logging. */
 internal fun CameraViewModel.camera2SloMoDecision(
@@ -62,7 +88,7 @@ internal fun CameraViewModel.camera2SloMoDecision(
         hasConstrainedHighSpeed = snapshot.supportsConstrainedHighSpeedVideo,
         hasSelection = selection != null,
         encoderSupportsCaptureRate = encoderSupportsCaptureRate,
-        recordingEngineReady = false,
+        recordingEngineReady = SloMoRecordingReadiness.recordingEngineReady,
     )
     val reason = SloMoEnginePolicy.exclusionReason(input)
     Log.debug(
@@ -119,5 +145,61 @@ internal fun CameraViewModel.evaluateCamera2SloMoDecision() {
         Log.status("SloMo", "Camera2 slo-mo decision failed; staying on CameraX", e)
     } catch (e: IllegalArgumentException) {
         Log.status("SloMo", "Camera2 slo-mo decision failed; staying on CameraX", e)
+    }
+}
+
+/**
+ * Save-path glue for one finished Camera2 slo-mo attempt (piece 7): a
+ * readable, error-free staged file lands through the same
+ * `saveVideoStaged` seam as every other Camera2/CameraX recording; a
+ * failed attempt discards its file, latches this bind one-shot, and
+ * rebinds the CameraX HFR ladder so the next press records on CameraX.
+ * Runs its file I/O off-main. Returns the action taken (for tests/logs).
+ */
+internal fun CameraViewModel.handleCamera2SloMoFinalized(
+    displayName: String,
+    stagedFile: File,
+    outcomeError: Boolean,
+    outputReadable: Boolean,
+    cameraId: String,
+): SloMoSaveAction {
+    val alreadyLatched = camera2SloMoFallbackBindKeyMutable.value ==
+        com.vayunmathur.camera.platform.camera2.Camera2FallbackLatch
+            .bindKey(cameraId, cameraModeMutable.value)
+    val action = SloMoSavePathPolicy.actionFor(outcomeError, outputReadable, alreadyLatched)
+    viewModelScope.launch {
+        when (action) {
+            SloMoSaveAction.SAVE_STAGED -> withContext(Dispatchers.IO) {
+                if (stagedFile.exists()) {
+                    saveVideoStaged(displayName, stagedFile)?.let { setLastCaptureUri(it) }
+                    stagedFile.delete()
+                }
+            }
+            SloMoSaveAction.DISCARD_AND_REBIND_CAMERAX -> {
+                withContext(Dispatchers.IO) { stagedFile.delete() }
+                // One-shot latch: only the first failure for this bind rebinds.
+                if (onCamera2SloMoFailed(cameraId)) {
+                    teardownSession()
+                    setupHighSpeedSession()
+                }
+            }
+            SloMoSaveAction.DISCARD_LATCHED -> withContext(Dispatchers.IO) {
+                stagedFile.delete()
+            }
+        }
+    }
+    return action
+}
+
+/**
+ * Rebinds the CameraX high-speed session after a Camera2 slo-mo attempt
+ * failed before producing a file. One-shot per bind key, like preview's
+ * latch; a repeat failure for the same key does not rebind-loop.
+ */
+internal fun CameraViewModel.rebindCameraXAfterSloMoFailure(cameraId: String) {
+    if (!onCamera2SloMoFailed(cameraId)) return
+    viewModelScope.launch {
+        teardownSession()
+        setupHighSpeedSession()
     }
 }

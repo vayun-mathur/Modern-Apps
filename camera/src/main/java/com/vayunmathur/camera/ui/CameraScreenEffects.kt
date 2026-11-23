@@ -63,6 +63,7 @@ internal fun CameraScreenEffects(
     val useNightPreview = state.useNightPreview
     val useCamera2Preview = state.useCamera2Preview
     val useCamera2NightPreview = state.useCamera2NightPreview
+    val useCamera2SloMoPreview = state.useCamera2SloMoPreview
 
     // Tracks physical orientation purely to rotate the on-screen control icons. Capture output
     // rotation is handled by CameraX via SessionConfig.setAutoRotationEnabled(true).
@@ -261,7 +262,7 @@ internal fun CameraScreenEffects(
     val zslCompatible by viewModel.zslCompatible.collectAsState()
     val zslKey = if (sessionKind == SessionKind.PHOTO) zslCompatible else null
     val bindSettings by viewModel.bindTimeSettings.collectAsState()
-    LaunchedEffect(cameraMode, lensFacing, selectedLens, sessionKind, useNightPreview, useCamera2Preview, useCamera2NightPreview, zslKey, bindSettings, state.sessionBindRetry, lifecycleOwner) {
+    LaunchedEffect(cameraMode, lensFacing, selectedLens, sessionKind, useNightPreview, useCamera2Preview, useCamera2NightPreview, useCamera2SloMoPreview, zslKey, bindSettings, state.sessionBindRetry, lifecycleOwner) {
         // Camera2 preview engine (Phase 2, PHOTO, no other outputs yet) owns a
         // camera via Camera2Session directly. SetupPhotoSession() would double-open
         // the same cameraId — Camera2 open fails ERROR_CAMERA_IN_USE. So keep full
@@ -270,7 +271,7 @@ internal fun CameraScreenEffects(
         // Same for the Camera2 NIGHT extension preview: its extension
         // session owns the camera, so CameraX (including its own night
         // extension session) must not bind alongside it.
-        if (useCamera2Preview || useCamera2NightPreview) {
+        if (useCamera2Preview || useCamera2NightPreview || useCamera2SloMoPreview) {
             lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.sessionBindFailedMutable.value = false
                 viewModel.teardownSession()

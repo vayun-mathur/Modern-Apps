@@ -36,54 +36,48 @@ data class SloMoEngineInput(
     val encoderSupportsCaptureRate: Boolean = false,
     /**
      * The constrained session is coupled to a recording engine (codec +
-     * muxer) end to end. False today — coupling
-     * `Camera2HighSpeedSession` to `Camera2VideoRecordingEngine` is NOT
-     * mechanical. The seven pieces, in dependency order, with status
-     * after the structural work of 2026-11-22 (see
+     * muxer) end to end. The seven pieces, in dependency order (see
      * [SloMoRecordingReadiness], whose per-piece flags mirror this list):
      *
-     * 1. Encoder-surface handoff. DONE (structural): the engine is now
-     *    codec-first — `prepareEncoderSurface()` configures the video
-     *    codec and exposes its input surface before any camera open, and
-     *    `start` reuses it; the ordering itself is the pure, tested
-     *    [EncoderSurfaceHandoff] phase machine.
-     * 2. Device/session ownership. OPEN: both classes still open the same
-     *    cameraId — the engine owns a private device and a *regular*
-     *    session; the high-speed session owns the device through the
-     *    driver seam and a *constrained* session. The engine's regular
-     *    `TEMPLATE_RECORD` request cannot deliver 120/240 fps and must
-     *    not be substituted. Still missing: extracting the codec/muxer/
-     *    drain core so it can run under an externally-owned session.
-     * 3. Recording lifecycle. PARTIAL: `Camera2HighSpeedSession` now has
-     *    a stop boundary ([Camera2HighSpeedSession.stopRecording]) that
-     *    stops the repeating request before signalling EOS and never
-     *    closes caller-owned surfaces. Still missing: the shared core
-     *    from (2) for the EOS signal to land on, and start semantics.
-     * 4. Preview surface in SLOW_MO. OPEN: there is no Camera2 slo-mo
-     *    preview composable/bridge to supply the high-speed session's
-     *    preview target (mirroring `Camera2Preview`); see also
+     * 1. Encoder-surface handoff. DONE: the engine is codec-first —
+     *    `prepareEncoderSurface()` configures the video codec and exposes
+     *    its input surface before any camera open, and `start` reuses it;
+     *    the ordering itself is the pure, tested [EncoderSurfaceHandoff].
+     * 2. Device/session ownership. DONE: the codec/muxer/drain core is
+     *    extracted (`Camera2RecordingCore`, [SharedRecordingCoreLifecycle])
+     *    and runs under an externally-owned session; the engine delegates
+     *    to the same core for its regular session. The engine's regular
+     *    `TEMPLATE_RECORD` request is never substituted for the
+     *    constrained high-speed request.
+     * 3. Recording lifecycle. DONE: `Camera2HighSpeedSession.stopRecording`
+     *    stops the repeating request before signalling EOS on the shared
+     *    core and never closes caller-owned surfaces.
+     * 4. Preview surface in SLOW_MO. DONE: `Camera2SloMoPreview` supplies
+     *    the high-speed session's preview target behind the slo-mo gate
+     *    ([SloMoPreviewPolicy]); live selection additionally requires
+     *    [recordingEngineReady], so it is not composed live yet. See also
      *    [PreviewEnginePolicy]'s SLOW_MO exclusion.
-     * 5. Audio/muxer contract. DONE (structural): the engine takes a
-     *    no-audio configuration (`audioEnabled = false`, CameraX slo-mo's
+     * 5. Audio/muxer contract. DONE: the engine/core take a no-audio
+     *    configuration (`audioEnabled = false`, CameraX slo-mo's
      *    contract) — no AudioRecord/AAC is created and the muxer starts
-     *    on the video track alone via the tested [MuxerStartPolicy].
-     * 6. Timestamp verification. OPEN: the muxer writes encoder PTS
-     *    as-is; `stretchedPtsUs` is not wired into the drain path and
+     *    on the video track alone via [MuxerStartPolicy].
+     * 6. Timestamp verification. OPEN (device verification, out of scope
+     *    for the structural work): the muxer writes encoder PTS as-is;
+     *    `stretchedPtsUs` is not wired into the drain path and
      *    `validateOutput` checks neither frame rate nor stretched
      *    duration. Needs device proof an encoder honours
      *    `KEY_CAPTURE_RATE` (or muxer-side stretching) plus read-back
      *    and external ffprobe checks that output is slow, not realtime.
-     * 7. Save-path glue + fallback. OPEN: glue that tears CameraX down,
-     *    builds engine+high-speed session together, routes the file
-     *    through `saveVideoStaged`, and on failure rebinds the CameraX
-     *    HFR ladder — plus the device verification in (6) before this
-     *    flag may flip. Callers should pass
-     *    [SloMoRecordingReadiness.recordingEngineReady] (false today).
+     *    This piece alone keeps [recordingEngineReady] false.
+     * 7. Save-path glue + fallback. DONE: `handleCamera2SloMoFinalized`
+     *    routes a finished file through `saveVideoStaged`; on failure it
+     *    discards the file, latches this bind one-shot
+     *    (`Camera2FallbackLatch`, mirroring preview's), and rebinds the
+     *    CameraX HFR ladder via `setupHighSpeedSession`. Callers pass
+     *    [SloMoRecordingReadiness.recordingEngineReady] (false today,
+     *    solely because of piece 6).
      *
-     * Until (2), (4), (6) and (7) land, no live recording may be routed
-     * here: with pieces 1/3/5 in place the remaining work is the shared
-     * drain core, the preview bridge, and device verification — in that
-     * order.
+     * Until piece 6 lands, no live recording may be routed here.
      */
     val recordingEngineReady: Boolean = false,
 )
