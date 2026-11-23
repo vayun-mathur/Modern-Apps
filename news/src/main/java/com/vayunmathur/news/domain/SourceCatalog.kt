@@ -47,6 +47,72 @@ object SourceCatalog {
             "hn", "Hacker News", "https://news.ycombinator.com/rss", FeedKind.RSS,
             badge = "Links point at third-party sites; reader quality depends on the linked site.",
         ),
+        // Second verification round (2026-11-23, same bar as above: feed fetched
+        // with 200 and parsed; sampled article HTML held the full body).
+        NewsSource("tagesschau", "Tagesschau", "https://www.tagesschau.de/newsticker.rdf", FeedKind.RSS),
+        NewsSource("nos", "NOS", "https://feeds.nos.nl/nosnieuwsalgemeen", FeedKind.RSS),
+        NewsSource("svt", "SVT Nyheter", "https://www.svt.se/nyheter/rss.xml", FeedKind.RSS),
+        NewsSource("nrk", "NRK", "https://www.nrk.no/toppsaker.rss", FeedKind.RSS),
+        NewsSource("yle", "Yle News", "https://yle.fi/rss/news", FeedKind.RSS),
+        NewsSource("rte", "RTÉ News", "https://www.rte.ie/news/rss/news-headlines.xml", FeedKind.RSS),
+        NewsSource("cbc", "CBC News", "https://www.cbc.ca/webfeed/rss/rss-topstories", FeedKind.RSS),
+        NewsSource("euronews", "Euronews", "https://www.euronews.com/rss", FeedKind.RSS),
+        NewsSource("abc-au", "ABC Australia", "https://www.abc.net.au/news/feed/51120/rss.xml", FeedKind.RSS),
+        NewsSource("rnz", "RNZ", "https://www.rnz.co.nz/rss/national.xml", FeedKind.RSS),
+        NewsSource("cna", "CNA", "https://www.channelnewsasia.com/rssfeeds/8395986", FeedKind.RSS),
+        NewsSource("ansa", "ANSA", "https://www.ansa.it/sito/ansait_rss.xml", FeedKind.RSS),
+        NewsSource("mee", "Middle East Eye", "https://www.middleeasteye.net/rss.xml", FeedKind.RSS),
+        NewsSource("semafor", "Semafor", "https://www.semafor.com/rss.xml", FeedKind.RSS),
+        NewsSource("restofworld", "Rest of World", "https://restofworld.org/feed/", FeedKind.RSS),
+        NewsSource("africanarguments", "African Arguments", "https://africanarguments.org/feed/", FeedKind.RSS),
+        NewsSource("dailymaverick", "Daily Maverick", "https://www.dailymaverick.co.za/dmrss/", FeedKind.RSS),
+        NewsSource(
+            "buenosairesherald", "Buenos Aires Herald", "https://buenosairesherald.com/feed", FeedKind.RSS,
+        ),
+        NewsSource(
+            "straitstimes", "The Straits Times",
+            "https://www.straitstimes.com/news/singapore/rss.xml", FeedKind.RSS,
+            badge = "Metered: full article text was present in the raw HTML during " +
+                "verification; some articles may still truncate.",
+        ),
+        NewsSource(
+            "thehindu", "The Hindu",
+            "https://www.thehindu.com/news/national/feeder/default.rss", FeedKind.RSS,
+            badge = "Metered: full article text was present in the raw HTML during " +
+                "verification; some articles may still truncate.",
+        ),
+        NewsSource(
+            "hindustantimes", "Hindustan Times",
+            "https://www.hindustantimes.com/feeds/rss/india-news/rssfeed.xml", FeedKind.RSS,
+            badge = "Metered: full article text was present in the raw HTML during " +
+                "verification; some articles may still truncate.",
+        ),
+        NewsSource(
+            "japantimes", "The Japan Times", "https://www.japantimes.co.jp/feed/", FeedKind.RSS,
+            badge = "Metered: full article text was present in the raw HTML during " +
+                "verification; some articles may still truncate.",
+        ),
+        NewsSource(
+            "stat", "STAT", "https://www.statnews.com/feed/", FeedKind.RSS,
+            badge = "Metered: full article text was present in the raw HTML during " +
+                "verification; some articles may still truncate.",
+        ),
+        NewsSource(
+            "wired", "WIRED", "https://www.wired.com/feed/rss", FeedKind.RSS,
+            badge = "Metered: full article text was present in the raw HTML during " +
+                "verification; some articles may still truncate.",
+        ),
+        NewsSource(
+            "mittech", "MIT Technology Review", "https://www.technologyreview.com/feed/", FeedKind.RSS,
+            badge = "Metered: full article text was present in the raw HTML during " +
+                "verification; some articles may still truncate.",
+        ),
+        NewsSource(
+            "latimes", "Los Angeles Times",
+            "https://www.latimes.com/california/rss2.0.xml", FeedKind.RSS,
+            badge = "Metered: full article text was present in the raw HTML during " +
+                "verification; some articles may still truncate.",
+        ),
     )
 
     fun byId(id: String): NewsSource? = sources.firstOrNull { it.id == id }
