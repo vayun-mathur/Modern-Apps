@@ -14,6 +14,24 @@ data class FeedArticle(
     val metered: Boolean = false,
     /** BCP-47 language (server `language`, or the source catalog default). Not persisted. */
     val language: String? = null,
+    /**
+     * Server story assignment (`story_id` in news.json): same value for
+     * every article the server grouped into one story. Server grouping
+     * (built server-side with full-text signals) wins over client
+     * clustering — see [StoryGrouping]. Null for the fallback crawl.
+     * Persisted in Room (CachedArticle.storyId) so it survives caching.
+     */
+    val serverStoryId: String? = null,
+    /**
+     * Server-generated one-line story summary (`story_one_liner`).
+     * The ONLY server-generated text the client may display (labelled
+     * as a summary). Extracted article text is never served or shown;
+     * the reader still fetches bodies on-device. Persisted like
+     * [serverStoryId].
+     */
+    val storyOneLiner: String? = null,
+    /** Server canonical story headline (`story_title`), if it differs. */
+    val serverStoryTitle: String? = null,
 )
 
 /** One block of an extracted article body, in reading order. */

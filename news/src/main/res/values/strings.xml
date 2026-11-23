@@ -16,10 +16,23 @@
     <string name="reader_serif">Serif</string>
     <string name="reader_sans">Sans</string>
     <string name="reader_loading_failed">Could not load this article.</string>
-    <!-- SourcesScreen -->
-    <string name="sources_title">Sources</string>
-    <string name="sources_note">Every source below is always included. Use categories and search to filter the feed. If our news server is unreachable, the app crawls these sources directly. Article pages are always read directly from the publisher. No account is involved.</string>
-    <string name="sources_metered">Metered</string>
+    <string name="feed_local_with_location">Local · %1$s</string>
+    <!-- SettingsScreen -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_note">Feed order is chosen on the feed; reader text options are in the reader.</string>
+    <!-- LocalLocationScreen / SettingsScreen setting -->
+    <string name="local_location_title">Local news location</string>
+    <string name="local_location_note">Choose where Local news should come from first. Sources from your location appear first in Local; other local sources still follow. This is only a preference — the app never uses your device location.</string>
+    <string name="local_location_search_placeholder">Search or type a place</string>
+    <string name="local_location_unset">Not set — all local sources are equal</string>
+    <string name="local_location_current">Current: %1$s</string>
+    <string name="local_location_clear">Tap to clear</string>
+    <string name="local_location_use_typed">Use “%1$s”</string>
+    <string name="local_location_empty">No places available.</string>
+    <!-- StoryScreen -->
+    <string name="story_not_found">This story is no longer in the downloaded feed.</string>
+    <string name="story_summary_label">Summary</string>
+    <string name="story_timeline_label">How it developed</string>
     <!-- SavedScreen -->
     <string name="saved_title">Saved for later</string>
     <string name="saved_empty">Nothing saved yet. Save an article from the reader to read it offline later.</string>

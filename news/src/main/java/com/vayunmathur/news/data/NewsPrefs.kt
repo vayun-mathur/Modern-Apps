@@ -41,6 +41,14 @@ class NewsPrefs(context: Context) {
     val readerTextSp: Flow<Int> = safeData.map { it[TEXT_SP] ?: DEFAULT_TEXT_SP }
     val readerSerif: Flow<Boolean> = safeData.map { it[SERIF] ?: false }
 
+    /**
+     * Manually picked Local news location (a catalog region string or a
+     * free place name the user typed); null when unset, in which case all
+     * local sources are equal. This is a preference only — never device
+     * location. Blank stored values read as unset.
+     */
+    val localLocation: Flow<String?> = safeData.map { it[LOCAL_LOCATION]?.takeIf { v -> v.isNotBlank() } }
+
     suspend fun setFeedSort(sort: FeedSort) {
         appContext.newsDataStore.edit { it[FEED_SORT] = sort.name }
     }
@@ -60,12 +68,21 @@ class NewsPrefs(context: Context) {
         appContext.newsDataStore.edit { it[SERIF] = serif }
     }
 
+    /** Persists the Local news location; null or blank clears it (unset). */
+    suspend fun setLocalLocation(location: String?) {
+        appContext.newsDataStore.edit { prefs ->
+            val trimmed = location?.trim().orEmpty()
+            if (trimmed.isEmpty()) prefs.remove(LOCAL_LOCATION) else prefs[LOCAL_LOCATION] = trimmed
+        }
+    }
+
     companion object {
         const val DEFAULT_TEXT_SP = 17
         const val MIN_TEXT_SP = 13
         const val MAX_TEXT_SP = 24
         private val LEGACY_DISABLED_SOURCES = stringSetPreferencesKey("disabled_sources")
         private val FEED_SORT = stringPreferencesKey("feed_sort")
+        private val LOCAL_LOCATION = stringPreferencesKey("local_location")
         private val TEXT_SP = intPreferencesKey("reader_text_sp")
         private val SERIF = booleanPreferencesKey("reader_serif")
     }

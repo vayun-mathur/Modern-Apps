@@ -15,8 +15,9 @@ import kotlin.test.assertTrue
 class SourceCatalogCategoryTest {
 
     @Test fun everyCatalogSourceHasSensibleCategories() {
-        // 88 hand-curated + 1,250 generated (analysis/news-scale/curate.py).
-        assertEquals(1338, SourceCatalog.sources.size)
+        // 88 hand-curated + 5,679 generated (1,250 round 1 via curate.py +
+        // 4,429 round 2 via curate_r2.py; analysis/news-scale/).
+        assertEquals(5767, SourceCatalog.sources.size)
         assertEquals(SourceCatalog.sources.size, SourceCatalog.sources.map { it.id }.distinct().size)
         for (source in SourceCatalog.sources) {
             assertTrue(source.categories.isNotEmpty(), "${source.id} has no category")

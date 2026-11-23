@@ -12,7 +12,7 @@ import com.vayunmathur.news.data.NewsRepository
 import com.vayunmathur.news.platform.NewsViewModel
 import com.vayunmathur.news.platform.NewsViewModelFactory
 
-/** Entry activity hosting the news feed, reader, sources and saved screens. */
+/** Entry activity hosting the news feed, reader and saved screens. */
 class MainActivity : MaActivity() {
     private val viewModel: NewsViewModel by viewModels {
         NewsViewModelFactory(application, NewsRepository.get(application))

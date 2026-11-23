@@ -4,7 +4,7 @@ package com.vayunmathur.news.domain
 enum class FeedKind { SITEMAP, RSS }
 
 /**
- * One built-in publisher. [badge] is shown in the Sources screen when the
+ * One built-in publisher. [badge] records a caveat when the
  * feed works but article fetching carries a caveat verified at catalog
  * time (see news/AGENTS.md for the per-source verification evidence).
  * Sources whose article bodies are absent from the raw HTML (JS-only
@@ -24,6 +24,17 @@ data class NewsSource(
      * Articles inherit these from their source (no server field).
      */
     val categories: List<NewsCategory>,
+    /**
+     * Human-readable circulation area for [NewsCategory.LOCAL] sources,
+     * most-specific first, comma-separated, country last (e.g.
+     * "Los Angeles, California, United States", "Manchester, England,
+     * United Kingdom", "Texas, United States" for a statewide outlet).
+     * Null for non-local sources and for local sources whose area is not
+     * known. Derived client-side from catalog provenance only — the
+     * server feed carries no region field, exactly as categories are
+     * resolved client-side by source id.
+     */
+    val region: String? = null,
 ) {
     /** Primary category (first tag); every source has at least one. */
     val primaryCategory: NewsCategory get() = categories.first()
@@ -32,11 +43,11 @@ data class NewsSource(
 /** Built-in catalog; every URL here was fetched and parsed during development. */
 object SourceCatalog {
     // Curated entries below, followed by the bulk-generated catalog in
-    // GeneratedSourcesA.kt / GeneratedSourcesB.kt (aggregated as
-    // `generatedSources` in GeneratedSources.kt, in catalog order).
-    // Regenerate the generated files with:
-    // analysis/news-scale/curate.py --apply (its --apply target is
-    // GeneratedSourcesA.kt + GeneratedSourcesB.kt in this directory).
+    // GeneratedSourcesA.kt ... GeneratedSourcesI.kt (700 entries per part,
+    // aggregated as `generatedSources` in GeneratedSources.kt, in catalog
+    // order). Regenerate the generated files with:
+    // analysis/news-scale/curate_r2.py --apply (round 1 alone used
+    // curate.py --apply; the round-2 script regenerates every part).
     val sources: List<NewsSource> = listOf(
         NewsSource(
             "bbc", "BBC News",
@@ -189,138 +200,139 @@ object SourceCatalog {
             "https://www.latimes.com/california/rss2.0.xml", FeedKind.RSS,
             badge = "Metered: full article text was present in the raw HTML during " +
                 "verification; some articles may still truncate.",
-            categories = listOf(NewsCategory.LOCAL),
+            categories = listOf(NewsCategory.LOCAL), region = "Los Angeles, California, United States",
         ),
         // Third verification round (2026-11-23, same bar: feed fetched 200 and
         // parsed; 2-3 sampled article HTML pages held the full body). Emphasis:
         // local/regional outlets (US metros + public/nonprofit locals, UK Reach
         // and Newsquest-regionals, Postmedia and Nine metros) plus non-English
-        // sources. No region field exists in NewsSource, so entries stay flat;
-        // region is carried in the verification report, grouping is future work.
+        // sources. Each LOCAL entry carries its circulation area in
+        // NewsSource.region (city/state/country, curated from the outlets'
+        // known home markets in the verification round).
         // US local / regional.
         NewsSource(
             "seattle-times", "Seattle Times", "https://www.seattletimes.com/feed/", FeedKind.RSS,
             badge = "Metered: full article text was present in the raw HTML during " +
                 "verification; some articles may still truncate.",
-            categories = listOf(NewsCategory.LOCAL),
+            categories = listOf(NewsCategory.LOCAL), region = "Seattle, Washington, United States",
         ),
         NewsSource(
             "dallas-morning", "Dallas Morning News",
             "https://www.dallasnews.com/sitemap/news/local.xml", FeedKind.SITEMAP,
             badge = "Metered: full article text was present in the raw HTML during " +
                 "verification; some articles may still truncate.",
-            categories = listOf(NewsCategory.LOCAL),
+            categories = listOf(NewsCategory.LOCAL), region = "Dallas, Texas, United States",
         ),
         NewsSource(
             "houston-chronicle", "Houston Chronicle",
             "https://www.houstonchronicle.com/news-sitemap.xml", FeedKind.SITEMAP,
             badge = "Metered: full article text was present in the raw HTML during " +
                 "verification; some articles may still truncate.",
-            categories = listOf(NewsCategory.LOCAL),
+            categories = listOf(NewsCategory.LOCAL), region = "Houston, Texas, United States",
         ),
         NewsSource(
             "sf-chronicle", "San Francisco Chronicle",
             "https://www.sfchronicle.com/news-sitemap.xml", FeedKind.SITEMAP,
             badge = "Metered: full article text was present in the raw HTML during " +
                 "verification; some articles may still truncate.",
-            categories = listOf(NewsCategory.LOCAL),
+            categories = listOf(NewsCategory.LOCAL), region = "San Francisco, California, United States",
         ),
         NewsSource(
             "inquirer", "Philadelphia Inquirer",
             "https://www.inquirer.com/arc/outboundfeeds/rss/?outputType=xml", FeedKind.RSS,
             badge = "Metered: full article text was present in the raw HTML during " +
                 "verification; some articles may still truncate.",
-            categories = listOf(NewsCategory.LOCAL),
+            categories = listOf(NewsCategory.LOCAL), region = "Philadelphia, Pennsylvania, United States",
         ),
         NewsSource("gothamist", "Gothamist", "https://gothamist.com/feed", FeedKind.RSS,
-            categories = listOf(NewsCategory.LOCAL),
+            categories = listOf(NewsCategory.LOCAL), region = "New York City, New York, United States",
         ),
         NewsSource("laist", "LAist", "https://laist.com/index.atom", FeedKind.RSS,
-            categories = listOf(NewsCategory.LOCAL),
+            categories = listOf(NewsCategory.LOCAL), region = "Los Angeles, California, United States",
         ),
         NewsSource("block-club", "Block Club Chicago", "https://blockclubchicago.org/feed/", FeedKind.RSS,
-            categories = listOf(NewsCategory.LOCAL),
+            categories = listOf(NewsCategory.LOCAL), region = "Chicago, Illinois, United States",
         ),
         NewsSource("wbez", "WBEZ Chicago", "https://www.wbez.org/rss/index.xml", FeedKind.RSS,
-            categories = listOf(NewsCategory.LOCAL),
+            categories = listOf(NewsCategory.LOCAL), region = "Chicago, Illinois, United States",
         ),
         NewsSource("minnpost", "MinnPost", "https://www.minnpost.com/feed/", FeedKind.RSS,
-            categories = listOf(NewsCategory.LOCAL),
+            categories = listOf(NewsCategory.LOCAL), region = "Minnesota, United States",
         ),
         NewsSource("mprnews", "MPR News", "https://www.mprnews.org/feed/homepage", FeedKind.RSS,
-            categories = listOf(NewsCategory.LOCAL),
+            categories = listOf(NewsCategory.LOCAL), region = "Minnesota, United States",
         ),
         NewsSource("texas-tribune", "Texas Tribune", "https://www.texastribune.org/feed/", FeedKind.RSS,
-            categories = listOf(NewsCategory.LOCAL),
+            categories = listOf(NewsCategory.LOCAL), region = "Texas, United States",
         ),
         NewsSource("calmatters", "CalMatters", "https://calmatters.org/feed/", FeedKind.RSS,
-            categories = listOf(NewsCategory.LOCAL),
+            categories = listOf(NewsCategory.LOCAL), region = "California, United States",
         ),
         NewsSource("austin-monitor", "Austin Monitor", "https://www.austinmonitor.com/feed/", FeedKind.RSS,
-            categories = listOf(NewsCategory.LOCAL),
+            categories = listOf(NewsCategory.LOCAL), region = "Austin, Texas, United States",
         ),
         NewsSource(
             "houston-public", "Houston Public Media", "https://www.houstonpublicmedia.org/feed/", FeedKind.RSS,
-            categories = listOf(NewsCategory.LOCAL),
+            categories = listOf(NewsCategory.LOCAL), region = "Houston, Texas, United States",
         ),
         NewsSource("wbur", "WBUR Boston", "https://www.wbur.org/feed", FeedKind.RSS,
-            categories = listOf(NewsCategory.LOCAL),
+            categories = listOf(NewsCategory.LOCAL), region = "Boston, Massachusetts, United States",
         ),
         NewsSource("kqed", "KQED News", "https://ww2.kqed.org/news/feed/", FeedKind.RSS,
-            categories = listOf(NewsCategory.LOCAL),
+            categories = listOf(NewsCategory.LOCAL), region = "San Francisco, California, United States",
         ),
         NewsSource(
             "sltrib", "Salt Lake Tribune",
             "https://www.sltrib.com/arc/outboundfeeds/rss/?outputType=xml", FeedKind.RSS,
-            categories = listOf(NewsCategory.LOCAL),
+            categories = listOf(NewsCategory.LOCAL), region = "Salt Lake City, Utah, United States",
         ),
         NewsSource(
             "adn", "Anchorage Daily News",
             "https://www.adn.com/arc/outboundfeeds/rss/?outputType=xml", FeedKind.RSS,
             badge = "Metered: full article text was present in the raw HTML during " +
                 "verification; some articles may still truncate.",
-            categories = listOf(NewsCategory.LOCAL),
+            categories = listOf(NewsCategory.LOCAL), region = "Anchorage, Alaska, United States",
         ),
         NewsSource("civil-beat", "Honolulu Civil Beat", "https://www.civilbeat.org/feed/", FeedKind.RSS,
-            categories = listOf(NewsCategory.LOCAL),
+            categories = listOf(NewsCategory.LOCAL), region = "Honolulu, Hawaii, United States",
         ),
         NewsSource("vtdigger", "VTDigger", "https://vtdigger.org/feed/", FeedKind.RSS,
-            categories = listOf(NewsCategory.LOCAL),
+            categories = listOf(NewsCategory.LOCAL), region = "Vermont, United States",
         ),
         NewsSource("the-city", "THE CITY (New York)", "https://www.thecity.nyc/feed/", FeedKind.RSS,
-            categories = listOf(NewsCategory.LOCAL),
+            categories = listOf(NewsCategory.LOCAL), region = "New York City, New York, United States",
         ),
         NewsSource(
             "bangor", "Bangor Daily News", "https://www.bangordailynews.com/feed/", FeedKind.RSS,
             badge = "Metered: full article text was present in the raw HTML during " +
                 "verification; some articles may still truncate.",
-            categories = listOf(NewsCategory.LOCAL),
+            categories = listOf(NewsCategory.LOCAL), region = "Bangor, Maine, United States",
         ),
         // International local / regional (English).
         NewsSource(
             "manchester-evening", "Manchester Evening News",
             "https://www.manchestereveningnews.co.uk/rss.xml", FeedKind.RSS,
-            categories = listOf(NewsCategory.LOCAL),
+            categories = listOf(NewsCategory.LOCAL), region = "Manchester, England, United Kingdom",
         ),
         NewsSource(
             "liverpool-echo", "Liverpool Echo", "https://www.liverpoolecho.co.uk/rss.xml", FeedKind.RSS,
-            categories = listOf(NewsCategory.LOCAL),
+            categories = listOf(NewsCategory.LOCAL), region = "Liverpool, England, United Kingdom",
         ),
         NewsSource("walesonline", "WalesOnline", "https://www.walesonline.co.uk/rss.xml", FeedKind.RSS,
-            categories = listOf(NewsCategory.LOCAL),
+            categories = listOf(NewsCategory.LOCAL), region = "Wales, United Kingdom",
         ),
         NewsSource(
             "chroniclelive", "ChronicleLive (Newcastle)", "https://www.chroniclelive.co.uk/rss.xml", FeedKind.RSS,
-            categories = listOf(NewsCategory.LOCAL),
+            categories = listOf(NewsCategory.LOCAL), region = "Newcastle, England, United Kingdom",
         ),
         NewsSource("standard", "Evening Standard (London)", "https://www.standard.co.uk/rss", FeedKind.RSS,
-            categories = listOf(NewsCategory.LOCAL),
+            categories = listOf(NewsCategory.LOCAL), region = "London, England, United Kingdom",
         ),
         NewsSource(
             "belfast-telegraph", "Belfast Telegraph", "https://www.belfasttelegraph.co.uk/rss", FeedKind.RSS,
             badge = "Metered: full article text was present in the raw HTML during " +
                 "verification; some articles may still truncate.",
-            categories = listOf(NewsCategory.LOCAL),
+            categories = listOf(NewsCategory.LOCAL), region = "Belfast, Northern Ireland, United Kingdom",
         ),
         NewsSource(
             "thejournal", "The Journal (Ireland)", "https://www.thejournal.ie/feed/", FeedKind.RSS,
@@ -332,25 +344,25 @@ object SourceCatalog {
             "vancouver-sun", "Vancouver Sun", "https://vancouversun.com/feed/", FeedKind.RSS,
             badge = "Metered: full article text was present in the raw HTML during " +
                 "verification; some articles may still truncate.",
-            categories = listOf(NewsCategory.LOCAL),
+            categories = listOf(NewsCategory.LOCAL), region = "Vancouver, British Columbia, Canada",
         ),
         NewsSource(
             "ottawa-citizen", "Ottawa Citizen", "https://ottawacitizen.com/feed/", FeedKind.RSS,
             badge = "Metered: full article text was present in the raw HTML during " +
                 "verification; some articles may still truncate.",
-            categories = listOf(NewsCategory.LOCAL),
+            categories = listOf(NewsCategory.LOCAL), region = "Ottawa, Ontario, Canada",
         ),
         NewsSource(
             "smh", "Sydney Morning Herald", "https://www.smh.com.au/rss/feed.xml", FeedKind.RSS,
             badge = "Metered: full article text was present in the raw HTML during " +
                 "verification; some articles may still truncate.",
-            categories = listOf(NewsCategory.LOCAL),
+            categories = listOf(NewsCategory.LOCAL), region = "Sydney, New South Wales, Australia",
         ),
         NewsSource(
             "the-age", "The Age (Melbourne)", "https://www.theage.com.au/rss/feed.xml", FeedKind.RSS,
             badge = "Metered: full article text was present in the raw HTML during " +
                 "verification; some articles may still truncate.",
-            categories = listOf(NewsCategory.LOCAL),
+            categories = listOf(NewsCategory.LOCAL), region = "Melbourne, Victoria, Australia",
         ),
         // Non-English (language = BCP-47 feed language; articles inherit it).
         NewsSource("eldiario", "elDiario.es", "https://www.eldiario.es/rss", FeedKind.RSS, language = "es",
@@ -376,7 +388,7 @@ object SourceCatalog {
             "mopo", "Hamburger Morgenpost", "https://www.mopo.de/feed/", FeedKind.RSS, language = "de",
             badge = "Metered: full article text was present in the raw HTML during " +
                 "verification; some articles may still truncate.",
-            categories = listOf(NewsCategory.LOCAL),
+            categories = listOf(NewsCategory.LOCAL), region = "Hamburg, Germany",
         ),
         NewsSource(
             "20minutes-fr", "20 Minutes", "https://www.20minutes.fr/feeds/rss-une.xml", FeedKind.RSS,
@@ -395,7 +407,7 @@ object SourceCatalog {
             language = "fr",
             badge = "Metered: full article text was present in the raw HTML during " +
                 "verification; some articles may still truncate.",
-            categories = listOf(NewsCategory.LOCAL),
+            categories = listOf(NewsCategory.LOCAL), region = "Toulouse, France",
         ),
         NewsSource(
             "observador", "Observador", "https://observador.pt/feed/", FeedKind.RSS, language = "pt",
@@ -463,6 +475,24 @@ object SourceCatalog {
      */
     fun matchesCategory(sourceId: String, category: NewsCategory?): Boolean =
         category == null || category in categoriesOf(sourceId)
+
+    /** Region for [sourceId]; null for non-local or unknown sources. */
+    fun regionOf(sourceId: String): String? = byId(sourceId)?.region
+
+    /**
+     * Distinct regions of LOCAL-tagged sources that carry one, sorted
+     * for the Local news location picker (country-grouped in the UI via
+     * [LocalNews.countryOf]).
+     */
+    val localRegions: List<String> = sources
+        .filter { NewsCategory.LOCAL in it.categories }
+        .mapNotNull { it.region }
+        .distinct()
+        .sorted()
+
+    /** Whether [sourceId]'s region matches the user's [LocalNews] location. */
+    fun matchesLocalLocation(sourceId: String, location: String?): Boolean =
+        LocalNews.matches(regionOf(sourceId), location)
 
     /** Categories present among [sources], in taxonomy order. */
     fun categoriesAmong(sources: List<NewsSource>): List<NewsCategory> =

@@ -1,5 +1,6 @@
 package com.vayunmathur.news.domain
 
+import kotlin.math.log2
 import kotlin.math.pow
 
 /** Feed order, persisted by the prefs owner. Search ignores this (relevance wins). */
@@ -38,20 +39,30 @@ data class RankedArticle(
  *
  * ## Story clustering (collapse before ranking)
  *
- * Titles are normalised (lower-case, punctuation dropped, whitespace
- * collapsed, a leading "source:" / "source -" prefix stripped) and
- * grouped: exact normalised-title matches always collapse, and two
- * titles also collapse when their token sets have Jaccard similarity
- * >= 0.85 and both have at least 4 tokens (union-find over the title
- * list; single-linkage, so A~B and B~C merge one story). Cluster size
- * is capped at [MAX_CLUSTER_INPUTS] compared pairs only for perf — the
- * corpus is ~500 stubs, so the O(n²) token comparison is trivial.
- * This threshold is deliberately conservative: it merges wire-copy
- * rewrites of one headline, not merely related coverage. Each cluster
- * keeps one representative: earliest `publishedAtMillis` (wire copy
- * originates once), tie-broken by fuller metadata (image, then more
- * keywords, then URL); the representative reports
- * `cluster size - 1` as [RankedArticle.alsoFromSources].
+ * Clustering is [StoryGrouping] (see its KDoc for the algorithm,
+ * inverted-index candidate generation, merge rules, thresholds and
+ * time windows). Each story keeps one representative: earliest
+ * `publishedAtMillis` (wire copy originates once), tie-broken by
+ * fuller metadata (image, then more keywords, then URL); the
+ * representative reports `distinct sources - 1` as
+ * [RankedArticle.alsoFromSources].
+ *
+ * ## Top stories for stories ([rankStories] / [storyScore])
+ * ```
+ * ageHours = max(0, (now - story.latestMillis) / 3_600_000)
+ * score    = 100 * 0.5^(ageHours / 18)            // recency of latest update
+ *          + 5 if hero image present
+ *          + 2 if any member has keywords
+ *          + crossSourceBonus                     // see below, capped 30
+ * crossSourceBonus = 0 if 1 source else min(30, 10 * log2(sourceCount))
+ * ```
+ * Cross-source breadth is an honest prominence signal (independent
+ * outlets choosing to cover an event), folded in *alongside*
+ * recency: 2 sources +10, 4 sources +20, 8+ +30. It breaks ties
+ * between same-age stories and lifts a widely-covered day-old story
+ * (50+20) above a single-source half-day story (~71 vs ~75 — close),
+ * but a fresh single-source story (~100) still beats a 3-day-old
+ * wire everywhere (~6+30). Latest sorts by [Story.latestMillis].
  *
  * ## Source diversity (interleave after scoring)
  *
@@ -78,21 +89,52 @@ object FeedRanking {
     const val FIRST_PAGE_PER_SOURCE = 3
     const val NEAR_DUPLICATE_JACCARD = 0.85
     const val MIN_TOKENS_FOR_NEAR_DUPLICATE = 4
+    /** Cap on the cross-source bonus in [storyScore]. */
+    const val MAX_CROSS_SOURCE_BONUS = 30.0
 
     /** Rank [articles] for the feed; [nowMillis] is injected for tests. */
     fun rank(
         articles: List<FeedArticle>,
         sort: FeedSort,
         nowMillis: Long,
-    ): List<RankedArticle> {
-        val clusters = cluster(articles)
+    ): List<RankedArticle> = rankStories(articles, sort, nowMillis).map {
+        RankedArticle(it.representative, alsoFromSources = (it.sourceCount - 1).coerceAtLeast(0))
+    }
+
+    /** Group [articles] into stories and rank the stories for the feed. */
+    fun rankStories(
+        articles: List<FeedArticle>,
+        sort: FeedSort,
+        nowMillis: Long,
+    ): List<Story> = rankGroupedStories(StoryGrouping.group(articles), sort, nowMillis)
+
+    /** Rank already-grouped [stories] (grouping done once, ranking/filtering many times). */
+    fun rankGroupedStories(
+        stories: List<Story>,
+        sort: FeedSort,
+        nowMillis: Long,
+    ): List<Story> {
         return when (sort) {
-            FeedSort.LATEST -> clusters.sortedWith(
-                compareByDescending<RankedArticle> { it.article.publishedAtMillis }
-                    .thenBy { it.article.url },
+            FeedSort.LATEST -> stories.sortedWith(
+                compareByDescending<Story> { it.latestMillis }
+                    .thenByDescending { it.firstSeenMillis }
+                    .thenBy { it.id },
             )
-            FeedSort.TOP -> diversify(clusters, nowMillis)
+            FeedSort.TOP -> diversifyStories(stories, nowMillis)
         }
+    }
+
+    /** Top-stories score of a story (see KDoc formula). */
+    fun storyScore(story: Story, nowMillis: Long): Double {
+        if (story.latestMillis <= 0L) return 0.0
+        val ageHours = ((nowMillis - story.latestMillis).coerceAtLeast(0L)) / 3_600_000.0
+        var score = 100.0 * 0.5.pow(ageHours / HALF_LIFE_HOURS)
+        if (story.heroImageUrl != null) score += IMAGE_BONUS
+        if (story.articles.any { it.keywords.isNotEmpty() }) score += KEYWORD_BONUS
+        if (story.sourceCount > 1) {
+            score += minOf(MAX_CROSS_SOURCE_BONUS, 10.0 * log2(story.sourceCount.toDouble()))
+        }
+        return score
     }
 
     /** Ranking score of one article under Top stories (see KDoc formula). */
@@ -118,66 +160,22 @@ object FeedRanking {
         return text.replace(Regex("[^\\p{L}\\p{N}]+"), " ").trim().replace(Regex("\\s+"), " ")
     }
 
-    private fun cluster(articles: List<FeedArticle>): List<RankedArticle> {
-        if (articles.isEmpty()) return emptyList()
-        val normalised = articles.map { normaliseTitle(it.title) }
-        val tokens = normalised.map { if (it.isEmpty()) emptySet() else it.split(' ').toSet() }
-        val parent = IntArray(articles.size) { it }
-        fun find(x: Int): Int {
-            var root = x
-            while (parent[root] != root) root = parent[root]
-            return root
-        }
-        fun union(a: Int, b: Int) {
-            val ra = find(a); val rb = find(b)
-            if (ra != rb) parent[maxOf(ra, rb)] = minOf(ra, rb)
-        }
-        for (i in articles.indices) {
-            if (normalised[i].isEmpty()) continue
-            for (j in i + 1 until articles.size) {
-                if (normalised[j].isEmpty()) continue
-                if (normalised[i] == normalised[j]) {
-                    union(i, j)
-                } else if (tokens[i].size >= MIN_TOKENS_FOR_NEAR_DUPLICATE &&
-                    tokens[j].size >= MIN_TOKENS_FOR_NEAR_DUPLICATE
-                ) {
-                    val unionSize = (tokens[i] union tokens[j]).size
-                    if (unionSize > 0 &&
-                        (tokens[i] intersect tokens[j]).size.toDouble() / unionSize >= NEAR_DUPLICATE_JACCARD
-                    ) {
-                        union(i, j)
-                    }
-                }
-            }
-        }
-        return articles.indices.groupBy { find(it) }.values.map { group ->
-            val members = group.map { articles[it] }
-            val representative = members.sortedWith(
-                compareBy<FeedArticle> { it.publishedAtMillis }
-                    .thenByDescending { it.imageUrl != null }
-                    .thenByDescending { it.keywords.size }
-                    .thenBy { it.url },
-            ).first()
-            RankedArticle(representative, alsoFromSources = members.size - 1)
-        }
-    }
-
-    private fun diversify(clusters: List<RankedArticle>, nowMillis: Long): List<RankedArticle> {
-        val remaining = clusters.sortedWith(
-            compareByDescending<RankedArticle> { score(it.article, nowMillis) }
-                .thenByDescending { it.article.publishedAtMillis }
-                .thenBy { it.article.url },
+    private fun diversifyStories(stories: List<Story>, nowMillis: Long): List<Story> {
+        val remaining = stories.sortedWith(
+            compareByDescending<Story> { storyScore(it, nowMillis) }
+                .thenByDescending { it.latestMillis }
+                .thenBy { it.id },
         ).toMutableList()
-        val out = mutableListOf<RankedArticle>()
+        val out = mutableListOf<Story>()
         while (remaining.isNotEmpty()) {
             val pick = if (out.size < FIRST_PAGE_SIZE) {
-                val perSource = out.groupingBy { it.article.sourceId }.eachCount()
-                remaining.firstOrNull { (perSource[it.article.sourceId] ?: 0) < FIRST_PAGE_PER_SOURCE }
+                val perSource = out.groupingBy { it.representative.sourceId }.eachCount()
+                remaining.firstOrNull { (perSource[it.representative.sourceId] ?: 0) < FIRST_PAGE_PER_SOURCE }
                     ?: remaining.first()
             } else {
                 val tail = out.takeLast(2)
-                if (tail.size == 2 && tail.all { it.article.sourceId == tail[0].article.sourceId }) {
-                    remaining.firstOrNull { it.article.sourceId != tail[0].article.sourceId }
+                if (tail.size == 2 && tail.all { it.representative.sourceId == tail[0].representative.sourceId }) {
+                    remaining.firstOrNull { it.representative.sourceId != tail[0].representative.sourceId }
                         ?: remaining.first()
                 } else {
                     remaining.first()

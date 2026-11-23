@@ -22,6 +22,7 @@ import com.vayunmathur.library.ui.IconSettings
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.news.R
 import com.vayunmathur.news.domain.FeedSort
+import com.vayunmathur.news.domain.NewsCategory
 import com.vayunmathur.news.domain.SourceCatalog
 import com.vayunmathur.news.platform.NewsViewModel
 
@@ -36,20 +37,22 @@ import com.vayunmathur.news.platform.NewsViewModel
 @Composable
 fun FeedScreen(
     viewModel: NewsViewModel,
-    onOpenArticle: (String) -> Unit,
-    onOpenSources: () -> Unit,
+    onOpenArticle: (String) -> Unit = {},
     onOpenSaved: () -> Unit,
+    onOpenStory: (String) -> Unit = { onOpenArticle(it) },
+    onOpenSettings: () -> Unit = {},
 ) {
-    val articles by viewModel.articles.collectAsState()
+    val stories by viewModel.stories.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     val refreshFailed by viewModel.refreshFailed.collectAsState()
     val categoryFilter by viewModel.categoryFilter.collectAsState()
     val feedSort by viewModel.feedSort.collectAsState()
-    val clusterCounts by viewModel.clusterCounts.collectAsState()
+    val cachedByUrl by viewModel.cachedByUrl.collectAsState()
+    val localLocation by viewModel.localLocation.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
-    val searchResults by viewModel.searchResults.collectAsState()
+    val searchStories by viewModel.searchStories.collectAsState()
     val searching = searchQuery.isNotBlank()
-    val shownArticles = if (searching) searchResults else articles
+    val shownStories = if (searching) searchStories else stories
     AppScaffold(
         // The search field IS the top app bar (no "News" title): declared
         // through the scaffold's search parameter, which renders the field
@@ -64,7 +67,7 @@ fun FeedScreen(
         onRefresh = viewModel::refresh,
         actions = {
             IconButton(onClick = onOpenSaved) { IconBookmark() }
-            IconButton(onClick = onOpenSources) { IconSettings() }
+            IconButton(onClick = onOpenSettings) { IconSettings() }
         },
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
@@ -100,10 +103,19 @@ fun FeedScreen(
                     )
                 }
                 items(categories) { category ->
+                    // The Local chip indicates the chosen location, if any.
+                    val label = if (category == NewsCategory.LOCAL && localLocation != null) {
+                        stringResource(
+                            R.string.feed_local_with_location,
+                            localLocation!!.substringBefore(",").trim(),
+                        )
+                    } else {
+                        category.label
+                    }
                     FilterChip(
                         selected = categoryFilter == category,
                         onClick = { viewModel.setCategoryFilter(category) },
-                        label = { Text(category.label) },
+                        label = { Text(label) },
                         modifier = Modifier.padding(start = 8.dp),
                     )
                 }
@@ -115,19 +127,22 @@ fun FeedScreen(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                 )
             }
-            if (shownArticles.isEmpty() && !isRefreshing) {
+            if (shownStories.isEmpty() && !isRefreshing) {
                 Text(
                     stringResource(if (searching) R.string.feed_search_empty else R.string.feed_empty),
                     modifier = Modifier.padding(16.dp),
                 )
             }
             LazyColumn(modifier = Modifier.fillMaxSize()) {
-                items(shownArticles, key = { it.url }) { article ->
-                    ArticleRow(
-                        article = article,
-                        onClick = { onOpenArticle(article.url) },
-                        onToggleBookmark = { viewModel.toggleBookmark(article) },
-                        alsoFromSources = if (searching) 0 else clusterCounts[article.url] ?: 0,
+                items(shownStories, key = { it.id }) { story ->
+                    val representativeCached = cachedByUrl[story.representative.url]
+                    StoryRow(
+                        story = story,
+                        bookmarked = representativeCached?.bookmarked == true,
+                        onClick = { onOpenStory(story.id) },
+                        onToggleBookmark = {
+                            if (representativeCached != null) viewModel.toggleBookmark(representativeCached)
+                        },
                     )
                 }
             }

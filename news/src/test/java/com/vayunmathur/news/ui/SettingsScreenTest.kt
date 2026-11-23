@@ -3,8 +3,8 @@ package com.vayunmathur.news.ui
 import android.app.Application
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.news.data.NewsPrefs
 import com.vayunmathur.news.data.NewsRepository
@@ -17,27 +17,24 @@ import java.io.IOException
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/**
- * Sources is now a read-only directory: source names and languages are
- * listed, there are no enable/disable switches anywhere on the screen.
- */
+/** Settings holds the Local news location setting; tapping it navigates to the picker. */
 @RunWith(RobolectricTestRunner::class)
-class SourcesScreenTest {
+class SettingsScreenTest {
     @get:Rule val rule = createComposeRule()
 
-    @Test fun directoryListsSourcesWithoutToggles() {
+    @Test fun localLocationSettingRowNavigatesToPicker() {
         val context = ApplicationProvider.getApplicationContext<Application>()
         seedNewsDb(context)
         val repository = NewsRepository(context, fetch = { throw IOException("offline") })
         val viewModel = NewsViewModel(context, repository, NewsPrefs(context))
-        rule.setContent { SourcesScreen(viewModel = viewModel, onBack = {}) }
+        var opened = 0
+        rule.setContent {
+            SettingsScreen(viewModel = viewModel, onBack = {}, onOpenLocalLocation = { opened++ })
+        }
         rule.waitForIdle()
-        rule.onNodeWithText("Sources").assertIsDisplayed()
-        rule.onNodeWithText("BBC News").assertIsDisplayed()
-        // No toggleable (switch) semantics on a read-only directory screen.
-        assertEquals(
-            0,
-            rule.onAllNodes(androidx.compose.ui.test.isToggleable()).fetchSemanticsNodes().size,
-        )
+        rule.onNodeWithText("Settings").assertIsDisplayed()
+        rule.onNodeWithText("Local news location").assertIsDisplayed()
+        rule.onNodeWithText("Local news location").performClick()
+        assertEquals(1, opened)
     }
 }

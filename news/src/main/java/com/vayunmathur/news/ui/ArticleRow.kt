@@ -56,7 +56,7 @@ fun ArticleRow(
     }
 }
 
-private fun relativeTime(millis: Long): String {
+internal fun relativeTime(millis: Long): String {
     if (millis <= 0L) return ""
     val minutes = ((System.currentTimeMillis() - millis) / 60_000L).coerceAtLeast(0L)
     return when {

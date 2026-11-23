@@ -11,14 +11,22 @@ sealed interface Route : NavKey {
     data object Feed : Route
 
     @Serializable
+    /** Story page for the story with [storyId] (see domain Story.id). */
+    data class Story(val storyId: String) : Route
+
+    @Serializable
     /** Clean reader (or original web view) for the article at [url]. */
     data class Reader(val url: String) : Route
 
     @Serializable
-    /** Read-only directory of built-in sources. */
-    data object Sources : Route
-
-    @Serializable
     /** Bookmarked articles, readable offline. */
     data object Saved : Route
+
+    @Serializable
+    /** Picker for the manually chosen Local news location preference. */
+    data object LocalLocation : Route
+
+    @Serializable
+    /** News settings (holds the Local news location preference). */
+    data object Settings : Route
 }

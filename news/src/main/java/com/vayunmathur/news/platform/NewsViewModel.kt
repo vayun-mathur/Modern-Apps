@@ -14,6 +14,10 @@ import com.vayunmathur.news.domain.FeedRanking
 import com.vayunmathur.news.domain.FeedSort
 import com.vayunmathur.news.domain.NewsCategory
 import com.vayunmathur.news.domain.SourceCatalog
+import com.vayunmathur.news.domain.LocalNews
+import com.vayunmathur.news.domain.Story
+import com.vayunmathur.news.domain.StoryGrouping
+import com.vayunmathur.news.domain.orderedBySearchHits
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -24,15 +28,16 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /**
- * Feed filtering: every source is always in the corpus (no per-source
- * toggle). A null category filter is "All"; a non-null [NewsCategory]
- * keeps only articles whose source carries that catalog tag (see
- * [SourceCatalog.matchesCategory]). The persisted [FeedSort] then
- * orders the filtered corpus via [FeedRanking] (Top stories by
- * default); search keeps its own relevance ranking.
+ * Feed = stories. Grouping ([StoryGrouping], server assignment wins)
+ * is computed in-memory over the Room article cache per emission —
+ * no schema change for grouping itself (the two server story columns
+ * are the only v2 addition). A null category filter is "All"; a story
+ * matches a category when ANY member does. [FeedRanking] ranks
+ * stories (Top folds cross-source breadth into recency; Latest is by
+ * latest update). Search hits surface their whole story.
  */
 
-/** UI state and actions for feed, reader, sources and saved screens. */
+/** UI state and actions for feed, reader and saved screens. */
 class NewsViewModel(
     application: Application,
     private val repository: NewsRepository,
@@ -51,13 +56,18 @@ class NewsViewModel(
     val feedSort: StateFlow<FeedSort> = prefs.feedSort
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FeedSort.TOP)
 
-    /** Extra sources per feed-row URL, from story clustering (see [FeedRanking]). */
-    private val _clusterCounts = MutableStateFlow<Map<String, Int>>(emptyMap())
-    val clusterCounts: StateFlow<Map<String, Int>> = _clusterCounts.asStateFlow()
+    /** Manually picked Local news location; null = unset (all locals equal). */
+    val localLocation: StateFlow<String?> = prefs.localLocation
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    /** Cached-article count per source id, for the read-only Sources directory. */
-    val sourceArticleCounts: StateFlow<Map<String, Int>> = repository.articles
-        .map { all -> all.groupingBy { it.sourceId }.eachCount() }
+    /** All stories over the full cache (unfiltered), grouped once per emission. */
+    val allStories: StateFlow<List<Story>> = repository.articles
+        .map { all -> StoryGrouping.group(all.map { it.toFeedArticle() }) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Extra sources per feed-row URL, from story clustering (see [FeedRanking]). */
+    val clusterCounts: StateFlow<Map<String, Int>> = allStories
+        .map { stories -> stories.associate { it.representative.url to (it.sourceCount - 1).coerceAtLeast(0) } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     private val _searchQuery = MutableStateFlow("")
@@ -78,6 +88,13 @@ class NewsViewModel(
     ) { results, category ->
         results.filter { SourceCatalog.matchesCategory(it.sourceId, category) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Search hits expanded to their whole stories, relevance order kept. */
+    val searchStories: StateFlow<List<Story>> = combine(
+        allStories, searchResults,
+    ) { stories, hits ->
+        stories.orderedBySearchHits(hits.map { it.url })
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     private var searchJob: kotlinx.coroutines.Job? = null
 
     /** Debounced on-device search (local corpus only); blank query clears results. */
@@ -97,17 +114,36 @@ class NewsViewModel(
         }
     }
 
-    val articles: StateFlow<List<CachedArticle>> = combine(
-        repository.articles, _categoryFilter, feedSort,
-    ) { all, category, sort ->
-        val filtered = all.filter { SourceCatalog.matchesCategory(it.sourceId, category) }
-        val ranked = FeedRanking.rank(
-            filtered.map { it.toFeedArticle() }, sort, System.currentTimeMillis(),
-        )
-        _clusterCounts.value = ranked.associate { it.article.url to it.alsoFromSources }
-        val byUrl = filtered.associateBy { it.url }
-        ranked.mapNotNull { byUrl[it.article.url] }
+    /** Feed stories: full-corpus grouping, category = any-member, ranked. */
+    val stories: StateFlow<List<Story>> = combine(
+        allStories, _categoryFilter, feedSort, localLocation,
+    ) { grouped, category, sort, location ->
+        val filtered = grouped.filter { it.matchesCategory(category) }
+        val ranked = FeedRanking.rankGroupedStories(filtered, sort, System.currentTimeMillis())
+        if (category == NewsCategory.LOCAL && !location.isNullOrBlank()) {
+            val (matching, rest) = ranked.partition { story ->
+                story.articles.any { LocalNews.matches(SourceCatalog.regionOf(it.sourceId), location) }
+            }
+            matching + rest
+        } else {
+            ranked
+        }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Cached lookup by article URL, for story cards/pages. */
+    val cachedByUrl: StateFlow<Map<String, CachedArticle>> = repository.articles
+        .map { all -> all.associateBy { it.url } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    /** Representative articles in feed order (kept for existing callers/tests). */
+    val articles: StateFlow<List<CachedArticle>> = combine(
+        stories, cachedByUrl,
+    ) { feedStories, byUrl ->
+        feedStories.mapNotNull { byUrl[it.representative.url] }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Story by id from the full corpus, or null (story page lookup). */
+    fun storyById(storyId: String): Story? = allStories.value.firstOrNull { it.id == storyId }
 
     val bookmarked: StateFlow<List<CachedArticle>> = repository.bookmarked
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -138,6 +174,11 @@ class NewsViewModel(
     /** Persists the feed order (Top stories / Latest). Search is unaffected. */
     fun setFeedSort(sort: FeedSort) {
         viewModelScope.launch { prefs.setFeedSort(sort) }
+    }
+
+    /** Persists the manual Local news location; null/blank clears it. */
+    fun setLocalLocation(location: String?) {
+        viewModelScope.launch { prefs.setLocalLocation(location) }
     }
 
     fun refresh() {

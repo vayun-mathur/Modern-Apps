@@ -7,6 +7,9 @@ import androidx.room3.PrimaryKey
 import androidx.room3.Query
 import androidx.room3.RoomDatabase
 import androidx.room3.Upsert
+import androidx.room3.migration.Migration
+import androidx.sqlite.execSQL
+import com.vayunmathur.library.util.DatabaseMigrations
 import kotlinx.coroutines.flow.Flow
 
 const val DB_NAME = "news-db"
@@ -22,6 +25,12 @@ data class CachedArticle(
     val keywords: String = "",
     val fetchedAtMillis: Long = 0L,
     val bookmarked: Boolean = false,
+    /** Server story assignment (`story_id`); null for crawl-path articles. */
+    val storyId: String? = null,
+    /** Server-generated one-line story summary; never extracted text. */
+    val storyOneLiner: String? = null,
+    /** Server canonical story headline, if any. */
+    val storyTitle: String? = null,
 )
 
 /** Cached extracted body (blocks as JSON), so read articles open offline. */
@@ -91,7 +100,18 @@ interface NewsDao {
     suspend fun pruneArticles(keep: Int)
 }
 
-@Database(entities = [CachedArticle::class, CachedBody::class], version = 1, exportSchema = true)
+@Database(entities = [CachedArticle::class, CachedBody::class], version = 2, exportSchema = true)
 abstract class NewsDatabase : RoomDatabase() {
     abstract fun newsDao(): NewsDao
+
+    companion object : DatabaseMigrations {
+        override val migrations = listOf(
+            // v2: server story grouping fields (nullable, crawl path leaves them null).
+            Migration(1, 2) {
+                it.execSQL("ALTER TABLE `CachedArticle` ADD COLUMN `storyId` TEXT")
+                it.execSQL("ALTER TABLE `CachedArticle` ADD COLUMN `storyOneLiner` TEXT")
+                it.execSQL("ALTER TABLE `CachedArticle` ADD COLUMN `storyTitle` TEXT")
+            },
+        )
+    }
 }

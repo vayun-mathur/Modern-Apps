@@ -193,6 +193,8 @@ class NewsRepository internal constructor(
                 publishedAtMillis = article.publishedAtMillis, imageUrl = article.imageUrl,
                 keywords = article.keywords.joinToString(","),
                 fetchedAtMillis = now, bookmarked = article.url in bookmarked,
+                storyId = article.serverStoryId, storyOneLiner = article.storyOneLiner,
+                storyTitle = article.serverStoryTitle,
             )
         }
         dao.upsertArticles(rows)
@@ -256,6 +258,7 @@ internal fun CachedArticle.toFeedArticle(): FeedArticle = FeedArticle(
     imageUrl = imageUrl,
     keywords = keywords.split(",").map { it.trim() }.filter { it.isNotEmpty() },
     language = SourceCatalog.byId(sourceId)?.language,
+    serverStoryId = storyId, storyOneLiner = storyOneLiner, serverStoryTitle = storyTitle,
 )
 
 internal fun ExtractedArticle.toCached(json: Json): CachedBody = CachedBody(

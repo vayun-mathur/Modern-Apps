@@ -27,7 +27,7 @@ import kotlinx.serialization.json.jsonObject
  *   [DateParsing]) or epoch seconds/millis as a JSON number.
  * - `image_url` may be absent/null; `metered` may be absent (defaults
  *   false). `metered` is carried on [FeedArticle] but not persisted:
- *   the catalog already badges metered sources in the Sources screen.
+ *   the catalog already badges metered sources.
  * - `language` is a BCP-47 tag stated per article by the server (its
  *   per-article refinement of the source default); when absent it
  *   defaults from [SourceCatalog] for the resolved source.
@@ -36,6 +36,15 @@ import kotlinx.serialization.json.jsonObject
  *   [SourceCatalog] (see [NewsCategory]), and the feed/search filters
  *   apply that mapping to the article's `sourceId`. Unresolved ids have
  *   no category and match the feed's "All" filter only.
+ * - Story grouping (server-side, full-text signals): `story_id`
+ *   (same for all articles of one story; server assignment wins over
+ *   client clustering), `story_one_liner` (generated one-line summary
+ *   — the only server text the client may display; extracted article
+ *   text is NEVER served), and optional `story_title`. All optional:
+ *   articles without them are client-clustered (fallback crawl path
+ *   produces no story fields at all). Alias keys `story_oneliner` /
+ *   `story_summary` are also accepted for the one-liner until the
+ *   server schema freezes.
  *
  * Pure and non-throwing: malformed documents/articles yield an empty or
  * partial list, which the repository treats as server-feed failure and
@@ -68,6 +77,10 @@ object ServerFeedParser {
             imageUrl = obj.string("image_url"),
             metered = (obj["metered"] as? JsonPrimitive)?.contentOrNull?.toBooleanStrictOrNull() ?: false,
             language = obj.string("language") ?: SourceCatalog.byId(sourceId)?.language,
+            serverStoryId = obj.string("story_id"),
+            storyOneLiner = obj.string("story_one_liner") ?: obj.string("story_oneliner")
+                ?: obj.string("story_summary"),
+            serverStoryTitle = obj.string("story_title"),
         )
     }
 

@@ -25,7 +25,8 @@ import kotlin.test.assertEquals
 
 /**
  * Feed screen chrome: the search field IS the top app bar (no "News"
- * title), saved/sources stay reachable as bar actions, and typing/clearing
+ * title), saved/settings stay reachable as bar actions (there is no
+ * Sources entry point — Settings is a separate surface), and typing/clearing
  * drives the same hoisted query state as before. The repository fetch
  * always fails, so the feed stays empty and no network is touched; the
  * 250ms debounce runs on the main looper, advanced via the shadow clock.
@@ -43,15 +44,15 @@ class FeedScreenTest {
 
     private fun setFeed(
         onOpenSaved: () -> Unit = {},
-        onOpenSources: () -> Unit = {},
+        onOpenSettings: () -> Unit = {},
     ) {
         val viewModel = viewModel()
         rule.setContent {
             FeedScreen(
                 viewModel = viewModel,
                 onOpenArticle = {},
-                onOpenSources = onOpenSources,
                 onOpenSaved = onOpenSaved,
+                onOpenSettings = onOpenSettings,
             )
         }
         rule.waitForIdle()
@@ -62,9 +63,14 @@ class FeedScreenTest {
         // The search field occupies the top bar; the "News" title is gone.
         rule.onNodeWithText("Search downloaded news").assertIsDisplayed()
         assertEquals(0, rule.onAllNodesWithText("News").fetchSemanticsNodes().size)
-        // Saved/sources navigation remains reachable as top-bar actions.
+        // Saved/Settings navigation remains reachable; no Sources
+        // entry point remains anywhere on the feed.
         rule.onNodeWithContentDescription("Saved").assertIsDisplayed()
         rule.onNodeWithContentDescription("Settings").assertIsDisplayed()
+        assertEquals(
+            0,
+            rule.onAllNodesWithText("Sources").fetchSemanticsNodes().size,
+        )
     }
 
     @Test fun typingShowsClear_clearRestoresFeed() {
@@ -94,11 +100,11 @@ class FeedScreenTest {
 
     @Test fun topBarActionsNavigate() {
         var saved = 0
-        var sources = 0
-        setFeed(onOpenSaved = { saved++ }, onOpenSources = { sources++ })
+        var settings = 0
+        setFeed(onOpenSaved = { saved++ }, onOpenSettings = { settings++ })
         rule.onNodeWithContentDescription("Saved").performClick()
         rule.onNodeWithContentDescription("Settings").performClick()
         assertEquals(1, saved)
-        assertEquals(1, sources)
+        assertEquals(1, settings)
     }
 }
