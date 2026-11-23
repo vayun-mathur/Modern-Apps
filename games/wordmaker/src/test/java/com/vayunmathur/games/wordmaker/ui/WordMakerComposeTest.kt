@@ -19,8 +19,10 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModelStore
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.games.wordmaker.data.CrosswordData
+import com.vayunmathur.testsupport.awaitWithMainIdle
 import com.vayunmathur.games.wordmaker.data.Difficulty
 import com.vayunmathur.games.wordmaker.data.GameMode
 import com.vayunmathur.games.wordmaker.data.WheelSpacing
@@ -68,6 +70,18 @@ class WordMakerComposeTest {
     private val context: Context get() = ApplicationProvider.getApplicationContext()
     private val scope = CoroutineScope(Dispatchers.Unconfined)
 
+    // ViewModels created by this class, cleared at teardown: a
+    // directly-built ViewModel is never cleared, so its viewModelScope
+    // collectors keep reacting to the shared settings DataStore in
+    // later methods/classes in this JVM/sandbox (the wordmaker
+    // pollution proven under load — see GameLoaderPageDeepTest).
+    private val vmStore = ViewModelStore()
+    private var vmKeys = 0
+    private fun tracked(vm: WordMakerViewModel): WordMakerViewModel {
+        vmStore.put("vm-${vmKeys++}", vm)
+        return vm
+    }
+
     @BeforeTest fun setUp() {
         retryingMain { Dispatchers.setMain(Dispatchers.Unconfined) }
         // DailyPuzzleReminder reschedules through WorkManager, which Robolectric does not init.
@@ -75,7 +89,7 @@ class WordMakerComposeTest {
             androidx.work.WorkManager.initialize(context, androidx.work.Configuration.Builder().build())
         }
     }
-    @AfterTest fun tearDown() { scope.cancel(); retryingMain { Dispatchers.resetMain() } }
+    @AfterTest fun tearDown() { vmStore.clear(); scope.cancel(); retryingMain { Dispatchers.resetMain() } }
 
     /** set/resetMain throw if a background coroutine is using Main at that instant (a stale ViewModel's flow resuming); retry briefly, as the nonogram suite does. */
     private fun retryingMain(action: () -> Unit) {
@@ -449,7 +463,7 @@ class WordMakerComposeTest {
     }
     @Test fun gamePageWithRealViewModel() {
         val app = ApplicationProvider.getApplicationContext<Application>()
-        val vm = WordMakerViewModel(app)
+        val vm = tracked(WordMakerViewModel(app))
         scope.launch { vm.crosswordData.collect {} }
         // wait for the casual level to load (step-counted: the
         // substituted clock can freeze, see pollUntil below)
@@ -473,6 +487,18 @@ class WordMakerNavAndDragTest {
     @get:Rule val rule = createComposeRule()
     private val context: Context get() = ApplicationProvider.getApplicationContext()
     private val scope = CoroutineScope(Dispatchers.Unconfined)
+    // ViewModels created by this class, cleared at teardown: a
+    // directly-built ViewModel is never cleared, so its viewModelScope
+    // collectors keep reacting to the shared settings DataStore in
+    // later methods/classes in this JVM/sandbox (the wordmaker
+    // pollution proven under load — see GameLoaderPageDeepTest).
+    private val vmStore = ViewModelStore()
+    private var vmKeys = 0
+    private fun tracked(vm: WordMakerViewModel): WordMakerViewModel {
+        vmStore.put("vm-${vmKeys++}", vm)
+        return vm
+    }
+
     @BeforeTest fun setUp() {
         retryingMain { Dispatchers.setMain(Dispatchers.Unconfined) }
         // DailyPuzzleReminder reschedules through WorkManager, which Robolectric does not init.
@@ -480,10 +506,10 @@ class WordMakerNavAndDragTest {
             androidx.work.WorkManager.initialize(context, androidx.work.Configuration.Builder().build())
         }
     }
-    @AfterTest fun tearDown() { scope.cancel(); retryingMain { Dispatchers.resetMain() } }
+    @AfterTest fun tearDown() { vmStore.clear(); scope.cancel(); retryingMain { Dispatchers.resetMain() } }
 
     private fun vm(): WordMakerViewModel {
-        val vm = WordMakerViewModel(ApplicationProvider.getApplicationContext<Application>())
+        val vm = tracked(WordMakerViewModel(ApplicationProvider.getApplicationContext<Application>()))
         scope.launch { vm.crosswordData.collect {} }
         scope.launch { vm.gameMode.collect {} }
         scope.launch { vm.foundWords.collect {} }
@@ -499,14 +525,9 @@ class WordMakerNavAndDragTest {
         if (attempts > 50) action()
     }
     private fun pollUntil(deadlineMs: Long = 20000, cond: () -> Boolean) {
-        // Step-counted, not wall-clock: Robolectric's substituted
-        // currentTimeMillis only advances when its scheduler runs, so a
-        // deadline poll could spin forever (the CI build timeout) if the
-        // condition it waited for never landed, or expire instantly.
-        // Each step sleeps real time, bounding the wait in real time.
-        var steps = (deadlineMs / 50).toInt()
-        while (steps-- > 0 && !cond()) Thread.sleep(50)
-        assertTrue(cond())
+        // Step-bounded pumped wait (shared DeterministicAwait), not a
+        // sleep-poll whose steps are real seconds under CPU contention.
+        awaitWithMainIdle("condition not met within ${deadlineMs}ms (step-bounded)", maxSteps = 60_000, condition = cond)
     }
 
     @Test fun navigationRendersGameThenLobby() {

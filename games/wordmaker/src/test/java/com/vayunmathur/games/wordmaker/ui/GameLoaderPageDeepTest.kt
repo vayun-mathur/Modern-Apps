@@ -10,12 +10,14 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
+import androidx.lifecycle.ViewModelStore
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.games.wordmaker.Route
 import com.vayunmathur.games.wordmaker.data.GameMode
 import com.vayunmathur.games.wordmaker.platform.WordMakerAchievementsManager
 import com.vayunmathur.games.wordmaker.platform.WordMakerViewModel
 import com.vayunmathur.library.ui.DynamicTheme
+import com.vayunmathur.testsupport.awaitWithMainIdle
 import com.vayunmathur.library.util.rememberNavBackStack
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -51,13 +53,30 @@ class GameLoaderPageDeepTest {
         }
     }
 
+    // Every ViewModel this method creates, cleared at teardown. A
+    // directly-built ViewModel is never cleared, so its viewModelScope
+    // collectors keep reacting to the shared settings DataStore for the
+    // rest of the JVM/sandbox: every stale VM regenerates a board on
+    // Dispatchers.Default for each later level/mode edit and can land
+    // queued DataStore writes in a later class. Proven under load:
+    // this class alone passed 11/11 with office+maps tests running on
+    // taskset -c 0-4, while the full wordmaker suite under the same
+    // load failed 6 of these methods with the CI pollUntil signature —
+    // the neighbours are the pollution. Clearing cancels
+    // viewModelScope, which is the whole leak, and runs before
+    // resetMain so no stale flow can race that either.
+    private val vmStore = ViewModelStore()
+    private var vmKeys = 0
+
     @AfterTest fun tearDown() {
+        vmStore.clear()
         scope.cancel()
         retryingMain { Dispatchers.resetMain() }
     }
 
     private fun vm(): WordMakerViewModel {
         val vm = WordMakerViewModel(ApplicationProvider.getApplicationContext<Application>())
+        vmStore.put("vm-${vmKeys++}", vm)
         scope.launch { vm.crosswordData.collect {} }
         scope.launch { vm.foundWords.collect {} }
         scope.launch { vm.bonusWords.collect {} }
@@ -90,14 +109,15 @@ class GameLoaderPageDeepTest {
         if (attempts > 50) action()
     }
     private fun pollUntil(deadlineMs: Long = 30000, cond: () -> Boolean) {
-        // Step-counted, not wall-clock: Robolectric's substituted
-        // currentTimeMillis only advances when its scheduler runs, so a
-        // deadline poll could spin forever (the CI build timeout) if the
-        // condition it waited for never landed, or expire instantly.
-        // Each step sleeps real time, bounding the wait in real time.
-        var steps = (deadlineMs / 50).toInt()
-        while (steps-- > 0 && !cond()) Thread.sleep(50)
-        assertTrue(cond(), "condition not met within ${deadlineMs}ms")
+        // Step-bounded pumped wait (shared DeterministicAwait): the old
+        // sleep-poll's 600 steps were 30 real seconds whether or not the
+        // DataStore/Default work behind the condition got a CPU slice,
+        // which is exactly how CI (and the local load reproduction)
+        // expired it. Each pumped step idles the main looper and parks
+        // briefly so IO/Default producers run; the bound is work
+        // steps, not seconds. [deadlineMs] is kept at call sites as the
+        // nominal budget and used in the failure description only.
+        awaitWithMainIdle("condition not met within ${deadlineMs}ms (step-bounded)", maxSteps = 60_000, condition = cond)
     }
 
     private fun resetToCasual(vm: WordMakerViewModel) {

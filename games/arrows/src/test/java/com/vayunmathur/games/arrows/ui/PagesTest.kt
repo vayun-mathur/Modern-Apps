@@ -6,6 +6,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.lifecycle.ViewModelStore
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.games.arrows.Navigation
 import com.vayunmathur.games.arrows.R
@@ -15,13 +16,14 @@ import com.vayunmathur.library.util.NavBackStack
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.setMain
+import com.vayunmathur.testsupport.awaitWithMainIdle
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -50,17 +52,29 @@ class PagesTest {
         var mainInstalled = false
     }
 
+    // Cleared at teardown for the same reason as ArrowsViewModelTest:
+    // a directly-built ViewModel is never cleared, so its collectors
+    // keep reacting to (and writing) the shared settings DataStore in
+    // later classes sharing this JVM/sandbox. Clearing cancels
+    // viewModelScope, which is the whole leak; Main stays installed
+    // per the note in setUp, so clearing reintroduces no setMain race.
+    private val vmStore = ViewModelStore()
+    private var vmKeys = 0
+
+    @AfterTest fun tearDown() {
+        vmStore.clear()
+    }
+
+    // Step-bounded pumped wait (shared DeterministicAwait), not a
+    // wall-clock deadline that CI contention can burn before the
+    // work behind the condition runs.
     private fun await(desc: String, cond: () -> Boolean) {
-        val deadline = System.currentTimeMillis() + 30_000
-        while (System.currentTimeMillis() < deadline) {
-            if (cond()) return
-            Thread.sleep(25)
-        }
-        assertTrue(cond(), "timed out: $desc")
+        awaitWithMainIdle(desc, maxSteps = 60_000, condition = cond)
     }
 
     private fun loadedVm(): ArrowsViewModel {
         val vm = ArrowsViewModel(app)
+        vmStore.put("vm-${vmKeys++}", vm)
         await("vm loads") { vm.uiState.value.game != null && !vm.uiState.value.generating }
         return vm
     }

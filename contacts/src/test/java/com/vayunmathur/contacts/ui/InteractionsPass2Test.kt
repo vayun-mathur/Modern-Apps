@@ -205,17 +205,44 @@ class InteractionsPass2Test {
                 ContactDetailsPage(vm, contactId = 7, onBack = { back++ }, onEdit = {}, onDelete = {})
             }
         }
-        vm.allContactsState.value = listOf(fixtureContact())
+        // The ViewModel's init sync publishes the (empty) provider list
+        // whenever its IO lands, erasing the fixture above and unmounting
+        // the details list mid-scroll ("node is no longer in the tree" on
+        // the captured scroller in CI, where that IO is starved). Reseed
+        // until the fixture is what the page actually shows, the same
+        // arrangement editPageFieldsUpdateTheDraft uses for the same
+        // overwrite; step-counted, not wall-clock, for the same reason.
+        var steps = 0
+        while (steps++ < 600) {
+            vm.allContactsState.value = listOf(fixtureContact())
+            if (rule.onAllNodesWithText("Aisha", substring = true).fetchSemanticsNodes().isNotEmpty() &&
+                vm.allContactsState.value.firstOrNull()?.id == 7L
+            ) {
+                // One more pump: a sync that was already past its publish
+                // point cannot erase the fixture after this, and a sync
+                // still to publish breaks the check below and reseeds.
+                org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+                if (vm.allContactsState.value.firstOrNull()?.details?.notes?.firstOrNull()?.content == "hello note") break
+            }
+            try { Thread.sleep(25) } catch (_: InterruptedException) { }
+        }
         rule.waitUntil(10_000) {
             rule.onAllNodesWithText("Aisha", substring = true).fetchSemanticsNodes().isNotEmpty()
         }
-        val scroller = rule.onNode(hasScrollAction())
-        scroller.performScrollToNode(hasText("(415) 555-0107", substring = true))
-        rule.onNodeWithText("(415) 555-0107", substring = true).assertExists()
-        scroller.performScrollToNode(hasText("aisha@x.com", substring = true))
-        rule.onNodeWithText("aisha@x.com", substring = true).assertExists()
-        scroller.performScrollToNode(hasText("hello note", substring = true))
-        rule.onNodeWithText("hello note", substring = true).assertExists()
+        // Fresh scroller per scroll, with the fixture re-seeded
+        // immediately before it: the LazyColumn node captured before a
+        // scroll is a different semantics node afterwards (reusing the
+        // stale interaction is the other half of the CI failure), and a
+        // sync publish landing between scrolls would otherwise leave
+        // the page showing the provider list with no list to scroll.
+        fun scrollTo(text: String) {
+            vm.allContactsState.value = listOf(fixtureContact())
+            rule.onNode(hasScrollAction()).performScrollToNode(hasText(text, substring = true))
+            rule.onNodeWithText(text, substring = true).assertExists()
+        }
+        scrollTo("(415) 555-0107")
+        scrollTo("aisha@x.com")
+        scrollTo("hello note")
         assertEquals(0, back)
     }
 

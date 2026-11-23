@@ -2,8 +2,10 @@ package com.vayunmathur.games.wordmaker.platform
 
 import android.app.Application
 import android.content.Context
+import androidx.lifecycle.ViewModelStore
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.games.wordmaker.data.Difficulty
+import com.vayunmathur.testsupport.awaitWithMainIdle
 import com.vayunmathur.games.wordmaker.data.GameMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -28,6 +30,18 @@ class ViewModelDeepTest {
     private val context: Context get() = ApplicationProvider.getApplicationContext()
     private val scope = CoroutineScope(Dispatchers.Unconfined)
 
+    // ViewModels created by this class, cleared at teardown: a
+    // directly-built ViewModel is never cleared, so its viewModelScope
+    // collectors keep reacting to the shared settings DataStore in
+    // later methods/classes in this JVM/sandbox (the wordmaker
+    // pollution proven under load — see GameLoaderPageDeepTest).
+    private val vmStore = ViewModelStore()
+    private var vmKeys = 0
+    private fun tracked(vm: WordMakerViewModel): WordMakerViewModel {
+        vmStore.put("vm-${vmKeys++}", vm)
+        return vm
+    }
+
     @BeforeTest fun setUp() {
         retryingMain { Dispatchers.setMain(Dispatchers.Unconfined) }
         runCatching {
@@ -36,12 +50,13 @@ class ViewModelDeepTest {
     }
 
     @AfterTest fun tearDown() {
+        vmStore.clear()
         scope.cancel()
         retryingMain { Dispatchers.resetMain() }
     }
 
     private fun vm(): WordMakerViewModel {
-        val vm = WordMakerViewModel(ApplicationProvider.getApplicationContext<Application>())
+        val vm = tracked(WordMakerViewModel(ApplicationProvider.getApplicationContext<Application>()))
         scope.launch { vm.crosswordData.collect {} }
         scope.launch { vm.foundWords.collect {} }
         scope.launch { vm.bonusWords.collect {} }
@@ -74,14 +89,9 @@ class ViewModelDeepTest {
         if (attempts > 50) action()
     }
     private fun pollUntil(deadlineMs: Long = 30000, cond: () -> Boolean) {
-        // Step-counted, not wall-clock: Robolectric's substituted
-        // currentTimeMillis only advances when its scheduler runs, so a
-        // deadline poll could spin forever (the CI build timeout) if the
-        // condition it waited for never landed, or expire instantly.
-        // Each step sleeps real time, bounding the wait in real time.
-        var steps = (deadlineMs / 50).toInt()
-        while (steps-- > 0 && !cond()) Thread.sleep(50)
-        assertTrue(cond(), "condition not met within ${deadlineMs}ms")
+        // Step-bounded pumped wait (shared DeterministicAwait), not a
+        // sleep-poll whose steps are real seconds under CPU contention.
+        awaitWithMainIdle("condition not met within ${deadlineMs}ms (step-bounded)", maxSteps = 60_000, condition = cond)
     }
 
     private fun waitFor(deadlineMs: Long = 8000, cond: () -> Boolean): Boolean {

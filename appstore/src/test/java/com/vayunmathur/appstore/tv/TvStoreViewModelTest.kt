@@ -13,7 +13,10 @@ import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.appstore.data.AppDatabase
 import com.vayunmathur.appstore.data.AppSource
+import com.vayunmathur.appstore.data.DefaultRepos
 import com.vayunmathur.appstore.data.UnifiedApp
+import com.vayunmathur.appstore.data.toEntity
+import kotlinx.coroutines.runBlocking
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -42,6 +45,20 @@ class TvStoreViewModelTest {
             .setDriver(BundledSQLiteDriver())
             .allowMainThreadQueries()
             .build()
+        // Seeded so the ViewModel's init pass has a terminal home
+        // signal ("modern-recent", only its loadHome can produce it
+        // here) and skips its first sync: see the home test.
+        runBlocking {
+            db.cachedAppDao().upsert(
+                UnifiedApp(
+                    packageName = "com.example.seed",
+                    source = AppSource.MODERN_APPS,
+                    name = "Seed",
+                    categories = listOf("SeedCategory"),
+                    repoUrl = DefaultRepos.MODERN_APPS.url,
+                ).toEntity().copy(lastUpdated = 300L),
+            )
+        }
         vm = TvStoreViewModel(app, db)
     }
 
@@ -104,10 +121,39 @@ class TvStoreViewModelTest {
 
     @Test
     fun `home follows sections and status flows`() {
+        // Let the init pass settle first (the TvStoreLoadHomeTest /
+        // LoadHomeTest arrangement): init re-reads the enabled sources,
+        // purges disabled sources' rows and runs its own loadHome, and
+        // the catalogue collector runs loadHome again per DB emission.
+        // Injecting the test section before that pass lands lets a
+        // late init loadHome overwrite it with the catalogue's (empty)
+        // sections, after which the pumped wait below can never become
+        // true again — its 6,000 pumps (~300s) burned exactly that way
+        // in CI. "modern-recent" is init's terminal signal here: only
+        // its loadHome over the seeded row can produce it, and no DB
+        // write remains after it that would retrigger the collector.
+        await("init home") { vm.home.value.sections.any { it.id == "modern-recent" } }
         val section = TvSection(id = "recent", title = "Recently updated", apps = listOf(app("com.example.a", name = "Alpha")))
-        vm.sectionsFlow.value = listOf(section)
-        vm.statusMessageFlow.value = "Checking sources"
-        await("home section") { vm.home.value.sections == listOf(section) }
+        // A loadHome launched by an early catalogue emission can still
+        // be in flight when init's first home lands, and would
+        // overwrite a one-shot injection below. Re-inject on every
+        // pump until the home state reflects it: any in-flight
+        // loadHome is then repaired on the next pump, and no new
+        // loadHome can start after this without a fresh DB write
+        // (none remains in this fixture). Step-bounded, like await().
+        var steps = 0
+        while (true) {
+            vm.sectionsFlow.value = listOf(section)
+            vm.statusMessageFlow.value = "Checking sources"
+            Shadows.shadowOf(Looper.getMainLooper()).idle()
+            if (vm.home.value.sections == listOf(section)) break
+            java.util.concurrent.locks.LockSupport.parkNanos(
+                java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(PARK_MS),
+            )
+            if (++steps >= MAX_PUMP_STEPS) {
+                throw AssertionError("timed out re-injecting home section; home=${vm.home.value}")
+            }
+        }
         assertEquals("Checking sources", vm.home.value.statusMessage)
     }
 

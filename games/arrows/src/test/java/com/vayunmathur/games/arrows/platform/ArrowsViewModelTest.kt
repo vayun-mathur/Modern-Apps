@@ -1,6 +1,7 @@
 package com.vayunmathur.games.arrows.platform
 
 import android.app.Application
+import androidx.lifecycle.ViewModelStore
 import androidx.test.core.app.ApplicationProvider
 import androidx.work.Configuration
 import androidx.work.WorkManager
@@ -16,8 +17,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.test.setMain
+import com.vayunmathur.testsupport.awaitWithMainIdle
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -54,6 +57,30 @@ class ArrowsViewModelTest {
         var mainInstalled = false
     }
 
+    // Every ViewModel this method creates, cleared at teardown. A
+    // ViewModel built directly (not via a store) is never cleared, so
+    // its viewModelScope collectors keep reacting to the shared
+    // settings DataStore for the rest of the JVM's life: a stale VM
+    // regenerates a board on every later level edit and can land a
+    // queued store write (e.g. markHeartHintSeen from a blocked tap)
+    // in the middle of a later method that reads the store expecting
+    // the state it just sampled. Under CI's 5-CPU contention those
+    // late writes and regenerations are what starved the wall-clock
+    // awaits below past 30s and poisoned the next method's board
+    // (a timed-out method also skips its own restore-to-level-1).
+    // Clearing cancels viewModelScope, which is the whole leak.
+    private val vmStore = ViewModelStore()
+    private var vmKeys = 0
+
+    private fun tracked(vm: ArrowsViewModel): ArrowsViewModel {
+        vmStore.put("vm-${vmKeys++}", vm)
+        return vm
+    }
+
+    @AfterTest fun tearDown() {
+        vmStore.clear()
+    }
+
     /**
      * runBlocking with a deadline, so a wedged store fails the test instead of hanging the whole
      * run (and the shared build slot) forever.
@@ -61,17 +88,18 @@ class ArrowsViewModelTest {
     private fun <T> blocking(block: suspend CoroutineScope.() -> T): T =
         runBlocking { withTimeout(30_000) { block() } }
 
+    // Step-bounded pumped wait (shared DeterministicAwait), not a
+    // wall-clock deadline: under CI contention a 30s
+    // System.currentTimeMillis budget burned before the DataStore /
+    // board-generation work behind the condition got a CPU slice,
+    // while each pump step here is itself the looper work that lets
+    // that work land, with a park so IO/Default producers run.
     private fun await(desc: String, cond: () -> Boolean) {
-        val deadline = System.currentTimeMillis() + 30_000
-        while (System.currentTimeMillis() < deadline) {
-            if (cond()) return
-            Thread.sleep(25)
-        }
-        assertTrue(cond(), "timed out: $desc")
+        awaitWithMainIdle(desc, maxSteps = 60_000, condition = cond)
     }
 
     private fun loadedViewModel(): ArrowsViewModel {
-        val vm = ArrowsViewModel(app)
+        val vm = tracked(ArrowsViewModel(app))
         await("board loads") { vm.uiState.value.game != null && !vm.uiState.value.generating }
         return vm
     }
@@ -160,6 +188,17 @@ class ArrowsViewModelTest {
         vm.tapArrow(blocked.id)
         assertEquals(firstEver, vm.uiState.value.showHeartHint)
         await("hint marked seen") { blocking { vm.dataStore.heartHintSeen.first() } }
+        // Barrier through the ViewModel's own observable pipeline before
+        // the second tap: a round-trip of a store-backed setting proves
+        // the ViewModel's collectors have processed DataStore emissions
+        // issued after the heart-hint edit above. Without it the second
+        // tap can be judged against the ViewModel's cached heartHintSeen
+        // from before that edit (its collector had not run yet on a
+        // contended box), so the hint would be explained a second time.
+        vm.setShowRoutes(false)
+        await("routes off before second tap") { !vm.uiState.value.showRoutes }
+        vm.setShowRoutes(true)
+        await("routes on before second tap") { vm.uiState.value.showRoutes }
 
         // Restart hides it, and a later blocked tap never explains it again.
         vm.restartLevel()
@@ -218,19 +257,19 @@ class ArrowsViewModelTest {
         // A won board is persisted, but the comment on onCleared's guard admits the guard is only
         // in-memory: after process death the progress collector replays onto an already-won board
         // and counts it again. Each relaunch below must leave the lifetime counter alone.
-        val vm = ArrowsViewModel(app)
+        val vm = tracked(ArrowsViewModel(app))
         await("board loads") { vm.uiState.value.game != null && !vm.uiState.value.generating }
         val allIds = vm.uiState.value.game!!.puzzle.pieces.map { it.id }.toSet()
         blocking { vm.dataStore.saveProgress(allIds, 3, daily = false) }
         await("board won") { vm.uiState.value.game?.isWon == true }
         // A second ViewModel over the same store is a fresh process for guard purposes: its
         // in-memory clear guard starts empty while the won board is already persisted.
-        val first = ArrowsViewModel(app)
+        val first = tracked(ArrowsViewModel(app))
         await("relaunch loads won board") { first.uiState.value.game?.isWon == true }
         Thread.sleep(2_000)
         val afterFirst = blocking { first.dataStore.boardsCleared.first() }
 
-        val second = ArrowsViewModel(app)
+        val second = tracked(ArrowsViewModel(app))
         await("second relaunch loads won board") { second.uiState.value.game?.isWon == true }
         Thread.sleep(2_000)
         val afterSecond = blocking { second.dataStore.boardsCleared.first() }
@@ -248,7 +287,7 @@ class ArrowsViewModelTest {
         runCatching {
             WorkManager.initialize(app, Configuration.Builder().build())
         }
-        val vm = ArrowsViewModel(app)
+        val vm = tracked(ArrowsViewModel(app))
         await("casual loads first") { vm.uiState.value.game != null && !vm.uiState.value.generating }
 
         // Keep the WhileSubscribed reminder flows subscribed while we change them.
