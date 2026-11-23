@@ -6,11 +6,22 @@ import java.io.IOException
 /**
  * The news app's single networking entry point. Owns the client, the
  * browser-like request headers publisher CDNs expect, and status mapping.
- * Every fetch is a direct GET of a publisher URL — there is no backend.
- * Trust is SYSTEM, initialised in MainActivity, because publisher hosts
- * are arbitrary public sites (see TrustBundle docs).
+ *
+ * Feed primary path is our server's `GET /news.json` at [SERVER_FEED_URL]
+ * — `https://api.maproj.org`, the same API host findfamily/everysync use
+ * (root AGENTS.md: "The server's canonical API host is api.maproj.org").
+ * Article bodies and the offline sitemap/RSS fallback still fetch
+ * publisher URLs directly on-device.
+ *
+ * Trust stays SYSTEM (initialised in MainActivity), not FIRST_PARTY:
+ * FIRST_PARTY pins only cover api.maproj.org and would break every
+ * publisher fetch, while SYSTEM (platform roots, incl. the public CA
+ * chain api.maproj.org serves) covers both. Narrowing would need a
+ * per-host client, which NetworkClient does not offer.
  */
 object Networking {
+    /** Server feed (location_share_server `GET /news.json`); see ServerFeedParser for the contract. */
+    const val SERVER_FEED_URL = "https://api.maproj.org/news.json"
     private val headers = mapOf(
         "User-Agent" to "Mozilla/5.0 (Linux; Android 14) NewsReader",
         "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",

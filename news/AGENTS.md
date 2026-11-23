@@ -11,9 +11,15 @@ _Install: ./install news_
 - Rust: no / screenshotTest: no
 
 ## Overview
-**Purpose:** Sitemap-driven news reader. Everything is on-device: feeds and
-articles are fetched directly from publisher sites, parsed and extracted
-locally. There is no backend and no account.
+**Purpose:** News reader. Primary feed is our server's `GET /news.json`
+(`https://api.maproj.org/news.json`, see `domain/ServerFeedParser` for the
+contract + assumptions), merged into Room and filtered client-side by the
+enabled sources. If the server fetch fails/times out/parses empty, refresh
+falls back to the on-device per-source sitemap/RSS crawl of enabled sources
+(cached feed stays visible either way). Article reading is always on-device:
+publisher HTML is fetched directly and extracted locally. No account.
+On-device search (feed screen) runs over the local corpus only — titles,
+source names, sitemap keywords, downloaded bodies (`domain/NewsSearch`).
 **Key features:**
 - Built-in source catalog (`domain/SourceCatalog`) — Google News sitemaps
   where a verified one exists, RSS only where no sitemap verifies (NPR, DW,
@@ -47,8 +53,9 @@ Japan Times (sitemap URL serves HTML, not XML).
 `data/NewsRepository` (Room via `library/room`) + `data/NewsPrefs`
 (DataStore owner) → `network/Networking` (the single networking entry
 point, `NetworkClient` with `TrustBundle.SYSTEM` — publisher hosts are
-arbitrary, so no reduced bundle can cover them) → `domain/` parsers and
-extractor (pure, no Android imports).
+arbitrary, so no reduced bundle can cover them; SYSTEM also covers
+api.maproj.org, whereas FIRST_PARTY would break publisher fetches) →
+`domain/` parsers and extractor (pure, no Android imports).
 
 ## Entry points + reading order
 `Route` (`Feed` / `Reader(url)` / `Sources` / `Saved`) → `MainActivity.kt`

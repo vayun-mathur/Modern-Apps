@@ -37,6 +37,29 @@ class NewsViewModel(
     private val _sourceFilter = MutableStateFlow(FILTER_ALL)
     val sourceFilter: StateFlow<String> = _sourceFilter.asStateFlow()
 
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+    private val _searchResults = MutableStateFlow<List<CachedArticle>>(emptyList())
+    val searchResults: StateFlow<List<CachedArticle>> = _searchResults.asStateFlow()
+    private var searchJob: kotlinx.coroutines.Job? = null
+
+    /** Debounced on-device search (local corpus only); blank query clears results. */
+    fun setSearchQuery(query: String) {
+        _searchQuery.value = query
+        searchJob?.cancel()
+        if (query.isBlank()) {
+            _searchResults.value = emptyList()
+            return
+        }
+        searchJob = viewModelScope.launch {
+            kotlinx.coroutines.delay(SEARCH_DEBOUNCE_MS)
+            val results = runCatching { repository.search(query) }.getOrDefault(emptyList())
+            if (_searchQuery.value == query) {
+                _searchResults.value = results.filter { it.sourceId !in disabledSourceIds.value }
+            }
+        }
+    }
+
     val disabledSourceIds: StateFlow<Set<String>> = prefs.disabledSourceIds
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
@@ -120,6 +143,10 @@ class NewsViewModel(
 
     fun setReaderSerif(serif: Boolean) {
         viewModelScope.launch { prefs.setReaderSerif(serif) }
+    }
+
+    companion object {
+        const val SEARCH_DEBOUNCE_MS = 250L
     }
 }
 

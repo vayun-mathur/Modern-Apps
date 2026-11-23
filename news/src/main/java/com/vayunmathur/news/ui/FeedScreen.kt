@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.AppScaffold
+import com.vayunmathur.library.ui.CommonSearchBar
 import com.vayunmathur.library.ui.FilterChip
 import com.vayunmathur.library.ui.IconBookmark
 import com.vayunmathur.library.ui.IconButton
@@ -36,6 +37,10 @@ fun FeedScreen(
     val refreshFailed by viewModel.refreshFailed.collectAsState()
     val filter by viewModel.sourceFilter.collectAsState()
     val disabled by viewModel.disabledSourceIds.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    val searchResults by viewModel.searchResults.collectAsState()
+    val searching = searchQuery.isNotBlank()
+    val shownArticles = if (searching) searchResults else articles
     AppScaffold(
         title = stringResource(R.string.feed_title),
         isRefreshing = isRefreshing,
@@ -46,6 +51,12 @@ fun FeedScreen(
         },
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            CommonSearchBar(
+                value = searchQuery,
+                onValueChange = viewModel::setSearchQuery,
+                placeholder = stringResource(R.string.feed_search_placeholder),
+            )
+            if (!searching) {
             LazyRow(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
                 item {
                     FilterChip(
@@ -63,20 +74,21 @@ fun FeedScreen(
                     )
                 }
             }
-            if (refreshFailed) {
+            }
+            if (refreshFailed && !searching) {
                 Text(
                     stringResource(R.string.feed_refresh_failed),
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                 )
             }
-            if (articles.isEmpty() && !isRefreshing) {
+            if (shownArticles.isEmpty() && !isRefreshing) {
                 Text(
-                    stringResource(R.string.feed_empty),
+                    stringResource(if (searching) R.string.feed_search_empty else R.string.feed_empty),
                     modifier = Modifier.padding(16.dp),
                 )
             }
             LazyColumn(modifier = Modifier.fillMaxSize()) {
-                items(articles, key = { it.url }) { article ->
+                items(shownArticles, key = { it.url }) { article ->
                     ArticleRow(
                         article = article,
                         onClick = { onOpenArticle(article.url) },

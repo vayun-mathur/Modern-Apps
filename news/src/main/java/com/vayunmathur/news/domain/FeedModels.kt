@@ -10,6 +10,8 @@ data class FeedArticle(
     val publishedAtMillis: Long,
     val imageUrl: String? = null,
     val keywords: List<String> = emptyList(),
+    /** Server-feed only: source meters this article. Not persisted (catalog badges cover it). */
+    val metered: Boolean = false,
 )
 
 /** One block of an extracted article body, in reading order. */

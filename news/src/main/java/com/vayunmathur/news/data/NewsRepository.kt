@@ -8,8 +8,11 @@ import com.vayunmathur.news.domain.ArticleExtractor
 import com.vayunmathur.news.domain.ExtractedArticle
 import com.vayunmathur.news.domain.FeedArticle
 import com.vayunmathur.news.domain.FeedMerger
+import com.vayunmathur.news.domain.NewsSearch
 import com.vayunmathur.news.domain.NewsSource
+import com.vayunmathur.news.domain.ServerFeedParser
 import com.vayunmathur.news.domain.SitemapParser
+import com.vayunmathur.news.domain.SourceCatalog
 import com.vayunmathur.news.network.Networking
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -58,16 +61,99 @@ class NewsRepository internal constructor(
         dao.setBookmarked(url, bookmarked)
 
     /**
-     * Fetches every enabled source in parallel; each source publishes
-     * to Room as soon as it lands. Returns the names of sources that
-     * failed or timed out (a failing source never fails the refresh).
+     * Primary path: one fetch of the server's `news.json`, filtered
+     * client-side to [sources] (the enabled sources) and merged into
+     * Room exactly like a crawl result.
+     *
+     * Fallback decision: if the server fetch throws, times out, or
+     * parses to zero articles, refresh falls back to the on-device
+     * per-source sitemap/RSS crawl of the same enabled sources
+     * ([refreshFromSources]). The cached Room feed stays visible
+     * throughout either way. Returns failed source names from whichever
+     * path ran; a successful server fetch (or a fully successful
+     * fallback) returns an empty list.
      */
-    suspend fun refresh(sources: List<NewsSource>): List<String> = coroutineScope {
+    suspend fun refresh(sources: List<NewsSource>): List<String> {
+        val serverArticles = fetchServerFeed()
+        if (serverArticles != null) {
+            val enabledIds = sources.map { it.id }.toSet()
+            val filtered = serverArticles.filter { it.sourceId in enabledIds }
+            val capped = FeedMerger.merge(listOf(filtered), limit = MAX_CACHED_ARTICLES)
+            if (capped.isNotEmpty()) publish(capped)
+            if (sources.isNotEmpty()) dao.pruneArticles(keep = MAX_CACHED_ARTICLES)
+            Log.dev(TAG, "refresh server feed landed articles=${capped.size} (pre-filter=${serverArticles.size})")
+            return emptyList()
+        }
+        Log.dev(TAG, "refresh server feed unavailable; falling back to on-device source crawl")
+        return refreshFromSources(sources)
+    }
+
+    /** Server feed articles, or null on transport failure / timeout / empty parse. */
+    private suspend fun fetchServerFeed(): List<FeedArticle>? {
+        val articles = try {
+            withTimeoutOrNull(sourceTimeoutMs) {
+                withContext(feedDispatcher) { ServerFeedParser.parse(fetch(Networking.SERVER_FEED_URL)) }
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.dev(TAG, "server feed failed ${e.javaClass.simpleName}")
+            null
+        }
+        return articles?.takeIf { it.isNotEmpty() }
+    }
+
+    /**
+     * Fallback crawl: fetches every enabled source in parallel; each
+     * source publishes to Room as soon as it lands. Returns the names
+     * of sources that failed or timed out (a failing source never
+     * fails the refresh).
+     */
+    suspend fun refreshFromSources(sources: List<NewsSource>): List<String> = coroutineScope {
         val failed = sources.map { source ->
             async { fetchAndPublish(source) }
         }.awaitAll().filterNotNull()
         if (sources.isNotEmpty()) dao.pruneArticles(keep = MAX_CACHED_ARTICLES)
         failed
+    }
+
+    /**
+     * On-device search over the local corpus only (no server search):
+     * titles, source names, sitemap keywords, and the full text of
+     * already-downloaded bodies. Ranked by [NewsSearch] (title hits
+     * first, then source/keyword, then body-only); see its ceiling doc.
+     */
+    suspend fun search(query: String): List<CachedArticle> {
+        val terms = query.trim().lowercase().split(Regex("\\s+")).filter { it.length >= 2 }
+        if (terms.isEmpty()) return emptyList()
+        val stubsByUrl = LinkedHashMap<String, CachedArticle>()
+        val bodyHits = mutableSetOf<String>()
+        for (term in terms) {
+            dao.searchStubHits(term).forEach { stubsByUrl[it.url] = it }
+            bodyHits += dao.bodyHitUrls(term)
+        }
+        // Source-name hits: resolve matching catalog names/ids, then pull their stubs.
+        val matchingSourceIds = SourceCatalog.sources
+            .filter { source -> terms.any { source.name.lowercase().contains(it) || source.id.contains(it) } }
+            .map { it.id }
+        if (matchingSourceIds.isNotEmpty()) {
+            dao.articlesForSources(matchingSourceIds).forEach { stubsByUrl[it.url] = it }
+        }
+        // Body-only hits may be stubs the title/keyword queries missed.
+        val missingBodyUrls = bodyHits.filter { it !in stubsByUrl }
+        if (missingBodyUrls.isNotEmpty()) {
+            dao.articlesByUrls(missingBodyUrls).forEach { stubsByUrl[it.url] = it }
+        }
+        val candidates = stubsByUrl.values.map { article ->
+            NewsSearch.Candidate(
+                article = article.toFeedArticle(),
+                sourceName = SourceCatalog.byId(article.sourceId)?.name ?: article.sourceId,
+                bodyHit = article.url in bodyHits,
+            )
+        }
+        val rankedUrls = NewsSearch.rank(query, candidates).map { it.url }
+        val byUrl = stubsByUrl.toMap()
+        return rankedUrls.mapNotNull { byUrl[it] }
     }
 
     /** Fetches + publishes one source; returns its name on failure/timeout, else null. */
@@ -164,6 +250,12 @@ class NewsRepository internal constructor(
             }
     }
 }
+
+internal fun CachedArticle.toFeedArticle(): FeedArticle = FeedArticle(
+    url = url, sourceId = sourceId, title = title, publishedAtMillis = publishedAtMillis,
+    imageUrl = imageUrl,
+    keywords = keywords.split(",").map { it.trim() }.filter { it.isNotEmpty() },
+)
 
 internal fun ExtractedArticle.toCached(json: Json): CachedBody = CachedBody(
     url = url, title = title, byline = byline, publishedAtMillis = publishedAtMillis,

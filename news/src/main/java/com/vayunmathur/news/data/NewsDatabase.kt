@@ -54,6 +54,26 @@ interface NewsDao {
     @Query("SELECT * FROM CachedBody WHERE url = :url")
     suspend fun body(url: String): CachedBody?
 
+    // --- On-device search candidates (see NewsSearch for ranking/ceiling) ---
+
+    /** Stubs whose title or sitemap keywords contain [term] (LIKE, case-insensitive for ASCII). */
+    @Query(
+        "SELECT * FROM CachedArticle WHERE title LIKE '%' || :term || '%' " +
+            "OR keywords LIKE '%' || :term || '%' ORDER BY publishedAtMillis DESC LIMIT 200",
+    )
+    suspend fun searchStubHits(term: String): List<CachedArticle>
+
+    /** All stubs from [sourceIds] (source-name search resolves names to ids in the repository). */
+    @Query("SELECT * FROM CachedArticle WHERE sourceId IN (:sourceIds) ORDER BY publishedAtMillis DESC LIMIT 200")
+    suspend fun articlesForSources(sourceIds: List<String>): List<CachedArticle>
+
+    /** URLs whose downloaded body text contains [term] (blocksJson holds the paragraph text). */
+    @Query("SELECT url FROM CachedBody WHERE blocksJson LIKE '%' || :term || '%' LIMIT 200")
+    suspend fun bodyHitUrls(term: String): List<String>
+
+    @Query("SELECT * FROM CachedArticle WHERE url IN (:urls)")
+    suspend fun articlesByUrls(urls: List<String>): List<CachedArticle>
+
     @Upsert
     suspend fun upsertArticles(articles: List<CachedArticle>)
 
