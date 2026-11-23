@@ -48,6 +48,17 @@ class HomeOpsTest {
         runBlocking {
             // MODERN_APPS is enabled by default; the search filters to enabled
             // sources, and F-Droid starts off.
+            //
+            // No init-settle/reseed needed, though this row IS one the
+            // startup purge can delete: toEntity() defaults a null
+            // repoUrl to the F-Droid repo URL, so init's purgeDisabled
+            // (which deletes by repoUrl for disabled sources) removes
+            // it — a probe that pumped init first confirmed the table
+            // ends up empty. It cannot bite because no test here reads
+            // the catalogue back: buildSections/merge are exercised
+            // with in-memory arguments and the search test drives the
+            // ViewModel's flows directly, so nothing awaits a state
+            // this row could have produced.
             db.cachedAppDao().upsert(
                 app("com.example.alpha", AppSource.MODERN_APPS, "Alpha").toEntity(),
             )

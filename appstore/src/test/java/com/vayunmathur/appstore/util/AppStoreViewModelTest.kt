@@ -47,6 +47,16 @@ class AppStoreViewModelTest {
             .allowMainThreadQueries()
             .build()
         runBlocking {
+            // No init-settle needed (unlike DetailAndBrowseOpsTest):
+            // init's purgeDisabled deletes by repoUrl, and only for
+            // repos whose source is disabled — on a fresh install that
+            // is the F-Droid/Izzy URLs. This row is stamped with the
+            // MODERN_APPS repo URL (enabled by default), so the purge
+            // can never delete it however the looper schedules init
+            // against the test below; the "modern apps reach home"
+            // condition stays satisfiable. Verified by a probe that
+            // drove init to its modern-recent settle first and then
+            // read the DAO: the row was still there.
             db.cachedAppDao().upsert(
                 app("com.example.modern", AppSource.MODERN_APPS, "Modern One")
                     .toEntity().copy(repoUrl = DefaultRepos.MODERN_APPS.url),

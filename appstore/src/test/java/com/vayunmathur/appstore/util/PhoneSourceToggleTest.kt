@@ -43,6 +43,20 @@ class PhoneSourceToggleTest {
             .build()
         // The library only lists installed apps a source vouches for:
         // seed the catalogue row that attributes this test app.
+        //
+        // No init-settle needed (unlike DetailAndBrowseOpsTest), and
+        // deliberately no persisted enabled-set pre-seed either:
+        // toggling sources is this class's subject, so init must start
+        // from the same persisted state production starts from. The
+        // seeded row is stamped with the MODERN_APPS repo URL,
+        // and init's purgeDisabled only deletes rows carrying a
+        // disabled source's repo URL (F-Droid/Izzy on a fresh
+        // install), so the purge can never remove the one row
+        // `refreshInstalled` depends on, however init is scheduled —
+        // a probe that settled init first confirmed the row (and the
+        // library attribution) survives. The toggle tests themselves
+        // seed no catalogue rows at all; they drive the ViewModel's
+        // flows and the enabled set directly.
         kotlinx.coroutines.runBlocking {
             db.cachedAppDao().upsert(
                 UnifiedApp(
