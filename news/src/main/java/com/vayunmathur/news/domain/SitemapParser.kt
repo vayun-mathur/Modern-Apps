@@ -55,12 +55,16 @@ object SitemapParser {
                 url = loc, sourceId = sourceId, title = title,
                 publishedAtMillis = DateParsing.parseMillis(date) ?: 0L,
                 imageUrl = image, keywords = keywords,
+                language = languageOf(block, sourceId),
             )
         }
         return out
     }
 
     private fun extractRss(doc: String, sourceId: String): List<FeedArticle> {
+        // Channel-level <language> (before the first item) is the feed default.
+        val head = doc.substringBefore("<item")
+        val feedLanguage = tagText(head, "language") ?: tagText(head, "dc:language")
         val out = mutableListOf<FeedArticle>()
         forEachBlock(doc, "<item>", "</item>") { block ->
             val link = tagText(block, "link") ?: return@forEachBlock
@@ -68,7 +72,9 @@ object SitemapParser {
             val date = tagText(block, "pubDate") ?: tagText(block, "dc:date")
             val image = attributeAfter(block, "media:content", "url")
                 ?: attributeAfter(block, "enclosure", "url")
-            out += FeedArticle(link, sourceId, title, DateParsing.parseMillis(date) ?: 0L, image)
+            val language = tagText(block, "dc:language") ?: tagText(block, "language")
+                ?: feedLanguage ?: SourceCatalog.byId(sourceId)?.language
+            out += FeedArticle(link, sourceId, title, DateParsing.parseMillis(date) ?: 0L, image, language = language)
         }
         return out
     }
@@ -79,10 +85,22 @@ object SitemapParser {
             val link = attributeAfter(block, "link", "href") ?: return@forEachBlock
             val title = tagText(block, "title") ?: link
             val date = tagText(block, "published") ?: tagText(block, "updated")
-            out += FeedArticle(decodeEntities(link), sourceId, title, DateParsing.parseMillis(date) ?: 0L)
+            out += FeedArticle(
+                decodeEntities(link), sourceId, title, DateParsing.parseMillis(date) ?: 0L,
+                language = languageOf(block, sourceId),
+            )
         }
         return out
     }
+
+    /**
+     * Language stated by the feed for one entry (`news:language` /
+     * `dc:language` / `language`), else the source catalog default.
+     * Hreflang alternates are not used: they name other editions.
+     */
+    private fun languageOf(block: String, sourceId: String): String? =
+        tagText(block, "news:language") ?: tagText(block, "dc:language") ?: tagText(block, "language")
+            ?: SourceCatalog.byId(sourceId)?.language
 
     /**
      * Visits each `<open>…</close>` block in order, in one forward pass.

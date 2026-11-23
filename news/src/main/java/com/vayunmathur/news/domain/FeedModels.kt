@@ -12,6 +12,8 @@ data class FeedArticle(
     val keywords: List<String> = emptyList(),
     /** Server-feed only: source meters this article. Not persisted (catalog badges cover it). */
     val metered: Boolean = false,
+    /** BCP-47 language (server `language`, or the source catalog default). Not persisted. */
+    val language: String? = null,
 )
 
 /** One block of an extracted article body, in reading order. */

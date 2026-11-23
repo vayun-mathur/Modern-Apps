@@ -14,7 +14,7 @@ import kotlinx.serialization.json.jsonObject
  * ```
  * { "generated_at": ..., "articles": [
  *     { "title": ..., "url": ..., "source": ..., "published_at": ...,
- *       "image_url": ..., "metered": false } ] }
+ *       "image_url": ..., "metered": false, "language": "en" } ] }
  * ```
  *
  * Contract assumptions (flagged for reconciliation with the server agent):
@@ -28,6 +28,9 @@ import kotlinx.serialization.json.jsonObject
  * - `image_url` may be absent/null; `metered` may be absent (defaults
  *   false). `metered` is carried on [FeedArticle] but not persisted:
  *   the catalog already badges metered sources in the Sources screen.
+ * - `language` is a BCP-47 tag stated per article by the server (its
+ *   per-article refinement of the source default); when absent it
+ *   defaults from [SourceCatalog] for the resolved source.
  *
  * Pure and non-throwing: malformed documents/articles yield an empty or
  * partial list, which the repository treats as server-feed failure and
@@ -51,13 +54,15 @@ object ServerFeedParser {
         val url = obj.string("url")?.takeIf { it.startsWith("http") } ?: return null
         val title = obj.string("title")?.takeIf { it.isNotBlank() } ?: return null
         val sourceRaw = obj.string("source")?.takeIf { it.isNotBlank() } ?: return null
+        val sourceId = resolveSourceId(sourceRaw)
         return FeedArticle(
             url = url,
-            sourceId = resolveSourceId(sourceRaw),
+            sourceId = sourceId,
             title = title,
             publishedAtMillis = parsePublishedAt(obj["published_at"]),
             imageUrl = obj.string("image_url"),
             metered = (obj["metered"] as? JsonPrimitive)?.contentOrNull?.toBooleanStrictOrNull() ?: false,
+            language = obj.string("language") ?: SourceCatalog.byId(sourceId)?.language,
         )
     }
 

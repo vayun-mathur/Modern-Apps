@@ -16,6 +16,8 @@ data class NewsSource(
     val feedUrl: String,
     val kind: FeedKind,
     val badge: String? = null,
+    /** BCP-47 language of this source's feed (e.g. "en", "de"); default for its articles. */
+    val language: String = "en",
 )
 
 /** Built-in catalog; every URL here was fetched and parsed during development. */
@@ -35,7 +37,7 @@ object SourceCatalog {
         NewsSource("techcrunch", "TechCrunch", "https://techcrunch.com/news-sitemap.xml", FeedKind.SITEMAP),
         NewsSource("propublica", "ProPublica", "https://www.propublica.org/news-sitemap.xml", FeedKind.SITEMAP),
         NewsSource(
-            "elpais", "El País", "https://elpais.com/sitemaps/news.xml", FeedKind.SITEMAP,
+            "elpais", "El País", "https://elpais.com/sitemaps/news.xml", FeedKind.SITEMAP, language = "es",
             badge = "Metered: full article text was present in the raw HTML during " +
                 "verification; some articles may still truncate.",
         ),
@@ -49,10 +51,10 @@ object SourceCatalog {
         ),
         // Second verification round (2026-11-23, same bar as above: feed fetched
         // with 200 and parsed; sampled article HTML held the full body).
-        NewsSource("tagesschau", "Tagesschau", "https://www.tagesschau.de/newsticker.rdf", FeedKind.RSS),
-        NewsSource("nos", "NOS", "https://feeds.nos.nl/nosnieuwsalgemeen", FeedKind.RSS),
-        NewsSource("svt", "SVT Nyheter", "https://www.svt.se/nyheter/rss.xml", FeedKind.RSS),
-        NewsSource("nrk", "NRK", "https://www.nrk.no/toppsaker.rss", FeedKind.RSS),
+        NewsSource("tagesschau", "Tagesschau", "https://www.tagesschau.de/newsticker.rdf", FeedKind.RSS, language = "de"),
+        NewsSource("nos", "NOS", "https://feeds.nos.nl/nosnieuwsalgemeen", FeedKind.RSS, language = "nl"),
+        NewsSource("svt", "SVT Nyheter", "https://www.svt.se/nyheter/rss.xml", FeedKind.RSS, language = "sv"),
+        NewsSource("nrk", "NRK", "https://www.nrk.no/toppsaker.rss", FeedKind.RSS, language = "nb"),
         NewsSource("yle", "Yle News", "https://yle.fi/rss/news", FeedKind.RSS),
         NewsSource("rte", "RTÉ News", "https://www.rte.ie/news/rss/news-headlines.xml", FeedKind.RSS),
         NewsSource("cbc", "CBC News", "https://www.cbc.ca/webfeed/rss/rss-topstories", FeedKind.RSS),
@@ -60,7 +62,7 @@ object SourceCatalog {
         NewsSource("abc-au", "ABC Australia", "https://www.abc.net.au/news/feed/51120/rss.xml", FeedKind.RSS),
         NewsSource("rnz", "RNZ", "https://www.rnz.co.nz/rss/national.xml", FeedKind.RSS),
         NewsSource("cna", "CNA", "https://www.channelnewsasia.com/rssfeeds/8395986", FeedKind.RSS),
-        NewsSource("ansa", "ANSA", "https://www.ansa.it/sito/ansait_rss.xml", FeedKind.RSS),
+        NewsSource("ansa", "ANSA", "https://www.ansa.it/sito/ansait_rss.xml", FeedKind.RSS, language = "it"),
         NewsSource("mee", "Middle East Eye", "https://www.middleeasteye.net/rss.xml", FeedKind.RSS),
         NewsSource("semafor", "Semafor", "https://www.semafor.com/rss.xml", FeedKind.RSS),
         NewsSource("restofworld", "Rest of World", "https://restofworld.org/feed/", FeedKind.RSS),

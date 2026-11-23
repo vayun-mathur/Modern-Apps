@@ -255,6 +255,7 @@ internal fun CachedArticle.toFeedArticle(): FeedArticle = FeedArticle(
     url = url, sourceId = sourceId, title = title, publishedAtMillis = publishedAtMillis,
     imageUrl = imageUrl,
     keywords = keywords.split(",").map { it.trim() }.filter { it.isNotEmpty() },
+    language = SourceCatalog.byId(sourceId)?.language,
 )
 
 internal fun ExtractedArticle.toCached(json: Json): CachedBody = CachedBody(
