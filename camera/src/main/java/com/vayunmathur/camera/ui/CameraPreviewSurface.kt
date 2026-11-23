@@ -16,6 +16,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import com.vayunmathur.camera.R
 import com.vayunmathur.camera.platform.CameraViewModel
+import com.vayunmathur.camera.platform.noteCamera2BindRequested
 import com.vayunmathur.camera.platform.onCamera2NightPreviewFailed
 import com.vayunmathur.camera.platform.onCamera2PreviewFailed
 import com.vayunmathur.camera.platform.registerCamera2ExtensionSession

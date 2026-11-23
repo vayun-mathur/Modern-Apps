@@ -61,8 +61,14 @@ fun CameraViewModel.setCamera2SloMoEnabled(enabled: Boolean) {
  * real capture failure does that (see `tryCaptureCamera2NightExtension`).
  */
 fun CameraViewModel.onCamera2NightPreviewFailed(cameraId: String) {
+    // Key on the CURRENT selected lens, not the (possibly stale) id the
+    // failing composable captured — same contract as onCamera2PreviewFailed:
+    // the UI gate builds its key from the current selection, so the latch
+    // must agree or it never reads as latched after reconciliation.
+    val keyId = selectedLensMutable.value?.logicalCameraId
+        ?.takeIf { it.isNotEmpty() } ?: cameraId
     val key = com.vayunmathur.camera.platform.camera2.Camera2FallbackLatch
-        .bindKey(cameraId, cameraModeMutable.value)
+        .bindKey(keyId, cameraModeMutable.value)
     if (camera2NightFallbackBindKeyMutable.value == key) return
     camera2NightFallbackBindKeyMutable.value = key
     Log.status("Camera2Night", "Camera2 extension preview failed for $key; falling back for this session")

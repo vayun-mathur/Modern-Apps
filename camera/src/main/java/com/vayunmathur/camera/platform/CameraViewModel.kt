@@ -17,7 +17,6 @@ import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.SurfaceRequest
 import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.camera.lifecycle.awaitInstance
 import java.util.concurrent.Executor
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -119,12 +118,7 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
     internal val startupOrder =
         com.vayunmathur.camera.platform.camera2.StartupOrderTracker()
 
-    /** Records the first Camera2 bind request (from the preview composable). */
-    fun noteCamera2BindRequested() {
-        if (startupOrder.recordBindRequested()) {
-            Log.dev("CameraStartup", "camera2 bind requested (probes may still be running)")
-        }
-    }
+    // Startup bind-request breadcrumb lives in CameraViewModelStartup.kt as an extension.
 
     // Camera2 gate setters/fallback live in CameraViewModelCamera2Gates.kt as extensions.
 
@@ -324,7 +318,7 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
     internal val lastCaptureUriMutable = MutableStateFlow<Uri?>(null)
     val lastCaptureUri = lastCaptureUriMutable.asStateFlow()
 
-    private val _galleryThumbnail = MutableStateFlow<Bitmap?>(null)
+    internal val _galleryThumbnail = MutableStateFlow<Bitmap?>(null)
     val galleryThumbnail = _galleryThumbnail.asStateFlow()
 
     internal val gridEnabledMutable = MutableStateFlow(false)
@@ -711,46 +705,9 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
      */
     @Volatile var foregroundRoute: String? = null
 
+    // Startup sequencing lives in CameraViewModelStartup.kt as an extension.
     init {
-        // Fast path first: seed the persisted lens synchronously so the
-        // Camera2 preview gate holds on frame one (see seedStartupLens).
-        // Nothing below may gate that bind.
-        seedStartupLens()
-        loadSettings()
-        panoramaEngine.onSweepComplete = { finishPanoramaSweep() }
-        viewModelScope.launch {
-            lastCaptureUriMutable.collect { uri -> _galleryThumbnail.value = loadThumbnail(uri) }
-        }
-        // Background enrichment AFTER first frame: CameraX initialisation +
-        // lens enumeration (per-lens Characteristics reads) refine the
-        // seeded placeholder. The Camera2 preview never waits on this: it
-        // opens via CameraManager + facing directly.
-        viewModelScope.launch(Dispatchers.Default) {
-            try {
-                val provider = ProcessCameraProvider.awaitInstance(app)
-                ensureLensesEnumerated(provider)
-            } catch (e: IllegalStateException) {
-                Log.status("CameraStartup", "background lens enrichment failed", e)
-            } catch (e: IllegalArgumentException) {
-                Log.status("CameraStartup", "background lens enrichment failed", e)
-            }
-            if (startupOrder.recordProbeCompleted()) {
-                Log.dev(
-                    "CameraStartup",
-                    "background probes complete; " +
-                        "bindRequestedBeforeProbe=${startupOrder.bindRequestedBeforeProbeCompleted()}",
-                )
-            }
-        }
-        // Probe Slo-Mo capability once (back camera only). UI hides Slo-Mo if unsupported.
-        // Deferred off the startup path: it awaits CameraX initialisation and
-        // reads Recorder capabilities — irrelevant to the PHOTO first frame.
-        viewModelScope.launch {
-            sloMoSupportedMutable.value = probeSloMoSupport()
-        }
-        // DEBUG: Night mode resolution question – extension uses default resolution vs max-res,
-        // may be lower so can't take full quality?
-        startDebugLogging()
+        runStartupSequence()
     }
 
     // Slo-Mo probe + thumbnail loading live in CameraStartup.kt as extensions.
