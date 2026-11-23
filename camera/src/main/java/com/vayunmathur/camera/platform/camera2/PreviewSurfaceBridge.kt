@@ -124,12 +124,14 @@ class PreviewSurfaceBridge(
             facing = lensFacing,
         ) ?: return
         lastTransform = affine
-        // TextureView.setTransform matrix: NO rotation (the stream's own
-        // texture transform already applied the sensor quarter-turn —
-        // feeding the placement affine's rotation here double-applied
-        // it and the preview rendered rotated vs the captured still).
-        // The texture affine is the inverse uniform fill scale over the
-        // displayed frame. See PreviewTransform.computeTextureAffine.
+        // TextureView.setTransform matrix: a view-pixel placement over
+        // content TextureView already stretched onto the view rect (HWUI
+        // concatenates it outside the buffer->view texture matrix), NOT
+        // a view->texture sampling map — feeding the inverse fill scale
+        // here shrank the preview into the top-left of the box, leaving
+        // the right/bottom strips undrawn. NO rotation either (the
+        // stream's own texture transform already applied the sensor
+        // quarter-turn). See PreviewTransform.computeTextureAffine.
         val textureAffine = PreviewTransform.computeTextureAffine(
             streamWidth = stream.width,
             streamHeight = stream.height,
@@ -146,6 +148,8 @@ class PreviewSurfaceBridge(
                 "stream=${stream.width}x${stream.height} sensor=$sensorOrientationDegrees " +
                 "display=$displayRotationDegrees rel=${affine.rotationDegrees} " +
                 "textureRel=${textureAffine.rotationDegrees} " +
+                "textureK=${textureAffine.a}x${textureAffine.d} " +
+                "textureT=${textureAffine.tx}x${textureAffine.ty} " +
                 "displayed=${affine.displayedWidth}x${affine.displayedHeight} " +
                 "scale=${affine.scale}",
         )

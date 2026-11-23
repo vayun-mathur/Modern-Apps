@@ -26,21 +26,34 @@ import kotlin.math.max
  *   centred. This describes where image content sits; it is NOT a
  *   TextureView matrix.
  * - [computeTextureAffine]: the matrix `TextureView.setTransform`
- *   actually consumes. TextureView is a sampling surface: it renders
- *   the SurfaceTexture through the texture transform the camera
- *   framework already attached to the stream (which is where the
- *   sensor rotation — and the buffer's quarter-turn — is applied; it
- *   is why the pre-transform preview was *stretched*, never sideways),
- *   composed with the app-supplied matrix expressed against the
- *   *displayed* (post-rotation) frame, exactly as the platform Camera2
- *   sample builds its matrix against a swapped buffer rect. The app
- *   matrix must therefore contain NO rotation of its own: any quarter
- *   turn here rotates an already-upright image. The 7c4429d74 wiring
- *   fed [compute]'s rotated placement affine straight to
- *   `setTransform`, double-applying the rotation — back sensor 90 and
- *   front sensor 270 both rendered a quarter-turn from the (correct,
- *   EXIF-rotated) captured still. The texture affine is instead the
- *   inverse uniform scale over the displayed frame, centred.
+ *   actually consumes. That matrix is NOT a sampling (view -> texture)
+ *   transform and NOT in texture pixels. In HWUI a TextureView layer is
+ *   drawn as `Concat(layerTransform, textureMatrix)` (Layer.draw in
+ *   libs/hwui): `textureMatrix` already maps buffer pixels onto the
+ *   layer rect (the view size) — the normalized 0..1 texture space and
+ *   the SurfaceTexture quarter-turn live inside it, which is why the
+ *   pre-transform preview was *stretched*, never sideways — and the
+ *   app-supplied `layerTransform` is concatenated OUTSIDE it. So
+ *   `setTransform` is a placement transform in *view pixels*, applied
+ *   to content that already fills the view (non-uniformly when the
+ *   aspects differ). The app matrix must contain NO rotation of its
+ *   own: any quarter turn here rotates an already-upright image. The
+ *   7c4429d74 wiring fed [compute]'s rotated placement affine straight
+ *   to `setTransform`, double-applying the rotation — back sensor 90
+ *   and front sensor 270 both rendered a quarter-turn from the
+ *   (correct, EXIF-rotated) captured still.
+ *
+ *   1c8a688eb then replaced that with the *inverse* fill scale in
+ *   displayed-texture pixels (`1 / fillScale`, translation in texture
+ *   pixels): correct as a view -> texture sampling map, but as a
+ *   view-pixel placement it shrinks the content about the origin.
+ *   At an exact aspect match it is `0.893` with zero translation, so
+ *   the preview occupies only the top-left of the box and the right
+ *   and bottom strips are never drawn — the owner-reported "cut off
+ *   on the right and bottom". The correct placement rescales the
+ *   already view-filling content about the view centre by
+ *   `(fillScale * displayed / view)` per axis (each >= 1, one == 1):
+ *   identity at a matching aspect, a centred cover-crop otherwise.
  *
  * Uniform scale is the other invariant: with no app transform at all
  * the view stretches the buffer non-uniformly whenever the stream
@@ -56,8 +69,12 @@ object PreviewTransform {
      * [tx]/[ty] the translation. [rotationDegrees] is the relative rotation
      * applied, [scale] the uniform fill scale, and [displayedWidth] /
      * [displayedHeight] the buffer size after rotation (aspect swapped for
-     * 90/270). The linear part is always `scale * R(rotation)`, so its two
-     * column norms are both [scale] — the no-stretch invariant tests assert.
+     * 90/270). For [compute]'s placement form the linear part is always
+     * `scale * R(rotation)`, so its two column norms are both [scale] —
+     * the no-stretch invariant tests assert. For [computeTextureAffine]'s
+     * view -> view form [scale] is the effective uniform fill scale of
+     * the composition with TextureView's base stretch, and the column
+     * norms are the per-axis cover factors (see that function's doc).
      */
     data class Affine(
         val a: Float,
@@ -141,17 +158,34 @@ object PreviewTransform {
 
     /**
      * The `TextureView.setTransform` matrix for one stream/view pairing,
-     * as an [Affine] mapping *view* pixels to *displayed-texture* pixels
-     * (so [Affine.map] converts view coordinates to texture coordinates).
+     * as an [Affine] mapping *view* pixels to *view* pixels: it places
+     * the content TextureView has already stretched onto the view rect
+     * (see the class doc for the HWUI composition). [Affine.map] thus
+     * converts a point of the identity (untransformed) rendering to
+     * where that same content point lands under the transform.
      *
-     * The linear part is the pure inverse fill scale — deliberately no
-     * rotation (see the class doc: the stream's own texture transform
+     * Deliberately no rotation (the stream's own texture transform
      * already applied the relative rotation, so the relative rotation
      * only decides the displayed size the scale is computed from, via
-     * [compute]). [Affine.rotationDegrees] is therefore always 0 and
-     * [Affine.scale] is `1 / fillScale`; the translation centres the
-     * sampled region, which is exactly the centre crop the placement
-     * geometry promises. Null for degenerate sizes, like [compute].
+     * [compute]): [Affine.rotationDegrees] is always 0.
+     *
+     * The linear part is the cover rescale of the base-stretched
+     * content, per axis `fillScale * displayed / view` — >= 1 on both
+     * axes and == 1 on the axis that sets the fill scale, so the
+     * content always COVERS the view (never letterboxes) and the
+     * cropped axis overflows symmetrically. The translation scales
+     * about the view centre (`viewCentre - K * viewCentre`), so the
+     * view centre is a fixed point and the crop is centred. Composed
+     * with TextureView's base stretch (`displayed -> view`), the
+     * effective displayed -> view scale is the uniform [Affine.scale]
+     * (`fillScale`); the matrix's own column norms are the per-axis
+     * cover factors, not that scale, so [isUniformScale] does not
+     * apply to this form — uniformity holds for the composition.
+     *
+     * At a matching aspect the result is exactly the identity: the
+     * base stretch is already the uniform fill, and any non-identity
+     * matrix only shrinks/shifts the preview inside its box.
+     * Null for degenerate sizes, like [compute].
      */
     fun computeTextureAffine(
         streamWidth: Int,
@@ -167,15 +201,21 @@ object PreviewTransform {
             sensorOrientationDegrees, displayRotationDegrees, facing,
         ) ?: return null
         if (placement.scale == 0f) return null
-        val inverse = 1f / placement.scale
         val displayedWidth = placement.displayedWidth
         val displayedHeight = placement.displayedHeight
+        // Cover factors relative to the already view-filling base
+        // rendering. fillScale * displayed >= view on both axes (that
+        // is what fillScale is the max of), so both factors are >= 1.
+        val coverX = placement.scale * displayedWidth / viewWidth
+        val coverY = placement.scale * displayedHeight / viewHeight
         return Affine(
-            a = inverse, b = 0f, c = 0f, d = inverse,
-            tx = displayedWidth / 2f - viewWidth / 2f * inverse,
-            ty = displayedHeight / 2f - viewHeight / 2f * inverse,
+            a = coverX, b = 0f, c = 0f, d = coverY,
+            // Scale about the view centre: centre is a fixed point and
+            // the overflow (crop) splits equally on opposite sides.
+            tx = viewWidth / 2f - coverX * viewWidth / 2f,
+            ty = viewHeight / 2f - coverY * viewHeight / 2f,
             rotationDegrees = 0,
-            scale = inverse,
+            scale = placement.scale,
             displayedWidth = displayedWidth,
             displayedHeight = displayedHeight,
         )
