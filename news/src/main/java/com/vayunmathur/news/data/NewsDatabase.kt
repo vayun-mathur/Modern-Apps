@@ -47,6 +47,10 @@ interface NewsDao {
     @Query("SELECT * FROM CachedArticle WHERE url = :url")
     suspend fun article(url: String): CachedArticle?
 
+    /** Bookmarked subset of [urls], in one query (publish must not query per article). */
+    @Query("SELECT url FROM CachedArticle WHERE bookmarked = 1 AND url IN (:urls)")
+    suspend fun bookmarkedUrls(urls: List<String>): List<String>
+
     @Query("SELECT * FROM CachedBody WHERE url = :url")
     suspend fun body(url: String): CachedBody?
 

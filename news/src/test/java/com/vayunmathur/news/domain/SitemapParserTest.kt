@@ -52,6 +52,27 @@ class SitemapParserTest {
     }
 
     @Test
+    fun bbcSizeUrlsetParsesWithinBound() {
+        // Regression for the 2026-11-23 ANR: the old whole-document regex
+        // findAll burned 22s of main-thread CPU on a sitemap this size.
+        val xml = buildString {
+            append("<urlset xmlns:news=\"http://www.google.com/schemas/sitemap-news/0.9\">")
+            repeat(996) { i ->
+                append("<url><loc>https://example.com/a").append(i).append("</loc>")
+                append("<news:news><news:publication_date>2026-11-23T10:00:00+00:00</news:publication_date>")
+                append("<news:title>Story ").append(i).append("</news:title></news:news></url>")
+            }
+            append("</urlset>")
+        }
+        val startedNanos = System.nanoTime()
+        val parsed = SitemapParser.parse(xml, "bbc")
+        val elapsedMs = (System.nanoTime() - startedNanos) / 1_000_000
+        assertEquals(996, parsed.articles.size)
+        assertEquals("Story 995", parsed.articles.last().title)
+        assertTrue(elapsedMs < 2_000, "996-URL parse took ${elapsedMs}ms, bound is 2000ms")
+    }
+
+    @Test
     fun malformedInputNeverThrows() {
         assertTrue(SitemapParser.parse("not xml at all", "ex").articles.isEmpty())
         assertTrue(SitemapParser.parse("", "ex").articles.isEmpty())

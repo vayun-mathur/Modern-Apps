@@ -30,7 +30,8 @@ class NewsPrefs(context: Context) {
     val disabledSourceIds: Flow<Set<String>> = safeData.map { it[DISABLED_SOURCES] ?: emptySet() }
     val readerTextSp: Flow<Int> = safeData.map { it[TEXT_SP] ?: DEFAULT_TEXT_SP }
     val readerSerif: Flow<Boolean> = safeData.map { it[SERIF] ?: false }
-    val readerWebView: Flow<Boolean> = safeData.map { it[WEB_VIEW] ?: false }
+    // A stale "reader_web_view" value from before the WebView toggle was
+    // removed is simply never read again, so it is ignored safely.
 
     suspend fun setSourceEnabled(id: String, enabled: Boolean) {
         appContext.newsDataStore.edit { prefs ->
@@ -47,10 +48,6 @@ class NewsPrefs(context: Context) {
         appContext.newsDataStore.edit { it[SERIF] = serif }
     }
 
-    suspend fun setReaderWebView(webView: Boolean) {
-        appContext.newsDataStore.edit { it[WEB_VIEW] = webView }
-    }
-
     companion object {
         const val DEFAULT_TEXT_SP = 17
         const val MIN_TEXT_SP = 13
@@ -58,6 +55,5 @@ class NewsPrefs(context: Context) {
         private val DISABLED_SOURCES = stringSetPreferencesKey("disabled_sources")
         private val TEXT_SP = intPreferencesKey("reader_text_sp")
         private val SERIF = booleanPreferencesKey("reader_serif")
-        private val WEB_VIEW = booleanPreferencesKey("reader_web_view")
     }
 }

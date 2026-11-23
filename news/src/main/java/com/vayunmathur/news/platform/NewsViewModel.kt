@@ -53,8 +53,6 @@ class NewsViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), NewsPrefs.DEFAULT_TEXT_SP)
     val readerSerif: StateFlow<Boolean> = prefs.readerSerif
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
-    val readerWebView: StateFlow<Boolean> = prefs.readerWebView
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     private val _readerBody = MutableStateFlow<ExtractedArticle?>(null)
     val readerBody: StateFlow<ExtractedArticle?> = _readerBody.asStateFlow()
@@ -122,10 +120,6 @@ class NewsViewModel(
 
     fun setReaderSerif(serif: Boolean) {
         viewModelScope.launch { prefs.setReaderSerif(serif) }
-    }
-
-    fun setReaderWebView(webView: Boolean) {
-        viewModelScope.launch { prefs.setReaderWebView(webView) }
     }
 }
 

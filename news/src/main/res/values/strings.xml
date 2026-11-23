@@ -12,7 +12,7 @@
     <string name="reader_text_larger">Larger text</string>
     <string name="reader_serif">Serif</string>
     <string name="reader_sans">Sans</string>
-    <string name="reader_loading_failed">Could not load this article. Try the original page.</string>
+    <string name="reader_loading_failed">Could not load this article.</string>
     <!-- SourcesScreen -->
     <string name="sources_title">Sources</string>
     <string name="sources_note">Articles are fetched directly from each publisher. No account and no server of ours is involved.</string>

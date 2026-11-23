@@ -6,15 +6,20 @@ import com.vayunmathur.library.room.RoomRepository
 import com.vayunmathur.news.domain.ArticleBlock
 import com.vayunmathur.news.domain.ArticleExtractor
 import com.vayunmathur.news.domain.ExtractedArticle
+import com.vayunmathur.news.domain.FeedArticle
 import com.vayunmathur.news.domain.FeedMerger
 import com.vayunmathur.news.domain.NewsSource
 import com.vayunmathur.news.domain.SitemapParser
-import com.vayunmathur.news.domain.SourceCatalog
 import com.vayunmathur.news.network.Networking
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 
@@ -22,10 +27,21 @@ import kotlinx.serialization.json.Json
  * Owns the Room cache and all feed/article fetching. The [fetch] seam
  * defaults to [Networking] and is replaced by a fake in unit tests, so
  * no test touches the network. Bodies are extracted on device only.
+ *
+ * Refresh topology (fixed 2026-11-23, was the ANR / "stuck feed" bug):
+ * sources fetch in parallel, each on [feedDispatcher] (never Main —
+ * parsing a ~996-URL sitemap on Main burned 22s CPU in regex and
+ * ANR'd), each bounded by [sourceTimeoutMs], and each source's
+ * articles are upserted to Room the moment that source lands. The
+ * feed is the Room flow, so cached/partial articles are visible
+ * immediately; one hanging or failing source can neither block the
+ * others' publication nor hold the refresh open past its timeout.
  */
 class NewsRepository internal constructor(
     context: Context,
     private val fetch: suspend (String) -> String,
+    private val feedDispatcher: CoroutineDispatcher = Dispatchers.Default,
+    private val sourceTimeoutMs: Long = SOURCE_TIMEOUT_MS,
 ) : RoomRepository<NewsDatabase>(context, NewsDatabase::class, DB_NAME) {
 
     constructor(context: Context) : this(context, Networking::fetchText)
@@ -42,68 +58,79 @@ class NewsRepository internal constructor(
         dao.setBookmarked(url, bookmarked)
 
     /**
-     * Fetches every enabled source (sitemap indexes are followed one level,
-     * recursively through this same function), merges and caches the result.
-     * A failing source never fails the refresh. Returns sources that failed.
+     * Fetches every enabled source in parallel; each source publishes
+     * to Room as soon as it lands. Returns the names of sources that
+     * failed or timed out (a failing source never fails the refresh).
      */
     suspend fun refresh(sources: List<NewsSource>): List<String> = coroutineScope {
-        val results = sources.map { source ->
-            async {
-                runCatching { fetchFeed(source, depth = 0) }
-                    .fold(
-                        onSuccess = { it to null },
-                        onFailure = { emptyList<com.vayunmathur.news.domain.FeedArticle>() to source.name },
-                    )
-            }
-        }.awaitAll()
-        val failed = results.mapNotNull { it.second }
-        val merged = FeedMerger.merge(results.map { it.first })
-        val now = System.currentTimeMillis()
-        if (merged.isNotEmpty()) {
-            // Preserve bookmark flags already in the cache.
-            val rows = merged.map { article ->
-                val existing = dao.article(article.url)
-                CachedArticle(
-                    url = article.url, sourceId = article.sourceId, title = article.title,
-                    publishedAtMillis = article.publishedAtMillis, imageUrl = article.imageUrl,
-                    keywords = article.keywords.joinToString(","),
-                    fetchedAtMillis = now, bookmarked = existing?.bookmarked ?: false,
-                )
-            }
-            dao.upsertArticles(rows)
-            dao.pruneArticles(keep = 500)
-        }
+        val failed = sources.map { source ->
+            async { fetchAndPublish(source) }
+        }.awaitAll().filterNotNull()
+        if (sources.isNotEmpty()) dao.pruneArticles(keep = MAX_CACHED_ARTICLES)
         failed
     }
 
-    private suspend fun fetchFeed(
-        source: NewsSource,
-        depth: Int,
-    ): List<com.vayunmathur.news.domain.FeedArticle> {
-        val parsed = SitemapParser.parse(fetch(source.feedUrl), source.id)
+    /** Fetches + publishes one source; returns its name on failure/timeout, else null. */
+    private suspend fun fetchAndPublish(source: NewsSource): String? {
+        val startedNanos = System.nanoTime()
+        Log.dev(TAG, "refresh source=${source.id} started")
+        val articles = try {
+            withTimeoutOrNull(sourceTimeoutMs) {
+                withContext(feedDispatcher) { fetchFeed(source.feedUrl, source.id, depth = 0) }
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            val elapsedMs = (System.nanoTime() - startedNanos) / 1_000_000
+            Log.dev(TAG, "refresh source=${source.id} failed ${e.javaClass.simpleName} after ${elapsedMs}ms")
+            return source.name
+        }
+        val elapsedMs = (System.nanoTime() - startedNanos) / 1_000_000
+        if (articles == null) {
+            Log.dev(TAG, "refresh source=${source.id} failed timeout after ${elapsedMs}ms")
+            return source.name
+        }
+        val capped = FeedMerger.merge(listOf(articles), limit = MAX_ARTICLES_PER_SOURCE)
+        if (capped.isNotEmpty()) publish(capped)
+        val totalMs = (System.nanoTime() - startedNanos) / 1_000_000
+        Log.dev(TAG, "refresh source=${source.id} landed articles=${capped.size} in ${totalMs}ms")
+        return null
+    }
+
+    /** Upserts one landed source's articles, preserving existing bookmark flags. */
+    private suspend fun publish(articles: List<FeedArticle>) {
+        val now = System.currentTimeMillis()
+        val bookmarked = dao.bookmarkedUrls(articles.map { it.url }).toSet()
+        val rows = articles.map { article ->
+            CachedArticle(
+                url = article.url, sourceId = article.sourceId, title = article.title,
+                publishedAtMillis = article.publishedAtMillis, imageUrl = article.imageUrl,
+                keywords = article.keywords.joinToString(","),
+                fetchedAtMillis = now, bookmarked = article.url in bookmarked,
+            )
+        }
+        dao.upsertArticles(rows)
+    }
+
+    /**
+     * Fetches one feed document and, for a sitemap index, its newest
+     * [MAX_INDEX_CHILDREN] children (in parallel, recursively, at most
+     * [MAX_INDEX_DEPTH] levels deep). Runs in the caller's context —
+     * [fetchAndPublish] confines it to [feedDispatcher].
+     */
+    private suspend fun fetchFeed(url: String, sourceId: String, depth: Int): List<FeedArticle> {
+        val parsed = SitemapParser.parse(fetch(url), sourceId)
         if (parsed.childSitemaps.isEmpty() || depth >= MAX_INDEX_DEPTH) return parsed.articles
         // Indexes list newest child first; the first few carry today's news.
         return coroutineScope {
             parsed.childSitemaps.take(MAX_INDEX_CHILDREN).map { child ->
                 async {
-                    runCatching {
-                        val childParsed = SitemapParser.parse(fetch(child), source.id)
-                        if (childParsed.childSitemaps.isNotEmpty() && depth + 1 < MAX_INDEX_DEPTH) {
-                            childParsed.childSitemaps.take(MAX_INDEX_CHILDREN - 1).flatMap { grandchild ->
-                                runCatching {
-                                    SitemapParser.parse(fetch(grandchild), source.id).articles
-                                }.getOrElse {
-                                    Log.error(TAG, "feed fetch failed")
-                                    emptyList()
-                                }
-                            }
-                        } else {
-                            childParsed.articles
+                    runCatching { fetchFeed(child, sourceId, depth + 1) }
+                        .getOrElse {
+                            if (it is CancellationException) throw it
+                            Log.dev(TAG, "refresh source=$sourceId child fetch failed url=$child")
+                            emptyList()
                         }
-                    }.getOrElse {
-                        Log.error(TAG, "feed fetch failed")
-                        emptyList()
-                    }
                 }
             }.awaitAll().flatten()
         }
@@ -112,15 +139,21 @@ class NewsRepository internal constructor(
     /** Cached body if present, otherwise fetch + extract + cache. Throws on fetch failure with no cache. */
     suspend fun articleBody(url: String): ExtractedArticle {
         dao.body(url)?.let { return it.toExtracted(json) }
-        val extracted = ArticleExtractor.extract(fetch(url), url)
+        // Extraction is CPU-heavy HTML work: never on the caller's (Main) dispatcher.
+        val extracted = withContext(feedDispatcher) { ArticleExtractor.extract(fetch(url), url) }
         dao.upsertBody(extracted.toCached(json))
         return extracted
     }
 
     companion object {
         private const val TAG = "NewsRepository"
+
+        /** Overall per-source budget: fetch + follow index + parse + publish. */
+        const val SOURCE_TIMEOUT_MS = 20_000L
         private const val MAX_INDEX_DEPTH = 2
         private const val MAX_INDEX_CHILDREN = 3
+        private const val MAX_ARTICLES_PER_SOURCE = 200
+        private const val MAX_CACHED_ARTICLES = 500
 
         @Volatile
         private var instance: NewsRepository? = null

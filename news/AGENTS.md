@@ -20,8 +20,8 @@ locally. There is no backend and no account.
   Ars, The Verge, Hacker News)
 - Room-cached feed + extracted article bodies (offline reading), bookmarks
 - Readability-style extraction in `domain/ArticleExtractor` over a small
-  tolerant HTML DOM (`domain/HtmlDom`); reader with text size, serif/sans,
-  and a toggle to the original web page
+  tolerant HTML DOM (`domain/HtmlDom`); reader with text size, serif/sans
+  (extracted-text only — no original-page WebView or open-in-browser)
 
 ## Source verification (2026-11-23, via the dev box's proxied network)
 Verified = sitemap/RSS fetched 200 and parsed + one article's raw HTML

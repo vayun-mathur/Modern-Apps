@@ -8,9 +8,16 @@ data class ParsedFeed(
 
 /**
  * Pure parser for Google News sitemaps (urlset + news extension), plain
- * urlsets, sitemap indexes, RSS 2.0 and Atom. Deliberately string-based
- * (no XML library) so it runs identically on device and in plain JVM unit
- * tests; it tolerates malformed entries by skipping them, never throwing.
+ * urlsets, sitemap indexes, RSS 2.0 and Atom.
+ *
+ * Linear scan only: entries are located with [String.indexOf] and each
+ * entry block is scanned in isolation. There is deliberately no
+ * whole-document regex `findAll` and no regex is compiled per entry —
+ * a previous regex-over-the-whole-document implementation burned 22s
+ * of main-thread CPU on a ~996-URL BBC sitemap (ANR 2026-11-23). This
+ * parser is O(document length) with small constants and never throws;
+ * malformed entries are skipped. Callers must still run it off the
+ * main thread (see NewsRepository, which parses on Dispatchers.Default).
  */
 object SitemapParser {
 
@@ -25,22 +32,25 @@ object SitemapParser {
         }
     }
 
-    private fun extractSitemapChildren(doc: String): List<String> =
-        Regex("""<sitemap>\s*<loc>([^<]+)</loc>""").findAll(doc)
-            .map { decodeEntities(it.groupValues[1].trim()) }.filter { it.startsWith("http") }.toList()
+    private fun extractSitemapChildren(doc: String): List<String> {
+        val out = mutableListOf<String>()
+        forEachBlock(doc, "<sitemap>", "</sitemap>") { block ->
+            val loc = tagText(block, "loc") ?: return@forEachBlock
+            if (loc.startsWith("http")) out += loc
+        }
+        return out
+    }
 
     private fun extractUrlset(doc: String, sourceId: String): List<FeedArticle> {
         val out = mutableListOf<FeedArticle>()
-        for (match in Regex("""<url>(.*?)</url>""", RegexOption.DOT_MATCHES_ALL).findAll(doc)) {
-            val block = match.groupValues[1]
-            val loc = tagText(block, "loc") ?: continue
-            if (!loc.startsWith("http")) continue
+        forEachBlock(doc, "<url>", "</url>") { block ->
+            val loc = tagText(block, "loc") ?: return@forEachBlock
+            if (!loc.startsWith("http")) return@forEachBlock
             val title = tagText(block, "news:title") ?: tagText(block, "title") ?: loc
             val date = tagText(block, "news:publication_date") ?: tagText(block, "lastmod")
             val keywords = tagText(block, "news:keywords")
                 ?.split(",")?.map { it.trim() }?.filter { it.isNotEmpty() } ?: emptyList()
-            val image = Regex("""<image:image>\s*<image:loc>([^<]+)</image:loc>""")
-                .find(block)?.groupValues?.get(1)?.let { decodeEntities(it.trim()) }
+            val image = tagText(block, "image:loc")
             out += FeedArticle(
                 url = loc, sourceId = sourceId, title = title,
                 publishedAtMillis = DateParsing.parseMillis(date) ?: 0L,
@@ -52,13 +62,12 @@ object SitemapParser {
 
     private fun extractRss(doc: String, sourceId: String): List<FeedArticle> {
         val out = mutableListOf<FeedArticle>()
-        for (match in Regex("""<item>(.*?)</item>""", RegexOption.DOT_MATCHES_ALL).findAll(doc)) {
-            val block = match.groupValues[1]
-            val link = tagText(block, "link") ?: continue
+        forEachBlock(doc, "<item>", "</item>") { block ->
+            val link = tagText(block, "link") ?: return@forEachBlock
             val title = tagText(block, "title") ?: link
             val date = tagText(block, "pubDate") ?: tagText(block, "dc:date")
-            val image = Regex("""<media:content[^>]*url="([^"]+)"""").find(block)?.groupValues?.get(1)
-                ?: Regex("""enclosure[^>]*url="([^"]+)"""").find(block)?.groupValues?.get(1)
+            val image = attributeAfter(block, "media:content", "url")
+                ?: attributeAfter(block, "enclosure", "url")
             out += FeedArticle(link, sourceId, title, DateParsing.parseMillis(date) ?: 0L, image)
         }
         return out
@@ -66,9 +75,8 @@ object SitemapParser {
 
     private fun extractAtom(doc: String, sourceId: String): List<FeedArticle> {
         val out = mutableListOf<FeedArticle>()
-        for (match in Regex("""<entry>(.*?)</entry>""", RegexOption.DOT_MATCHES_ALL).findAll(doc)) {
-            val block = match.groupValues[1]
-            val link = Regex("""<link[^>]*href="([^"]+)"""").find(block)?.groupValues?.get(1) ?: continue
+        forEachBlock(doc, "<entry>", "</entry>") { block ->
+            val link = attributeAfter(block, "link", "href") ?: return@forEachBlock
             val title = tagText(block, "title") ?: link
             val date = tagText(block, "published") ?: tagText(block, "updated")
             out += FeedArticle(decodeEntities(link), sourceId, title, DateParsing.parseMillis(date) ?: 0L)
@@ -76,22 +84,61 @@ object SitemapParser {
         return out
     }
 
+    /**
+     * Visits each `<open>…</close>` block in order, in one forward pass.
+     * Unterminated trailing blocks are ignored.
+     */
+    private inline fun forEachBlock(doc: String, open: String, close: String, visit: (String) -> Unit) {
+        var from = 0
+        while (true) {
+            val start = doc.indexOf(open, from)
+            if (start < 0) return
+            val contentStart = start + open.length
+            val end = doc.indexOf(close, contentStart)
+            if (end < 0) return
+            visit(doc.substring(contentStart, end))
+            from = end + close.length
+        }
+    }
+
+    /** Text of the first `<tag>…</tag>` inside [block], or null. Linear in the block. */
     private fun tagText(block: String, tag: String): String? {
-        val raw = Regex("""<$tag>(.*?)</$tag>""", RegexOption.DOT_MATCHES_ALL)
-            .find(block)?.groupValues?.get(1) ?: return null
+        val open = "<$tag>"
+        val start = block.indexOf(open)
+        if (start < 0) return null
+        val contentStart = start + open.length
+        val end = block.indexOf("</$tag>", contentStart)
+        if (end < 0) return null
+        val raw = block.substring(contentStart, end)
         val cdata = raw.trim().removePrefix("<![CDATA[").removeSuffix("]]>")
         return decodeEntities(cdata.trim()).takeIf { it.isNotEmpty() }
+    }
+
+    /** Value of attribute [attr] on the first `<tag …>` inside [block], or null. */
+    private fun attributeAfter(block: String, tag: String, attr: String): String? {
+        val tagStart = block.indexOf("<$tag")
+        if (tagStart < 0) return null
+        val attrStart = block.indexOf("$attr=\"", tagStart)
+        if (attrStart < 0) return null
+        val valueStart = attrStart + attr.length + 2
+        val end = block.indexOf('"', valueStart)
+        if (end < 0) return null
+        return decodeEntities(block.substring(valueStart, end)).takeIf { it.isNotEmpty() }
     }
 
     internal fun decodeEntities(text: String): String {
         var out = text
             .replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
             .replace("&quot;", "\"").replace("&apos;", "'").replace("&#39;", "'")
-        out = out.replace(Regex("""&#x([0-9a-fA-F]+);""")) {
+        out = out.replace(NUMERIC_HEX_ENTITY) {
             it.groupValues[1].toIntOrNull(16)?.toChar()?.toString() ?: it.value
         }
-        return out.replace(Regex("""&#(\d+);""")) {
+        return out.replace(NUMERIC_DEC_ENTITY) {
             it.groupValues[1].toIntOrNull()?.toChar()?.toString() ?: it.value
         }
     }
+
+    // Compiled once, applied only to individual field strings (never the document).
+    private val NUMERIC_HEX_ENTITY = Regex("""&#x([0-9a-fA-F]+);""")
+    private val NUMERIC_DEC_ENTITY = Regex("""&#(\d+);""")
 }

@@ -17,10 +17,22 @@ object Networking {
         "Accept-Language" to "en-GB,en;q=0.8",
     )
 
-    /** GET [url] as text; throws [IOException] on transport failure or non-2xx. */
+    /**
+     * GET [url] as text; throws [IOException] on transport failure or non-2xx.
+     * Explicit per-request timeouts (the client's pooled defaults are
+     * 10s connect / 30s read, and a read timeout only bounds stalls
+     * between bytes — NewsRepository additionally bounds each whole
+     * source fetch, see its SOURCE_TIMEOUT_MS).
+     */
     suspend fun fetchText(url: String): String {
-        val response = NetworkClient.execute(url, headers = headers)
+        val response = NetworkClient.execute(
+            url, headers = headers,
+            connectTimeoutMs = CONNECT_TIMEOUT_MS, readTimeoutMs = READ_TIMEOUT_MS,
+        )
         if (!response.isSuccess) throw IOException("HTTP ${response.status} for $url")
         return response.text
     }
+
+    private const val CONNECT_TIMEOUT_MS = 10_000L
+    private const val READ_TIMEOUT_MS = 15_000L
 }
