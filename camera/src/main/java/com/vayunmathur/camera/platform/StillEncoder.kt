@@ -56,6 +56,18 @@ internal object StillEncoder {
             } else {
                 val upright = uprightCopy(bitmap, rotationDegrees, 0)
                 try {
+                    // Hardware still encoder first when the device ships
+                    // one (cached MediaCodecList probe, warmed at startup);
+                    // on this class of device there is none, so the tuned
+                    // software ravif path below is the producer.
+                    val hw = if (AvifHardwareEncoder.isAvailable()) {
+                        AvifHardwareEncoder.encode(
+                            upright, exifTiff, StillFormatRouting.AVIF_QUALITY,
+                        )
+                    } else {
+                        null
+                    }
+                    hw?.let { return EncodedStill(it, StillFormat.AVIF) }
                     encodeAvif(upright, exifTiff)?.let { return EncodedStill(it, StillFormat.AVIF) }
                 } finally {
                     if (upright !== bitmap) upright.recycle()
@@ -81,7 +93,8 @@ internal object StillEncoder {
             rgba[i * 4 + 2] = (px and 0xFF).toByte()
             rgba[i * 4 + 3] = (px ushr 24 and 0xFF).toByte()
         }
-        return try {
+        val started = android.os.SystemClock.elapsedRealtime()
+        val encoded = try {
             StitchNative.encodeAvifExif(
                 rgba, width, height,
                 StillFormatRouting.AVIF_QUALITY, StillFormatRouting.AVIF_SPEED,
@@ -91,6 +104,16 @@ internal object StillEncoder {
             Log.status("StillEncoder", "AVIF native call failed; JPEG fallback", e)
             null
         }
+        // StillSave breadcrumb (debug level: visible in release, see
+        // CameraSaveRouting) so shutter-to-saved timing is provable from
+        // logcat: this is the encode segment, on top of capture/decode.
+        Log.debug(
+            "StillSave",
+            "avifEncodeMs=${android.os.SystemClock.elapsedRealtime() - started} " +
+                "speed=${StillFormatRouting.AVIF_SPEED} ${width}x$height " +
+                "bytes=${encoded?.size ?: -1} source=ravif",
+        )
+        return encoded
     }
 
     private fun encodeJpeg(bitmap: Bitmap): ByteArray =

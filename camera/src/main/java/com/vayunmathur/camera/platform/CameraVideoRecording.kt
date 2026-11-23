@@ -384,12 +384,7 @@ fun CameraViewModel.captureVideoSnapshot() {
         mirrored = mirrorCaptures,
         callback = object : com.vayunmathur.camera.platform.camera2.Camera2Session.StillCallback {
             override fun onStillCaptured(still: com.vayunmathur.camera.platform.camera2.CapturedStill) {
-                viewModelScope.launch {
-                    val uri = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                        runCatching { saveCamera2Still(still) }
-                            .onFailure { Log.error("CameraViewModel", "Video snapshot save failed", it) }
-                            .getOrNull()
-                    }
+                onCamera2StillCaptured(still) { uri ->
                     if (uri != null) setLastCaptureUri(uri)
                 }
             }

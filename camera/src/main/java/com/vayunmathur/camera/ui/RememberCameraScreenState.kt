@@ -24,7 +24,6 @@ internal fun rememberCameraScreenState(viewModel: CameraViewModel): CameraScreen
     val flashMode by viewModel.flashMode.collectAsState()
     val torchEnabled by viewModel.torchEnabled.collectAsState()
     val videoCodec by viewModel.videoCodec.collectAsState()
-    val audioCodec by viewModel.audioCodec.collectAsState()
     val audioInputSource by viewModel.audioInputSource.collectAsState()
     val isRecording by viewModel.isRecording.collectAsState()
     val recordingDuration by viewModel.recordingDurationSec.collectAsState()
@@ -87,7 +86,7 @@ internal fun rememberCameraScreenState(viewModel: CameraViewModel): CameraScreen
     val deviceRotationState = remember { mutableIntStateOf(0) }
 
     return remember(
-        cameraMode, lensFacing, selectedLens, availableLenses, hasFlashUnit, flashMode, torchEnabled, videoCodec, audioCodec, audioInputSource, mirrorFront, isRecording, recordingDuration,
+        cameraMode, lensFacing, selectedLens, availableLenses, hasFlashUnit, flashMode, torchEnabled, videoCodec, audioInputSource, mirrorFront, isRecording, recordingDuration,
         timerCountdown, qrResult, aspectRatio, zoomRatio, timerDuration,
         isCapturing, burstActive, burstCount, focusLocked, recordingPaused, micMuted,
         videoSnapshotSupported, lastCaptureUri, gridEnabled, levelEnabled, roll,
@@ -110,7 +109,6 @@ internal fun rememberCameraScreenState(viewModel: CameraViewModel): CameraScreen
             flashMode = flashMode,
             torchEnabled = torchEnabled,
             videoCodec = videoCodec,
-            audioCodec = audioCodec,
             audioInputSource = audioInputSource,
             isRecording = isRecording,
             recordingDuration = recordingDuration,

@@ -60,6 +60,11 @@ internal fun CameraViewModel.runStartupSequence() {
     viewModelScope.launch {
         sloMoSupportedMutable.value = probeSloMoSupport()
     }
+    // Cache the MediaCodecList AVIF-encoder probe once, off the capture
+    // path: StillEncoder only reads the verdict at shot time.
+    viewModelScope.launch(Dispatchers.Default) {
+        AvifCodecProbe.warmUp()
+    }
     // DEBUG: Night mode resolution question – extension uses default resolution vs max-res,
     // may be lower so can't take full quality?
     startDebugLogging()

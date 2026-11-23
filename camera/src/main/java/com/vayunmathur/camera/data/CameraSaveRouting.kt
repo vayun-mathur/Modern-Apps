@@ -73,6 +73,7 @@ internal fun CameraViewModel.saveProcessedStill(
     sourceJpeg: ByteArray? = null,
     fileStem: String? = null,
 ): SavedStill? {
+    val started = android.os.SystemClock.elapsedRealtime()
     val exifTiff = if (photoFormatMutable.value == com.vayunmathur.camera.platform.PhotoFormat.AVIF) {
         val carrier = java.io.ByteArrayOutputStream().use { out ->
             bitmap.compress(Bitmap.CompressFormat.JPEG, StillFormatRouting.JPEG_QUALITY, out)
@@ -82,7 +83,19 @@ internal fun CameraViewModel.saveProcessedStill(
     } else {
         null
     }
+    val exifMs = android.os.SystemClock.elapsedRealtime() - started
+    val encodeStarted = android.os.SystemClock.elapsedRealtime()
     val encoded: EncodedStill = encode(bitmap, rotationDegrees, exifTiff)
+    // StillSave breadcrumb: the two segments a processed still spends
+    // before MediaStore — EXIF TIFF build (full-res JPEG carrier encode
+    // + tag copy) and the container encode itself (ravif segment is
+    // logged in detail by StillEncoder). Payload-free, release-visible.
+    Log.debug(
+        "StillSave",
+        "processedStill exifMs=$exifMs encodeMs=" +
+            "${android.os.SystemClock.elapsedRealtime() - encodeStarted} " +
+            "format=${encoded.format} ${bitmap.width}x${bitmap.height} bytes=${encoded.bytes.size}",
+    )
     val name = if (fileStem != null) {
         "$fileStem.${StillFormatRouting.extension(encoded.format)}"
     } else {

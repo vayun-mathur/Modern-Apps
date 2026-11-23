@@ -5,6 +5,7 @@ import android.util.Range
 import com.vayunmathur.camera.platform.toCustomRecordingConfig
 import android.util.Size
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import org.junit.Test
@@ -131,6 +132,8 @@ class HighSpeedCaptureTest {
         assertEquals(30, config.fps)
         assertEquals(240, config.captureFps)
         assertEquals(android.media.MediaFormat.MIMETYPE_VIDEO_AVC, config.videoMime)
+        // Slo-mo stays no-audio under the Opus-only regime (piece 5).
+        assertFalse(config.audioEnabled)
     }
 
     @Test fun sixtyFpsIsTheSlowestHonestPoint() {

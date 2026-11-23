@@ -41,7 +41,12 @@ object CodecSupport {
     /** The Recorder can encode HEVC/H.265 (`video/hevc`) on this device. */
     val isHevcEncoderAvailable: Boolean by lazy { supports(MediaFormat.MIMETYPE_VIDEO_HEVC) }
 
-    /** The Recorder can encode Opus (`audio/opus`) on this device. */
+    /**
+     * An Opus (`audio/opus`) encoder exists on this device. Opus is the
+     * only audio encoding the recording core will ever use (see
+     * AudioEncoderPolicy): false means recordings proceed video-only,
+     * never AAC.
+     */
     val isOpusAudioEncoderAvailable: Boolean by lazy {
         supportsAudio(MediaFormat.MIMETYPE_AUDIO_OPUS)
     }

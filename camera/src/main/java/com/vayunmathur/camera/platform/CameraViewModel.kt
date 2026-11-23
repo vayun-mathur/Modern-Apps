@@ -87,6 +87,13 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
         // small: one encoding plus one waiting. A press beyond it takes a plain still.
         const val MAX_PENDING_MOTION_SAVES = 2
 
+        // Processed stills (AVIF encodes above all) still saving after
+        // their shutter was released. Each holds a full-res source until
+        // encoded, so keep this small: one encoding plus one waiting. A
+        // press beyond it keeps the synchronous save rather than dropping
+        // or rerouting the shot.
+        const val MAX_PENDING_STILL_SAVES = 2
+
         val EXPOSURE_TIME_STOPS: List<ExposureTimeStop> = EXPOSURE_TIME_STOPS_TABLE
 
         /**
@@ -212,10 +219,9 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
     internal val audioInputSourceMutable = MutableStateFlow(AudioInputSource.CAMCORDER)
     val audioInputSource = audioInputSourceMutable.asStateFlow()
 
-    // Recording audio codec. Default AAC preserves the long-standing Recorder
-    // default; Opus is opt-in and only used when the Recorder reports support.
-    internal val audioCodecMutable = MutableStateFlow(AudioCodec.AAC)
-    val audioCodec = audioCodecMutable.asStateFlow()
+    // No recording audio-codec state: audio is always Opus
+    // (AudioEncoderPolicy), with a video-only recording when a device
+    // has no Opus encoder. There is nothing for the user to select.
 
     internal val saveTargetMutable = MutableStateFlow<SaveTarget>(SaveTarget.MediaStoreDefault)
     val saveTarget = saveTargetMutable.asStateFlow()
@@ -273,6 +279,19 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
     )
     internal var motionSaveDispatcher: CoroutineDispatcher = Dispatchers.IO
     internal var motionPhotoSaver: suspend (MotionSaveRequest) -> Uri? = { assembleAndSaveMotionPhoto(it) }
+
+    // Background processed-still saves: the encode + MediaStore landing
+    // runs after the shutter is released, one at a time (the mutex), in
+    // this scope so a shot taken just before leaving still lands. The
+    // dispatcher is a var only so tests can drive the state machine.
+    internal val stillSaveQueue = com.vayunmathur.camera.domain.StillSaveQueue(MAX_PENDING_STILL_SAVES)
+    internal val stillSaveMutex = Mutex()
+    internal val stillSaveScope = CoroutineScope(
+        SupervisorJob() + CoroutineExceptionHandler { _, e ->
+            Log.error("CameraViewModel", "Background still save failed", e)
+        }
+    )
+    internal var stillSaveDispatcher: CoroutineDispatcher = Dispatchers.IO
 
     internal val locationEnabledMutable = MutableStateFlow(false)
     val locationEnabled = locationEnabledMutable.asStateFlow()
@@ -389,8 +408,8 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
 
     /** The user's chosen bind-time settings, before any recording deferral. */
     private val desiredBindSettings = combine(
-        videoCodecMutable, audioCodecMutable, audioInputSourceMutable, mirrorFrontMutable
-    ) { video, audio, source, mirror -> BindTimeSettings(video, audio, source, mirror) }
+        videoCodecMutable, audioInputSourceMutable, mirrorFrontMutable
+    ) { video, source, mirror -> BindTimeSettings(video, source, mirror) }
 
     /**
      * The bind-time settings a session bind must actually use. Codec, audio source and
@@ -407,13 +426,13 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
     }
         .runningFold(
             BindTimeSettings(
-                CodecSupport.defaultVideoCodec, AudioCodec.AAC, AudioInputSource.CAMCORDER, true
+                CodecSupport.defaultVideoCodec, AudioInputSource.CAMCORDER, true
             )
         ) { held, gate -> if (gate.recording) held else gate.settings }
         .stateIn(
             viewModelScope, SharingStarted.Eagerly,
             BindTimeSettings(
-                CodecSupport.defaultVideoCodec, AudioCodec.AAC, AudioInputSource.CAMCORDER, true
+                CodecSupport.defaultVideoCodec, AudioInputSource.CAMCORDER, true
             )
         )
 

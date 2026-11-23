@@ -19,8 +19,22 @@ object StillFormatRouting {
     /** AVIF quality (ravif scale 1..100) for the native encoder. */
     const val AVIF_QUALITY = 80f
 
-    /** AVIF speed (rav1e scale 1..10, 10 = fastest) for stills. */
-    const val AVIF_SPEED = 8
+    /**
+     * AVIF speed (rav1e scale 1..10, 10 = fastest) for stills.
+     *
+     * Measured on a photo-like 4080x3072 (12 MP) frame at quality 80
+     * (host, release ravif; PSNR scored by decoding with dav1d):
+     * speed 8 took 3,248 ms with default threading (7,728 ms pinned to
+     * 8 threads, the phone-like core count) at PSNR 40.20 dB /
+     * 2,205,501 bytes; speed 10 took 424 ms (1,698 ms at 8 threads) at
+     * PSNR 40.14 dB / 2,284,322 bytes. So speed 10 is ~4.6x faster at
+     * 8 threads for -0.06 dB PSNR (within the speed 8<->9 spread) and
+     * +3.6% file size — the quantizer (quality target) is unchanged,
+     * the cost is only marginally less optimal partition/tx decisions.
+     * Speeds 4/6/9 were all >=2.9 s default-threaded with no PSNR gain
+     * over speed 10 worth the latency, so 10 is the knee.
+     */
+    const val AVIF_SPEED = 10
 
     /**
      * The format a still is really saved as. AVIF is only honoured when

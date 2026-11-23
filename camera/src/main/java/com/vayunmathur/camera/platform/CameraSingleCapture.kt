@@ -7,6 +7,7 @@ import com.vayunmathur.library.log.Log
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import com.vayunmathur.camera.data.MediaStoreSaver
 import com.vayunmathur.camera.data.saveProcessedStill
@@ -97,23 +98,41 @@ private fun CameraViewModel.runSingleCapture(session: Camera2Session, plan: Sing
             override fun onStillCaptured(still: CapturedStill) {
                 emitShutterFeedback()
                 if (plan.bokeh || plan.warmth != 0f || plan.shadows != 0f) {
-                    viewModelScope.launch {
-                        val uri = withContext(Dispatchers.IO) {
-                            runCatching {
-                                processSingleFrame(plan, still.jpegBytes, still.metadata.rotationDegrees)
-                            }.getOrNull()
+                    // Processed still: the source JPEG is secured, so
+                    // release the shutter now and decode/adjust/encode on
+                    // the bounded still-save queue; the thumbnail updates
+                    // when the save lands. A full queue keeps the inline
+                    // save below (never a dropped or rerouted shot).
+                    if (stillSaveQueue.tryReserve()) {
+                        finishCapture(null)
+                        stillSaveScope.launch(stillSaveDispatcher) {
+                            try {
+                                val uri = stillSaveMutex.withLock {
+                                    runCatching {
+                                        processSingleFrame(
+                                            plan, still.jpegBytes, still.metadata.rotationDegrees,
+                                        )
+                                    }.onFailure {
+                                        Log.error("CameraViewModel", "Single capture save failed", it)
+                                    }.getOrNull()
+                                }
+                                if (uri != null) setLastCaptureUri(uri)
+                            } finally {
+                                stillSaveQueue.release()
+                            }
                         }
-                        finishCapture(uri)
+                    } else {
+                        viewModelScope.launch {
+                            val uri = withContext(Dispatchers.IO) {
+                                runCatching {
+                                    processSingleFrame(plan, still.jpegBytes, still.metadata.rotationDegrees)
+                                }.getOrNull()
+                            }
+                            finishCapture(uri)
+                        }
                     }
                 } else {
-                    viewModelScope.launch {
-                        val uri = withContext(Dispatchers.IO) {
-                            runCatching { saveCamera2Still(still) }
-                                .onFailure { Log.error("CameraViewModel", "Single capture save failed", it) }
-                                .getOrNull()
-                        }
-                        finishCapture(uri)
-                    }
+                    onCamera2StillCaptured(still) { uri -> finishCapture(uri) }
                 }
             }
 

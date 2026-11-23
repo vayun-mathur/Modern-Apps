@@ -35,7 +35,6 @@ import com.vayunmathur.camera.platform.MotionPhotoDuration
 import com.vayunmathur.camera.data.SafDocuments
 import com.vayunmathur.camera.data.SaveTarget
 import com.vayunmathur.camera.data.clearSaveTreeUri
-import com.vayunmathur.camera.data.setAudioCodec
 import com.vayunmathur.camera.data.setAudioInputSource
 import com.vayunmathur.camera.data.setEdgeSharpeningEnabled
 import com.vayunmathur.camera.data.setLocationEnabled
@@ -59,7 +58,6 @@ fun <T : NavKey> SettingsPage(backStack: NavBackStack<T>, viewModel: CameraViewM
     val locationEnabled by viewModel.locationEnabled.collectAsState()
     val videoCodec by viewModel.videoCodec.collectAsState()
     val photoFormat by viewModel.photoFormat.collectAsState()
-    val audioCodec by viewModel.audioCodec.collectAsState()
     val audioInputSource by viewModel.audioInputSource.collectAsState()
     val mirrorFront by viewModel.mirrorFront.collectAsState()
     val noiseReductionEnabled by viewModel.noiseReductionEnabled.collectAsState()
@@ -141,10 +139,8 @@ fun <T : NavKey> SettingsPage(backStack: NavBackStack<T>, viewModel: CameraViewM
             )
             CameraCodecSettings(
                 videoCodec = videoCodec,
-                audioCodec = audioCodec,
                 audioInputSource = audioInputSource,
                 onVideoCodecChange = { viewModel.setVideoCodec(it); noteIfDeferred() },
-                onAudioCodecChange = { viewModel.setAudioCodec(it); noteIfDeferred() },
                 onAudioInputSourceChange = { viewModel.setAudioInputSource(it); noteIfDeferred() },
             )
 

@@ -47,23 +47,6 @@ enum class PhotoFormat(@StringRes val labelRes: Int, @StringRes val descriptionR
     AVIF(R.string.photo_format_avif_label, R.string.photo_format_avif_description),
 }
 
-/** Audio codecs selectable for video recording, with display text and Recorder mime. */
-enum class AudioCodec(
-    @StringRes val labelRes: Int,
-    @StringRes val descriptionRes: Int,
-    val mimeType: String,
-) {
-    AAC(
-        R.string.audio_codec_aac_label,
-        R.string.audio_codec_aac_description,
-        android.media.MediaFormat.MIMETYPE_AUDIO_AAC,
-    ),
-    OPUS(
-        R.string.audio_codec_opus_label,
-        R.string.audio_codec_opus_description,
-        android.media.MediaFormat.MIMETYPE_AUDIO_OPUS,
-    ),
-}
 /** Motion-Photo clip durations (seconds). */
 private const val MOTION_ONE_SECOND = 1
 private const val MOTION_THREE_SECONDS = 3
@@ -100,16 +83,17 @@ enum class AudioInputSource(
 }
 
 /**
- * The bind-time recording settings snapshot: video/audio codec, audio source and
- * front mirroring are baked into the Recorder/VideoCapture when the session binds
- * and cannot change mid-recording. The user's chosen (desired) values live in the
- * individual CameraViewModel flows and persist immediately; this snapshot is what
+ * The bind-time recording settings snapshot: video codec, audio source and
+ * front mirroring are baked into the recording engine when the session binds
+ * and cannot change mid-recording. (Audio is always Opus — see
+ * AudioEncoderPolicy — so there is no audio-codec value to snapshot.)
+ * The user's chosen (desired) values live in the individual
+ * CameraViewModel flows and persist immediately; this snapshot is what
  * a bind actually uses, held unchanged while a recording is in progress and
  * released to the desired values when it stops (see CameraViewModel.bindTimeSettings).
  */
 data class BindTimeSettings(
     val videoCodec: VideoCodec,
-    val audioCodec: AudioCodec,
     val audioInputSource: AudioInputSource,
     val mirrorFront: Boolean,
 )

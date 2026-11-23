@@ -50,6 +50,26 @@ class StillEncoderNativeTest {
     }
 
     @Test
+    fun muxAvifExifSplicesExifItemIntoBareAvif() {
+        if (!StitchNative.isAvailable) return
+        val width = 64
+        val height = 48
+        val rgba = ByteArray(width * height * 4) { 0x80.toByte() }
+        val bare = StitchNative.encodeAvif(rgba, width, height, 80f, 10)
+        assertNotNull(bare)
+        val tiff = "II*\u0000\u0008\u0000\u0000\u0000GPSMARK".toByteArray(Charsets.ISO_8859_1)
+        val muxed = StitchNative.muxAvifExif(bare, tiff)
+        assertNotNull(muxed)
+        assertEquals("ftypavif", String(muxed, 4, 8, Charsets.US_ASCII))
+        val asText = String(muxed, Charsets.ISO_8859_1)
+        assertTrue("Exif" in asText)
+        assertTrue("GPSMARK" in asText)
+        // Non-TIFF payloads and double-muxing are refused (software fallback).
+        assertEquals(null, StitchNative.muxAvifExif(bare, byteArrayOf(1, 2, 3)))
+        assertEquals(null, StitchNative.muxAvifExif(muxed, tiff))
+    }
+
+    @Test
     fun encodeAvifRejectsMismatchedInput() {
         if (!StitchNative.isAvailable) return
         assertEquals(null, StitchNative.encodeAvif(ByteArray(10), 64, 48, 80f, 10))

@@ -1,7 +1,6 @@
 package com.vayunmathur.camera.platform
 
 import android.hardware.camera2.CameraManager
-import androidx.lifecycle.viewModelScope
 import com.vayunmathur.camera.data.setLastCaptureUri
 import com.vayunmathur.camera.domain.LensFacing
 import com.vayunmathur.camera.platform.camera2.Camera2ExtensionProbe
@@ -12,9 +11,6 @@ import com.vayunmathur.camera.platform.camera2.ExtensionsEngineInput
 import com.vayunmathur.camera.platform.camera2.ExtensionsEnginePolicy
 import com.vayunmathur.camera.platform.camera2.NightEngine
 import com.vayunmathur.library.log.Log
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 /**
  * Camera2 migration Phase 6: NIGHT-extension glue between the gated
@@ -107,12 +103,7 @@ internal fun CameraViewModel.tryCaptureCamera2NightExtension(): Boolean {
         mirrored = mirrored,
         callback = object : Camera2ExtensionSession.StillCallback {
             override fun onStillCaptured(still: CapturedStill) {
-                viewModelScope.launch {
-                    val uri = withContext(Dispatchers.IO) {
-                        runCatching { saveCamera2Still(still) }
-                            .onFailure { Log.error("Camera2Night", "save failed", it) }
-                            .getOrNull()
-                    }
+                onCamera2StillCaptured(still) { uri ->
                     isCapturingMutable.value = false
                     if (uri != null) setLastCaptureUri(uri)
                 }

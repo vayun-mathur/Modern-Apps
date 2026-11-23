@@ -92,6 +92,15 @@ object StitchNative {
         rgba: ByteArray, width: Int, height: Int, quality: Float, speed: Int, exif: ByteArray,
     ): ByteArray?
 
+    /**
+     * Splices [exif] (a TIFF payload) into an already-encoded AVIF file
+     * (e.g. from a hardware `image/avif` MediaCodec encoder, which has no
+     * EXIF input) as its ISOBMFF Exif item. Null on any failure — the
+     * caller then falls back to the software encoder rather than saving
+     * an EXIF-less AVIF.
+     */
+    external fun muxAvifExif(avif: ByteArray, exif: ByteArray): ByteArray?
+
     // --- Zero-copy luma on-ramp (Camera2 migration Phase 3) ---
 
     /**

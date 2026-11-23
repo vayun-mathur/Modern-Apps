@@ -125,6 +125,15 @@ class StillFormatRoutingTest {
     }
 
     @Test
+    fun avifSpeedAndQualityTargetsArePinned() {
+        // Quality target unchanged by the speed tuning; speed 10 is the
+        // measured knee (see AVIF_SPEED doc: ~4.6x faster at 8 threads
+        // for -0.06 dB PSNR, +3.6% size at quality 80).
+        assertEquals(80f, StillFormatRouting.AVIF_QUALITY)
+        assertEquals(10, StillFormatRouting.AVIF_SPEED)
+    }
+
+    @Test
     fun extensionAndMimeMatchContainer() {
         assertEquals("jpg", StillFormatRouting.extension(StillFormat.JPEG))
         assertEquals("image/jpeg", StillFormatRouting.mimeType(StillFormat.JPEG))

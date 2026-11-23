@@ -4,6 +4,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
@@ -17,6 +18,7 @@ import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.NavKey
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
+import kotlin.test.assertTrue
 import kotlinx.serialization.Serializable
 import org.junit.Rule
 import org.junit.Test
@@ -60,6 +62,21 @@ class CameraCovC2SettingsTest {
         rule.waitForIdle()
         rule.onNodeWithText(str(other.labelRes), substring = true).performClick()
         assertEquals(other, viewModel.audioInputSource.value)
+    }
+
+    @Test fun settingsPageHasNoAudioCodecRow() {
+        // Opus-only: audio encoding is not selectable, so Settings must
+        // not offer an audio-codec row (the audio *source* row stays).
+        val viewModel = vm()
+        val backStack = NavBackStack<TestRoute>(arrayOf(TestRoute.Home))
+        rule.setContent { SettingsPage(backStack, viewModel) }
+        rule.onNode(hasScrollAction()).performScrollToNode(
+            hasText(str(com.vayunmathur.camera.R.string.settings_audio_source))
+        )
+        assertTrue(
+            rule.onAllNodesWithText("Audio codec", substring = true).fetchSemanticsNodes().isEmpty(),
+            "Settings must not show an audio-codec picker (Opus is the only option)",
+        )
     }
 
     @Test fun postProcessingSettingsToggleAndDuration() {

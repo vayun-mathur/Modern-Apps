@@ -15,7 +15,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.camera.R
-import com.vayunmathur.camera.platform.AudioCodec
 import com.vayunmathur.camera.platform.AudioInputSource
 import com.vayunmathur.camera.platform.CodecSupport
 import com.vayunmathur.camera.platform.VideoCodec
@@ -29,17 +28,16 @@ import com.vayunmathur.library.ui.SettingsSection
 import com.vayunmathur.library.ui.Text
 
 /**
- * Codec and audio-source pickers owned by [SettingsPage]: the video codec,
- * audio codec and audio input source dropdowns. Stateless: the caller passes
- * values plus change callbacks.
+ * Codec and audio-source pickers owned by [SettingsPage]: the video codec
+ * and audio input source dropdowns. (There is no audio-codec picker:
+ * recording audio is always Opus.) Stateless: the caller passes values
+ * plus change callbacks.
  */
 @Composable
 fun CameraCodecSettings(
     videoCodec: VideoCodec,
-    audioCodec: AudioCodec,
     audioInputSource: AudioInputSource,
     onVideoCodecChange: (VideoCodec) -> Unit,
-    onAudioCodecChange: (AudioCodec) -> Unit,
     onAudioInputSourceChange: (AudioInputSource) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -84,79 +82,6 @@ fun CameraCodecSettings(
                                 onClick = {
                                     onVideoCodecChange(codec)
                                     expanded = false
-                                },
-                                text = {
-                                    Column {
-                                        Text(stringResource(codec.labelRes))
-                                        Text(
-                                            stringResource(codec.descriptionRes),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                },
-                                selectedLeadingIcon = { IconCheck() },
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        val availableAudioCodecs = remember {
-            buildList {
-                add(AudioCodec.AAC)
-                if (CodecSupport.isOpusAudioEncoderAvailable) add(AudioCodec.OPUS)
-            }
-        }
-        // A stored Opus choice on a device with no Opus encoder falls back to AAC in
-        // the video session (CameraVideoSession); keep the row visible in that case so
-        // the summary can name the effective codec instead of silently showing Opus.
-        val opusUnavailable = audioCodec == AudioCodec.OPUS &&
-            !CodecSupport.isOpusAudioEncoderAvailable
-        val effectiveAudioCodec = if (opusUnavailable) AudioCodec.AAC else audioCodec
-        if (availableAudioCodecs.size > 1 || opusUnavailable) {
-            SettingsSection(title = stringResource(R.string.settings_audio_codec)) {
-                // Built from [OutlinedButton] + [DropdownMenu] rather than the library's
-                // `ExposedDropdownMenu` wrapper, which currently recurses into itself.
-                var audioCodecExpanded by remember { mutableStateOf(false) }
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = { audioCodecExpanded = true },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            if (opusUnavailable) {
-                                stringResource(
-                                    R.string.audio_codec_fallback_summary,
-                                    stringResource(effectiveAudioCodec.labelRes),
-                                    stringResource(effectiveAudioCodec.descriptionRes),
-                                    stringResource(audioCodec.labelRes),
-                                )
-                            } else {
-                                "${stringResource(audioCodec.labelRes)} — ${stringResource(audioCodec.descriptionRes)}"
-                            },
-                            modifier = Modifier.weight(1f),
-                            textAlign = TextAlign.Start,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        IconArrowDropDown()
-                    }
-                    DropdownMenu(
-                        expanded = audioCodecExpanded,
-                        onDismissRequest = { audioCodecExpanded = false }
-                    ) {
-                        availableAudioCodecs.forEach { codec ->
-                            SelectableDropdownMenuItem(
-                                selected = codec == effectiveAudioCodec,
-                                onClick = {
-                                    onAudioCodecChange(codec)
-                                    audioCodecExpanded = false
                                 },
                                 text = {
                                     Column {

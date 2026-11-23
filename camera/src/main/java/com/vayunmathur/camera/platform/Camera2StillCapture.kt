@@ -20,6 +20,7 @@ import com.vayunmathur.camera.platform.camera2.StillEnginePolicy
 import com.vayunmathur.library.log.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 /**
@@ -101,12 +102,7 @@ internal fun CameraViewModel.tryCaptureCamera2Still(): Boolean {
     emitShutterFeedback()
     val stillCallback = object : Camera2Session.StillCallback {
             override fun onStillCaptured(still: CapturedStill) {
-                viewModelScope.launch {
-                    val uri = withContext(Dispatchers.IO) {
-                        runCatching { saveCamera2Still(still) }
-                            .onFailure { Log.error("Camera2Still", "save failed", it) }
-                            .getOrNull()
-                    }
+                onCamera2StillCaptured(still) { uri ->
                     isCapturingMutable.value = false
                     if (uri != null) setLastCaptureUri(uri)
                 }
@@ -159,6 +155,54 @@ internal fun CameraViewModel.saveCamera2Still(still: CapturedStill): Uri? {
         StillFormatRouting.StillSaveRoute.PROCESSED_ENCODER -> saveCamera2EncodedStill(still)
         StillFormatRouting.StillSaveRoute.JPEG_BYTES,
         StillFormatRouting.StillSaveRoute.ULTRA_HDR_JPEG_BYTES -> saveJpegStill(still)
+    }
+}
+
+/**
+ * Lands one captured Camera2 still, releasing the shutter first when the
+ * landing is an AVIF encode. Once [still] is in memory its source JPEG
+ * bytes are secured, so capture completion ([finishCapture] with a null
+ * uri: shutter/next-shot readiness, countdown and exposure restore) must
+ * not wait for the decode + EXIF build + ravif encode + MediaStore
+ * insert: that runs on the bounded still-save queue (one encode at a
+ * time, [CameraViewModel.stillSaveQueue]) and the gallery thumbnail
+ * updates when the save lands, exactly like Motion Photos (#914). JPEG
+ * and Ultra HDR byte landings are cheap and keep the inline path, as
+ * does an AVIF shot arriving while every save slot is busy — the shot
+ * still lands in the selected format, it just waits as before.
+ */
+internal fun CameraViewModel.onCamera2StillCaptured(
+    still: CapturedStill,
+    finishCapture: (Uri?) -> Unit,
+) {
+    val ultraHdrSource = still.tag == StillOutputTag.ULTRA_HDR_JPEG_R ||
+        StillFormatRouting.isUltraHdrJpeg(still.jpegBytes)
+    val avifEncode = StillFormatRouting.stillSaveRoute(
+        requestedStillFormat(), ultraHdrSource,
+    ) == StillFormatRouting.StillSaveRoute.PROCESSED_ENCODER
+    if (avifEncode && stillSaveQueue.tryReserve()) {
+        finishCapture(null)
+        stillSaveScope.launch(stillSaveDispatcher) {
+            try {
+                val uri = stillSaveMutex.withLock {
+                    runCatching { saveCamera2Still(still) }
+                        .onFailure { Log.error("Camera2Still", "background save failed", it) }
+                        .getOrNull()
+                }
+                if (uri != null) setLastCaptureUri(uri)
+            } finally {
+                stillSaveQueue.release()
+            }
+        }
+        return
+    }
+    viewModelScope.launch {
+        val uri = withContext(Dispatchers.IO) {
+            runCatching { saveCamera2Still(still) }
+                .onFailure { Log.error("Camera2Still", "save failed", it) }
+                .getOrNull()
+        }
+        finishCapture(uri)
     }
 }
 

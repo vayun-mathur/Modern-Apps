@@ -99,22 +99,6 @@
         <item quantity="other">%1$d seconds</item>
     </plurals>
 
-    <!-- Audio codec settings: codec used for video recording audio -->
-    <!-- SettingsPage: section header for audio codec selection -->
-    <string name="settings_audio_codec">Audio codec</string>
-    <!-- SettingsPage: audio codec summary when the stored codec is unavailable on this device
-         and recording falls back to the effective codec. %1$s = effective codec label,
-         %2$s = effective codec description, %3$s = stored (unavailable) codec label -->
-    <string name="audio_codec_fallback_summary">%1$s — %2$s (%3$s unavailable)</string>
-    <!-- Audio codec option label: AAC -->
-    <string name="audio_codec_aac_label">AAC</string>
-    <!-- Audio codec description: most compatible -->
-    <string name="audio_codec_aac_description">Most compatible</string>
-    <!-- Audio codec option label: Opus -->
-    <string name="audio_codec_opus_label">Opus</string>
-    <!-- Audio codec description: more efficient than AAC -->
-    <string name="audio_codec_opus_description">More efficient</string>
-
     <!-- Audio input source settings (SettingsPage): mic source used for video recordings -->
     <!-- SettingsPage: section header for audio input source selection -->
     <string name="settings_audio_source">Audio input source</string>
