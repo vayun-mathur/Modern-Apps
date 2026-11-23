@@ -12,7 +12,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.IconCopy
 import com.vayunmathur.library.ui.IconKey
@@ -105,10 +104,6 @@ fun MenuScreen(
                 Text(currentCode, style = MaterialTheme.typography.bodyLarge)
                 Spacer(Modifier.width(8.dp))
                 Box(contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(
-                        { (30000L - state.now() % 30000L) / 30000f },
-                        Modifier.size(40.dp),
-                    )
                     IconCopy(Modifier.size(16.dp))
                 }
             }

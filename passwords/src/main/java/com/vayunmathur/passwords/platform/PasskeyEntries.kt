@@ -9,11 +9,14 @@ import androidx.credentials.provider.BeginGetPasswordOption
 import androidx.credentials.provider.BeginGetPublicKeyCredentialOption
 import androidx.credentials.provider.PasswordCredentialEntry
 import androidx.credentials.provider.PublicKeyCredentialEntry
+import com.vayunmathur.library.log.Log
 import com.vayunmathur.passwords.data.PasskeyDao
 import com.vayunmathur.passwords.data.PasswordDao
 import com.vayunmathur.passwords.data.PasswordRepository
 import com.vayunmathur.passwords.ui.PasskeyAuthActivity
 import org.json.JSONObject
+
+private const val TAG = "PasskeyEntries"
 
 /**
  * Builds the credential entries (passkeys + saved passwords) shown to the
@@ -30,65 +33,99 @@ suspend fun buildGetCredentialResponse(
     val responseBuilder = BeginGetCredentialResponse.Builder()
     for (option in options) {
         when (option) {
-            is BeginGetPublicKeyCredentialOption -> {
-                // requestJson comes from the calling app; skip malformed options.
-                val request = runCatching { JSONObject(option.requestJson) }.getOrNull() ?: continue
-                val rpId = request.optString("rpId", "")
-                if (rpId.isBlank()) continue
-                // An allowCredentials list constrains which credentials may be
-                // offered; offering the rest only lets the user pick one the
-                // relying party will reject.
-                val allowedIds = PasskeyUtils.credentialDescriptorIds(request, "allowCredentials")
-                for (passkey in passkeyDao.getByRpId(rpId)) {
-                    if (allowedIds.isNotEmpty() &&
-                        allowedIds.none { PasskeyUtils.credentialIdsMatch(passkey.credentialId, it) }
-                    ) continue
-                    val intent = Intent(context, PasskeyAuthActivity::class.java).apply {
-                        putExtra(PasskeyAuthActivity.EXTRA_FLOW, PasskeyAuthActivity.FLOW_GET)
-                        putExtra(PasskeyAuthActivity.EXTRA_CREDENTIAL_ID, passkey.credentialId)
-                    }
-                    val pendingIntent = PendingIntent.getActivity(
-                        context,
-                        passkey.id.toInt(),
-                        intent,
-                        PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-                    )
-                    responseBuilder.addCredentialEntry(
-                        PublicKeyCredentialEntry.Builder(
-                            context,
-                            passkey.userName,
-                            pendingIntent,
-                            option,
-                        ).build()
-                    )
-                }
-            }
-            is BeginGetPasswordOption -> {
-                for (pass in passwordDao.getAll()) {
-                    val intent = Intent(context, PasskeyAuthActivity::class.java).apply {
-                        putExtra(PasskeyAuthActivity.EXTRA_FLOW, PasskeyAuthActivity.FLOW_PASSWORD)
-                        putExtra(PasskeyCredentialService.EXTRA_PASSWORD_ID, pass.id)
-                    }
-                    val pendingIntent = PendingIntent.getActivity(
-                        context,
-                        (pass.id + 100000).toInt(),
-                        intent,
-                        PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-                    )
-                    responseBuilder.addCredentialEntry(
-                        PasswordCredentialEntry.Builder(
-                            context,
-                            pass.username,
-                            pendingIntent,
-                            option,
-                        ).setDisplayName(pass.name.ifBlank { null })
-                            .build()
-                    )
-                }
-            }
+            is BeginGetPublicKeyCredentialOption ->
+                addPasskeyEntries(context, option, passkeyDao, responseBuilder)
+            is BeginGetPasswordOption ->
+                addPasswordEntries(context, option, passwordDao, responseBuilder)
         }
     }
     return responseBuilder.build()
+}
+
+private suspend fun addPasskeyEntries(
+    context: Context,
+    option: BeginGetPublicKeyCredentialOption,
+    passkeyDao: PasskeyDao,
+    responseBuilder: BeginGetCredentialResponse.Builder,
+) {
+    // requestJson comes from the calling app; skip malformed options.
+    val request = runCatching { JSONObject(option.requestJson) }.getOrNull() ?: return
+    val rpId = request.optString("rpId", "")
+    if (rpId.isBlank()) return
+    // An allowCredentials list constrains which credentials may be offered;
+    // offering the rest only lets the user pick one the RP will reject.
+    val allowedIds = PasskeyUtils.credentialDescriptorIds(request, "allowCredentials")
+    // One unreadable vault read (or one bad stored row below) must not fail
+    // the whole enumeration: the provider callback has to complete with the
+    // entries that do work.
+    val passkeys = runCatching { passkeyDao.getByRpId(rpId) }
+        .onFailure { Log.error(TAG, "Listing passkeys for rpId=$rpId failed", it) }
+        .getOrDefault(emptyList())
+    for (passkey in passkeys) {
+        val allowed = allowedIds.isEmpty() ||
+            allowedIds.any { PasskeyUtils.credentialIdsMatch(passkey.credentialId, it) }
+        // A stored row with a blank id can never be asserted with; offering
+        // it would only hand the caller a dead entry.
+        if (allowed && passkey.credentialId.isNotBlank()) {
+            runCatching {
+                val intent = Intent(context, PasskeyAuthActivity::class.java).apply {
+                    putExtra(PasskeyAuthActivity.EXTRA_FLOW, PasskeyAuthActivity.FLOW_GET)
+                    putExtra(PasskeyAuthActivity.EXTRA_CREDENTIAL_ID, passkey.credentialId)
+                }
+                val pendingIntent = PendingIntent.getActivity(
+                    context,
+                    passkey.id.toInt(),
+                    intent,
+                    PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+                )
+                responseBuilder.addCredentialEntry(
+                    PublicKeyCredentialEntry.Builder(
+                        context,
+                        // Entry builders reject blank usernames; fall back so
+                        // an import with no name still lists.
+                        passkey.userName.ifBlank { passkey.userDisplayName }
+                            .ifBlank { passkey.rpId }.ifBlank { "Passkey" },
+                        pendingIntent,
+                        option,
+                    ).build()
+                )
+            }.onFailure { Log.error(TAG, "Skipping unusable passkey entry id=${passkey.id}", it) }
+        }
+    }
+}
+
+private suspend fun addPasswordEntries(
+    context: Context,
+    option: BeginGetPasswordOption,
+    passwordDao: PasswordDao,
+    responseBuilder: BeginGetCredentialResponse.Builder,
+) {
+    val passwords = runCatching { passwordDao.getAll() }
+        .onFailure { Log.error(TAG, "Listing passwords failed", it) }
+        .getOrDefault(emptyList())
+    for (pass in passwords) {
+        runCatching {
+            val intent = Intent(context, PasskeyAuthActivity::class.java).apply {
+                putExtra(PasskeyAuthActivity.EXTRA_FLOW, PasskeyAuthActivity.FLOW_PASSWORD)
+                putExtra(PasskeyCredentialService.EXTRA_PASSWORD_ID, pass.id)
+            }
+            val pendingIntent = PendingIntent.getActivity(
+                context,
+                (pass.id + 100000).toInt(),
+                intent,
+                PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            )
+            responseBuilder.addCredentialEntry(
+                PasswordCredentialEntry.Builder(
+                    context,
+                    pass.username.ifBlank { pass.name }.ifBlank { "Password" },
+                    pendingIntent,
+                    option,
+                ).setDisplayName(pass.name.ifBlank { null })
+                    .build()
+            )
+        }.onFailure { Log.error(TAG, "Skipping unusable password entry id=${pass.id}", it) }
+    }
 }
 
 /** Repository-based overload — preferred. */

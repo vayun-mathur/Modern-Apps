@@ -17,7 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.Card
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.IconCopy
 import com.vayunmathur.library.ui.MaterialTheme
@@ -53,12 +52,7 @@ fun PasswordTotpCard(password: Password, now: () -> Long, onCopy: (String) -> Un
                         Text(stringResource(R.string.totp_refreshes_in, secondsRemaining), style = MaterialTheme.typography.bodySmall)
                     }
 
-                    // Circular progress showing proportion of time remaining
                     Box(contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(
-                            { (30000L - now() % 30000L) / 30000f },
-                            Modifier.size(56.dp),
-                        )
                         IconButton({
                             onCopy(currentCode)
                         }) {

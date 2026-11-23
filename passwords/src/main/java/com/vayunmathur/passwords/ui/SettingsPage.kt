@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import com.vayunmathur.library.ui.Button
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.DetailScaffold
 import com.vayunmathur.library.ui.DropdownMenu
 import com.vayunmathur.library.ui.DropdownMenuItem
@@ -92,7 +91,7 @@ fun SettingsPage(
 
             if (importing) {
                 Row(Modifier.fillMaxWidth(), Arrangement.Center) {
-                    CircularProgressIndicator()
+                    Text("Loading\u2026")
                 }
             }
 

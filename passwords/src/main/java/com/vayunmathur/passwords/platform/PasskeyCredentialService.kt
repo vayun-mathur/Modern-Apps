@@ -10,6 +10,7 @@ import androidx.credentials.exceptions.CreateCredentialException
 import androidx.credentials.exceptions.GetCredentialException
 import androidx.credentials.exceptions.CreateCredentialUnknownException
 import androidx.credentials.exceptions.GetCredentialUnknownException
+import androidx.credentials.exceptions.ClearCredentialUnknownException
 import androidx.credentials.provider.AuthenticationAction
 import androidx.credentials.provider.BeginCreateCredentialRequest
 import androidx.credentials.provider.BeginCreateCredentialResponse
@@ -70,38 +71,78 @@ class PasskeyCredentialService : CredentialProviderService() {
         cancellationSignal: CancellationSignal,
         callback: OutcomeReceiver<BeginGetCredentialResponse, GetCredentialException>,
     ) {
-        if (!DatabaseHelper(applicationContext).isKeyGenerated()) {
-            callback.onResult(buildUnlockResponse())
-            return
-        }
-        // Credential Manager awaits the OutcomeReceiver, so returning here
-        // without blocking is the framework's async contract: the callback
-        // is invoked exactly once, from the IO coroutine, when the vault
-        // read completes (or with the unlock fallback on IllegalState).
-        val job = serviceScope.launch {
-            try {
-                val response = buildGetCredentialResponse(
-                    applicationContext,
-                    request.beginGetCredentialOptions,
-                    repository,
-                )
-                callback.onResult(response)
-            } catch (expected: CancellationException) {
-                throw expected
-            } catch (expected: IllegalStateException) {
-                Log.error(TAG, "onBeginGetCredentialRequest failed, falling back to unlock", expected)
-                closeCachedDatabase<PasswordDatabase>()
-                DatabaseHelper(applicationContext).deleteKey()
-                callback.onResult(buildUnlockResponse())
-            } catch (expected: Throwable) {
-                // e.g. SQLCipher native load failure opening the vault: the
-                // callback must still complete, so fall back to unlock rather
-                // than leaving Credential Manager waiting on a dead coroutine.
-                Log.error(TAG, "onBeginGetCredentialRequest failed, falling back to unlock", expected)
-                callback.onResult(buildUnlockResponse())
+        // Nothing in a provider callback may throw across the binder: the
+        // framework/caller (e.g. Vanadium) has no recovery for a provider
+        // exception, and an uncaught one can take the calling flow down.
+        // Every path here completes the callback exactly once, or logs when
+        // even completion fails (dead binder).
+        try {
+            val keyGenerated = runCatching {
+                DatabaseHelper(applicationContext).isKeyGenerated()
+            }.onFailure { Log.error(TAG, "isKeyGenerated failed, treating vault as locked", it) }
+                .getOrDefault(false)
+            if (!keyGenerated) {
+                deliverGet(callback) { buildUnlockResponse() }
+                return
             }
+            // Credential Manager awaits the OutcomeReceiver, so returning here
+            // without blocking is the framework's async contract: the callback
+            // is invoked exactly once, from the IO coroutine, when the vault
+            // read completes (or with the unlock fallback on failure).
+            val job = serviceScope.launch {
+                try {
+                    val response = buildGetCredentialResponse(
+                        applicationContext,
+                        request.beginGetCredentialOptions,
+                        repository,
+                    )
+                    deliverGet(callback) { response }
+                } catch (expected: CancellationException) {
+                    throw expected
+                } catch (expected: IllegalStateException) {
+                    Log.error(TAG, "onBeginGetCredentialRequest failed, falling back to unlock", expected)
+                    runCatching {
+                        closeCachedDatabase<PasswordDatabase>()
+                        DatabaseHelper(applicationContext).deleteKey()
+                    }
+                    deliverGetOrError(callback)
+                } catch (expected: Throwable) {
+                    // e.g. SQLCipher native load failure opening the vault: the
+                    // callback must still complete, so fall back to unlock rather
+                    // than leaving Credential Manager waiting on a dead coroutine.
+                    Log.error(TAG, "onBeginGetCredentialRequest failed, falling back to unlock", expected)
+                    deliverGetOrError(callback)
+                }
+            }
+            runCatching { cancellationSignal.setOnCancelListener { job.cancel() } }
+        } catch (expected: Throwable) {
+            Log.error(TAG, "onBeginGetCredentialRequest failed before dispatch", expected)
+            deliverGetError(callback)
         }
-        cancellationSignal.setOnCancelListener { job.cancel() }
+    }
+
+    /** Completes [callback] with [build]'s result; a throwing build or delivery is only logged. */
+    private fun deliverGet(
+        callback: OutcomeReceiver<BeginGetCredentialResponse, GetCredentialException>,
+        build: () -> BeginGetCredentialResponse,
+    ) {
+        runCatching { callback.onResult(build()) }
+            .onFailure { Log.error(TAG, "Delivering get response failed", it) }
+    }
+
+    /** Unlock fallback, degrading to a provider error if even that cannot be built/delivered. */
+    private fun deliverGetOrError(
+        callback: OutcomeReceiver<BeginGetCredentialResponse, GetCredentialException>,
+    ) {
+        val delivered = runCatching { callback.onResult(buildUnlockResponse()) }.isSuccess
+        if (!delivered) deliverGetError(callback)
+    }
+
+    private fun deliverGetError(
+        callback: OutcomeReceiver<BeginGetCredentialResponse, GetCredentialException>,
+    ) {
+        runCatching { callback.onError(GetCredentialUnknownException()) }
+            .onFailure { Log.error(TAG, "Delivering get error failed", it) }
     }
 
     override fun onBeginCreateCredentialRequest(
@@ -133,9 +174,12 @@ class PasskeyCredentialService : CredentialProviderService() {
             } else {
                 callback.onResult(BeginCreateCredentialResponse.Builder().build())
             }
-        } catch (expected: IllegalArgumentException) {
+        } catch (expected: Throwable) {
+            // Never throw across the binder (see onBeginGetCredentialRequest):
+            // any failure becomes a provider error outcome.
             Log.error(TAG, "onBeginCreateCredentialRequest failed", expected)
-            callback.onError(CreateCredentialUnknownException())
+            runCatching { callback.onError(CreateCredentialUnknownException()) }
+                .onFailure { Log.error(TAG, "Delivering create error failed", it) }
         }
     }
 
@@ -144,7 +188,13 @@ class PasskeyCredentialService : CredentialProviderService() {
         cancellationSignal: CancellationSignal,
         callback: OutcomeReceiver<Void?, ClearCredentialException>,
     ) {
-        callback.onResult(null)
+        try {
+            callback.onResult(null)
+        } catch (expected: Throwable) {
+            Log.error(TAG, "onClearCredentialStateRequest failed", expected)
+            runCatching { callback.onError(ClearCredentialUnknownException()) }
+                .onFailure { Log.error(TAG, "Delivering clear error failed", it) }
+        }
     }
 
     /** Shared constants and helpers for PasskeyCredentialService. */

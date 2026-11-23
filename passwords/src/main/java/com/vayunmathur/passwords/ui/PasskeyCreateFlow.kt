@@ -8,10 +8,10 @@ import com.vayunmathur.library.log.Log
 import com.vayunmathur.passwords.data.PasswordRepository
 import com.vayunmathur.passwords.domain.Cbor
 import com.vayunmathur.passwords.platform.PasskeyUtils
+import com.vayunmathur.passwords.platform.buildCreateResponseJson
 import com.vayunmathur.passwords.platform.cable.WebAuthnAuthenticator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.json.JSONArray
 import org.json.JSONObject
 
 private const val TAG = "PasskeyAuthActivity"
@@ -106,21 +106,16 @@ internal suspend fun PasskeyAuthActivity.handlePasskeyCreate(repository: Passwor
         PasskeyUtils.encodeB64Url(clientDataJson.toByteArray())
     }
 
-    val responseJson = JSONObject().apply {
-        put("id", credentialIdB64)
-        put("rawId", credentialIdB64)
-        put("type", "public-key")
-        put("authenticatorAttachment", "platform")
-        put("response", JSONObject().apply {
-            put("clientDataJSON", clientDataJsonB64)
-            put("attestationObject", PasskeyUtils.encodeB64Url(attestationObject))
-            put("transports", JSONArray(listOf("internal", "hybrid")))
-            put("publicKeyAlgorithm", -7)
-            put("publicKey", PasskeyUtils.encodeB64Url(created.publicKeySpki))
-            put("authenticatorData", PasskeyUtils.encodeB64Url(created.authenticatorData))
-        })
-        put("clientExtensionResults", JSONObject())
-    }.toString()
+    // Validated before it crosses to the caller, same contract as the get
+    // flow: malformed pieces throw and the activity answers RESULT_CANCELED
+    // instead of handing the caller a malformed RESULT_OK.
+    val responseJson = buildCreateResponseJson(
+        credentialId = created.credentialId,
+        attestationObject = attestationObject,
+        publicKeySpki = created.publicKeySpki,
+        authenticatorData = created.authenticatorData,
+        clientDataJsonB64 = clientDataJsonB64,
+    )
 
     Log.dev(TAG, "Passkey created successfully for rpId=$rpId, credId=$credentialIdB64")
     val credentialResponse = androidx.credentials.CreatePublicKeyCredentialResponse(responseJson)

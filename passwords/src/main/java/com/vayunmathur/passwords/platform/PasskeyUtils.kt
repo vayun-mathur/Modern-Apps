@@ -116,25 +116,26 @@ object PasskeyUtils {
                 Log.dev(TAG, "Resolved privileged browser origin: $origin")
                 origin.removeSuffix("/")
             } else null
-        } catch (expected: IllegalArgumentException) {
-            Log.dev(TAG, "No privileged browser match: ${expected.message}")
-            null
-        } catch (expected: IllegalStateException) {
+        } catch (expected: Exception) {
             // CallingAppInfo.getOrigin() throws IllegalStateException (not
             // IllegalArgumentException) when the system populated an origin but
             // the caller is not on the allow-list, e.g. a browser this app does
-            // not list. That caller is simply not privileged: fall back to its
-            // android: origin instead of aborting the whole ceremony.
+            // not list; the asset read can also fail with IOException. Every
+            // such caller is simply not privileged: fall back to its android:
+            // origin instead of aborting (or crashing) the whole ceremony.
+            // This runs inside a provider flow, so it must never throw.
             Log.dev(TAG, "Caller is not a privileged browser: ${expected.message}")
             null
         }
     }
 
     fun getAndroidOrigin(callingAppInfo: CallingAppInfo): String {
-        val signer = callingAppInfo.signingInfoCompat
-            .apkContentsSigners
-            .firstOrNull()
-            ?.toByteArray()
+        // signingInfoCompat can throw for a malformed/system-built
+        // CallingAppInfo; the unknown facet is a safe, RP-rejectable fallback
+        // and is always preferable to throwing inside a provider flow.
+        val signer = runCatching {
+            callingAppInfo.signingInfoCompat.apkContentsSigners.firstOrNull()?.toByteArray()
+        }.getOrNull()
         return if (signer != null) androidOriginFromSigner(signer) else "android:apk-key-hash:unknown"
     }
 

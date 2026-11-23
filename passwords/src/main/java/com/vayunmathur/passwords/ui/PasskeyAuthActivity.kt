@@ -4,11 +4,9 @@ package com.vayunmathur.passwords.ui
 
 import android.content.Intent
 import android.os.Bundle
-import android.util.Base64
 import com.vayunmathur.library.log.Log
 import androidx.credentials.GetPublicKeyCredentialOption
 import androidx.credentials.PublicKeyCredential
-import androidx.credentials.exceptions.GetCredentialUnknownException
 import androidx.credentials.provider.PendingIntentHandler
 import androidx.fragment.app.FragmentActivity
 import com.vayunmathur.library.util.AppMessages
@@ -18,6 +16,7 @@ import com.vayunmathur.passwords.platform.cable.WebAuthnAuthenticator
 import com.vayunmathur.passwords.data.PasswordRepository
 import com.vayunmathur.passwords.platform.PasskeyCredentialService
 import com.vayunmathur.passwords.platform.PasskeyUtils
+import com.vayunmathur.passwords.platform.buildAssertionResponseJson
 import com.vayunmathur.passwords.platform.buildGetCredentialResponse
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.CancellationException
@@ -35,24 +34,41 @@ class PasskeyAuthActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val helper = DatabaseHelper(applicationContext)
-        if (helper.isKeyGenerated()) {
-            repository = PasswordRepository.get(applicationContext)
-            proceedWithFlow()
-        } else {
-            unlockDatabaseWithBiometrics(
-                activity = this,
-                onSuccess = { passphrase ->
-                    helper.storePassphrase(passphrase)
-                    repository = PasswordRepository.get(applicationContext)
-                    proceedWithFlow()
-                },
-                onFailure = { message ->
-                    message?.let { AppMessages.show(it) }
-                    setResult(RESULT_CANCELED)
-                    finish()
-                }
-            )
+        // This activity exists only to answer a caller's credential request;
+        // any failure here (keystore, vault open, biometric plumbing) must
+        // end as RESULT_CANCELED, never as a crash the caller sits behind.
+        try {
+            val helper = DatabaseHelper(applicationContext)
+            if (helper.isKeyGenerated()) {
+                repository = PasswordRepository.get(applicationContext)
+                proceedWithFlow()
+            } else {
+                unlockDatabaseWithBiometrics(
+                    activity = this,
+                    onSuccess = { passphrase ->
+                        val opened = runCatching {
+                            helper.storePassphrase(passphrase)
+                            repository = PasswordRepository.get(applicationContext)
+                        }
+                        if (opened.isFailure) {
+                            Log.error(TAG, "Unlock succeeded but vault open failed", opened.exceptionOrNull())
+                            setResult(RESULT_CANCELED)
+                            finish()
+                        } else {
+                            proceedWithFlow()
+                        }
+                    },
+                    onFailure = { message ->
+                        message?.let { AppMessages.show(it) }
+                        setResult(RESULT_CANCELED)
+                        finish()
+                    }
+                )
+            }
+        } catch (expected: Throwable) {
+            Log.error(TAG, "Passkey activity setup failed", expected)
+            setResult(RESULT_CANCELED)
+            finish()
         }
     }
 
@@ -79,20 +95,16 @@ class PasskeyAuthActivity : FragmentActivity() {
                 // Lifecycle cancellation (activity destroyed): not a flow
                 // failure, so don't overwrite the result or finish again.
                 throw expected
-            } catch (expected: IllegalStateException) {
+            } catch (expected: Throwable) {
+                // Every flow failure — malformed requestJson (JSONException),
+                // bad base64url user handle / stored credential id
+                // (IllegalArgumentException), corrupt imported private key
+                // (GeneralSecurityException), vault/SQLite/keystore failure,
+                // a null or malformed CallingAppInfo, an unreadable
+                // privileged-browser asset (IOException) — ends the same way:
+                // RESULT_CANCELED in our process. Nothing may escape and
+                // crash behind the caller's credential prompt.
                 Log.error(TAG, "Error in passkey $flow flow", expected)
-                setResult(RESULT_CANCELED)
-            } catch (expected: org.json.JSONException) {
-                // Calling app supplied malformed requestJson; cancel, don't crash.
-                Log.error(TAG, "Malformed passkey request JSON in $flow flow", expected)
-                setResult(RESULT_CANCELED)
-            } catch (expected: IllegalArgumentException) {
-                // Bad Base64url user handle / stored credential id from the calling app or import.
-                Log.error(TAG, "Malformed passkey data in $flow flow", expected)
-                setResult(RESULT_CANCELED)
-            } catch (expected: java.security.GeneralSecurityException) {
-                // Corrupt imported private key cannot sign; cancel the assertion.
-                Log.error(TAG, "Passkey signing failed in $flow flow", expected)
                 setResult(RESULT_CANCELED)
             }
             finish()
@@ -166,27 +178,21 @@ class PasskeyAuthActivity : FragmentActivity() {
         val assertion = withContext(Dispatchers.IO) {
             WebAuthnAuthenticator.signAssertion(passkey, clientDataHash, repository)
         }
-        val authenticatorData = assertion.authenticatorData
-        val sig = assertion.signature
 
-        val credIdBytes = Base64.decode(
-            passkey.credentialId,
-            Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP
+        // Validated + canonicalised before it crosses to the caller: id and
+        // rawId are the same canonical base64url, userHandle likewise (or
+        // omitted when blank). A stored id/handle that cannot be decoded
+        // throws IllegalArgumentException here, which proceedWithFlow maps
+        // to RESULT_CANCELED — never a malformed RESULT_OK for the caller's
+        // (e.g. Vanadium's) parser to choke on. This also replaces the old
+        // strict NO_PADDING android.util.Base64 decode, which rejected the
+        // padded spellings credentialIdsMatch deliberately tolerates.
+        val responseJson = buildAssertionResponseJson(
+            passkey = passkey,
+            authenticatorData = assertion.authenticatorData,
+            signature = assertion.signature,
+            clientDataJsonB64 = clientDataJsonB64,
         )
-
-        val responseJson = JSONObject().apply {
-            put("id", passkey.credentialId)
-            put("rawId", b64Url(credIdBytes))
-            put("type", "public-key")
-            put("authenticatorAttachment", "platform")
-            put("response", JSONObject().apply {
-                put("clientDataJSON", clientDataJsonB64)
-                put("authenticatorData", b64Url(authenticatorData))
-                put("signature", b64Url(sig))
-                put("userHandle", passkey.userId)
-            })
-            put("clientExtensionResults", JSONObject())
-        }.toString()
 
         Log.dev(TAG, "Passkey assertion successful for rpId=${passkey.rpId}")
         val credentialResponse = PublicKeyCredential(responseJson)
@@ -206,10 +212,10 @@ class PasskeyAuthActivity : FragmentActivity() {
             // An empty hash is no hash: signing over it cannot verify, so let
             // the caller fall back to hashing its own clientDataJSON.
             option.clientDataHash?.takeIf { it.isNotEmpty() }
-        } catch (expected: GetCredentialUnknownException) {
-            Log.dev(TAG, "privileged clientDataHash unavailable", expected)
-            null
-        } catch (expected: IllegalStateException) {
+        } catch (expected: Exception) {
+            // GetCredentialUnknownException / IllegalStateException from the
+            // framework option, or anything else: no privileged hash is
+            // available, which the caller already handles by falling back.
             Log.dev(TAG, "privileged clientDataHash unavailable", expected)
             null
         }
