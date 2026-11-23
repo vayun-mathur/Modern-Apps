@@ -196,7 +196,11 @@ class CameraCovW3MockSessionsTest {
         assertTrue(enumerateLenses(provider).isEmpty())
         viewModel.ensureLensesEnumerated(provider)
         assertTrue(viewModel.availableLensesMutable.value.isEmpty())
-        assertNull(viewModel.selectedLensMutable.value)
+        // Startup contract: the seeded persisted-lens placeholder survives an
+        // empty enumeration — it carries only the facing, which Camera2
+        // resolves via CameraManager and CameraX ignores (family is empty,
+        // so selectors stay facing-only, as before).
+        assertEquals(LensFacing.BACK, viewModel.selectedLensMutable.value?.facing)
         assertTrue(viewModel.currentLensFamily().isEmpty())
         // Selectors build for null and pinned lenses without a real camera.
         assertNotNull(viewModel.lensSelector(CameraSelector.LENS_FACING_BACK, null))

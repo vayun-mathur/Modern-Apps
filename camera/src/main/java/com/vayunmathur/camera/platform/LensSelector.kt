@@ -10,12 +10,14 @@ import androidx.camera.camera2.interop.Camera2CameraInfo
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.lifecycle.viewModelScope
 import com.vayunmathur.camera.domain.LensFacing
 import com.vayunmathur.camera.domain.LensLabels
 import com.vayunmathur.camera.domain.LensSelectionLogic
 import com.vayunmathur.camera.domain.LensType
 import com.vayunmathur.camera.domain.PhysicalLens
 import com.vayunmathur.camera.platform.CameraViewModel
+import kotlinx.coroutines.launch
 import kotlin.math.sqrt
 
 /** Maps the pure [LensFacing] to the CameraX selector constant. */
@@ -213,12 +215,68 @@ fun CameraViewModel.ensureLensesEnumerated(provider: ProcessCameraProvider) {
         emptyList()
     }
     availableLensesMutable.value = all
-    if (selectedLensMutable.value == null) {
-        val facing = lensFacingMutable.value.toLensFacing() ?: LensFacing.BACK
-        selectedLensMutable.value = LensSelectionLogic.filterByFacing(all, facing)
-            .minByOrNull { it.fallbackPriority }
+    // Reconcile the startup seed (persisted lens, seeded synchronously at
+    // ViewModel init so the Camera2 preview could bind before this probe
+    // ran) with the enumerated truth: swap the placeholder for the real
+    // lens with the same id, or fall back to the facing default. The
+    // Camera2 preview keys its session on facing only, so this swap never
+    // re-opens the camera — it only corrects the lens identity.
+    val facing = lensFacingMutable.value.toLensFacing() ?: LensFacing.BACK
+    val seeded = selectedLensMutable.value
+    val canonical = all.firstOrNull {
+        it.logicalCameraId == seeded?.logicalCameraId && it.facing == seeded?.facing
+    } ?: LensSelectionLogic.filterByFacing(all, facing).minByOrNull { it.fallbackPriority }
+    if (canonical != null && canonical != seeded) {
+        selectedLensMutable.value = canonical
     }
+    selectedLensMutable.value?.let { persistStartupLens(it) }
     Log.dev("LensSelector", "Enumerated ${all.size} lenses; selected=${selectedLensMutable.value?.labelKey}")
+}
+
+/** DataStore keys for the persisted last-used lens (startup fast path). */
+internal const val LAST_LENS_FACING_KEY = "camera_last_lens_facing"
+internal const val LAST_LENS_ID_KEY = "camera_last_lens_id"
+/** Placeholder id before any lens has ever been persisted/enumerated. */
+internal const val STARTUP_UNRESOLVED_LENS_ID = "startup-unresolved"
+
+/**
+ * Seeds [selectedLensMutable] synchronously from the persisted last lens
+ * (DataStore sync mirror read, same pattern as `loadSettings`) so
+ * `CameraScreenState.useCamera2Preview` is satisfiable on the very first
+ * composition — the Camera2 preview resolves the openable id itself from
+ * the facing via `CameraManager.cameraIdList` and never opens this id.
+ * The placeholder carries only facing + identity; background enumeration
+ * ([ensureLensesEnumerated]) reconciles it with the real lens. With no
+ * persisted lens the seed is the BACK wide placeholder, matching the
+ * historical default facing.
+ */
+fun CameraViewModel.seedStartupLens() {
+    if (selectedLensMutable.value != null) return
+    val facing = try {
+        LensFacing.valueOf(ds.getString(LAST_LENS_FACING_KEY) ?: "")
+    } catch (e: IllegalArgumentException) {
+        LensFacing.BACK
+    }
+    val id = ds.getString(LAST_LENS_ID_KEY)?.takeIf { it.isNotBlank() }
+        ?: STARTUP_UNRESOLVED_LENS_ID
+    lensFacingMutable.value = facing.toSelectorInt()
+    selectedLensMutable.value = PhysicalLens(
+        logicalCameraId = id,
+        lensType = if (facing == LensFacing.FRONT) LensType.FRONT else LensType.WIDE,
+        facing = facing,
+        focalLengthMm35Eq = null,
+        nominalZoomRatio = 1f,
+        fallbackPriority = 0,
+        labelKey = if (facing == LensFacing.FRONT) "front" else "wide",
+    )
+}
+
+/** Persists [lens] as the startup fast-path lens for the next launch. */
+fun CameraViewModel.persistStartupLens(lens: PhysicalLens) {
+    viewModelScope.launch {
+        ds.setString(LAST_LENS_FACING_KEY, lens.facing.name)
+        ds.setString(LAST_LENS_ID_KEY, lens.logicalCameraId)
+    }
 }
 
 /** Lenses of the current facing, ordered by fallback priority. */

@@ -29,10 +29,43 @@ import com.vayunmathur.camera.data.MediaStoreSaver
 import com.vayunmathur.camera.data.prepareStillSave
 import com.vayunmathur.camera.data.saveProcessedStill
 import com.vayunmathur.camera.data.saveStillBitmap
+import com.vayunmathur.camera.data.saveStillBytes
 import com.vayunmathur.camera.data.setLastCaptureUri
 import com.vayunmathur.camera.data.closeStream
 import com.vayunmathur.camera.data.resolveUri
 import com.vayunmathur.camera.data.setFlashMode
+
+/**
+ * True when a night-extension still must be captured in memory instead of
+ * on the JPEG file path: an effective AVIF selection. Read at capture
+ * time, never cached at bind.
+ */
+internal fun CameraViewModel.nightExtensionInMemory(): Boolean =
+    com.vayunmathur.camera.domain.StillFormatRouting.plainSingleNeedsInMemory(
+        requestedStillFormat(), StitchNative.isAvailable,
+    )
+
+/** Saves one in-memory night-extension frame under the current still format. Blocking: call off main. */
+internal fun CameraViewModel.saveNightExtensionStill(
+    sourceJpeg: ByteArray,
+    degrees: Int,
+    mirror: Boolean,
+): Uri? {
+    if (com.vayunmathur.camera.domain.StillFormatRouting.isUltraHdrJpeg(sourceJpeg)) {
+        return saveStillBytes(
+            "IMG_${MediaStoreSaver.timestamp()}.jpg",
+            stampStillBytes(sourceJpeg, degrees, mirror),
+        )
+    }
+    val decoded = android.graphics.BitmapFactory.decodeByteArray(sourceJpeg, 0, sourceJpeg.size)
+        ?: error("Could not decode night extension frame")
+    val saved = saveProcessedStill(decoded, degrees, sourceJpeg)
+    decoded.recycle()
+    if (saved != null && saved.format == com.vayunmathur.camera.domain.StillFormat.JPEG) {
+        writeCaptureExif(saved.uri, sourceJpeg, degrees, mirrored = mirror)
+    }
+    return saved?.uri
+}
 
 /**
  * On-demand NIGHT-extension capture: briefly rebinds a Preview + ImageCapture session with the
@@ -86,29 +119,70 @@ internal suspend fun CameraViewModel.captureNightPhotoExtension() {
         capture.setCropAspectRatio(currentCropAspectRatio())
         boundCamera = bindSession(provider, owner, nightSelector, preview, capture)
 
-        val pending = prepareStillSave("IMG_${MediaStoreSaver.timestamp()}.jpg")
-        if (pending == null) {
+        // With AVIF selected the extension still is captured in memory and
+        // lands through the EXIF-carrying StillEncoder (an Ultra HDR source
+        // stays JPEG_R), instead of the JPEG-only file path below. The
+        // format is read now, at capture time, never cached at bind.
+        val inMemory = nightExtensionInMemory()
+        val pending = if (inMemory) {
+            null
+        } else {
+            prepareStillSave("IMG_${MediaStoreSaver.timestamp()}.jpg")
+        }
+        if (!inMemory && pending == null) {
             Log.status("CameraViewModel", "Night extension capture skipped: no save target")
             return
         }
-        val outputOptions = pending.outputOptions
+        val outputOptions = pending?.outputOptions
+        val mirror = mirrorCaptures
 
         val savedUri = suspendCancellableCoroutine<Uri?> { cont ->
-            capture.takePicture(
-                outputOptions,
-                ContextCompat.getMainExecutor(app),
-                object : ImageCapture.OnImageSavedCallback {
-                    override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
-                        pending.closeStream()
-                        cont.resume(pending.resolveUri(outputFileResults))
+            if (inMemory) {
+                capture.takePicture(
+                    ContextCompat.getMainExecutor(app),
+                    object : ImageCapture.OnImageCapturedCallback() {
+                        override fun onCaptureSuccess(image: ImageProxy) {
+                            val degrees = image.imageInfo.rotationDegrees
+                            val sourceJpeg = try {
+                                image.planes[0].buffer.let { buf ->
+                                    ByteArray(buf.remaining()).also { buf.get(it) }
+                                }
+                            } finally {
+                                image.close()
+                            }
+                            viewModelScope.launch {
+                                val uri = withContext(Dispatchers.IO) {
+                                    runCatching {
+                                        saveNightExtensionStill(sourceJpeg, degrees, mirror)
+                                    }.getOrNull()
+                                }
+                                if (cont.isActive) cont.resume(uri)
+                            }
+                        }
+
+                        override fun onError(exception: ImageCaptureException) {
+                            Log.error("CameraViewModel", "Night extension capture failed", exception)
+                            if (cont.isActive) cont.resume(null)
+                        }
                     }
-                    override fun onError(exception: ImageCaptureException) {
-                        Log.error("CameraViewModel", "Night extension capture failed", exception)
-                        pending.closeStream()
-                        cont.resume(null)
+                )
+            } else {
+                capture.takePicture(
+                    outputOptions!!,
+                    ContextCompat.getMainExecutor(app),
+                    object : ImageCapture.OnImageSavedCallback {
+                        override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
+                            pending.closeStream()
+                            cont.resume(pending.resolveUri(outputFileResults))
+                        }
+                        override fun onError(exception: ImageCaptureException) {
+                            Log.error("CameraViewModel", "Night extension capture failed", exception)
+                            pending.closeStream()
+                            cont.resume(null)
+                        }
                     }
-                }
-            )
+                )
+            }
         }
         if (savedUri != null) setLastCaptureUri(savedUri)
     } catch (e: IllegalStateException) {

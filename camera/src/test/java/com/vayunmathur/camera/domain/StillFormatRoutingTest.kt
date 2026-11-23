@@ -91,6 +91,40 @@ class StillFormatRoutingTest {
     }
 
     @Test
+    fun stillSaveRoutePerEntryFormatAndSource() {
+        // AVIF-selected, plain source: every pre-encoded entry (Camera2
+        // direct, ring direct/reprocess, night extension) goes through
+        // the EXIF-carrying encoder.
+        assertEquals(
+            StillFormatRouting.StillSaveRoute.PROCESSED_ENCODER,
+            StillFormatRouting.stillSaveRoute(StillFormat.AVIF, ultraHdrSource = false),
+        )
+        // Ultra HDR sources stay JPEG_R under either selection.
+        assertEquals(
+            StillFormatRouting.StillSaveRoute.ULTRA_HDR_JPEG_BYTES,
+            StillFormatRouting.stillSaveRoute(StillFormat.AVIF, ultraHdrSource = true),
+        )
+        assertEquals(
+            StillFormatRouting.StillSaveRoute.ULTRA_HDR_JPEG_BYTES,
+            StillFormatRouting.stillSaveRoute(StillFormat.JPEG, ultraHdrSource = true),
+        )
+        // JPEG-selected stays on the stamped-JPEG landing, untouched.
+        assertEquals(
+            StillFormatRouting.StillSaveRoute.JPEG_BYTES,
+            StillFormatRouting.stillSaveRoute(StillFormat.JPEG, ultraHdrSource = false),
+        )
+    }
+
+    @Test
+    fun avifPrecludesMotionPhotoDiversionOnlyWhenEffective() {
+        assertTrue(StillFormatRouting.avifPrecludesMotionPhoto(StillFormat.AVIF, nativeAvailable = true))
+        // No native encoder: AVIF honestly falls back to JPEG, so the
+        // Motion Photo diversion is unchanged.
+        assertFalse(StillFormatRouting.avifPrecludesMotionPhoto(StillFormat.AVIF, nativeAvailable = false))
+        assertFalse(StillFormatRouting.avifPrecludesMotionPhoto(StillFormat.JPEG, nativeAvailable = true))
+    }
+
+    @Test
     fun extensionAndMimeMatchContainer() {
         assertEquals("jpg", StillFormatRouting.extension(StillFormat.JPEG))
         assertEquals("image/jpeg", StillFormatRouting.mimeType(StillFormat.JPEG))

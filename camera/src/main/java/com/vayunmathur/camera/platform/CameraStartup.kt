@@ -30,7 +30,12 @@ private const val THUMBNAIL_SIDE_PX = 96
  * Does not affect other modes' quality.
  */
 internal suspend fun CameraViewModel.probeSloMoSupport(): Boolean {
-    return try {
+    // Whole probe off the main/startup path: it awaits CameraX init and
+    // reads Recorder capabilities, none of which the first preview frame
+    // needs. Lens enumeration (when it runs from here) likewise stays off
+    // main; the startup enrichment normally beats it to it.
+    return withContext(Dispatchers.Default) {
+    try {
         val provider = ProcessCameraProvider.awaitInstance(app)
         ensureLensesEnumerated(provider)
         val selector = lensSelector(
@@ -38,9 +43,11 @@ internal suspend fun CameraViewModel.probeSloMoSupport(): Boolean {
             selectedLensMutable.value?.takeIf { it.facing == LensFacing.BACK }
         )
         val cameraInfo = provider.getCameraInfo(selector)
-        val caps = Recorder.getHighSpeedVideoCapabilities(cameraInfo) ?: return false
-        val quals = caps.getSupportedQualities(androidx.camera.core.DynamicRange.SDR)
-        if (quals.isEmpty()) return false
+        val caps = Recorder.getHighSpeedVideoCapabilities(cameraInfo)
+        val quals = caps?.getSupportedQualities(androidx.camera.core.DynamicRange.SDR).orEmpty()
+        if (caps == null || quals.isEmpty()) {
+            false
+        } else {
         // Need at least one FHD/HD HFR range
         val preview = Preview.Builder().build()
         val qualitySelector = QualitySelector.fromOrderedList(
@@ -57,12 +64,14 @@ internal suspend fun CameraViewModel.probeSloMoSupport(): Boolean {
             cameraInfo.getSupportedFrameRateRanges(tempConfig)
         } catch (_: IllegalStateException) { emptyList() } catch (_: IllegalArgumentException) { emptyList() }
         ranges.isNotEmpty() && ranges.any { it.upper >= HFR_MIN_FPS }
+        }
     } catch (e: IllegalStateException) {
         Log.status("SloMo", "Slo-Mo probe failed", e)
         false
     } catch (e: IllegalArgumentException) {
         Log.status("SloMo", "Slo-Mo probe failed", e)
         false
+    }
     }
 }
 

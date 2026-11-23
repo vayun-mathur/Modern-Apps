@@ -18,8 +18,15 @@ import kotlinx.coroutines.launch
  * session to CameraX; repeat failures for the same key are ignored.
  */
 fun CameraViewModel.onCamera2PreviewFailed(cameraId: String): Boolean {
+    // Key on the CURRENT selected lens, not the (possibly stale) id the
+    // failing composable captured: the startup seed is reconciled to the
+    // enumerated lens in the background, and the UI gate builds its key
+    // from the current selection — the latch must agree or it never reads
+    // as latched.
+    val keyId = selectedLensMutable.value?.logicalCameraId
+        ?.takeIf { it.isNotEmpty() } ?: cameraId
     val key = com.vayunmathur.camera.platform.camera2.Camera2FallbackLatch
-        .bindKey(cameraId, cameraModeMutable.value)
+        .bindKey(keyId, cameraModeMutable.value)
     if (!camera2FallbackLatch.recordFailure(key)) return false
     camera2FallbackBindKeyMutable.value = key
     Log.status("Camera2Preview", "Camera2 bind failed for $key; falling back to CameraX for this session")

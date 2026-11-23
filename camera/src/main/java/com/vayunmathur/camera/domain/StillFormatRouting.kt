@@ -61,6 +61,38 @@ object StillFormatRouting {
         effectiveFormat(requested, nativeAvailable, motionPhoto = false) == StillFormat.AVIF
 
     /**
+     * True when an AVIF-bound plain still must not divert to Motion Photo:
+     * a Motion Photo is a JPEG with an MP4 trailer, so honouring the AVIF
+     * selection means taking the plain still (and its AVIF encode) instead.
+     * JPEG-selected shots keep the Motion Photo diversion unchanged.
+     */
+    fun avifPrecludesMotionPhoto(requested: StillFormat, nativeAvailable: Boolean): Boolean =
+        plainSingleNeedsInMemory(requested, nativeAvailable)
+
+    /** How one pre-encoded still (HAL JPEG, ring encode, extension JPEG) must land. */
+    enum class StillSaveRoute {
+        /** Decode once and re-encode through the still encoder (AVIF when selected). */
+        PROCESSED_ENCODER,
+
+        /** Stamp the source JPEG bytes and write them unchanged. */
+        JPEG_BYTES,
+
+        /** Ultra HDR (JPEG_R) source: write the bytes unchanged, gain map intact. */
+        ULTRA_HDR_JPEG_BYTES,
+    }
+
+    /**
+     * The landing for a pre-encoded still under [requested]. An Ultra HDR
+     * source always stays JPEG_R (the AVIF gain-map mux is not built);
+     * AVIF otherwise routes through the encoder; JPEG stays JPEG bytes.
+     */
+    fun stillSaveRoute(requested: StillFormat, ultraHdrSource: Boolean): StillSaveRoute = when {
+        ultraHdrSource -> StillSaveRoute.ULTRA_HDR_JPEG_BYTES
+        requested == StillFormat.AVIF -> StillSaveRoute.PROCESSED_ENCODER
+        else -> StillSaveRoute.JPEG_BYTES
+    }
+
+    /**
      * The TIFF payload of a JPEG's Exif APP1 segment (`Exif\0\0` stripped),
      * or null when the JPEG carries none. Pure segment walk (no Android
      * types) so it is host-testable; used to feed the AVIF Exif item.

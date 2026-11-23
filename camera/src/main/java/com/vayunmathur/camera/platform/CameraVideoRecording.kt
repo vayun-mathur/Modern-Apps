@@ -11,6 +11,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.vayunmathur.camera.data.MediaStoreSaver
 import com.vayunmathur.camera.data.prepareStillSave
+import com.vayunmathur.camera.data.saveProcessedStill
+import com.vayunmathur.camera.data.saveStillBytes
 import com.vayunmathur.camera.data.saveVideoStaged
 import com.vayunmathur.camera.data.scanSafDoc
 import com.vayunmathur.camera.data.setLastCaptureUri
@@ -356,12 +358,30 @@ fun CameraViewModel.toggleMicMuted() {
 }
 
 /**
- * Captures a still while recording (video snapshot), using the ImageCapture bound alongside the
- * video session. No-op if the device couldn't bind the extra ImageCapture use case.
+ * True when a video/slo-mo snapshot must be captured in memory instead of
+ * on the JPEG file path: an effective AVIF selection (the file path can
+ * only write the HAL JPEG). Read at capture time, never cached at bind.
+ */
+internal fun CameraViewModel.videoSnapshotInMemory(): Boolean =
+    com.vayunmathur.camera.domain.StillFormatRouting.plainSingleNeedsInMemory(
+        requestedStillFormat(), StitchNative.isAvailable,
+    )
+
+/**
+ * Captures a still while recording (video snapshot, including slo-mo),
+ * using the ImageCapture bound alongside the video session. No-op if the
+ * device couldn't bind the extra ImageCapture use case. With AVIF
+ * selected the snapshot is captured in memory and lands through the
+ * EXIF-carrying `StillEncoder`, exactly like a plain AVIF single (an
+ * Ultra HDR source stays JPEG_R); JPEG keeps the file path unchanged.
  */
 fun CameraViewModel.captureVideoSnapshot() {
     if (isCapturingMutable.value) return
     val capture = imageCapture ?: return
+    if (videoSnapshotInMemory()) {
+        captureVideoSnapshotInMemory(capture)
+        return
+    }
     val pending = prepareStillSave("IMG_${MediaStoreSaver.timestamp()}.jpg") ?: return
     val outputOptions = pending.outputOptions
     capture.takePicture(
@@ -375,6 +395,60 @@ fun CameraViewModel.captureVideoSnapshot() {
             override fun onError(exception: ImageCaptureException) {
                 Log.error("CameraViewModel", "Video snapshot failed", exception)
                 pending.closeStream()
+            }
+        }
+    )
+}
+
+/** In-memory (AVIF) video/slo-mo snapshot: decode, encode via `saveProcessedStill`, save. */
+private fun CameraViewModel.captureVideoSnapshotInMemory(capture: ImageCapture) {
+    val mirror = mirrorCaptures
+    capture.takePicture(
+        ContextCompat.getMainExecutor(app),
+        object : ImageCapture.OnImageCapturedCallback() {
+            override fun onCaptureSuccess(image: androidx.camera.core.ImageProxy) {
+                val degrees = image.imageInfo.rotationDegrees
+                val cropRect = android.graphics.Rect(image.cropRect)
+                val sourceJpeg = try {
+                    image.planes[0].buffer.let { buf ->
+                        ByteArray(buf.remaining()).also { buf.get(it) }
+                    }
+                } finally {
+                    image.close()
+                }
+                viewModelScope.launch {
+                    val uri = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                        runCatching {
+                            if (com.vayunmathur.camera.domain.StillFormatRouting
+                                    .isUltraHdrJpeg(sourceJpeg)
+                            ) {
+                                saveStillBytes(
+                                    "IMG_${MediaStoreSaver.timestamp()}.jpg",
+                                    stampStillBytes(sourceJpeg, degrees, mirror),
+                                )
+                            } else {
+                                val decodedRaw = android.graphics.BitmapFactory
+                                    .decodeByteArray(sourceJpeg, 0, sourceJpeg.size)
+                                    ?: error("Could not decode video snapshot")
+                                val decoded = cropToRect(decodedRaw, cropRect)
+                                val adjusted = applyColorAdjustments(decoded, 0f, 0f, mirror)
+                                val saved = saveProcessedStill(adjusted, degrees, sourceJpeg)
+                                adjusted.recycle()
+                                if (saved != null &&
+                                    saved.format == com.vayunmathur.camera.domain.StillFormat.JPEG
+                                ) {
+                                    writeCaptureExif(saved.uri, sourceJpeg, degrees, mirrored = mirror)
+                                }
+                                saved?.uri
+                            }
+                        }.getOrNull()
+                    }
+                    if (uri != null) setLastCaptureUri(uri)
+                }
+            }
+
+            override fun onError(exception: ImageCaptureException) {
+                Log.error("CameraViewModel", "Video snapshot failed", exception)
             }
         }
     )

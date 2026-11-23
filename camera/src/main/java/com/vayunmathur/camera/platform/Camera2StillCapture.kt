@@ -9,9 +9,11 @@ import com.vayunmathur.camera.data.saveStillBytes
 import com.vayunmathur.camera.data.setLastCaptureUri
 import com.vayunmathur.camera.domain.FlashSetting
 import com.vayunmathur.camera.domain.StillFormat
+import com.vayunmathur.camera.domain.StillFormatRouting
 import com.vayunmathur.camera.domain.UltraHdrIntentPolicy
 import com.vayunmathur.camera.platform.camera2.Camera2Session
 import com.vayunmathur.camera.platform.camera2.CapturedStill
+import com.vayunmathur.camera.platform.camera2.StillOutputTag
 import com.vayunmathur.camera.platform.camera2.StillEngineInput
 import com.vayunmathur.camera.platform.camera2.ReprocessRingGate
 import com.vayunmathur.camera.platform.camera2.StillEnginePolicy
@@ -68,10 +70,17 @@ internal fun CameraViewModel.tryCaptureCamera2Still(): Boolean {
         processedRoute = warmthMutable.value != 0f || shadowsMutable.value != 0f,
         // Mirrors the (private) Motion Photo eligibility in CameraPhotoCapture:
         // a plain 4:3 PHOTO shot with no bake would route to Motion Photo.
+        // An effective AVIF selection precludes that diversion (a Motion
+        // Photo is a JPEG+MP4 trailer): the plain Camera2 still is taken
+        // and encoded to .avif instead. The format is read here, at
+        // capture time, so a settings change after bind is honoured.
         motionPhotoRoute = cameraModeMutable.value == CameraMode.PHOTO &&
             !captureForResult &&
             warmthMutable.value == 0f && shadowsMutable.value == 0f &&
-            aspectRatioMutable.value == AspectRatioOption.RATIO_4_3,
+            aspectRatioMutable.value == AspectRatioOption.RATIO_4_3 &&
+            !StillFormatRouting.avifPrecludesMotionPhoto(
+                requestedStillFormat(), StitchNative.isAvailable,
+            ),
         captureForResult = captureForResult,
         burst = burstActiveMutable.value,
     )
@@ -125,33 +134,50 @@ internal fun CameraViewModel.tryCaptureCamera2Still(): Boolean {
     return true
 }
 
+/** The still format settings ask for right now (read at capture/save time, never cached at bind). */
+internal fun CameraViewModel.requestedStillFormat(): StillFormat =
+    if (photoFormatMutable.value == PhotoFormat.AVIF) StillFormat.AVIF else StillFormat.JPEG
+
 /**
  * Saves one Camera2 still through the shared routing. Blocking: call off
  * main. Shared with the Phase-6 NIGHT extension glue so an extension JPEG
  * lands through exactly this Phase-4a path (stamp/AVIF/MediaStore).
+ *
+ * Every Camera2 still entry funnels here — direct capture, the ring's
+ * reprocess and direct-encode fallbacks, and the night extension — so
+ * this one decision covers them all: AVIF goes through the EXIF-carrying
+ * `StillEncoder` via [saveProcessedStill]; an Ultra HDR source (the
+ * JPEG_R output tag, or a gain map sniffed in the bytes) stays JPEG_R;
+ * JPEG-selected shots keep the stamped-JPEG landing untouched.
  */
 internal fun CameraViewModel.saveCamera2Still(still: CapturedStill): Uri? {
-    val rotation = still.metadata.rotationDegrees
-    if (photoFormatMutable.value == PhotoFormat.AVIF &&
-        !com.vayunmathur.camera.domain.StillFormatRouting.isUltraHdrJpeg(still.jpegBytes)
-    ) {
-        val bitmap = BitmapFactory.decodeByteArray(still.jpegBytes, 0, still.jpegBytes.size)
-            ?: return saveJpegStill(still)
-        try {
-            val saved = saveProcessedStill(bitmap, rotation, still.jpegBytes) ?: return null
-            if (saved.format == StillFormat.JPEG) {
-                // The JPEG re-encode dropped the HAL EXIF; restore it from
-                // the original frame, exactly as the processed CameraX path.
-                writeCaptureExif(
-                    saved.uri, still.jpegBytes, rotation, mirrored = still.metadata.mirrored,
-                )
-            }
-            return saved.uri
-        } finally {
-            bitmap.recycle()
-        }
+    val ultraHdrSource = still.tag == StillOutputTag.ULTRA_HDR_JPEG_R ||
+        StillFormatRouting.isUltraHdrJpeg(still.jpegBytes)
+    return when (StillFormatRouting.stillSaveRoute(requestedStillFormat(), ultraHdrSource)) {
+        StillFormatRouting.StillSaveRoute.PROCESSED_ENCODER -> saveCamera2EncodedStill(still)
+        StillFormatRouting.StillSaveRoute.JPEG_BYTES,
+        StillFormatRouting.StillSaveRoute.ULTRA_HDR_JPEG_BYTES -> saveJpegStill(still)
     }
-    return saveJpegStill(still)
+}
+
+/** The AVIF landing for one Camera2 still: decode once, encode via [saveProcessedStill]. */
+private fun CameraViewModel.saveCamera2EncodedStill(still: CapturedStill): Uri? {
+    val rotation = still.metadata.rotationDegrees
+    val bitmap = BitmapFactory.decodeByteArray(still.jpegBytes, 0, still.jpegBytes.size)
+        ?: return saveJpegStill(still)
+    try {
+        val saved = saveProcessedStill(bitmap, rotation, still.jpegBytes) ?: return null
+        if (saved.format == StillFormat.JPEG) {
+            // The JPEG re-encode dropped the HAL EXIF; restore it from
+            // the original frame, exactly as the processed CameraX path.
+            writeCaptureExif(
+                saved.uri, still.jpegBytes, rotation, mirrored = still.metadata.mirrored,
+            )
+        }
+        return saved.uri
+    } finally {
+        bitmap.recycle()
+    }
 }
 
 /** The plain JPEG landing: stamp orientation/GPS, then route to SAF/MediaStore. */

@@ -98,6 +98,7 @@ internal fun CameraPreviewSurface(
                     null
                 },
                 onError = { viewModel.onCamera2PreviewFailed(camera2Id) },
+                onBindRequested = { viewModel.noteCamera2BindRequested() },
                 modifier = previewModifier,
             )
         } else {

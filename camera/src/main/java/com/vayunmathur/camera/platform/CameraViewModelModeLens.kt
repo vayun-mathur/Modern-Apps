@@ -49,6 +49,7 @@ fun CameraViewModel.flipCamera() {
         com.vayunmathur.camera.domain.LensSelectionLogic.filterByFacing(
             availableLensesMutable.value, facing
         ).minByOrNull { it.fallbackPriority }
+    selectedLensMutable.value?.let { persistStartupLens(it) }
     resetNightModeDetection()
 }
 
@@ -72,5 +73,6 @@ fun CameraViewModel.selectLens(lens: com.vayunmathur.camera.domain.PhysicalLens)
     }
     if (lens !in availableLensesMutable.value) return
     selectedLensMutable.value = lens
+    persistStartupLens(lens)
     resetNightModeDetection()
 }
