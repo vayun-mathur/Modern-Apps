@@ -61,13 +61,15 @@ class NewsRepository internal constructor(
         dao.setBookmarked(url, bookmarked)
 
     /**
-     * Primary path: one fetch of the server's `news.json`, filtered
-     * client-side to [sources] (the enabled sources) and merged into
-     * Room exactly like a crawl result.
+     * Primary path: one fetch of the server's `news.json`, merged into
+     * Room exactly like a crawl result. Every source the server carries
+     * is always included — there is no client-side enabled-source
+     * filter; categories and search are the filters. [sources] only
+     * drives the fallback crawl.
      *
      * Fallback decision: if the server fetch throws, times out, or
      * parses to zero articles, refresh falls back to the on-device
-     * per-source sitemap/RSS crawl of the same enabled sources
+     * per-source sitemap/RSS crawl of [sources]
      * ([refreshFromSources]). The cached Room feed stays visible
      * throughout either way. Returns failed source names from whichever
      * path ran; a successful server fetch (or a fully successful
@@ -76,12 +78,10 @@ class NewsRepository internal constructor(
     suspend fun refresh(sources: List<NewsSource>): List<String> {
         val serverArticles = fetchServerFeed()
         if (serverArticles != null) {
-            val enabledIds = sources.map { it.id }.toSet()
-            val filtered = serverArticles.filter { it.sourceId in enabledIds }
-            val capped = FeedMerger.merge(listOf(filtered), limit = MAX_CACHED_ARTICLES)
+            val capped = FeedMerger.merge(listOf(serverArticles), limit = MAX_CACHED_ARTICLES)
             if (capped.isNotEmpty()) publish(capped)
-            if (sources.isNotEmpty()) dao.pruneArticles(keep = MAX_CACHED_ARTICLES)
-            Log.dev(TAG, "refresh server feed landed articles=${capped.size} (pre-filter=${serverArticles.size})")
+            dao.pruneArticles(keep = MAX_CACHED_ARTICLES)
+            Log.dev(TAG, "refresh server feed landed articles=${capped.size}")
             return emptyList()
         }
         Log.dev(TAG, "refresh server feed unavailable; falling back to on-device source crawl")
@@ -104,7 +104,7 @@ class NewsRepository internal constructor(
     }
 
     /**
-     * Fallback crawl: fetches every enabled source in parallel; each
+     * Fallback crawl: fetches every source in parallel; each
      * source publishes to Room as soon as it lands. Returns the names
      * of sources that failed or timed out (a failing source never
      * fails the refresh).

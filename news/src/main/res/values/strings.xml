@@ -6,6 +6,8 @@
     <string name="feed_empty">No articles yet. Pull to refresh.</string>
     <string name="feed_all_categories">All</string>
     <string name="feed_refresh_failed">Could not refresh all sources; showing the cached feed.</string>
+    <string name="feed_sort_top">Top stories</string>
+    <string name="feed_sort_latest">Latest</string>
     <string name="feed_search_placeholder">Search downloaded news</string>
     <string name="feed_search_empty">No downloaded articles match. Search covers titles and articles you have opened.</string>
     <!-- ReaderScreen -->
@@ -17,7 +19,8 @@
     <string name="reader_loading_failed">Could not load this article.</string>
     <!-- SourcesScreen -->
     <string name="sources_title">Sources</string>
-    <string name="sources_note">The feed comes from our news server; turning a source off filters it out here. If the server is unreachable, the app crawls the sources left on directly. Article pages are always read directly from the publisher. No account is involved.</string>
+    <string name="sources_note">Every source below is always included. Use categories and search to filter the feed. If our news server is unreachable, the app crawls these sources directly. Article pages are always read directly from the publisher. No account is involved.</string>
+    <string name="sources_metered">Metered</string>
     <!-- SavedScreen -->
     <string name="saved_title">Saved for later</string>
     <string name="saved_empty">Nothing saved yet. Save an article from the reader to read it offline later.</string>

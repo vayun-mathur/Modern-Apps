@@ -14,7 +14,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/** Server-primary refresh, fallback decision, source filtering, and on-device search. */
+/** Server-primary refresh, fallback decision, all-sources inclusion, and on-device search. */
 @RunWith(RobolectricTestRunner::class)
 class NewsServerFeedTest {
     @org.junit.Before fun setUp() { com.vayunmathur.news.seedNewsDb(ApplicationProvider.getApplicationContext()) }
@@ -51,22 +51,23 @@ class NewsServerFeedTest {
         assertTrue(cached.any { it.title == "Server Alpha Volcano" })
     }
 
-    @Test fun refreshFiltersServerFeedToEnabledSources() = runBlocking {
+    @Test fun refreshIncludesServerArticlesFromEverySource() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val filterJson = """
             {"generated_at":"2026-11-23T12:00:00Z","articles":[
               {"title":"Filter Kept","url":"https://srv.example/filter-kept","source":"bbc",
                "published_at":"2026-11-23T10:00:00Z"},
-              {"title":"Filter Dropped","url":"https://srv.example/filter-dropped","source":"guardian",
+              {"title":"Filter Also Kept","url":"https://srv.example/filter-dropped","source":"guardian",
                "published_at":"2026-11-23T09:00:00Z"}
             ]}
         """.trimIndent()
         val repo = NewsRepository(context, fetch = { filterJson })
-        // Only BBC enabled: the Guardian server article must be filtered client-side.
+        // No enabled-source filter exists: even though only BBC drives
+        // the (unused) fallback list, the Guardian server article lands.
         val failed = repo.refresh(listOf(SourceCatalog.byId("bbc")!!))
         assertTrue(failed.isEmpty())
         val cached = withTimeout(10_000) { repo.articles.first { a -> a.any { it.url == "https://srv.example/filter-kept" } } }
-        assertTrue(cached.none { it.url == "https://srv.example/filter-dropped" })
+        assertTrue(cached.any { it.url == "https://srv.example/filter-dropped" })
     }
 
     @Test fun serverFailureFallsBackToSourceCrawl() = runBlocking {
@@ -81,7 +82,7 @@ class NewsServerFeedTest {
         val failed = repo.refresh(listOf(bbc))
         assertTrue(failed.isEmpty(), "fallback crawl success must not report failure")
         assertTrue(calls.first() == Networking.SERVER_FEED_URL, "server must be tried first")
-        assertTrue(calls.any { it.endsWith("fallback.xml") }, "fallback must crawl the enabled source")
+        assertTrue(calls.any { it.endsWith("fallback.xml") }, "fallback must crawl the given source")
         val cached = withTimeout(10_000) { repo.articles.first { a -> a.any { it.title == "Fallback Story" } } }
         assertTrue(cached.any { it.title == "Fallback Story" })
     }

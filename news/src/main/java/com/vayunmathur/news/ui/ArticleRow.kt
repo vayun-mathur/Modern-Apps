@@ -25,13 +25,14 @@ fun ArticleRow(
     article: CachedArticle,
     onClick: () -> Unit,
     onToggleBookmark: () -> Unit,
+    alsoFromSources: Int = 0,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(16.dp),
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "${SourceCatalog.byId(article.sourceId)?.name ?: article.sourceId} · ${relativeTime(article.publishedAtMillis)}",
+                text = "${SourceCatalog.byId(article.sourceId)?.name ?: article.sourceId} · ${relativeTime(article.publishedAtMillis)}" + if (alsoFromSources > 0) " · +$alsoFromSources sources" else "",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary,
             )

@@ -7,7 +7,7 @@ import kotlinx.serialization.Serializable
 /** Navigation destinations for the news app. */
 sealed interface Route : NavKey {
     @Serializable
-    /** Merged, newest-first feed across enabled sources. */
+    /** Merged feed across all sources (Top stories by default). */
     data object Feed : Route
 
     @Serializable
@@ -15,7 +15,7 @@ sealed interface Route : NavKey {
     data class Reader(val url: String) : Route
 
     @Serializable
-    /** Enable/disable built-in sources. */
+    /** Read-only directory of built-in sources. */
     data object Sources : Route
 
     @Serializable

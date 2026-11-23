@@ -125,7 +125,7 @@ class SourceCatalogCategoryTest {
             listOf(NewsCategory.WORLD),
             SourceCatalog.categoriesAmong(listOf(SourceCatalog.byId("bbc")!!)),
         )
-        // Only STAT disabled would drop Science-primary, but Ars/Wired/MIT
+        // Removing STAT alone would not drop Science: Ars/Wired/MIT
         // still carry it as a secondary tag.
         val noStat = SourceCatalog.sources.filter { it.id != "stat" }
         assertTrue(NewsCategory.SCIENCE in SourceCatalog.categoriesAmong(noStat))

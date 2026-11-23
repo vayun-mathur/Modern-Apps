@@ -21,15 +21,17 @@ import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.IconSettings
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.news.R
+import com.vayunmathur.news.domain.FeedSort
 import com.vayunmathur.news.domain.SourceCatalog
 import com.vayunmathur.news.platform.NewsViewModel
 
 /**
- * Merged newest-first feed with category filter chips and pull-to-refresh.
- * The chip row is categories, not sources: chips are the categories of the
- * enabled sources (plus the current selection, so it stays tappable), and
- * per-source enable/disable lives only on the Sources screen. Selecting a
- * category also narrows search results (see NewsViewModel.searchResults).
+ * Merged feed with category chips, a Top stories / Latest sort selector
+ * and pull-to-refresh. Every source is always in the corpus; chips are
+ * the categories of all sources (plus the current selection, so it
+ * stays tappable). Feed controls hide while searching — search keeps
+ * its relevance order. Selecting a category also narrows search
+ * results (see NewsViewModel.searchResults).
  */
 @Composable
 fun FeedScreen(
@@ -42,7 +44,8 @@ fun FeedScreen(
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     val refreshFailed by viewModel.refreshFailed.collectAsState()
     val categoryFilter by viewModel.categoryFilter.collectAsState()
-    val disabled by viewModel.disabledSourceIds.collectAsState()
+    val feedSort by viewModel.feedSort.collectAsState()
+    val clusterCounts by viewModel.clusterCounts.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val searchResults by viewModel.searchResults.collectAsState()
     val searching = searchQuery.isNotBlank()
@@ -66,15 +69,29 @@ fun FeedScreen(
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             if (!searching) {
+            // Sort selector: persisted Top stories (ranked) / Latest.
+            LazyRow(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                item {
+                    FilterChip(
+                        selected = feedSort == FeedSort.TOP,
+                        onClick = { viewModel.setFeedSort(FeedSort.TOP) },
+                        label = { Text(stringResource(R.string.feed_sort_top)) },
+                    )
+                }
+                item {
+                    FilterChip(
+                        selected = feedSort == FeedSort.LATEST,
+                        onClick = { viewModel.setFeedSort(FeedSort.LATEST) },
+                        label = { Text(stringResource(R.string.feed_sort_latest)) },
+                        modifier = Modifier.padding(start = 8.dp),
+                    )
+                }
+            }
             // Category chips (single-select, "All" = no category filter).
-            // Categories come from the enabled sources only; the current
-            // selection is kept in the row even if its sources were since
-            // disabled, so the filter can always be changed back.
-            val enabledSources = SourceCatalog.sources.filter { it.id !in disabled }
-            val categories = (SourceCatalog.categoriesAmong(enabledSources) +
+            val categories = (SourceCatalog.categoriesAmong(SourceCatalog.sources) +
                 listOfNotNull(categoryFilter)).distinct()
                 .sortedBy { it.ordinal }
-            LazyRow(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+            LazyRow(modifier = Modifier.padding(horizontal = 12.dp)) {
                 item {
                     FilterChip(
                         selected = categoryFilter == null,
@@ -110,6 +127,7 @@ fun FeedScreen(
                         article = article,
                         onClick = { onOpenArticle(article.url) },
                         onToggleBookmark = { viewModel.toggleBookmark(article) },
+                        alsoFromSources = if (searching) 0 else clusterCounts[article.url] ?: 0,
                     )
                 }
             }

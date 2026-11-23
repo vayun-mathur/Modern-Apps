@@ -8,7 +8,10 @@ import androidx.lifecycle.viewModelScope
 import com.vayunmathur.news.data.CachedArticle
 import com.vayunmathur.news.data.NewsPrefs
 import com.vayunmathur.news.data.NewsRepository
+import com.vayunmathur.news.data.toFeedArticle
 import com.vayunmathur.news.domain.ExtractedArticle
+import com.vayunmathur.news.domain.FeedRanking
+import com.vayunmathur.news.domain.FeedSort
 import com.vayunmathur.news.domain.NewsCategory
 import com.vayunmathur.news.domain.SourceCatalog
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,16 +19,17 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /**
- * Feed category filtering: a null category filter is "All" (every
- * enabled source); a non-null [NewsCategory] keeps only articles whose
- * source carries that catalog tag (see [SourceCatalog.matchesCategory]).
- * Categories never enable/disable sources — that stays per-source in
- * [NewsPrefs] via the Sources screen; the category filter only narrows
- * the already-enabled corpus.
+ * Feed filtering: every source is always in the corpus (no per-source
+ * toggle). A null category filter is "All"; a non-null [NewsCategory]
+ * keeps only articles whose source carries that catalog tag (see
+ * [SourceCatalog.matchesCategory]). The persisted [FeedSort] then
+ * orders the filtered corpus via [FeedRanking] (Top stories by
+ * default); search keeps its own relevance ranking.
  */
 
 /** UI state and actions for feed, reader, sources and saved screens. */
@@ -44,8 +48,17 @@ class NewsViewModel(
     private val _categoryFilter = MutableStateFlow<NewsCategory?>(null)
     val categoryFilter: StateFlow<NewsCategory?> = _categoryFilter.asStateFlow()
 
-    val disabledSourceIds: StateFlow<Set<String>> = prefs.disabledSourceIds
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
+    val feedSort: StateFlow<FeedSort> = prefs.feedSort
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FeedSort.TOP)
+
+    /** Extra sources per feed-row URL, from story clustering (see [FeedRanking]). */
+    private val _clusterCounts = MutableStateFlow<Map<String, Int>>(emptyMap())
+    val clusterCounts: StateFlow<Map<String, Int>> = _clusterCounts.asStateFlow()
+
+    /** Cached-article count per source id, for the read-only Sources directory. */
+    val sourceArticleCounts: StateFlow<Map<String, Int>> = repository.articles
+        .map { all -> all.groupingBy { it.sourceId }.eachCount() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
@@ -54,17 +67,16 @@ class NewsViewModel(
     /**
      * Search composes with the category filter: the repository search
      * runs over the whole local corpus, and its results are then kept to
-     * the selected category (and enabled sources) exactly like the feed.
+     * the selected category exactly like the feed. Search order is its
+     * relevance ranking regardless of the feed sort.
      * So searching searches *within* the selected category, and changing
      * the category while a query is active re-filters the visible
      * results without a new search.
      */
     val searchResults: StateFlow<List<CachedArticle>> = combine(
-        _searchResults, _categoryFilter, disabledSourceIds,
-    ) { results, category, disabled ->
-        results.filter {
-            it.sourceId !in disabled && SourceCatalog.matchesCategory(it.sourceId, category)
-        }
+        _searchResults, _categoryFilter,
+    ) { results, category ->
+        results.filter { SourceCatalog.matchesCategory(it.sourceId, category) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     private var searchJob: kotlinx.coroutines.Job? = null
 
@@ -86,9 +98,15 @@ class NewsViewModel(
     }
 
     val articles: StateFlow<List<CachedArticle>> = combine(
-        repository.articles, _categoryFilter, disabledSourceIds,
-    ) { all, category, disabled ->
-        all.filter { it.sourceId !in disabled && SourceCatalog.matchesCategory(it.sourceId, category) }
+        repository.articles, _categoryFilter, feedSort,
+    ) { all, category, sort ->
+        val filtered = all.filter { SourceCatalog.matchesCategory(it.sourceId, category) }
+        val ranked = FeedRanking.rank(
+            filtered.map { it.toFeedArticle() }, sort, System.currentTimeMillis(),
+        )
+        _clusterCounts.value = ranked.associate { it.article.url to it.alsoFromSources }
+        val byUrl = filtered.associateBy { it.url }
+        ranked.mapNotNull { byUrl[it.article.url] }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val bookmarked: StateFlow<List<CachedArticle>> = repository.bookmarked
@@ -108,29 +126,28 @@ class NewsViewModel(
     private var readerUrl: String? = null
 
     init {
+        viewModelScope.launch { prefs.clearLegacySourcePrefs() }
         refresh()
     }
 
-    /** Single-select category filter; null is "All". Never enables/disables sources. */
+    /** Single-select category filter; null is "All". */
     fun setCategoryFilter(category: NewsCategory?) {
         _categoryFilter.value = category
+    }
+
+    /** Persists the feed order (Top stories / Latest). Search is unaffected. */
+    fun setFeedSort(sort: FeedSort) {
+        viewModelScope.launch { prefs.setFeedSort(sort) }
     }
 
     fun refresh() {
         if (_isRefreshing.value) return
         viewModelScope.launch {
             _isRefreshing.value = true
-            val enabled = SourceCatalog.sources.filter { it.id !in disabledSourceIds.value }
-            val failed = runCatching { repository.refresh(enabled) }.getOrElse { listOf("all") }
+            val failed = runCatching { repository.refresh(SourceCatalog.sources) }
+                .getOrElse { listOf("all") }
             _refreshFailed.value = failed.isNotEmpty()
             _isRefreshing.value = false
-        }
-    }
-
-    fun setSourceEnabled(id: String, enabled: Boolean) {
-        viewModelScope.launch {
-            prefs.setSourceEnabled(id, enabled)
-            if (enabled) refresh()
         }
     }
 

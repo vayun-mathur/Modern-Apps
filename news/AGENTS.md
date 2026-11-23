@@ -13,9 +13,12 @@ _Install: ./install news_
 ## Overview
 **Purpose:** News reader. Primary feed is our server's `GET /news.json`
 (`https://api.maproj.org/news.json`, see `domain/ServerFeedParser` for the
-contract + assumptions), merged into Room and filtered client-side by the
-enabled sources. If the server fetch fails/times out/parses empty, refresh
-falls back to the on-device per-source sitemap/RSS crawl of enabled sources
+contract + assumptions), merged into Room. Every source is always in the
+corpus (no per-source toggle; the Sources screen is a read-only
+directory); category + search are the filters, and the persisted
+Top stories / Latest sort (`domain/FeedRanking`) orders the feed
+client-side. If the server fetch fails/times out/parses empty, refresh
+falls back to the on-device per-source sitemap/RSS crawl of all sources
 (cached feed stays visible either way). Article reading is always on-device:
 publisher HTML is fetched directly and extracted locally. No account.
 On-device search (feed screen) runs over the local corpus only — titles,

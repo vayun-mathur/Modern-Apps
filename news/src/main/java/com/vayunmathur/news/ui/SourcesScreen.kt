@@ -13,16 +13,20 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.ListItem
-import com.vayunmathur.library.ui.Switch
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.news.R
 import com.vayunmathur.news.domain.SourceCatalog
 import com.vayunmathur.news.platform.NewsViewModel
 
-/** Built-in source catalog with per-source enable switches. */
+/**
+ * Read-only source directory: every source is always in the corpus
+ * (categories and search are the filters), so there is nothing to
+ * toggle here — just name, language, metered badge and how many of its
+ * articles are currently cached.
+ */
 @Composable
 fun SourcesScreen(viewModel: NewsViewModel, onBack: () -> Unit) {
-    val disabled by viewModel.disabledSourceIds.collectAsState()
+    val counts by viewModel.sourceArticleCounts.collectAsState()
     AppScaffold(
         title = stringResource(R.string.sources_title),
         onNavigateBack = onBack,
@@ -34,16 +38,23 @@ fun SourcesScreen(viewModel: NewsViewModel, onBack: () -> Unit) {
             )
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 items(SourceCatalog.sources, key = { it.id }) { source ->
+                    val count = counts[source.id] ?: 0
                     ListItem(
                         headlineContent = { Text(source.name) },
                         supportingContent = {
-                            Text(source.badge ?: source.feedUrl)
+                            Column {
+                                val detail = buildString {
+                                    append(source.language)
+                                    if (count > 0) append(" · $count cached")
+                                }
+                                Text(detail)
+                                if (source.badge != null) Text(source.badge)
+                            }
                         },
                         trailingContent = {
-                            Switch(
-                                checked = source.id !in disabled,
-                                onCheckedChange = { viewModel.setSourceEnabled(source.id, it) },
-                            )
+                            if (source.badge?.startsWith("Metered") == true) {
+                                Text(stringResource(R.string.sources_metered))
+                            }
                         },
                     )
                 }

@@ -21,8 +21,8 @@ import kotlinx.serialization.json.jsonObject
  * - `source` is a [SourceCatalog] id (`bbc`) or its exact display name
  *   (`BBC News`); both resolve to the catalog id. Anything else is kept
  *   verbatim as the sourceId — such articles are then dropped by the
- *   repository's enabled-source filter, so an unrecognised source value
- *   degrades to "that source is missing", never to wrong attribution.
+ *   kept and shown under "All" only (no category), never re-attributed
+ *   to a different source.
  * - `published_at` is an ISO-8601/RFC-1123 string (parsed by
  *   [DateParsing]) or epoch seconds/millis as a JSON number.
  * - `image_url` may be absent/null; `metered` may be absent (defaults
