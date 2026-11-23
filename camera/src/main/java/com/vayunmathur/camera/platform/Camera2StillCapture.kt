@@ -47,6 +47,11 @@ import kotlinx.coroutines.withContext
 internal fun CameraViewModel.registerCamera2Session(session: Camera2Session?) {
     activeCamera2Session = session
     if (session != null) {
+        // A live session is the honest moment to publish whether its
+        // analysis stream is carrying the mode's sink (QR scanner,
+        // PhotoAnalyzer, ...); teardown clears the flag, so without this
+        // the "scanning paused" banner survives a successful bind.
+        onSessionBound()
         viewModelScope.launch { refreshCapabilities(session.characteristics.cameraId) }
     }
 }

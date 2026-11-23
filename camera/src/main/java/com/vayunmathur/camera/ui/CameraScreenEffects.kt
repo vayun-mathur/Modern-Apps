@@ -25,6 +25,7 @@ import com.vayunmathur.camera.platform.clearCamera2NightFallback
 import com.vayunmathur.camera.platform.applyImageCaptureFlashMode
 import com.vayunmathur.camera.platform.enableTorch
 import com.vayunmathur.camera.platform.onLuminance
+import com.vayunmathur.camera.platform.onSessionBound
 import com.vayunmathur.camera.platform.refreshNightExtensionUsable
 import com.vayunmathur.camera.platform.runSessionBindWithRetry
 import com.vayunmathur.camera.platform.setQrResult
@@ -126,7 +127,12 @@ internal fun CameraScreenEffects(
     // re-applied to the freshly-bound ImageAnalysis after every (re)bind (mode switch / flip), and
     // on lensFacing + selectedLens to match the DisposableEffect below, which detaches on a
     // flip or lens switch.
-    LaunchedEffect(cameraMode, lensFacing, selectedLens) {
+    // photoSessionActive joins the keys so the sink (and the
+    // analysisStreamActive flag behind it) is re-applied after the bind
+    // effect's teardown, which otherwise leaves the flag cleared — and
+    // the "QR scanning paused" banner up — on every mode switch, even
+    // though the Camera2 session (and its analysis stream) never died.
+    LaunchedEffect(cameraMode, lensFacing, selectedLens, state.photoSessionActive) {
         when {
             cameraMode == CameraMode.SLOW_MO -> {
                 state.maskBitmap = null
@@ -285,6 +291,12 @@ internal fun CameraScreenEffects(
                 viewModel.photoSessionActiveMutable.value =
                     sessionKind == SessionKind.PHOTO || sessionKind == SessionKind.PORTRAIT ||
                     sessionKind == SessionKind.PANORAMA
+                // teardownSession() above cleared analysisStreamActive;
+                // the analyzer effect (composed earlier) has already
+                // installed this mode's sink, so republish from it now —
+                // otherwise the "QR scanning paused" banner survives every
+                // mode switch despite a live analysis stream.
+                viewModel.onSessionBound()
                 viewModel.videoSessionActiveMutable.value = sessionKind == SessionKind.VIDEO
                 viewModel.highSpeedActiveMutable.value = sessionKind == SessionKind.HIGH_SPEED
                 viewModel.nightPreviewActiveMutable.value = useCamera2NightPreview
