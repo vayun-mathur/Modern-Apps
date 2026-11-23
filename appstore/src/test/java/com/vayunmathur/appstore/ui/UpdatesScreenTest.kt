@@ -105,6 +105,10 @@ class UpdatesScreenTest {
         val state = UpdatesUiState(isChecking = true, statusMessage = "Checking Play")
         rule.setContent { UpdatesScreen(state = state, actions = UpdatesActions.Noop) }
 
+        // Checking with an empty list is scaffold loading: the content (and
+        // its in-content status line) is not composed, so the checking text
+        // must survive on the loading surface as the scaffold loadingMessage.
         rule.onNodeWithText("Checking Play").assertIsDisplayed()
+        rule.onNodeWithText("Everything is up to date").assertDoesNotExist()
     }
 }

@@ -44,8 +44,20 @@ fun UpdatesScreen(
 ) {
     val anyInstalling = state.stages.values.any { it !is InstallStage.Failed }
     val total = state.updates.size + state.foreignUpdates.size
+    // While checking with nothing to show, the scaffold replaces the content
+    // (and with it the in-content status line), so the checking status must
+    // ride on the loading surface or it would vanish behind the spinner.
+    val checkingMessage = if (state.isChecking) {
+        state.statusMessage.ifBlank { stringResource(R.string.updates_checking) }
+    } else {
+        null
+    }
 
-    AppScaffold(topBar = {}, isLoading = total == 0 && state.isChecking) { padding ->
+    AppScaffold(
+        topBar = {},
+        isLoading = total == 0 && state.isChecking,
+        loadingMessage = checkingMessage,
+    ) { padding ->
         AppPullToRefreshBox(
             isRefreshing = state.isChecking,
             onRefresh = { actions.checkForUpdates() },
