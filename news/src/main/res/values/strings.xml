@@ -11,7 +11,6 @@
     <string name="feed_search_placeholder">Search downloaded news</string>
     <string name="feed_search_empty">No downloaded articles match. Search covers titles and articles you have opened.</string>
     <!-- ReaderScreen -->
-    <string name="reader_title">Article</string>
     <string name="reader_text_smaller">Smaller text</string>
     <string name="reader_text_larger">Larger text</string>
     <string name="reader_serif">Serif</string>

@@ -14,16 +14,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vayunmathur.library.image.compose.AsyncImage
 import com.vayunmathur.library.ui.AppScaffold
-import com.vayunmathur.library.ui.FilterChip
 import com.vayunmathur.library.ui.IconBookmark
 import com.vayunmathur.library.ui.IconBookmarkBorder
 import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.IconTextTool
+import com.vayunmathur.library.ui.IconZoomIn
+import com.vayunmathur.library.ui.IconZoomOut
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.news.R
@@ -33,9 +36,10 @@ import com.vayunmathur.news.platform.NewsViewModel
 /**
  * First-class reader: the extracted clean article (title, byline, date,
  * comfortable measure, adjustable size, serif/sans). Reader-only: there
- * is no original-page WebView or open-in-browser affordance, and the
- * top app bar carries no actions — bookmark, text size and serif live
- * in an in-content action row below the title.
+ * is no original-page WebView or open-in-browser affordance. The top
+ * app bar is empty apart from back navigation (no generic title), and
+ * bookmark, text size and serif live in an icon-only in-content action
+ * row below the title.
  */
 @Composable
 fun ReaderScreen(viewModel: NewsViewModel, url: String, onBack: () -> Unit) {
@@ -46,7 +50,10 @@ fun ReaderScreen(viewModel: NewsViewModel, url: String, onBack: () -> Unit) {
     val serif by viewModel.readerSerif.collectAsState()
     LaunchedEffect(url) { viewModel.openArticle(url) }
     AppScaffold(
-        title = stringResource(R.string.reader_title),
+        // No generic "Article" title: the article's own headline is in
+        // the content, so the bar carries only back navigation (the
+        // empty-title placement the feed uses for its search bar).
+        title = "",
         onNavigateBack = onBack,
     ) { padding ->
         Column(
@@ -76,7 +83,12 @@ fun ReaderScreen(viewModel: NewsViewModel, url: String, onBack: () -> Unit) {
     }
 }
 
-/** In-content reader actions: bookmark, serif/sans, and text size. */
+/**
+ * In-content reader actions: bookmark, serif/sans, and text size.
+ * Icon-only (no text labels); each button carries a content description
+ * for accessibility, and the serif toggle is tinted primary while serif
+ * is active, mirroring the bookmark's filled state.
+ */
 @Composable
 private fun ReaderActionRow(
     bookmarked: Boolean,
@@ -86,29 +98,37 @@ private fun ReaderActionRow(
     onTextSp: (Int) -> Unit,
     onSerif: (Boolean) -> Unit,
 ) {
+    val serifDescription = stringResource(if (serif) R.string.reader_serif else R.string.reader_sans)
+    val smallerDescription = stringResource(R.string.reader_text_smaller)
+    val largerDescription = stringResource(R.string.reader_text_larger)
     Row(modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
         IconButton(onClick = onToggleBookmark) {
             if (bookmarked) IconBookmark() else IconBookmarkBorder()
         }
-        FilterChip(
-            selected = serif,
+        IconButton(
             onClick = { onSerif(!serif) },
-            label = { Text(if (serif) stringResource(R.string.reader_serif) else stringResource(R.string.reader_sans)) },
-            leadingIcon = { IconTextTool() },
-            modifier = Modifier.padding(start = 8.dp),
-        )
-        FilterChip(
-            selected = false,
+            modifier = Modifier.semantics { contentDescription = serifDescription },
+        ) {
+            IconTextTool(
+                tint = if (serif) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+            )
+        }
+        IconButton(
             onClick = { onTextSp(textSp - 1) },
-            label = { Text(stringResource(R.string.reader_text_smaller)) },
-            modifier = Modifier.padding(start = 8.dp),
-        )
-        FilterChip(
-            selected = false,
+            modifier = Modifier.semantics { contentDescription = smallerDescription },
+        ) {
+            IconZoomOut()
+        }
+        IconButton(
             onClick = { onTextSp(textSp + 1) },
-            label = { Text(stringResource(R.string.reader_text_larger)) },
-            modifier = Modifier.padding(start = 8.dp),
-        )
+            modifier = Modifier.semantics { contentDescription = largerDescription },
+        ) {
+            IconZoomIn()
+        }
     }
 }
 
