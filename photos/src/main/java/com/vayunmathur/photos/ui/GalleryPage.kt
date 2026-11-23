@@ -1,10 +1,14 @@
 package com.vayunmathur.photos.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.photos.Route
 import com.vayunmathur.photos.platform.GalleryUiState
@@ -42,6 +46,27 @@ fun GalleryPage(
         // ViewModel's own runSync is seam-covered per instance, but enqueueSync
         // is not, so route it through the shared hook here.
         enqueueSyncWork(context)
+    }
+
+    // Foreground freshness: while this screen is started, a MediaStore
+    // content observer imports just-taken photos within moments (debounced
+    // item-URI sync in the ViewModel); on stop it unregisters, so no
+    // observer leaks into the background. The WorkManager content trigger
+    // above remains the background safety net.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, galleryViewModel) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_START -> galleryViewModel.startForegroundObserving()
+                Lifecycle.Event.ON_STOP -> galleryViewModel.stopForegroundObserving()
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            galleryViewModel.stopForegroundObserving()
+        }
     }
 
     // Trash/delete/album actions request MANAGE_MEDIA contextually inside

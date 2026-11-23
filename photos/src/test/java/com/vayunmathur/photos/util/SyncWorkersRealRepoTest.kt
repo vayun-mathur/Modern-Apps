@@ -216,6 +216,10 @@ class SyncWorkersRealRepoTest {
         assertEquals(ListenableWorker.Result.success(), clip.doWork())
         val face = TestListenableWorkerBuilder<FaceWorker>(context).build()
         assertEquals(ListenableWorker.Result.success(), face.doWork())
+        // The trailing EXIF worker (triggered syncs defer to it) also runs
+        // cleanly over an empty library.
+        val exif = TestListenableWorkerBuilder<com.vayunmathur.photos.platform.ExifWorker>(context).build()
+        assertEquals(ListenableWorker.Result.success(), exif.doWork())
         Unit
     }
 

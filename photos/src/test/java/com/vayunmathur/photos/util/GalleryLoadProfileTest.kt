@@ -21,10 +21,15 @@ import com.vayunmathur.photos.platform.GalleryViewModel
 import com.vayunmathur.photos.platform.ImageLoader
 import com.vayunmathur.photos.platform.PhotoScanStore
 import com.vayunmathur.photos.platform.PhotoStore
+import com.vayunmathur.photos.platform.ForegroundMediaObserver
+import com.vayunmathur.photos.platform.MediaStoreRegistrar
 import com.vayunmathur.photos.platform.OneTimeFlag
+import com.vayunmathur.photos.platform.exifRunsInline
 import com.vayunmathur.photos.platform.generationWatermarkAfter
 import com.vayunmathur.photos.platform.syncLibrary
 import com.vayunmathur.photos.platform.syncPhotos
+import com.vayunmathur.photos.platform.syncTriggeredPhotos
+import com.vayunmathur.photos.platform.triggeredItemUris
 import com.vayunmathur.photos.platform.workInfosOverride
 import com.vayunmathur.photos.ui.groupPhotosByMonth
 import kotlin.test.Test
@@ -249,6 +254,124 @@ class GalleryLoadProfileTest {
         // below that generation is skipped by all later incremental syncs.
         assertNull(generationWatermarkAfter(triggered = true, currentGeneration = 99L))
         assertEquals(99L, generationWatermarkAfter(triggered = false, currentGeneration = 99L))
+    }
+
+    @Test
+    fun exifTrailsTriggeredSyncsButRunsInlineForGenerationCompleteSyncs() {
+        // 0e2d54511 invariant extended: the watermark still only advances
+        // after an inline EXIF pass on a generation-complete sync, but a
+        // triggered sync defers EXIF to ExifWorker — its rows are already
+        // upserted/visible, so the backlog cannot delay them.
+        assertEquals(false, exifRunsInline(triggered = true))
+        assertEquals(true, exifRunsInline(triggered = false))
+    }
+
+    @Test
+    fun triggeredForegroundImportIsItemOnlyAndCollectionUriNeverWidensToFullScan() = runBlocking {
+        ShadowContentResolver.registerProviderInternal(MediaStore.AUTHORITY, OneRowProvider())
+        val repository = FakePhotosRepository(context)
+
+        // Collection-level callback (no item id): importing nothing is the
+        // contract — widening this to syncPhotos(null-selection) would be a
+        // full provider scan on the foreground path.
+        val collection = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+        assertEquals(emptyList(), triggeredItemUris(listOf(collection)))
+        assertEquals(false, syncTriggeredPhotos(context, repository, listOf(collection)))
+        assertTrue(repository.upsertedBatches.isEmpty())
+        assertTrue(repository.deletedBatches.isEmpty())
+
+        // One new item URI: exactly that row is upserted, with enrichment
+        // fields still unset (EXIF trails the visible row).
+        val item = android.content.ContentUris.withAppendedId(collection, 1L)
+        assertEquals(listOf(item), triggeredItemUris(listOf(item, collection)))
+        assertEquals(true, syncTriggeredPhotos(context, repository, listOf(item)))
+        val imported = repository.upsertedBatches.single().single()
+        assertEquals(1L, imported.id)
+        assertEquals(false, imported.exifSet)
+        assertEquals(null, imported.lat)
+        Unit
+    }
+
+    private class RecordingRegistrar : MediaStoreRegistrar {
+        val registeredUris = mutableListOf<Uri>()
+        var unregisterCalls = 0
+        override fun register(
+            observer: android.database.ContentObserver,
+            uri: Uri,
+            notifyForDescendants: Boolean,
+        ) {
+            registeredUris += uri
+        }
+
+        override fun unregister(observer: android.database.ContentObserver) {
+            unregisterCalls++
+        }
+    }
+
+    @Test
+    fun foregroundObserverRegistersOnStartUnregistersOnStopWithoutLeak() {
+        val registrar = RecordingRegistrar()
+        val scope = CoroutineScope(Dispatchers.Default)
+        val received = mutableListOf<List<Uri>>()
+        val observer = ForegroundMediaObserver(registrar, scope, debounceMs = 50L) { uris ->
+            synchronized(received) { received += uris }
+        }
+        assertEquals(false, observer.isRegistered)
+
+        observer.start()
+        assertEquals(true, observer.isRegistered)
+        assertEquals(ForegroundMediaObserver.OBSERVED_URIS, registrar.registeredUris)
+        // Repeat start is a no-op: no double registration to leak.
+        observer.start()
+        assertEquals(2, registrar.registeredUris.size)
+
+        // A pending debounced import is cancelled by stop, not delivered
+        // after the observer is gone.
+        val item = Uri.parse("content://media/external/images/media/9")
+        observer.onMediaChanged(item)
+        observer.stop()
+        assertEquals(false, observer.isRegistered)
+        assertEquals(1, registrar.unregisterCalls)
+        // Repeat stop is a no-op.
+        observer.stop()
+        assertEquals(1, registrar.unregisterCalls)
+        Thread.sleep(200)
+        synchronized(received) { assertTrue(received.isEmpty(), received.toString()) }
+
+        // Late callbacks after stop are dropped; a restart re-registers.
+        observer.onMediaChanged(item)
+        observer.start()
+        assertEquals(true, observer.isRegistered)
+        assertEquals(4, registrar.registeredUris.size)
+        observer.stop()
+        assertEquals(2, registrar.unregisterCalls)
+        scope.cancel()
+    }
+
+    @Test
+    fun foregroundObserverDebouncesAndDedupesBurstIntoOneTriggeredImport() {
+        val registrar = RecordingRegistrar()
+        val scope = CoroutineScope(Dispatchers.Default)
+        val received = mutableListOf<List<Uri>>()
+        val observer = ForegroundMediaObserver(registrar, scope, debounceMs = 50L) { uris ->
+            synchronized(received) { received += uris }
+        }
+        observer.start()
+        val a = Uri.parse("content://media/external/images/media/9")
+        val b = Uri.parse("content://media/external/video/media/10")
+        // One capture firing several callbacks (incl. a duplicate) coalesces.
+        observer.onMediaChanged(a)
+        observer.onMediaChanged(a)
+        observer.onMediaChanged(b)
+        observer.onMediaChanged(null)
+        val batch = awaitValue {
+            synchronized(received) { received.singleOrNull() }
+        }
+        assertEquals(listOf(a, b), batch)
+        Thread.sleep(150)
+        synchronized(received) { assertEquals(1, received.size) }
+        observer.stop()
+        scope.cancel()
     }
 
     /** Idles the paused main looper until [read] yields a value (bounded, real time). */

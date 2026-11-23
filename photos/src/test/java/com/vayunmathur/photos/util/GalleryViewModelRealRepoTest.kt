@@ -243,6 +243,104 @@ class GalleryViewModelRealRepoTest {
         Unit
     }
 
+    private class FreshPhotoProvider : android.content.ContentProvider() {
+        override fun onCreate() = true
+
+        override fun query(
+            uri: android.net.Uri, projection: Array<out String>?, selection: String?,
+            selectionArgs: Array<out String>?, sortOrder: String?,
+        ): android.database.Cursor = throw UnsupportedOperationException("bundle query only")
+
+        override fun query(
+            uri: android.net.Uri, projection: Array<out String>?, queryArgs: android.os.Bundle?,
+            cancellationSignal: android.os.CancellationSignal?,
+        ): android.database.Cursor {
+            val columns = projection ?: COLUMNS
+            val cursor = android.database.MatrixCursor(columns)
+            if (!uri.toString().contains("/video/")) {
+                val byName = COLUMNS.zip(
+                    arrayOf<Any?>(
+                        777L, "fresh.jpg", 1_700_000_000_000L, 1_700_000_000L, 1_700_000_000L,
+                        100, 100, 0, "image/jpeg", "Camera", 0, null,
+                    ),
+                ).toMap()
+                cursor.addRow(columns.map { byName[it] })
+            }
+            return cursor
+        }
+
+        override fun getType(uri: android.net.Uri): String? = null
+        override fun insert(uri: android.net.Uri, values: android.content.ContentValues?): android.net.Uri? = null
+        override fun delete(uri: android.net.Uri, selection: String?, selectionArgs: Array<out String>?) = 0
+        override fun update(
+            uri: android.net.Uri, values: android.content.ContentValues?, selection: String?,
+            selectionArgs: Array<out String>?,
+        ) = 0
+
+        companion object {
+            val COLUMNS = arrayOf(
+                android.provider.MediaStore.MediaColumns._ID,
+                android.provider.MediaStore.MediaColumns.DISPLAY_NAME,
+                android.provider.MediaStore.MediaColumns.DATE_TAKEN,
+                android.provider.MediaStore.MediaColumns.DATE_ADDED,
+                android.provider.MediaStore.MediaColumns.DATE_MODIFIED,
+                android.provider.MediaStore.MediaColumns.WIDTH,
+                android.provider.MediaStore.MediaColumns.HEIGHT,
+                android.provider.MediaStore.MediaColumns.IS_TRASHED,
+                android.provider.MediaStore.MediaColumns.MIME_TYPE,
+                android.provider.MediaStore.MediaColumns.BUCKET_DISPLAY_NAME,
+                android.provider.MediaStore.MediaColumns.IS_FAVORITE,
+                android.provider.MediaStore.Video.Media.DURATION,
+            )
+        }
+    }
+
+    @Test fun triggeredImportOfOneNewPhotoEmitsInGalleryFlowBeforeEnrichmentLands() = runBlocking {
+        val provider = FreshPhotoProvider()
+        provider.attachInfo(app, android.content.pm.ProviderInfo().apply {
+            authority = "media"
+            packageName = app.packageName
+        })
+        org.robolectric.shadows.ShadowContentResolver.registerProviderInternal("media", provider)
+
+        val vm = viewModel()
+        var trailingEnqueues = 0
+        vm.trailingEnrichmentHook = { trailingEnqueues++ }
+        val jobs = collect(vm)
+        await("initial empty gallery") { !vm.galleryLoading.value && vm.galleryPhotos.value.isEmpty() }
+
+        // Foreground fast path for one just-taken photo: metadata import
+        // only. The row must emit in the gallery flow with enrichment
+        // fields still unset — visibility is not gated on the EXIF pass.
+        val item = android.content.ContentUris.withAppendedId(
+            android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, 777L,
+        )
+        vm.importTriggeredPhotos(listOf(item))
+        await("new photo visible in gallery flow") {
+            vm.galleryPhotos.value.map { it.name } == listOf("fresh.jpg")
+        }
+        val visible = vm.galleryPhotos.value.single()
+        assertEquals(777L, visible.id)
+        assertFalse(visible.exifSet, "row visible before EXIF enrichment")
+        assertEquals(null, visible.lat)
+        assertEquals(1, trailingEnqueues)
+
+        // A collection-level callback imports nothing and enqueues nothing:
+        // it must never widen into a full scan on the foreground path.
+        vm.importTriggeredPhotos(listOf(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI))
+        assertEquals(1, trailingEnqueues)
+        assertEquals(listOf("fresh.jpg"), vm.galleryPhotos.value.map { it.name })
+
+        // Enrichment trails the visible row: the EXIF pass now lands its
+        // fields on the same row (unreadable test URI still marks it set).
+        com.vayunmathur.photos.platform.setExifData(installed.scan, app)
+        await("exif enrichment landed on visible row") {
+            vm.galleryPhotos.value.singleOrNull()?.exifSet == true
+        }
+        jobs.forEach { it.cancel() }
+        Unit
+    }
+
     @Test fun resolveAndIndexFindsSeededRow() = runBlocking {
         val repo = installed.photos
         repo.upsertAll(listOf(photo("indexed", 100L)))

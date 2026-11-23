@@ -473,6 +473,72 @@ class GalleryViewModel(
     }
 
     /**
+     * Watches MediaStore while the gallery is foregrounded (see
+     * [ForegroundMediaObserver]). Started/stopped by the gallery binder on
+     * ON_START/ON_STOP and stopped again in [onCleared], so the
+     * registration never outlives the foreground. Tests may replace this
+     * with an observer over a fake registrar.
+     */
+    internal var foregroundObserver: ForegroundMediaObserver = ForegroundMediaObserver(
+        registrar = AndroidMediaStoreRegistrar(application.contentResolver),
+        scope = viewModelScope,
+        onTriggered = { uris -> importTriggeredPhotos(uris) },
+    )
+
+    /** Start the foreground MediaStore observer (idempotent). */
+    fun startForegroundObserving() = foregroundObserver.start()
+
+    /** Stop the foreground MediaStore observer (idempotent, no leak). */
+    fun stopForegroundObserving() = foregroundObserver.stop()
+
+    /**
+     * Test seam: unit tests have no WorkManager initializer, so they set
+     * this to record instead of doing the real metadata import. Production
+     * leaves it null.
+     */
+    internal var foregroundImportHook: (suspend (List<Uri>) -> Unit)? = null
+
+    /**
+     * Test seam mirroring [foregroundImportHook] for the trailing
+     * enrichment enqueues that follow a foreground import.
+     */
+    internal var trailingEnrichmentHook: (() -> Unit)? = null
+
+    /**
+     * Import just-changed [uris] on the foreground fast path: metadata
+     * only ([syncTriggeredPhotos] — item-URI selection, Room upsert, no
+     * full scan, no inline EXIF, no watermark write), so the new rows emit
+     * from [galleryPhotos] within moments of the change. Enrichment
+     * (EXIF/OCR/face/CLIP) trails in its own workers over the
+     * already-visible rows.
+     */
+    internal suspend fun importTriggeredPhotos(uris: List<Uri>) {
+        foregroundImportHook?.let { hook ->
+            hook(uris)
+            return
+        }
+        val imported = withContext(Dispatchers.IO) {
+            syncTriggeredPhotos(getApplication(), resolveRepository(), uris)
+        }
+        if (imported) enqueueTrailingEnrichment()
+    }
+
+    private fun enqueueTrailingEnrichment() {
+        trailingEnrichmentHook?.invoke() ?: run {
+            val app = getApplication<Application>()
+            ExifWorker.enqueue(app)
+            OCRWorker.enqueue(app)
+            FaceWorker.enqueue(app)
+            ClipWorker.enqueue(app)
+        }
+    }
+
+    override fun onCleared() {
+        foregroundObserver.stop()
+        super.onCleared()
+    }
+
+    /**
      * Test seam mirroring [workInfosOverride] below: unit tests have no
      * WorkManager initializer, so they set this to a no-op (or a recorder).
      * Production leaves it null to enqueue the real sync. Behavior-preserving:

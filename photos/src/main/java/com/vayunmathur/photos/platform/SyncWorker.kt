@@ -85,7 +85,18 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
             )
         }
 
-        setExifData(scanRepository, applicationContext)
+        // EXIF placement (see exifRunsInline): a triggered sync's rows are
+        // already upserted — visible in the gallery flow — so its EXIF pass
+        // must not sit inline behind a possibly-large unscanned backlog,
+        // delaying this worker's turnaround (and, under the unique-work
+        // KEEP policy, the next trigger). It trails in ExifWorker instead.
+        // A generation-complete sync keeps EXIF inline, ahead of the
+        // watermark write below: that ordering is the watermark invariant.
+        if (exifRunsInline(triggeredUris.isNotEmpty())) {
+            setExifData(scanRepository, applicationContext)
+        } else {
+            ExifWorker.enqueue(applicationContext)
+        }
 
         // OCR and face grouping are both always on (no opt-in). Each worker is
         // inert if its data/model assets are missing.
@@ -195,6 +206,48 @@ class OCRWorker(context: Context, params: WorkerParameters) : CoroutineWorker(co
 }
 
 /**
+ * Trailing EXIF pass for triggered / foreground imports.
+ *
+ * A triggered sync upserts its rows first (visible in the gallery flow) and
+ * enqueues this worker instead of running [setExifData] inline, so geo /
+ * panorama enrichment lands on the already-visible rows shortly after —
+ * without a large unscanned backlog delaying the new photo's worker.
+ * Generation-complete syncs do NOT use this worker for their own pass:
+ * they run EXIF inline ahead of the watermark write (see [exifRunsInline]).
+ */
+class ExifWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
+
+    override suspend fun doWork(): WorkResult = withContext(Dispatchers.IO) {
+        setForeground(createForegroundInfo())
+        val scanRepository = PhotoScanRepository.get(applicationContext)
+        setExifData(scanRepository, applicationContext)
+        WorkResult.success()
+    }
+
+    private fun createForegroundInfo(): ForegroundInfo = applicationContext.syncForegroundInfo(
+        notificationId = 105,
+        channelId = "exif_worker",
+        channelName = "Photo Sync",
+        title = "Reading Photo Details",
+        text = "Extracting locations and photo details...",
+    )
+
+    /** Shared constants and helpers for ExifWorker. */
+    companion object {
+        const val WORK_NAME = "ExifWorker"
+
+        fun enqueue(context: Context) {
+            val request = OneTimeWorkRequestBuilder<ExifWorker>().build()
+            WorkManager.getInstance(context).enqueueUniqueWork(
+                WORK_NAME,
+                ExistingWorkPolicy.KEEP,
+                request,
+            )
+        }
+    }
+}
+
+/**
  * A persisted "has this one-off job run yet" bit. An interface so the
  * once-only behaviour of [syncLibrary] is testable without DataStore.
  */
@@ -251,6 +304,50 @@ private object AlreadySetFlag : OneTimeFlag {
  */
 internal fun generationWatermarkAfter(triggered: Boolean, currentGeneration: Long): Long? =
     if (triggered) null else currentGeneration
+
+/**
+ * Whether a sync runs its EXIF pass inline, before returning.
+ *
+ * Only a generation-complete (untriggered) sync does: the watermark write
+ * that follows it may only advance after the EXIF pass (0e2d54511), so the
+ * pass cannot trail that sync. A triggered sync's rows are upserted before
+ * any EXIF work either way; running the (possibly backlog-long) pass inline
+ * would only delay the worker's turnaround, so triggered syncs defer it to
+ * [ExifWorker] — the rows stay visible, enrichment catches up.
+ */
+internal fun exifRunsInline(triggered: Boolean): Boolean = !triggered
+
+/**
+ * The item URIs in [uris] — those carrying a MediaStore id. Collection
+ * URIs (and anything unparseable) are dropped: [syncPhotos] widens an
+ * id-less triggered list to a null selection, i.e. a full provider scan,
+ * which the foreground path must never do.
+ */
+internal fun triggeredItemUris(uris: List<Uri>): List<Uri> =
+    uris.filter { runCatching { ContentUris.parseId(it) }.isSuccess }
+
+/**
+ * Foreground fast import of just-changed [uris]: metadata only.
+ *
+ * Keeps only item URIs (see [triggeredItemUris]), then runs the ordinary
+ * triggered [syncPhotos] — an `_id IN (...)` selection over the provider,
+ * an upsert into Room, and nothing else. No full scan, no EXIF/OCR/face
+ * work inline, and no watermark write: enrichment trails via the workers
+ * the caller enqueues, and the generation watermark stays owned by the
+ * generation-complete background sync. Returns false (importing nothing)
+ * when no URI names an item, so a collection-level callback can never
+ * widen into a scan.
+ */
+suspend fun syncTriggeredPhotos(
+    context: Context,
+    repository: PhotosRepository,
+    uris: List<Uri>,
+): Boolean {
+    val items = triggeredItemUris(uris)
+    if (items.isEmpty()) return false
+    syncPhotos(context, repository, items)
+    return true
+}
 
 /**
  * The untriggered library sync: incremental from [lastGeneration], unless a
