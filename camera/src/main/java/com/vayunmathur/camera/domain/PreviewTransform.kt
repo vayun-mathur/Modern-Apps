@@ -16,15 +16,37 @@ import kotlin.math.max
  *   its promised ratio via `previewRatioForWindow`, this transform only
  *   decides how the stream fills it).
  *
- * The buffer must be rotated by the relative rotation
- * ([AnalysisRotation.rotationDegrees]: sensor vs display, front lenses add)
- * to sit upright, then uniformly scaled by
- * `max(viewW / displayedW, viewH / displayedH)` and centred. Uniform scale
- * is the whole point: the old path set no TextureView transform at all, so
- * the view stretched the buffer non-uniformly whenever the stream aspect
- * (e.g. a 4:3 sensor frame capped to 1440x1080, displayed as 3:4) differed
- * from the box aspect (e.g. a 9:16 still-crop box). Any non-uniform
- * fallback is stretch, never a valid preview.
+ * Two different transforms live here, in two different spaces:
+ *
+ * - [compute]: the *geometry* of the upright image — the buffer rotated
+ *   by the relative rotation ([AnalysisRotation.rotationDegrees]:
+ *   sensor vs display, front lenses add) has [displayedWidth] x
+ *   [displayedHeight] (aspect swapped for 90/270), and fills the view at
+ *   the uniform scale `max(viewW / displayedW, viewH / displayedH)`,
+ *   centred. This describes where image content sits; it is NOT a
+ *   TextureView matrix.
+ * - [computeTextureAffine]: the matrix `TextureView.setTransform`
+ *   actually consumes. TextureView is a sampling surface: it renders
+ *   the SurfaceTexture through the texture transform the camera
+ *   framework already attached to the stream (which is where the
+ *   sensor rotation — and the buffer's quarter-turn — is applied; it
+ *   is why the pre-transform preview was *stretched*, never sideways),
+ *   composed with the app-supplied matrix expressed against the
+ *   *displayed* (post-rotation) frame, exactly as the platform Camera2
+ *   sample builds its matrix against a swapped buffer rect. The app
+ *   matrix must therefore contain NO rotation of its own: any quarter
+ *   turn here rotates an already-upright image. The 7c4429d74 wiring
+ *   fed [compute]'s rotated placement affine straight to
+ *   `setTransform`, double-applying the rotation — back sensor 90 and
+ *   front sensor 270 both rendered a quarter-turn from the (correct,
+ *   EXIF-rotated) captured still. The texture affine is instead the
+ *   inverse uniform scale over the displayed frame, centred.
+ *
+ * Uniform scale is the other invariant: with no app transform at all
+ * the view stretches the buffer non-uniformly whenever the stream
+ * aspect (e.g. a 4:3 sensor frame, displayed as 3:4) differs from the
+ * box aspect (e.g. a 9:16 still-crop box). Any non-uniform fallback is
+ * stretch, never a valid preview.
  */
 object PreviewTransform {
 
@@ -60,6 +82,7 @@ object PreviewTransform {
         /** Row-major 3x3 values for `android.graphics.Matrix.setValues`. */
         fun toMatrixValues(): FloatArray =
             floatArrayOf(a, b, tx, c, d, ty, 0f, 0f, 1f)
+
     }
 
     /**
@@ -113,6 +136,48 @@ object PreviewTransform {
             a = a, b = b, c = c, d = d, tx = tx, ty = ty,
             rotationDegrees = rotation, scale = scale,
             displayedWidth = displayedWidth, displayedHeight = displayedHeight,
+        )
+    }
+
+    /**
+     * The `TextureView.setTransform` matrix for one stream/view pairing,
+     * as an [Affine] mapping *view* pixels to *displayed-texture* pixels
+     * (so [Affine.map] converts view coordinates to texture coordinates).
+     *
+     * The linear part is the pure inverse fill scale — deliberately no
+     * rotation (see the class doc: the stream's own texture transform
+     * already applied the relative rotation, so the relative rotation
+     * only decides the displayed size the scale is computed from, via
+     * [compute]). [Affine.rotationDegrees] is therefore always 0 and
+     * [Affine.scale] is `1 / fillScale`; the translation centres the
+     * sampled region, which is exactly the centre crop the placement
+     * geometry promises. Null for degenerate sizes, like [compute].
+     */
+    fun computeTextureAffine(
+        streamWidth: Int,
+        streamHeight: Int,
+        viewWidth: Int,
+        viewHeight: Int,
+        sensorOrientationDegrees: Int,
+        displayRotationDegrees: Int,
+        facing: LensFacing?,
+    ): Affine? {
+        val placement = compute(
+            streamWidth, streamHeight, viewWidth, viewHeight,
+            sensorOrientationDegrees, displayRotationDegrees, facing,
+        ) ?: return null
+        if (placement.scale == 0f) return null
+        val inverse = 1f / placement.scale
+        val displayedWidth = placement.displayedWidth
+        val displayedHeight = placement.displayedHeight
+        return Affine(
+            a = inverse, b = 0f, c = 0f, d = inverse,
+            tx = displayedWidth / 2f - viewWidth / 2f * inverse,
+            ty = displayedHeight / 2f - viewHeight / 2f * inverse,
+            rotationDegrees = 0,
+            scale = inverse,
+            displayedWidth = displayedWidth,
+            displayedHeight = displayedHeight,
         )
     }
 

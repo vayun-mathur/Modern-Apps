@@ -188,7 +188,6 @@ internal fun BoxWithConstraintsScope.CameraPreviewBox(
         gridEnabled = state.gridEnabled,
         levelEnabled = state.levelEnabled,
         isPhotoType = state.isPhotoType,
-        isQr = state.isQr,
         roll = state.roll,
         modifier = previewSize,
         timerCountdown = state.timerCountdown,

@@ -33,6 +33,33 @@ internal fun CameraViewModel.cropToRect(src: Bitmap, rect: Rect): Bitmap {
     return Bitmap.createBitmap(src, left, top, w, h).also { if (it != src) src.recycle() }
 }
 
+/**
+ * Centre-crops [src] (sensor-oriented pixels) to the user's selected
+ * still aspect ratio, as displayed after [rotationDegrees]. Returns
+ * [src] itself when the mode has no still crop (video/pano families —
+ * the preview box does not promise them a ratio either) or the frame
+ * already matches. The caller owns recycling: a returned new bitmap
+ * must be recycled after saving, [src] must not be recycled here.
+ * This is the capture half of the aspect setting: the preview box
+ * (`CameraScreenState.previewAspectRatio`) is the framing half, and
+ * until this wiring the Camera2 save path ignored the selection
+ * entirely (`currentCropAspectRatio` had no caller after the CameraX
+ * removal, so every still saved at the sensor's native ratio).
+ */
+internal fun CameraViewModel.cropBitmapToSelectedAspect(src: Bitmap, rotationDegrees: Int): Bitmap {
+    if (cameraModeMutable.value != CameraMode.PHOTO &&
+        cameraModeMutable.value != CameraMode.PORTRAIT
+    ) {
+        return src
+    }
+    val ratio = currentCropAspectRatio()
+    val rect = com.vayunmathur.camera.domain.AspectCrop.centerCropRect(
+        src.width, src.height, rotationDegrees, ratio.numerator, ratio.denominator,
+    ) ?: return src
+    if (rect.isFullFrame(src.width, src.height)) return src
+    return Bitmap.createBitmap(src, rect.left, rect.top, rect.width, rect.height)
+}
+
 /** True when the crop covers the whole frame or is empty. */
 private fun isFullFrame(src: Bitmap, left: Int, top: Int, w: Int, h: Int): Boolean {
     if (w <= 0 || h <= 0) return true

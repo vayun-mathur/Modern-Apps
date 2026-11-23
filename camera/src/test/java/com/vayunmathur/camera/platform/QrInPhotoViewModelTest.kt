@@ -8,29 +8,23 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/** QR mode switching and result flow on the ViewModel. */
+/** In-PHOTO QR result flow on the ViewModel (no QR mode to switch to). */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
-class QrModeViewModelTest {
+class QrInPhotoViewModelTest {
 
     private fun vm() = CameraViewModel(ApplicationProvider.getApplicationContext())
 
     @Test
-    fun switchToQrModePublishesMode() {
+    fun defaultModeIsPhotoAndResultFlowsThere() {
         val viewModel = vm()
-        viewModel.switchCameraMode(CameraMode.QR)
-        assertEquals(CameraMode.QR, viewModel.cameraMode.value)
-        viewModel.switchCameraMode(CameraMode.PHOTO)
         assertEquals(CameraMode.PHOTO, viewModel.cameraMode.value)
-    }
-
-    @Test
-    fun qrResultRoundTripsThroughSharedFlow() {
-        val viewModel = vm()
         assertNull(viewModel.qrResult.value)
-        viewModel.setQrResult("https://example.com/from-qr-mode")
-        assertEquals("https://example.com/from-qr-mode", viewModel.qrResult.value)
+        viewModel.setQrResult("https://example.com/from-photo-mode")
+        assertEquals("https://example.com/from-photo-mode", viewModel.qrResult.value)
+        // Dismissing the chip never leaves PHOTO or blocks the shutter.
         viewModel.setQrResult(null)
         assertNull(viewModel.qrResult.value)
+        assertEquals(CameraMode.PHOTO, viewModel.cameraMode.value)
     }
 }

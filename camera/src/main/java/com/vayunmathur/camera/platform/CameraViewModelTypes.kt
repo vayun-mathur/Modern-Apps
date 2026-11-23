@@ -8,8 +8,14 @@ import androidx.lifecycle.LifecycleRegistry
 import com.vayunmathur.camera.R
 import kotlin.math.roundToInt
 
-/** Capture modes selectable in the camera UI. */
-enum class CameraMode { PHOTO, PORTRAIT, PANORAMA, PHOTOSPHERE, QR, VIDEO, SLOW_MO, TIMELAPSE, CINEMATIC }
+/**
+ * Capture modes selectable in the camera UI. There is deliberately no
+ * QR mode: QR/barcode decoding runs inside PHOTO on the analysis
+ * stream (stock-camera style, and the pre-Camera2-removal CameraX
+ * behaviour — the old app never had a QR mode either), surfacing the
+ * shared result chip without blocking the shutter.
+ */
+enum class CameraMode { PHOTO, PORTRAIT, PANORAMA, PHOTOSPHERE, VIDEO, SLOW_MO, TIMELAPSE, CINEMATIC }
 /** Flash behaviour for still capture. */
 enum class FlashMode { ON, OFF, AUTO }
 

@@ -173,7 +173,10 @@ private fun CameraViewModel.processSingleFrame(
         stillBokeh.render(decoded, degrees, plan.strength, plan.warmth, plan.shadows, plan.mirror)
     } else null)
         ?: applyColorAdjustments(decoded, plan.warmth, plan.shadows, plan.mirror)
-    val saved = saveProcessedStill(adjusted, degrees, sourceJpeg)
+    // Aspect crop in sensor space, matching the preview box framing.
+    val cropped = cropBitmapToSelectedAspect(adjusted, degrees)
+    val saved = saveProcessedStill(cropped, degrees, sourceJpeg)
+    if (cropped !== adjusted) cropped.recycle()
     adjusted.recycle()
     if (saved == null) return null
     if (saved.format == com.vayunmathur.camera.domain.StillFormat.JPEG) {

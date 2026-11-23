@@ -68,10 +68,6 @@ fun CameraScreen(
             state.cameraMode == CameraMode.PANORAMA -> {
                 if (state.panoSweeping) viewModel.stopPanorama() else viewModel.startPanorama()
             }
-            state.isQr -> {
-                // Scanning is automatic on the analysis stream; the shutter
-                // (and the volume keys routed through it) captures nothing.
-            }
             state.isSloMo -> viewModel.toggleHighSpeedRecording()
             state.isPhotoType -> {
                 if (onCaptureResult != null) {

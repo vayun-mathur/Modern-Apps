@@ -44,6 +44,7 @@ import com.vayunmathur.camera.data.setMotionPhotoDuration
 import com.vayunmathur.camera.data.setMotionPhotoEnabled
 import com.vayunmathur.camera.data.setNoiseReductionEnabled
 import com.vayunmathur.camera.data.setSaveTreeUri
+import com.vayunmathur.camera.data.setAspectRatio
 import com.vayunmathur.camera.data.setPhotoFormat
 import com.vayunmathur.camera.data.setVideoCodec
 import com.vayunmathur.camera.data.updateLocation
@@ -58,6 +59,7 @@ import com.vayunmathur.library.util.NavKey
 @Composable
 fun <T : NavKey> SettingsPage(backStack: NavBackStack<T>, viewModel: CameraViewModel) {
     val locationEnabled by viewModel.locationEnabled.collectAsState()
+    val aspectRatio by viewModel.aspectRatio.collectAsState()
     val videoCodec by viewModel.videoCodec.collectAsState()
     val photoFormat by viewModel.photoFormat.collectAsState()
     val audioInputDevice by viewModel.audioInputDevice.collectAsState()
@@ -181,6 +183,11 @@ fun <T : NavKey> SettingsPage(backStack: NavBackStack<T>, viewModel: CameraViewM
                     onCheckedChange = { viewModel.setMirrorFront(it); noteIfDeferred() },
                 )
             }
+
+            CameraAspectRatioSettings(
+                aspectRatio = aspectRatio,
+                onAspectRatioChange = { viewModel.setAspectRatio(it); noteIfDeferred() },
+            )
 
             CameraPhotoFormatSettings(
                 photoFormat = photoFormat,

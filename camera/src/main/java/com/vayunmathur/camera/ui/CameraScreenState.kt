@@ -102,7 +102,6 @@ import com.vayunmathur.camera.platform.VideoCodec
     var deviceRotation by deviceRotationState
 
     val isPhotoType get() = cameraMode in listOf(CameraMode.PHOTO, CameraMode.PORTRAIT, CameraMode.PANORAMA, CameraMode.PHOTOSPHERE)
-    val isQr get() = cameraMode == CameraMode.QR
     val isSloMo get() = cameraMode == CameraMode.SLOW_MO
     val isVideoType get() = cameraMode == CameraMode.VIDEO || cameraMode == CameraMode.TIMELAPSE || cameraMode == CameraMode.CINEMATIC
     val isPanoType get() = cameraMode == CameraMode.PANORAMA || cameraMode == CameraMode.PHOTOSPHERE

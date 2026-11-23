@@ -22,12 +22,12 @@ import com.vayunmathur.library.log.Log
 internal const val QR_SCAN_INTERVAL_MS = 250L
 
 /**
- * Formats the dedicated QR/barcode mode decodes: the 2D family the old
- * ambient scanner covered (QR above all) plus the common 1D symbologies.
- * The ambient PHOTO-mode analyzer ([PhotoAnalyzer]) stays QR-only on
- * purpose: in a viewfinder that is mostly landscape/scenery, 1D readers
- * fire on horizontal scene edges. Here the user has explicitly entered a
- * scanning mode and is pointing at a code, so the wider set is honest.
+ * Formats decoded live in PHOTO mode (there is no separate QR mode):
+ * the 2D family the old ambient scanner covered (QR above all) plus
+ * the common 1D symbologies, stock-camera style. [PhotoAnalyzer]'s own
+ * decode stays QR-only and is disabled where this scanner is fed, so
+ * each frame is binarized once; the 250 ms throttle bounds the cost of
+ * the wider set on the analysis executor.
  */
 internal val QR_BARCODE_FORMATS: List<BarcodeFormat> = listOf(
     BarcodeFormat.QR_CODE,
@@ -46,8 +46,8 @@ internal val QR_BARCODE_FORMATS: List<BarcodeFormat> = listOf(
 )
 
 /**
- * QR/barcode scanner for the dedicated [CameraMode.QR] mode, fed from the
- * Camera2 analysis stream ([AnalysisFrame]).
+ * QR/barcode scanner running inside PHOTO mode, fed from the Camera2
+ * analysis stream ([AnalysisFrame]).
  *
  * Decode path, cheapest first:
  * 1. The Y (luma) plane straight into ZXing's [PlanarYUVLuminanceSource]

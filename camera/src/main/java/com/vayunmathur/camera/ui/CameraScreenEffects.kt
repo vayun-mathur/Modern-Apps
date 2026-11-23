@@ -142,19 +142,6 @@ internal fun CameraScreenEffects(
             cameraMode == CameraMode.PORTRAIT -> {
                 // Bokeh sink lifecycle (create/close) managed by DisposableEffect below.
             }
-            cameraMode == CameraMode.QR -> {
-                state.maskBitmap = null
-                // Dedicated scanner: QR + common barcodes off the Camera2
-                // analysis stream. Runs on the analysis executor (the
-                // stream's dispatcher), never the capture thread. Result
-                // handling is the shared qrResult flow, so the generic
-                // open-URL/copy card and the FIDO/eSIM/Wi-Fi action cards
-                // render exactly as they did for the ambient scanner.
-                val scanner = com.vayunmathur.camera.platform.QrBarcodeScanner { text, _ ->
-                    viewModel.setQrResult(text)
-                }
-                viewModel.setAnalysisSink(scanner::onAnalysisFrame)
-            }
             cameraMode == CameraMode.PANORAMA || cameraMode == CameraMode.PHOTOSPHERE -> {
                 state.maskBitmap = null
                 // Converted bitmaps off the Camera2 analysis stream;
@@ -175,6 +162,20 @@ internal fun CameraScreenEffects(
             }
             state.isPhotoType -> {
                 state.maskBitmap = null
+                // QR/barcode scanning lives inside PHOTO (stock-camera
+                // style; also the pre-Camera2-removal CameraX behaviour):
+                // the QrBarcodeScanner core decodes off the same Camera2
+                // analysis stream, throttled on the analysis executor —
+                // never the capture thread, never blocking the shutter.
+                // A hit lands in the shared qrResult flow, so the
+                // non-modal open/copy chip and the FIDO/eSIM/Wi-Fi action
+                // cards render exactly as before, dismissible, above the
+                // shutter row. PhotoAnalyzer keeps luma (night detection)
+                // and Motion-Photo copies; its own QR decode is off here
+                // so each frame is binarized once.
+                val scanner = com.vayunmathur.camera.platform.QrBarcodeScanner { text, _ ->
+                    viewModel.setQrResult(text)
+                }
                 val analyzer = PhotoAnalyzer(
                     onLuminance = { viewModel.onLuminance(it) },
                     onQrDetected = { viewModel.setQrResult(it) },
@@ -182,8 +183,17 @@ internal fun CameraScreenEffects(
                     onMotionFrame = if (cameraMode == CameraMode.PHOTO) {
                         { bmp, ts, rot -> viewModel.addMotionFrame(bmp, ts, rot) }
                     } else null,
+                    decodeQr = false,
                 )
-                viewModel.setAnalysisSink(analyzer::onAnalysisFrame)
+                viewModel.setAnalysisSink { frame ->
+                    analyzer.onAnalysisFrame(frame)
+                    // Scanner only in plain PHOTO: PORTRAIT/PANORAMA keep
+                    // their capture-first framing (and PANORAMA installs
+                    // its own sink above), matching the old ambient scope.
+                    if (cameraMode == CameraMode.PHOTO) {
+                        scanner.onAnalysisFrame(frame)
+                    }
+                }
             }
             else -> {
                 state.maskBitmap = null

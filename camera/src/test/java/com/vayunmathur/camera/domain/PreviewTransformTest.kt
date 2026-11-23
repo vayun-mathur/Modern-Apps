@@ -118,4 +118,79 @@ class PreviewTransformTest {
         assertNull(compute(1440, 1080, 0, 1440))
         assertNull(compute(1440, 1080, 1080, 0))
     }
+
+    // --- TextureView sampling form (the applied transform) -------------
+    // The stream's own texture transform already applied the sensor
+    // quarter-turn (that is why the pre-transform preview was stretched,
+    // never sideways), so the applied matrix must carry NO rotation:
+    // any quarter-turn here double-applies it and the preview renders
+    // rotated vs the captured still (the owner-reported defect after
+    // 7c4429d74 fed the rotated placement affine to setTransform).
+    // Breadcrumbs on komodo read rel=90 back / rel=270 front; both must
+    // yield the same unrotated, centred, uniform inverse-scale sampling
+    // over the displayed (1200x1600) frame.
+
+    private fun texture(
+        streamW: Int, streamH: Int, viewW: Int, viewH: Int,
+        sensor: Int = 90, display: Int = 0, facing: LensFacing? = LensFacing.BACK,
+    ) = PreviewTransform.computeTextureAffine(streamW, streamH, viewW, viewH, sensor, display, facing)
+
+    @Test fun textureFormHasNoRotationForBackLens() {
+        val placement = assertNotNull(compute(1600, 1200, 1344, 1792, sensor = 90))
+        assertEquals(90, placement.rotationDegrees)
+        assertEquals(1.12f, placement.scale, 0.001f)
+        val texture = assertNotNull(texture(1600, 1200, 1344, 1792, sensor = 90))
+        assertEquals(0, texture.rotationDegrees)
+        assertEquals(0f, texture.b, 0.001f)
+        assertEquals(0f, texture.c, 0.001f)
+        assertEquals(1f / 1.12f, texture.a, 0.001f)
+        assertEquals(1f / 1.12f, texture.d, 0.001f)
+        assertTrue(PreviewTransform.isUniformScale(texture))
+        assertEquals(1200f, texture.displayedWidth, 0.001f)
+        assertEquals(1600f, texture.displayedHeight, 0.001f)
+        // Exact fill: view corners sample the displayed-frame corners,
+        // view centre samples its centre (no crop in this pairing).
+        assertEquals(0f to 0f, texture.map(0f, 0f))
+        val (x1, y1) = texture.map(1344f, 1792f)
+        assertEquals(1200f, x1, 0.01f)
+        assertEquals(1600f, y1, 0.01f)
+        val (cx, cy) = texture.map(672f, 896f)
+        assertEquals(600f, cx, 0.01f)
+        assertEquals(800f, cy, 0.01f)
+    }
+
+    @Test fun textureFormHasNoRotationForFrontLensEither() {
+        // Front sensor 270: the relative rotation differs, the applied
+        // matrix must not — the stream texture already turned the frame.
+        val texture = assertNotNull(
+            texture(1600, 1200, 1344, 1792, sensor = 270, facing = LensFacing.FRONT),
+        )
+        assertEquals(0, texture.rotationDegrees)
+        val back = assertNotNull(texture(1600, 1200, 1344, 1792, sensor = 90))
+        assertEquals(back.toMatrixValues().toList(), texture.toMatrixValues().toList())
+    }
+
+    @Test fun textureFormCentreCropsTheSampledRegion() {
+        // 1440x1080 stream (displayed 1080x1440) into a 9:16 box: fill
+        // scale 4/3, so the sampled width is 1080 * (1080/1920 inverse)...
+        // precisely: sampled region is centred, width 1080/ (4/3) * ...
+        val texture = assertNotNull(texture(1440, 1080, 1080, 1920))
+        assertEquals(0, texture.rotationDegrees)
+        assertTrue(PreviewTransform.isUniformScale(texture))
+        val (cx, cy) = texture.map(540f, 960f)
+        assertEquals(540f, cx, 0.01f)
+        assertEquals(720f, cy, 0.01f)
+        // Sampled region is narrower than the displayed frame (crop):
+        // view left edge samples right of the texture left edge.
+        val (left, _) = texture.map(0f, 0f)
+        assertTrue(left > 0f)
+        val (right, _) = texture.map(1080f, 0f)
+        assertTrue(right < 1080f)
+        assertEquals(1080f, left + right, 0.01f) // symmetric crop
+    }
+
+    @Test fun textureFormDegenerateSizesHaveNoTransform() {
+        assertNull(texture(0, 1080, 1080, 1440))
+        assertNull(texture(1440, 1080, 0, 1440))
+    }
 }

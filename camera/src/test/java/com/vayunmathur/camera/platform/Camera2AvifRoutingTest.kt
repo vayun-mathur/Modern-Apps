@@ -78,9 +78,12 @@ class Camera2AvifRoutingTest {
         tag: StillOutputTag = StillOutputTag.JPEG,
     ) = CapturedStill(
         jpegBytes = bytes,
+        // A native phone still: sensor-landscape 4:3 frame, quarter-turn
+        // rotation, so it displays at the default 3:4 portrait ratio and
+        // the aspect crop is a no-op (full frame) for these routing tests.
         jpegWidth = 16,
-        jpegHeight = 16,
-        metadata = StillCaptureMetadata(rotationDegrees = 0, mirrored = false),
+        jpegHeight = 12,
+        metadata = StillCaptureMetadata(rotationDegrees = 90, mirrored = false),
         tag = tag,
     )
 

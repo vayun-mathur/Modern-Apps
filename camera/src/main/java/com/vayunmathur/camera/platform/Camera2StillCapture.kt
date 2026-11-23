@@ -148,6 +148,53 @@ internal fun CameraViewModel.requestedStillFormat(): StillFormat =
  * JPEG-selected shots keep the stamped-JPEG landing untouched.
  */
 internal fun CameraViewModel.saveCamera2Still(still: CapturedStill): Uri? {
+    // Aspect-ratio crop: the selected ratio must shape the saved still
+    // exactly as it shapes the preview box. A crop that actually cuts
+    // pixels decodes the frame, centre-crops it in sensor space (see
+    // AspectCrop) and lands through the processed encoder; a full-frame
+    // selection keeps the byte-preserving routes below untouched. An
+    // Ultra HDR (JPEG_R) still that needs cropping trades its gain map
+    // for the crop, the same trade processed (bokeh/colour) stills make.
+    val needsCrop = run {
+        if (cameraModeMutable.value != CameraMode.PHOTO &&
+            cameraModeMutable.value != CameraMode.PORTRAIT
+        ) {
+            false
+        } else {
+            val ratio = currentCropAspectRatio()
+            val rect = com.vayunmathur.camera.domain.AspectCrop.centerCropRect(
+                still.jpegWidth, still.jpegHeight,
+                still.metadata.rotationDegrees, ratio.numerator, ratio.denominator,
+            )
+            rect != null && !rect.isFullFrame(still.jpegWidth, still.jpegHeight)
+        }
+    }
+    val decoded = if (needsCrop) {
+        BitmapFactory.decodeByteArray(still.jpegBytes, 0, still.jpegBytes.size)
+    } else {
+        null
+    }
+    if (decoded != null) {
+        val cropped = cropBitmapToSelectedAspect(decoded, still.metadata.rotationDegrees)
+        if (cropped !== decoded) {
+            try {
+                val saved = saveProcessedStill(
+                    cropped, still.metadata.rotationDegrees, still.jpegBytes,
+                ) ?: return null
+                if (saved.format == com.vayunmathur.camera.domain.StillFormat.JPEG) {
+                    writeCaptureExif(
+                        saved.uri, still.jpegBytes,
+                        still.metadata.rotationDegrees, mirrored = still.metadata.mirrored,
+                    )
+                }
+                return saved.uri
+            } finally {
+                cropped.recycle()
+                decoded.recycle()
+            }
+        }
+        decoded.recycle()
+    }
     val ultraHdrSource = still.tag == StillOutputTag.ULTRA_HDR_JPEG_R ||
         StillFormatRouting.isUltraHdrJpeg(still.jpegBytes)
     return when (StillFormatRouting.stillSaveRoute(requestedStillFormat(), ultraHdrSource)) {

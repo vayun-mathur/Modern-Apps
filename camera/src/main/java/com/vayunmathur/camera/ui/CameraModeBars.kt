@@ -51,7 +51,6 @@ internal fun ModeSelector(
             else photoModes + listOf(
                 CameraMode.PANORAMA to stringResource(R.string.mode_panorama),
                 CameraMode.PHOTOSPHERE to stringResource(R.string.mode_photosphere),
-                CameraMode.QR to stringResource(R.string.mode_qr),
             )
         } else {
             // Only include Slo-Mo when the device's back camera actually supports true HFR.

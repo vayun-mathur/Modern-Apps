@@ -45,7 +45,15 @@ internal const val MOTION_FRAME_INTERVAL_MS = 125L
 class PhotoAnalyzer(
     private val onLuminance: (Float) -> Unit,
     private val onQrDetected: (String) -> Unit,
-    private val onMotionFrame: ((Bitmap, Long, Int) -> Unit)? = null
+    private val onMotionFrame: ((Bitmap, Long, Int) -> Unit)? = null,
+    /**
+     * Whether this analyzer runs its own QR-only ZXing decode. In PHOTO
+     * the [QrBarcodeScanner] core owns decoding (QR + barcode formats,
+     * throttled on the same analysis executor), so the caller feeds it
+     * the same frames and sets this false — one decode pass per frame
+     * slot, never two binarizations of the same luma.
+     */
+    private val decodeQr: Boolean = true,
 ) {
     private val reader = MultiFormatReader().apply {
         // Restrict to 2D codes only. Without this, ZXing's default MultiFormatReader
@@ -95,7 +103,7 @@ class PhotoAnalyzer(
                 Log.error("PhotoAnalyzer", "toBitmapFromPlanes threw", e)
             }
         }
-        if (nowMs - lastDecodeAtMs >= QR_DECODE_INTERVAL_MS) {
+        if (decodeQr && nowMs - lastDecodeAtMs >= QR_DECODE_INTERVAL_MS) {
             lastDecodeAtMs = nowMs
             val bytes = copyYPlaneTight(frame.yPlane, frame.width, frame.height)
             if (bytes != null) {

@@ -124,12 +124,28 @@ class PreviewSurfaceBridge(
             facing = lensFacing,
         ) ?: return
         lastTransform = affine
-        target.setTransform(Matrix().apply { setValues(affine.toMatrixValues()) })
+        // TextureView.setTransform matrix: NO rotation (the stream's own
+        // texture transform already applied the sensor quarter-turn —
+        // feeding the placement affine's rotation here double-applied
+        // it and the preview rendered rotated vs the captured still).
+        // The texture affine is the inverse uniform fill scale over the
+        // displayed frame. See PreviewTransform.computeTextureAffine.
+        val textureAffine = PreviewTransform.computeTextureAffine(
+            streamWidth = stream.width,
+            streamHeight = stream.height,
+            viewWidth = target.width,
+            viewHeight = target.height,
+            sensorOrientationDegrees = sensorOrientationDegrees,
+            displayRotationDegrees = displayRotationDegrees,
+            facing = lensFacing,
+        ) ?: return
+        target.setTransform(Matrix().apply { setValues(textureAffine.toMatrixValues()) })
         com.vayunmathur.library.log.Log.status(
             "Camera2Preview",
             "preview geometry view=${target.width}x${target.height} " +
                 "stream=${stream.width}x${stream.height} sensor=$sensorOrientationDegrees " +
                 "display=$displayRotationDegrees rel=${affine.rotationDegrees} " +
+                "textureRel=${textureAffine.rotationDegrees} " +
                 "displayed=${affine.displayedWidth}x${affine.displayedHeight} " +
                 "scale=${affine.scale}",
         )
