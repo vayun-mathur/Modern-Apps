@@ -181,6 +181,7 @@ gradle = { module = "com.android.tools.build:gradle", version.ref = "agp" }
 # Lint check API. Versioned off AGP: lint ships as 23 + the AGP major.
 lint-api = { module = "com.android.tools.lint:lint-api", version.ref = "lint" }
 lint-checks = { module = "com.android.tools.lint:lint-checks", version.ref = "lint" }
+lint-tests = { module = "com.android.tools.lint:lint-tests", version.ref = "lint" }
 # Needed on build-logic's classpath so common-conventions-preview-metadata can apply it by id.
 compose-screenshot-gradle = { module = "com.android.compose.screenshot:screenshot-test-gradle-plugin", version.ref = "composeScreenshot" }
 kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlinGradlePlugin" }

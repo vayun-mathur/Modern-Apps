@@ -64,7 +64,7 @@ The backend (relay server for findfamily/everysync/office/voxels) lives outside 
 ## 2. Conventions (check every time)
 - `Toast` banned (fatal lint). Use `rememberMessenger().show()` in composable, `AppMessages.show()` elsewhere.
 - Never `Icon()`/`painterResource()`/`androidx.compose.material.icons.*` in app. Add `IconXxx()` to `library/ui/.../Icons.kt`.
-- Never raw `Scaffold`. Use `AppScaffold` family. Never raw `androidx.compose.animation` at call site — use `library.ui` helpers. Never `imePadding()/navigationBarsPadding()/systemBarsPadding()` in `library.ui`.
+- Never raw `Scaffold`. Use `AppScaffold` family. Whole-content loading goes through the scaffold's `isLoading`/`loadingMessage`, never a hand-rolled `LoadingState`/full-size spinner inside scaffold content (fatal `ScaffoldLoading` lint; local sized/determinate/button/pull-refresh loading stays inline). Never raw `androidx.compose.animation` at call site — use `library.ui` helpers. Never `imePadding()/navigationBarsPadding()/systemBarsPadding()` in `library.ui`.
 - Room 3 only. Literal `androidx.room.` flagged even in comments. Never `buildDatabase()` at call site — subclass `library.room.RoomRepository`.
 - Network only via `library.network.NetworkClient` + `TrustBundle` narrowest (`FIRST_PARTY/STANDARD/EXTENDED/SYSTEM/ESIM`).
 - Package roots closed set: `ui data domain platform network intents service provider widget notifications auth sync telephony`. No `util/`. One public `@Composable` per file, named as file. `domain/` pure (no Android/Compose).
