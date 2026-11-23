@@ -13,17 +13,40 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 
 /**
+ * Static per-source metadata an [AnalysisImageSource] needs to stamp
+ * each frame with its display rotation: the lens's sensor orientation
+ * and facing (from the characteristics snapshot) plus a live supplier
+ * of the current display rotation in degrees (0/90/180/270), read per
+ * frame because the display rotates while a session lives.
+ */
+data class AnalysisFrameMetadata(
+    val sensorOrientationDegrees: Int = 0,
+    val lensFacing: com.vayunmathur.camera.domain.LensFacing? = null,
+    val displayRotationDegrees: () -> Int = { 0 },
+)
+
+/**
  * One analysis frame as plane views. The buffers are borrowed: they are only
  * valid until [close], consumers must read them synchronously during the
  * delivery call and retain nothing. A sensor-oriented bitmap is available
- * via [toBitmapFromPlanes]; there is no rotation/crop metadata on this
- * frame (see that function), which is what still keeps bitmap consumers
- * on CameraX (see `AnalysisSourcePolicy`).
+ * via [toBitmapFromPlanes].
+ *
+ * [rotationDegrees] is the CameraX `imageInfo.rotationDegrees`
+ * equivalent, computed from the source's [AnalysisFrameMetadata] via
+ * [com.vayunmathur.camera.domain.AnalysisRotation]; [cropRect] is the
+ * full frame (the analysis stream applies no scaler crop of its own),
+ * the honest equivalent of a full-frame `ImageProxy.cropRect`.
  */
 interface AnalysisFrame : AutoCloseable {
     val width: Int
     val height: Int
     val timestampNs: Long
+
+    /** Clockwise degrees to rotate this sensor frame to display-upright. */
+    val rotationDegrees: Int
+
+    /** Crop of this frame in its own coordinates (full frame today). */
+    val cropRect: com.vayunmathur.camera.domain.FrameCrop
 
     /** Plane 0 (Y in YUV_420_888), the only plane the cheap consumers read. */
     val yPlane: PlaneView
@@ -44,12 +67,9 @@ fun interface AnalysisConsumer {
  * contract `ImageProxy.toBitmap()` hands the bitmap consumers). Must be
  * called synchronously while the frame is open; the caller owns the
  * returned bitmap. Null when the planes cannot describe a full frame.
- *
- * This makes the conversion available; it does not by itself move a
- * bitmap consumer to Camera2: the frame carries no `rotationDegrees` or
- * `cropRect` (CameraX supplies both on `ImageProxy`), and the sessions
- * needing bitmaps do not compose a Camera2 session today — see
- * `AnalysisSourcePolicy`.
+ * Rotation/crop travel separately on the frame ([AnalysisFrame.rotationDegrees],
+ * [AnalysisFrame.cropRect]), exactly as CameraX carries them on
+ * `ImageProxy.imageInfo`/`cropRect`.
  */
 fun AnalysisFrame.toBitmapFromPlanes(): android.graphics.Bitmap? {
     val argb = com.vayunmathur.camera.domain.Yuv420ToArgb.convert(planes, width, height)
@@ -155,10 +175,23 @@ class AnalysisFrameDispatcher(
 }
 
 /** [AnalysisFrame] over a Camera2 [Image]; duplicates buffers so position state is private. */
-private class ImageAnalysisFrame(private val image: Image) : AnalysisFrame {
+private class ImageAnalysisFrame(
+    private val image: Image,
+    private val metadata: AnalysisFrameMetadata,
+) : AnalysisFrame {
     override val width: Int get() = image.width
     override val height: Int get() = image.height
     override val timestampNs: Long get() = image.timestamp
+
+    override val rotationDegrees: Int
+        get() = com.vayunmathur.camera.domain.AnalysisRotation.rotationDegrees(
+            metadata.sensorOrientationDegrees,
+            metadata.displayRotationDegrees(),
+            metadata.lensFacing,
+        )
+
+    override val cropRect: com.vayunmathur.camera.domain.FrameCrop
+        get() = com.vayunmathur.camera.domain.FrameCrop.fullFrame(image.width, image.height)
 
     override val planes: List<PlaneView> = image.planes.map { plane ->
         PlaneView(
@@ -197,6 +230,7 @@ class AnalysisImageSource(
     handler: Handler,
     executor: Executor,
     consumer: AnalysisConsumer,
+    private val metadata: AnalysisFrameMetadata = AnalysisFrameMetadata(),
 ) : AnalysisOutput {
 
     private val reader: ImageReader =
@@ -220,7 +254,7 @@ class AnalysisImageSource(
             Log.error("AnalysisImageSource", "acquireLatestImage threw", e)
             null
         } ?: return
-        dispatcher.dispatch(ImageAnalysisFrame(image))
+        dispatcher.dispatch(ImageAnalysisFrame(image, metadata))
     }
 
     override fun close() {

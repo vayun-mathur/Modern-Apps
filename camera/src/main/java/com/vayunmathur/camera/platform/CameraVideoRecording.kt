@@ -61,6 +61,9 @@ private const val TIMELAPSE_SPEED_FACTOR = 8f
 /** Settle pause between teardown and rebind for an adaptive-bitrate record press. */
 private const val ADAPTIVE_REBIND_SETTLE_MS = 40L
 
+/** Settle pause for the preview session to release the camera before the engine opens it. */
+private const val RECORDING_SETTLE_MS = 350L
+
 @android.annotation.SuppressLint("MissingPermission")
 internal fun CameraViewModel.startHighSpeedRecording() {
     if (isRecordingMutable.value) return
@@ -110,10 +113,8 @@ fun CameraViewModel.toggleRecording() {
         return
     }
 
-    if (isRecordingMutable.value) {
-        currentRecording?.stop()
-        currentRecording = null
-        stopRecordingTimer()
+    if (isRecordingMutable.value || camera2RecordingMutable.value) {
+        stopCamera2Recording()
         return
     }
 
@@ -137,103 +138,160 @@ fun CameraViewModel.toggleRecording() {
 
 @android.annotation.SuppressLint("MissingPermission")
 internal fun CameraViewModel.startRecording() {
-    startRecording(allowAdaptiveRebind = true)
-}
+    if (isRecordingMutable.value || camera2RecordingMutable.value) return
+    val recordingMode = cameraModeMutable.value
 
-/**
- * Starts a recording, consuming the adaptive-bitrate decision first.
- *
- * CameraX fixes the Recorder's target bitrate when the Recorder is built (at
- * session bind), and there is no API to re-target it afterwards — so when the
- * scene estimate / storage / thermal probes have moved since the bind, the
- * honest move is one rebind *before* `prepareRecording`, never a stop/restart
- * mid-recording. The re-decision after that rebind converges (same probes,
- * same scene), so at most one rebind happens per press.
- */
-@android.annotation.SuppressLint("MissingPermission")
-private fun CameraViewModel.startRecording(allowAdaptiveRebind: Boolean) {
-    if (isRecordingMutable.value) return
-    if (adaptiveBitrateRebindInFlight) return
-    val capture = videoCapture ?: return
+    // Codec choice from the bind-time settings snapshot, probed against the
+    // platform encoder registry (the Camera2 engine configures MediaCodec
+    // directly; an encoder that cannot take the size/rate rejects the tier).
+    val selectedCodec = bindTimeSettings.value.videoCodec
+    val useAv1 = selectedCodec == VideoCodec.AV1 && CodecSupport.isHardwareAv1EncoderAvailable
+    val useHevc = !useAv1 && selectedCodec != VideoCodec.AVC && CodecSupport.isHevcEncoderAvailable
+    recordingWithAv1 = useAv1
+    recordingWithHevc = useHevc
+    val mime = when {
+        useAv1 -> android.media.MediaFormat.MIMETYPE_VIDEO_AV1
+        useHevc -> android.media.MediaFormat.MIMETYPE_VIDEO_HEVC
+        else -> android.media.MediaFormat.MIMETYPE_VIDEO_AVC
+    }
+    val tier = listOf(
+        com.vayunmathur.camera.domain.VideoQualityTier.UHD,
+        com.vayunmathur.camera.domain.VideoQualityTier.FHD,
+        com.vayunmathur.camera.domain.VideoQualityTier.HD,
+        com.vayunmathur.camera.domain.VideoQualityTier.SD,
+    ).firstOrNull { candidate ->
+        CodecSupport.supportsVideoBitrate(mime, candidate.width, candidate.height, 30, candidate.baseBitrateBps)
+    } ?: com.vayunmathur.camera.domain.VideoQualityTier.FHD
+    boundVideoQualityTier = tier
 
-    val tier = boundVideoQualityTier
-    val boundBitrate = boundVideoBitrateBps
-    if (tier != null && boundBitrate != null) {
-        val decision = computeAdaptiveBitrateDecision(
-            tier, useAv1 = recordingWithAv1, useHevc = recordingWithHevc
-        )
-        if (decision.bitrateBps != boundBitrate) {
-            if (!allowAdaptiveRebind) {
-                // Already rebound once for this press and the probes still
-                // disagree (e.g. the quality probe moved): record at the
-                // bound bitrate rather than rebinding in a loop.
-                Log.status(
-                    "AdaptiveBitrate",
-                    "Decision ${decision.bitrateBps} != bound $boundBitrate after rebind; recording as bound"
-                )
-            } else {
-                adaptiveBitrateRebindInFlight = true
-                viewModelScope.launch {
-                    try {
-                        val ok = runSessionBindWithRetry {
-                            teardownSession()
-                            delay(ADAPTIVE_REBIND_SETTLE_MS)
-                            setupVideoSession()
-                        }
-                        if (!ok) {
-                            Log.error(
-                                "AdaptiveBitrate",
-                                "Adaptive rebind failed; recording not started"
-                            )
-                            // Surface the same bind-error UI (with manual retry)
-                            // the session effect uses after its retries.
-                            sessionBindFailedMutable.value = true
-                        }
-                    } finally {
-                        adaptiveBitrateRebindInFlight = false
-                    }
-                    if (videoCapture != null && !isRecordingMutable.value) {
-                        startRecording(allowAdaptiveRebind = false)
-                    }
-                }
-                return
-            }
-        } else if (decision.forcedReduction) {
-            // The one user-visible adaptive note, and only for a forced cut:
-            // scene-only savings stay silent by design.
-            val noteRes = if (
-                com.vayunmathur.camera.domain.AdaptiveReduction.LOW_STORAGE in decision.reductions
-            ) {
-                com.vayunmathur.camera.R.string.lower_bitrate_low_storage
-            } else {
-                com.vayunmathur.camera.R.string.lower_bitrate_thermal
-            }
-            com.vayunmathur.library.util.AppMessages.show(app.getString(noteRes))
+    val decision = computeAdaptiveBitrateDecision(tier, useAv1 = useAv1, useHevc = useHevc)
+    boundVideoBitrateBps = decision.bitrateBps
+    if (decision.forcedReduction) {
+        // The one user-visible adaptive note, and only for a forced cut:
+        // scene-only savings stay silent by design.
+        val noteRes = if (
+            com.vayunmathur.camera.domain.AdaptiveReduction.LOW_STORAGE in decision.reductions
+        ) {
+            com.vayunmathur.camera.R.string.lower_bitrate_low_storage
+        } else {
+            com.vayunmathur.camera.R.string.lower_bitrate_thermal
         }
+        com.vayunmathur.library.util.AppMessages.show(app.getString(noteRes))
+    }
+
+    // Camera2 id for the selected lens (CameraManager ids only, never the
+    // lens's logical id — see the slo-mo glue for the same contract).
+    val manager = app.getSystemService(android.hardware.camera2.CameraManager::class.java)
+    val facing = selectedLensMutable.value?.facing
+        ?: currentLensFacing()
+    val cameraId = manager?.let {
+        com.vayunmathur.camera.platform.camera2.CharacteristicsFacade.resolveCamera2Id(it, facing)
+    }
+    if (cameraId == null) {
+        Log.error("Camera2Recorder", "No Camera2 id for facing $facing; recording not started")
+        com.vayunmathur.library.util.AppMessages.show(
+            app.getString(com.vayunmathur.camera.R.string.camera_recording_failed)
+        )
+        return
     }
 
     val timestamp = MediaStoreSaver.timestamp()
-    val recordingMode = cameraModeMutable.value
     val displayName = "${recordingPrefix(recordingMode)}_$timestamp"
-
     val cacheFile = java.io.File(app.cacheDir, "VID_$timestamp.mp4")
-    val outputOptions = FileOutputOptions.Builder(cacheFile).build()
+    val audioEnabled = (recordingMode == CameraMode.VIDEO || recordingMode == CameraMode.CINEMATIC) &&
+        !micMutedMutable.value
 
-    startRecordingTimer()
+    val config = CustomRecordingConfig(
+        width = tier.width,
+        height = tier.height,
+        fps = 30,
+        videoMime = mime,
+        audioEnabled = audioEnabled,
+    )
+    val controller = com.vayunmathur.camera.domain.LiveBitrateController(decision)
+    val engine = Camera2VideoRecordingEngine(
+        context = app,
+        config = config,
+        controller = controller,
+        motionSupplier = { sceneMotionEstimator.lastClassification },
+        onMotionSample = { sample -> onSceneMotionSample(sample) },
+        onError = { e -> Log.error("Camera2Recorder", "Camera2 recording engine error", e) },
+    )
+    activeVideoEngine = engine
+    activeVideoOutputFile = cacheFile
+    activeVideoDisplayName = displayName
+    activeVideoMode = recordingMode
+    activeVideoTimestamp = timestamp
 
-    val audioEnabled = recordingMode == CameraMode.VIDEO || recordingMode == CameraMode.CINEMATIC
-    var pending = capture.output.prepareRecording(app, outputOptions)
-    if (audioEnabled) {
-        pending = pending.withAudioEnabled()
-    }
-    currentRecording = pending.start(ContextCompat.getMainExecutor(app)) { event ->
-        if (event is VideoRecordEvent.Finalize) {
-            onRecordingFinalized(cacheFile, timestamp, recordingMode, displayName, event)
+    // The engine owns the camera device: the preview session (Camera2 or
+    // any transitional binding) must release it first. Flipping the
+    // recording flag switches the viewfinder to the engine's preview;
+    // a short settle lets the preview session close before the open.
+    camera2RecordingMutable.value = true
+    teardownSession()
+    viewModelScope.launch {
+        delay(RECORDING_SETTLE_MS)
+        if (!camera2RecordingMutable.value) return@launch // stopped during settle
+        try {
+            engine.start(VideoRecordingRequest(cacheFile, cameraId = cameraId, audioEnabled = audioEnabled)) { outcome ->
+                onCamera2RecordingFinalized(outcome)
+            }
+            isRecordingMutable.value = true
+            startRecordingTimer()
+        } catch (e: Exception) {
+            Log.error("Camera2Recorder", "Camera2 recording failed to start", e)
+            activeVideoEngine = null
+            camera2RecordingMutable.value = false
+            cacheFile.delete()
+            com.vayunmathur.library.util.AppMessages.show(
+                app.getString(com.vayunmathur.camera.R.string.camera_recording_failed)
+            )
         }
     }
-    // Apply the current mic-mute state to the freshly-started recording.
-    if (audioEnabled) {
-        applyInitialMicMute()
+}
+
+/** Stops the in-flight Camera2 recording (or cancels a pending start). */
+fun CameraViewModel.stopCamera2Recording() {
+    val engine = activeVideoEngine
+    stopRecordingTimer()
+    isRecordingMutable.value = false
+    if (engine == null) {
+        camera2RecordingMutable.value = false
+        return
+    }
+    // engine.stop() joins its drain threads; run it off the main thread.
+    // The outcome callback (save/error + preview restore) fires from there.
+    viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+        engine.stop()
+    }
+}
+
+/** Finalize for the Camera2 engine: save the staged file or surface the error. */
+private fun CameraViewModel.onCamera2RecordingFinalized(outcome: VideoRecordingOutcome) {
+    val cacheFile = outcome.outputFile
+    val displayName = activeVideoDisplayName ?: cacheFile.nameWithoutExtension
+    val recordingMode = activeVideoMode ?: CameraMode.VIDEO
+    val timestamp = activeVideoTimestamp ?: ""
+    activeVideoEngine = null
+    activeVideoOutputFile = null
+    camera2RecordingMutable.value = false
+    if (outcome.error != null) {
+        Log.error("Camera2Recorder", "Recording failed; discarding ${cacheFile.name}", outcome.error)
+        cacheFile.delete()
+        com.vayunmathur.library.util.AppMessages.show(
+            app.getString(com.vayunmathur.camera.R.string.camera_recording_failed)
+        )
+        return
+    }
+    viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+        if (!cacheFile.exists()) return@launch
+        val fileToSave = if (recordingMode == CameraMode.TIMELAPSE) {
+            remuxTimelapse(cacheFile, timestamp)
+        } else {
+            cacheFile
+        }
+        saveVideoStaged(displayName, fileToSave)?.let { setLastCaptureUri(it) }
+        fileToSave.delete()
     }
 }
 
@@ -246,41 +304,7 @@ private fun recordingPrefix(recordingMode: CameraMode): String {
     }
 }
 
-/** Handles the finalize event: stops the timer and stages the file for save. */
-private fun CameraViewModel.onRecordingFinalized(
-    cacheFile: java.io.File,
-    timestamp: String,
-    recordingMode: CameraMode,
-    displayName: String,
-    event: VideoRecordEvent.Finalize
-) {
-    stopRecordingTimer()
-    // A recording that finalized with an error (encoder failure, no valid
-    // data, interrupted mux) leaves a truncated/unplayable cache file.
-    // Saving it anyway puts a corrupt video in the gallery (the Slo-Mo path
-    // already discards these; the normal path did not). Drop it instead.
-    if (event.hasError()) {
-        Log.error(
-            "CameraViewModel",
-            "Recording finalized with error ${event.error}; discarding ${cacheFile.name}",
-            event.cause
-        )
-        cacheFile.delete()
-        return
-    }
-    viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-        if (!cacheFile.exists()) return@launch
-        val fileToSave = if (recordingMode == CameraMode.TIMELAPSE) {
-            remuxTimelapse(cacheFile, timestamp)
-        } else {
-            cacheFile
-        }
-        saveVideoStaged(displayName, fileToSave)?.let {
-            setLastCaptureUri(it)
-        }
-        fileToSave.delete()
-    }
-}
+/** (Removed: the CameraX finalize handler; Camera2 finalize is [onCamera2RecordingFinalized].) */
 
 /** Speeds the timelapse cache file up; falls back to the raw file on remux failure. */
 internal fun remuxTimelapse(cacheFile: java.io.File, timestamp: String): java.io.File {
@@ -321,38 +345,29 @@ internal fun remuxTimelapse(cacheFile: java.io.File, timestamp: String): java.io
     }
 }
 
-/** Applies the persisted mic-mute state to the freshly-started recording. */
-private fun CameraViewModel.applyInitialMicMute() {
-    try {
-        currentRecording?.mute(micMutedMutable.value)
-    } catch (e: IllegalStateException) {
-        Log.status("CameraViewModel", "Failed to apply initial mic mute", e)
-    }
-}
-
-/** Pauses or resumes the active recording (video/cinematic). No-op if not recording. */
+/**
+ * Pauses or resumes the active recording. The MediaCodec engine has no
+ * pause primitive (dropping frames would tear the muxed timeline), so
+ * pause is unavailable on the Camera2 path: the toggle is a no-op that
+ * leaves the recording running, and the UI hides the affordance while
+ * a Camera2 recording is active.
+ */
 fun CameraViewModel.togglePauseRecording() {
-    val recording = currentRecording ?: return
-    try {
-        if (recordingPausedMutable.value) {
-            recording.resume()
-            recordingPausedMutable.value = false
-        } else {
-            recording.pause()
-            recordingPausedMutable.value = true
-        }
-    } catch (e: IllegalStateException) {
-        Log.status("CameraViewModel", "Failed to pause/resume recording", e)
+    if (activeVideoEngine != null) {
+        Log.status("CameraViewModel", "Pause is unavailable on the Camera2 recording path")
+        return
     }
 }
 
-/** Toggles mic mute; applies live to the active recording. Persisted for the next session. */
+/**
+ * Toggles mic mute. On the Camera2 path mute is a record-start decision
+ * (`audioEnabled` when the engine is built); a mid-recording toggle is
+ * persisted and applies to the next recording.
+ */
 fun CameraViewModel.toggleMicMuted() {
     micMutedMutable.value = !micMutedMutable.value
-    try {
-        currentRecording?.mute(micMutedMutable.value)
-    } catch (e: IllegalStateException) {
-        Log.status("CameraViewModel", "Failed to toggle mic mute", e)
+    if (activeVideoEngine != null) {
+        Log.status("CameraViewModel", "Mic mute applies from the next recording on the Camera2 path")
     }
     viewModelScope.launch { ds.setString("camera_mic_muted", micMutedMutable.value.toString()) }
 }

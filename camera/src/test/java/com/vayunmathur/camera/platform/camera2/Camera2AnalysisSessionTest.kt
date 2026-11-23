@@ -81,7 +81,11 @@ class Camera2AnalysisSessionTest {
             callback.onOpened(device)
         }
         override fun createStillOutput(size: FrameSize): StillOutput? = null
-        override fun createAnalysisOutput(size: FrameSize, consumer: AnalysisConsumer): AnalysisOutput? {
+        override fun createAnalysisOutput(
+            size: FrameSize,
+            consumer: AnalysisConsumer,
+            metadata: AnalysisFrameMetadata,
+        ): AnalysisOutput? {
             analysisSizes += size
             return analysisOutput
         }

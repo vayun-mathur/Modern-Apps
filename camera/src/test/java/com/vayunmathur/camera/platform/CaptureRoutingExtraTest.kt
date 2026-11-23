@@ -45,6 +45,19 @@ class CaptureRoutingExtraTest {
         assertEquals(StillRoute.MOTION_PHOTO, viewModel.routeStillCapture())
     }
 
+    @Test fun routeAvifSelectsSingleNotMotionOnCameraX() {
+        // Regression: an AVIF-selected plain shot served by CameraX (Camera2
+        // fallback) used to divert to Motion Photo and land as .jpg. Only
+        // meaningful when the native AVIF encoder is present; without it
+        // AVIF honestly falls back to JPEG and Motion stays eligible.
+        if (!StitchNative.isAvailable) return
+        val viewModel = vm()
+        viewModel.photoFormatMutable.value = PhotoFormat.AVIF
+        assertEquals(StillRoute.SINGLE, viewModel.routeStillCapture())
+        viewModel.photoFormatMutable.value = PhotoFormat.JPEG
+        assertEquals(StillRoute.MOTION_PHOTO, viewModel.routeStillCapture())
+    }
+
     @Test fun routeNightPreviewIsSingle() {
         val viewModel = vm()
         viewModel.nightPreviewActiveMutable.value = true

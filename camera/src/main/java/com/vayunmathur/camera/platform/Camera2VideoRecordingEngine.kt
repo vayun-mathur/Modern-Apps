@@ -122,6 +122,16 @@ class Camera2VideoRecordingEngine(
     /** The engine-owned preview surface (for a TextureView to render), once started. */
     fun ownedPreviewSurface(): Surface? = ownedPreviewSurface
 
+    /** The engine-owned preview texture a TextureView adopts while recording. */
+    fun ownedPreviewTexture(): android.graphics.SurfaceTexture? = ownedPreviewTexture
+
+    @Volatile private var previewTextureBorrowed = false
+
+    /** Marks the owned preview texture as adopted by a TextureView (it releases it). */
+    fun markPreviewTextureBorrowed() {
+        previewTextureBorrowed = true
+    }
+
     override fun start(request: VideoRecordingRequest, onFinalized: (VideoRecordingOutcome) -> Unit) {
         val cameraId = request.cameraId
         if (cameraId == null) {
@@ -347,8 +357,14 @@ class Camera2VideoRecordingEngine(
 
     private fun releaseAll() {
         try { analysisReader?.close() } catch (_: Exception) {}
-        try { ownedPreviewSurface?.release() } catch (_: Exception) {}
-        try { ownedPreviewTexture?.release() } catch (_: Exception) {}
+        // A borrowed texture/surface pair is owned by the adopting
+        // TextureView, which releases it on detach; releasing here too
+        // would race the view still rendering the last frame.
+        if (!previewTextureBorrowed) {
+            try { ownedPreviewSurface?.release() } catch (_: Exception) {}
+            try { ownedPreviewTexture?.release() } catch (_: Exception) {}
+        }
+        previewTextureBorrowed = false
         analysisReader = null
         ownedPreviewSurface = null
         ownedPreviewTexture = null

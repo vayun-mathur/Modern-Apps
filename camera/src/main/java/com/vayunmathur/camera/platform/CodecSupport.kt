@@ -1,33 +1,32 @@
 package com.vayunmathur.camera.platform
 
+import android.media.MediaCodecList
 import android.media.MediaFormat
-import androidx.annotation.OptIn
-import androidx.camera.video.ExperimentalMimeTypeApi
-import androidx.camera.video.Recorder
 
 /**
- * Which modern video codecs this device can encode, sourced from CameraX's
- * [Recorder.getSupportedVideoMimeTypes] — the formats the Recorder itself reports it can encode on
- * this device — instead of scraping [android.media.MediaCodecList] directly. A mime appearing here
- * means it's safe to request via `Recorder.Builder.setVideoMimeType`.
+ * Which modern video codecs this device can encode, sourced from the
+ * platform [MediaCodecList] encoder registry (the Camera2 recording
+ * engine configures a `MediaCodec` encoder directly, so the encoder
+ * registry is the honest source). A mime appearing here means some
+ * encoder on this device accepts it.
  */
-@OptIn(ExperimentalMimeTypeApi::class)
 object CodecSupport {
 
+    private fun encoderMimeTypes(): List<String> = try {
+        MediaCodecList(MediaCodecList.REGULAR_CODECS).codecInfos
+            .filter { it.isEncoder }
+            .flatMap { info -> info.supportedTypes.toList() }
+            .distinct()
+    } catch (_: Exception) {
+        emptyList()
+    }
+
     private val supportedVideoMimeTypes: List<String> by lazy {
-        try {
-            Recorder.getSupportedVideoMimeTypes()
-        } catch (_: Exception) {
-            emptyList()
-        }
+        encoderMimeTypes().filter { it.startsWith("video/") }
     }
 
     private val supportedAudioMimeTypes: List<String> by lazy {
-        try {
-            Recorder.getSupportedAudioMimeTypes()
-        } catch (_: Exception) {
-            emptyList()
-        }
+        encoderMimeTypes().filter { it.startsWith("audio/") }
     }
 
     private fun supports(mimeType: String): Boolean =
@@ -106,7 +105,7 @@ object CodecSupport {
     }
 
     /**
-     * Default recording codec (issue #757): HEVC when the Recorder supports it, else AVC.
+     * Default recording codec (issue #757): HEVC when an encoder supports it, else AVC.
      * AV1 hardware encoders stall on several devices, so AV1 stays opt-in via Settings.
      */
     val defaultVideoCodec: VideoCodec

@@ -92,12 +92,21 @@ internal fun CameraViewModel.saveStillBytes(displayName: String, bytes: ByteArra
 
 /** Same as [saveStillBytes] for pre-encoded bytes in a non-JPEG container. */
 internal fun CameraViewModel.saveStillBytes(displayName: String, bytes: ByteArray, mimeType: String): Uri? {
+    // Capture-time breadcrumb at the byte-save seam: every pre-encoded
+    // still (Camera2 JPEG/AVIF landing, Motion Photo, night, snapshots)
+    // funnels through here, so this one line proves from logcat which
+    // container a shot actually landed in. Log.debug, not Log.dev:
+    // dev logs are silent in release builds, and this must be visible
+    // on a release install. Payload-free (route/format/mime only).
+    val formatName = if (mimeType == StillFormatRouting.mimeType(StillFormat.AVIF)) "AVIF" else "JPEG"
+    val routeName = if (formatName == "AVIF") "processedEncoder" else "jpegBytes"
     val target = saveTargetMutable.value
     if (target is SaveTarget.SafTree) {
         val doc = SafDocuments.createImageDoc(app.contentResolver, target.treeUri, displayName, mimeType)
         if (doc != null) {
             MediaStoreSaver.saveJpegBytesToUri(app.contentResolver, doc, bytes)?.let {
                 scanSafDoc(doc)
+                Log.debug("StillSave", "route=$routeName format=$formatName mime=$mimeType")
                 return it
             }
             Log.status("CameraViewModel", "SAF bytes save failed for $displayName; using MediaStore")
@@ -105,7 +114,9 @@ internal fun CameraViewModel.saveStillBytes(displayName: String, bytes: ByteArra
     }
     return MediaStoreSaver.saveJpegBytes(
         app.contentResolver, MediaStoreSaver.imageValues(displayName, mimeType), bytes
-    )
+    )?.also {
+        Log.debug("StillSave", "route=$routeName format=$formatName mime=$mimeType")
+    }
 }
 
 /** A saved processed still: where it landed and the container actually used. */

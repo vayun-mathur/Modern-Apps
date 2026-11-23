@@ -535,6 +535,26 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
     internal var currentRecording: Recording? = null
     internal var sloMoFps: Int = 30
 
+    /** Live Camera2 recording engine (video modes); null when not recording. */
+    internal var activeVideoEngine: Camera2VideoRecordingEngine? = null
+
+    /** Staged output file of the in-flight Camera2 recording. */
+    internal var activeVideoOutputFile: java.io.File? = null
+
+    /** Display name / mode of the in-flight Camera2 recording, for finalize. */
+    internal var activeVideoDisplayName: String? = null
+    internal var activeVideoMode: CameraMode? = null
+    internal var activeVideoTimestamp: String? = null
+
+    /** True while a Camera2 recording owns the camera (UI shows its preview). */
+    internal val camera2RecordingMutable = MutableStateFlow(false)
+    val camera2Recording = camera2RecordingMutable.asStateFlow()
+
+    /** Live Camera2 slo-mo recording core/session state; null when idle. */
+    internal var activeSloMoCore: Camera2RecordingCore? = null
+    internal var activeSloMoOutputFile: java.io.File? = null
+    internal var activeSloMoDisplayName: String? = null
+
     // IMAGE_CAPTURE (system "take a photo") intent state. When capturing for a caller, we either
     // write the full-res JPEG to their EXTRA_OUTPUT Uri, or hand back a downscaled thumbnail.
     var captureForResult: Boolean = false

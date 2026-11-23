@@ -194,6 +194,8 @@
     <string name="camera_bind_failed_title">Camera couldn\'t start</string>
     <!-- CameraPreviewBox: bind-failure detail under the title, above the Retry button -->
     <string name="camera_bind_failed_message">Try again, or switch lens or mode.</string>
+    <!-- Messenger note when a video recording fails to start or finalize -->
+    <string name="camera_recording_failed">Recording failed — nothing was saved. Try again.</string>
 
     <!-- LensBar: physical-lens picker above the zoom bar -->
     <!-- LensBar: label for the ultra-wide (0.5x) physical lens. Short pill label -->

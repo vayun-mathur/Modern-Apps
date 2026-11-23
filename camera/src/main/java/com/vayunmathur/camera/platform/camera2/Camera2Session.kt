@@ -103,7 +103,7 @@ class Camera2Session(
     private var latestPreviewTimestampNs: Long? = null
     private val previewMetas = LinkedHashMap<Long, RawStillMetadata>()
     internal var pendingStill: PendingStill? = null
-    private var displayRotationDegrees: Int = 0
+    internal var displayRotationDegrees: Int = 0
     private var controls: Camera2ControlState = Camera2ControlState.DEFAULT
 
     /** In-flight still: JPEG bytes and result metadata pair up by arrival. */

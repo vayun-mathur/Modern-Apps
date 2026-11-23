@@ -96,7 +96,17 @@ internal fun Camera2Session.configureSession(opened: DeviceHandle, gen: Long, re
         null
     }
     val createdAnalysis = if (selectedAnalysisSize != null && consumer != null) {
-        runCatching { driver.createAnalysisOutput(selectedAnalysisSize, consumer) }.getOrNull()
+        runCatching {
+            driver.createAnalysisOutput(
+                selectedAnalysisSize,
+                consumer,
+                AnalysisFrameMetadata(
+                    sensorOrientationDegrees = snapshot.sensorOrientationDegrees,
+                    lensFacing = snapshot.lensFacing,
+                    displayRotationDegrees = { displayRotationDegrees },
+                ),
+            )
+        }.getOrNull()
     } else {
         null
     }

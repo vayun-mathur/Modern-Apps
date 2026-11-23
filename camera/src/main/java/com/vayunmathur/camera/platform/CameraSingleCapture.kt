@@ -200,6 +200,11 @@ private fun CameraViewModel.runSingleCapture(plan: SingleCapturePlan) {
                 emitShutterFeedback()
             }
             override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
+                // StillSave breadcrumb for the CameraX file path, which
+                // bypasses the byte-save seam in CameraSaveRouting (the
+                // HAL writes the JPEG directly). Log.debug so it is
+                // visible on release installs (Log.dev is dev-only).
+                Log.debug("StillSave", "route=filePath format=JPEG mime=image/jpeg")
                 finishCapture(plan.pending?.resolveUri(outputFileResults) ?: outputFileResults.savedUri)
             }
             override fun onError(exception: ImageCaptureException) {

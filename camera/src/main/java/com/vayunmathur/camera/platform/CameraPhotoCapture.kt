@@ -195,7 +195,17 @@ internal fun CameraViewModel.stillCaptureIsZsl(): Boolean =
 private fun CameraViewModel.motionPhotoEligible(): Boolean {
     val plainPhoto = cameraModeMutable.value == CameraMode.PHOTO && !captureForResult
     val noBake = warmthMutable.value == 0f && shadowsMutable.value == 0f
-    return plainPhoto && noBake && aspectRatioMutable.value == AspectRatioOption.RATIO_4_3
+    // An effective AVIF selection precludes the Motion Photo diversion on
+    // the CameraX path too (a Motion Photo is a JPEG with an MP4 trailer):
+    // without this check a CameraX-served plain shot (Camera2 fallback
+    // latch, gate off) silently landed as .jpg whatever the setting said.
+    // The Camera2 path already applies the same check in
+    // tryCaptureCamera2Still; the format is read here, at capture time.
+    val avifPrecludes = com.vayunmathur.camera.domain.StillFormatRouting.avifPrecludesMotionPhoto(
+        requestedStillFormat(), StitchNative.isAvailable,
+    )
+    return plainPhoto && noBake && !avifPrecludes &&
+        aspectRatioMutable.value == AspectRatioOption.RATIO_4_3
 }
 
 /**

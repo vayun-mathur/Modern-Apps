@@ -23,6 +23,8 @@ class AnalysisImageSourceTest {
         override val width = 4
         override val height = 3
         override val timestampNs = 42L
+        override val rotationDegrees = 90
+        override val cropRect = com.vayunmathur.camera.domain.FrameCrop.fullFrame(4, 3)
         override val yPlane = PlaneView(ByteBuffer.wrap(ByteArray(12) { 9 }), 4, 1, 4, 3)
         override val planes = listOf(yPlane)
         override fun close() {

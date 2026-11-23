@@ -203,7 +203,11 @@ interface Camera2Driver {
      * when unavailable. The default is null: a fake/driver without analysis
      * degrades to no analysis stream, never to a failed preview.
      */
-    fun createAnalysisOutput(size: FrameSize, consumer: AnalysisConsumer): AnalysisOutput? = null
+    fun createAnalysisOutput(
+        size: FrameSize,
+        consumer: AnalysisConsumer,
+        metadata: AnalysisFrameMetadata = AnalysisFrameMetadata(),
+    ): AnalysisOutput? = null
 }
 
 /** Converts a pure [SensorRect] into the HAL's `Rect`. */
@@ -356,12 +360,17 @@ class AndroidCamera2Driver(
             RawImageReaderOutput(size.width, size.height, format, handler = handler)
         }.getOrNull()
 
-    override fun createAnalysisOutput(size: FrameSize, consumer: AnalysisConsumer): AnalysisOutput? =
+    override fun createAnalysisOutput(
+        size: FrameSize,
+        consumer: AnalysisConsumer,
+        metadata: AnalysisFrameMetadata,
+    ): AnalysisOutput? =
         runCatching {
             AnalysisImageSource(
                 size.width, size.height, handler = handler,
                 executor = java.util.concurrent.Executor { command -> handler.post(command) },
                 consumer = consumer,
+                metadata = metadata,
             )
         }.getOrNull()
 
