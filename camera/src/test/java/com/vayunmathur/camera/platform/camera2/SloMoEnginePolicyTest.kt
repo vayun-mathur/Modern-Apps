@@ -67,6 +67,15 @@ class SloMoEnginePolicyTest {
         }
     }
 
+    @Test fun liveReadinessFlagStillKeepsRecordingOnCameraX() {
+        // Pieces 1/3/5 are structural-done, 2/4/6/7 are open, so the flag
+        // callers should feed the policy must still select CameraX.
+        assertEquals(
+            SloMoEngine.CAMERAX,
+            SloMoEnginePolicy.select(readyInput(recordingEngineReady = SloMoRecordingReadiness.recordingEngineReady)),
+        )
+    }
+
     @Test fun gateOffReasonWinsOverOtherExclusions() {
         // The gate is reported first so a disabled path never looks like a
         // device-capability failure in logs.

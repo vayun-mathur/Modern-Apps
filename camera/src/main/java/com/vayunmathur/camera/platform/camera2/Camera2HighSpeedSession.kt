@@ -75,6 +75,23 @@ class Camera2HighSpeedSession(
     fun currentSelection(): HighSpeedSelection? = selection
 
     /**
+     * Recording stop boundary (SloMoEnginePolicy piece 3): stops the
+     * repeating high-speed request first, and only then invokes
+     * [eosSignal], so no frame can enter the encoder after EOS. The
+     * session and device stay open and the caller-owned encoder/preview
+     * surfaces are never closed here; [close] remains the teardown.
+     * A no-op unless streaming.
+     */
+    fun stopRecording(eosSignal: () -> Unit) {
+        executor.execute {
+            if (stateMachine.state != SessionState.STREAMING) return@execute
+            runCatching { captureSession?.stopRepeating() }
+                .onFailure { reportError("stopRepeating failed: ${it.message}") }
+            eosSignal()
+        }
+    }
+
+    /**
      * Tears the session down: bumps the generation first (so callbacks
      * already in flight go stale), then closes the capture session and the
      * device. Idempotent. The encoder/preview surfaces are caller-owned

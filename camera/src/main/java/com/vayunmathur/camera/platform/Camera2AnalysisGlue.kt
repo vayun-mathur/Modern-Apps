@@ -12,12 +12,13 @@ import com.vayunmathur.camera.platform.camera2.AnalysisConsumer
  * The consumer is luma-only by construction: it feeds each frame's Y plane
  * to [PhotoAnalyzer.onYPlane] (luma stats via the Rust plane-stats work in
  * `StitchNative.lumaStats`, Kotlin fallback identical), which drives the
- * night hysteresis through [onLuminance]. QR decode and bitmap frame
- * copies deliberately have no plane entry point (see
- * [AnalysisSourcePolicy]): sessions needing them — QR, PORTRAIT,
- * PANORAMA/PHOTOSPHERE, Motion-Photo frame copies — stay on the CameraX
- * ImageAnalysis path, exactly as before. Those session types never compose
- * the Camera2 preview, so they never reach this glue.
+ * night hysteresis through [onLuminance]. QR decode has no plane entry
+ * point here, and bitmap frame copies — although a conversion now exists
+ * (`AnalysisFrame.toBitmapFromPlanes`) — are not fed from this glue: the
+ * frame carries no rotation/crop metadata and those sessions never
+ * compose a Camera2 session (see [AnalysisSourcePolicy]). Sessions
+ * needing them — QR, PORTRAIT, PANORAMA/PHOTOSPHERE, Motion-Photo frame
+ * copies — stay on the CameraX ImageAnalysis path, exactly as before.
  */
 internal fun CameraViewModel.camera2AnalysisConsumer(): AnalysisConsumer {
     val analyzer = PhotoAnalyzer(

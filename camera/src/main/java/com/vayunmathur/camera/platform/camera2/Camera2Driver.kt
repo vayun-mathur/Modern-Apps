@@ -167,6 +167,13 @@ interface CaptureSessionHandle {
         throw IllegalStateException("not a constrained high-speed session")
     }
 
+    /**
+     * Stops the repeating/burst request without closing the session, so a
+     * recording boundary can signal encoder EOS before teardown. The
+     * default is a no-op for handles that never stream a repeating request.
+     */
+    fun stopRepeating() {}
+
     fun close()
 }
 
@@ -709,6 +716,10 @@ private class AndroidCaptureSessionHandle(
             },
             handler,
         )
+    }
+
+    override fun stopRepeating() {
+        runCatching { session.stopRepeating() }
     }
 
     override fun close() {

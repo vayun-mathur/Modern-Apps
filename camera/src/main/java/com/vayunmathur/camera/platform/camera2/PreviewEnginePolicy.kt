@@ -28,17 +28,69 @@ data class PreviewEngineInput(
  * PHOTO stills on that preview (see `StillEnginePolicy` for which shots
  * still stay on CameraX), so every other mode stays on CameraX even with
  * the gate on.
+ *
+ * Per-mode assessment (2026-11-22, CameraX-holdout reduction): extending
+ * preview alone is only coherent when the mode's capture/analysis also
+ * lives on the Camera2 session. When Camera2 preview is selected the
+ * CameraX session is NOT bound at all (`CameraScreenEffects` tears it
+ * down and skips the bind), so a mode whose capture needs a bound CameraX
+ * use case would show a viewfinder with a dead shutter/recorder:
+ *
+ * - PHOTO: coherent and live. Plain stills are served by the Camera2
+ *   session itself ([StillEnginePolicy]); its excluded shots fall back
+ *   per-shot only because the session already owns the camera.
+ * - PORTRAIT: blocked. The capture is a processed CameraX still (bokeh
+ *   bake) and the preview mask comes from a CameraX `ImageAnalysis`
+ *   bitmap segmenter. Camera2 has neither a portrait still route nor
+ *   (yet) a bitmap analysis feed for that session; see
+ *   `AnalysisSourcePolicy`.
+ * - PANORAMA / PHOTOSPHERE: blocked. Capture is analysis bitmap frames
+ *   (`PanoramaEngine.offerFrame(Bitmap)`) from CameraX `ImageAnalysis`;
+ *   there is no bound CameraX analysis stream under a Camera2 preview.
+ * - VIDEO / TIMELAPSE / CINEMATIC: blocked. Recording is the CameraX
+ *   Recorder (`videoCapture` bound by the video session;
+ *   `startRecording` silently no-ops when it is null), and the Camera2
+ *   recording engine is not device-verified (`CustomRecordingGate`).
+ *   An idle-only Camera2 preview would need a record-press rebind to
+ *   CameraX (teardown, settle, video-session bind, then start) that does
+ *   not exist today; showing Camera2 preview until the press and then
+ *   going black for the rebind is a worse, unverified trade, not a
+ *   reduction. Revisit only with that rebind implemented end to end.
+ * - SLOW_MO: blocked. Preview, capture and recording are one CameraX
+ *   high-speed session. The Camera2 constrained session exists but its
+ *   recording coupling is incomplete (see `SloMoEnginePolicy`), and it
+ *   has no preview-only surface to show before a recording exists.
+ *
+ * Adding a mode to [supportedModes] therefore requires, in the same
+ * change, its capture/analysis route on the Camera2 session (or a
+ * verified capture-time rebind); a preview-only flip is a split-brain
+ * regression, not progress.
  */
 object PreviewEnginePolicy {
 
     /** Modes the Camera2 preview engine supports today (PHOTO first). */
     val supportedModes: Set<CameraMode> = setOf(CameraMode.PHOTO)
 
-    fun select(input: PreviewEngineInput): PreviewEngine = when {
-        !input.camera2Enabled -> PreviewEngine.CAMERAX
-        input.fallbackLatched -> PreviewEngine.CAMERAX
-        input.mode !in supportedModes -> PreviewEngine.CAMERAX
-        else -> PreviewEngine.CAMERA2
+    fun select(input: PreviewEngineInput): PreviewEngine =
+        if (exclusionReason(input) == null) PreviewEngine.CAMERA2 else PreviewEngine.CAMERAX
+
+    /** Why [input] cannot use Camera2 preview, or null when it can. */
+    fun exclusionReason(input: PreviewEngineInput): String? = when {
+        !input.camera2Enabled -> "camera2 preview gate off"
+        input.fallbackLatched -> "camera2 bind failure latched for this session"
+        input.mode == CameraMode.PHOTO -> null
+        input.mode == CameraMode.PORTRAIT ->
+            "PORTRAIT capture and bitmap segmentation stay on CameraX; " +
+                "a Camera2 preview would leave neither bound"
+        input.mode == CameraMode.PANORAMA || input.mode == CameraMode.PHOTOSPHERE ->
+            "panorama capture needs CameraX analysis bitmap frames; " +
+                "a Camera2 preview would leave no analysis stream bound"
+        input.mode == CameraMode.SLOW_MO ->
+            "slo-mo preview is part of the CameraX high-speed session; " +
+                "the Camera2 constrained session has no preview-only surface"
+        else ->
+            "video-mode recording stays on the CameraX Recorder; " +
+                "a Camera2 preview would leave no Recorder bound to record into"
     }
 
     /** True when [mode] should render through the Camera2 preview engine. */

@@ -25,7 +25,11 @@ class Camera2HighSpeedSessionTest {
 
     private class FakeHighSpeedHandle : CaptureSessionHandle {
         val highSpeedRequests = mutableListOf<Pair<ResolvedHighSpeedParams, List<Surface>>>()
+        val events = mutableListOf<String>()
         var closed = false
+        override fun stopRepeating() {
+            events += "stopRepeating"
+        }
         override fun setRepeatingPreview(params: ResolvedRequestParams, target: Surface) {}
         override fun captureStill(
             params: ResolvedStillParams,
@@ -132,6 +136,35 @@ class Camera2HighSpeedSessionTest {
             assertEquals(SessionState.CLOSED, session.state)
             assertTrue(driver.device.sessionHandle.closed)
             assertTrue(driver.device.closed)
+        } finally {
+            executor.shutdown()
+        }
+    }
+
+    @Test fun stopRecordingStopsRepeatingBeforeEosAndKeepsDeviceOpen() {
+        val executor = Camera2Executor("HighSpeedSessionTest-eos")
+        try {
+            val driver = FakeDriver()
+            val session = Camera2HighSpeedSession(driver, executor, snapshot())
+            session.open("0", mock(Surface::class.java), mock(Surface::class.java))
+            executor.drain()
+            assertEquals(SessionState.STREAMING, session.state)
+
+            session.stopRecording {
+                driver.device.sessionHandle.events += "eos"
+            }
+            executor.drain()
+
+            // Order is the contract: no frame may enter the encoder after EOS.
+            assertEquals(listOf("stopRepeating", "eos"), driver.device.sessionHandle.events)
+            // The boundary is not teardown: session/device stay open for close().
+            assertEquals(SessionState.STREAMING, session.state)
+            assertTrue(!driver.device.closed)
+            assertTrue(!driver.device.sessionHandle.closed)
+
+            session.close()
+            executor.drain()
+            assertEquals(SessionState.CLOSED, session.state)
         } finally {
             executor.shutdown()
         }

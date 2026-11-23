@@ -15,8 +15,10 @@ import java.util.concurrent.atomic.AtomicLong
 /**
  * One analysis frame as plane views. The buffers are borrowed: they are only
  * valid until [close], consumers must read them synchronously during the
- * delivery call and retain nothing. There is deliberately no bitmap accessor
- * on this path — no `ImageProxy.toBitmap()` equivalent exists here.
+ * delivery call and retain nothing. A sensor-oriented bitmap is available
+ * via [toBitmapFromPlanes]; there is no rotation/crop metadata on this
+ * frame (see that function), which is what still keeps bitmap consumers
+ * on CameraX (see `AnalysisSourcePolicy`).
  */
 interface AnalysisFrame : AutoCloseable {
     val width: Int
@@ -33,6 +35,28 @@ interface AnalysisFrame : AutoCloseable {
 /** Synchronous plane consumer; see the lifetime contract on [AnalysisFrame]. */
 fun interface AnalysisConsumer {
     fun onFrame(frame: AnalysisFrame)
+}
+
+/**
+ * Converts this frame to a sensor-oriented `Bitmap` via the pure
+ * [com.vayunmathur.camera.domain.Yuv420ToArgb] math (BT.601 limited
+ * range, strides honoured, no rotation, no crop — the same orientation
+ * contract `ImageProxy.toBitmap()` hands the bitmap consumers). Must be
+ * called synchronously while the frame is open; the caller owns the
+ * returned bitmap. Null when the planes cannot describe a full frame.
+ *
+ * This makes the conversion available; it does not by itself move a
+ * bitmap consumer to Camera2: the frame carries no `rotationDegrees` or
+ * `cropRect` (CameraX supplies both on `ImageProxy`), and the sessions
+ * needing bitmaps do not compose a Camera2 session today — see
+ * `AnalysisSourcePolicy`.
+ */
+fun AnalysisFrame.toBitmapFromPlanes(): android.graphics.Bitmap? {
+    val argb = com.vayunmathur.camera.domain.Yuv420ToArgb.convert(planes, width, height)
+        ?: return null
+    return android.graphics.Bitmap.createBitmap(
+        argb, width, height, android.graphics.Bitmap.Config.ARGB_8888,
+    )
 }
 
 /**

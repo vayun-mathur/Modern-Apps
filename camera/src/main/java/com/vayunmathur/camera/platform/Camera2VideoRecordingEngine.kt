@@ -23,6 +23,8 @@ import com.vayunmathur.camera.domain.LiveBitrateController
 import com.vayunmathur.camera.domain.RecordingPath
 import com.vayunmathur.camera.domain.RecordingPathPolicy
 import com.vayunmathur.camera.domain.SceneMotion
+import com.vayunmathur.camera.platform.camera2.EncoderSurfaceHandoff
+import com.vayunmathur.camera.platform.camera2.MuxerStartPolicy
 import com.vayunmathur.library.log.Log
 import java.io.File
 import java.nio.ByteBuffer
@@ -68,6 +70,12 @@ data class CustomRecordingConfig(
     val audioSampleRate: Int = 48_000,
     val audioBitrateBps: Int = 128_000,
     val iFrameIntervalSec: Int = 1,
+    /**
+     * False records video only (slo-mo's contract, SloMoEnginePolicy
+     * piece 5): no AudioRecord/AAC codec is created and the muxer starts
+     * on the video track alone ([MuxerStartPolicy]).
+     */
+    val audioEnabled: Boolean = true,
 )
 
 /** Read-back summary of a finished file (see [Camera2VideoRecordingEngine.validateOutput]). */
@@ -137,6 +145,9 @@ class Camera2VideoRecordingEngine(
         start(request.outputFile, cameraId, request.previewSurface)
     }
 
+    private val encoderHandoff = EncoderSurfaceHandoff()
+    private var preparedEncoderSurface: Surface? = null
+
     private var videoCodec: MediaCodec? = null
     private var audioCodec: MediaCodec? = null
     private var audioRecord: AudioRecord? = null
@@ -180,6 +191,7 @@ class Camera2VideoRecordingEngine(
             cameraDevice?.close()
             try {
                 videoCodec?.signalEndOfInputStream()
+                encoderHandoff.markEosSignalled()
             } catch (_: IllegalStateException) {
             }
             audioRecord?.stop()
@@ -215,7 +227,32 @@ class Camera2VideoRecordingEngine(
         }
     }
 
-    private fun setupEncoders(outputFile: File) {
+    /**
+     * Codec-first split (SloMoEnginePolicy piece 1): configures the video
+     * codec and exposes its input surface *before* any camera is opened,
+     * so a caller-owned session (e.g. the constrained high-speed session)
+     * can list the surface as a configure-time target. Idempotent; [start]
+     * reuses the prepared surface instead of creating one in `openCamera`.
+     * Returns null when the codec cannot be configured.
+     */
+    fun prepareEncoderSurface(): Surface? {
+        preparedEncoderSurface?.let { return it }
+        return try {
+            if (videoCodec == null) configureVideoCodec()
+            val surface = videoCodec!!.createInputSurface()
+            encoderHandoff.markSurfaceExposed()
+            preparedEncoderSurface = surface
+            surface
+        } catch (e: IllegalStateException) {
+            Log.error("Camera2Recorder", "prepareEncoderSurface failed", e)
+            null
+        }
+    }
+
+    /** The surface exposed by [prepareEncoderSurface], or null before it. */
+    fun preparedEncoderSurface(): Surface? = preparedEncoderSurface
+
+    private fun configureVideoCodec() {
         val videoFormat = MediaFormat.createVideoFormat(config.videoMime, config.width, config.height)
             .apply {
                 setInteger(
@@ -234,17 +271,23 @@ class Camera2VideoRecordingEngine(
         videoCodec = MediaCodec.createEncoderByType(config.videoMime).apply {
             configure(videoFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
         }
+        encoderHandoff.markCodecConfigured()
+    }
 
-        val audioFormat = MediaFormat.createAudioFormat(
-            MediaFormat.MIMETYPE_AUDIO_AAC, config.audioSampleRate, 1
-        ).apply {
-            setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectLC)
-            setInteger(MediaFormat.KEY_BIT_RATE, config.audioBitrateBps)
-            setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, AUDIO_MAX_INPUT_BYTES)
-        }
-        audioCodec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_AUDIO_AAC).apply {
-            configure(audioFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
-            start()
+    private fun setupEncoders(outputFile: File) {
+        if (videoCodec == null) configureVideoCodec()
+        if (config.audioEnabled) {
+            val audioFormat = MediaFormat.createAudioFormat(
+                MediaFormat.MIMETYPE_AUDIO_AAC, config.audioSampleRate, 1
+            ).apply {
+                setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectLC)
+                setInteger(MediaFormat.KEY_BIT_RATE, config.audioBitrateBps)
+                setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, AUDIO_MAX_INPUT_BYTES)
+            }
+            audioCodec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_AUDIO_AAC).apply {
+                configure(audioFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
+                start()
+            }
         }
         muxer = MediaMuxer(outputFile.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
     }
@@ -254,7 +297,8 @@ class Camera2VideoRecordingEngine(
         cameraThread = HandlerThread("Camera2RecorderCamera").apply { start() }
         cameraHandler = Handler(cameraThread!!.looper)
         val manager = context.getSystemService(CameraManager::class.java)
-        val encoderSurface = videoCodec!!.createInputSurface()
+        val encoderSurface = preparedEncoderSurface ?: prepareEncoderSurface()
+            ?: throw IllegalStateException("encoder input surface unavailable")
         videoCodec!!.start()
         // Preview surface: the caller's when given, else an engine-owned
         // SurfaceTexture surface (exposed via ownedPreviewSurface() for a
@@ -309,6 +353,7 @@ class Camera2VideoRecordingEngine(
                     device.createCaptureSession(surfaces, object : CameraCaptureSession.StateCallback() {
                         override fun onConfigured(session: CameraCaptureSession) {
                             captureSession = session
+                            encoderHandoff.markSessionStreaming()
                             val request = device.createCaptureRequest(CameraDevice.TEMPLATE_RECORD).apply {
                                 addTarget(encoderSurface)
                                 addTarget(effectivePreview)
@@ -382,7 +427,13 @@ class Camera2VideoRecordingEngine(
                     val format = codec.outputFormat
                     val m = muxer ?: return
                     if (isVideo) videoTrackIndex = m.addTrack(format) else audioTrackIndex = m.addTrack(format)
-                    if (videoTrackIndex >= 0 && audioTrackIndex >= 0 && !muxerStarted) {
+                    if (
+                        !muxerStarted && MuxerStartPolicy.shouldStart(
+                            hasVideoTrack = videoTrackIndex >= 0,
+                            hasAudioTrack = audioTrackIndex >= 0,
+                            audioEnabled = config.audioEnabled,
+                        )
+                    ) {
                         m.start()
                         muxerStarted = true
                     }
@@ -405,6 +456,7 @@ class Camera2VideoRecordingEngine(
 
     /** AudioRecord (mono) -> audio encoder input buffers, with codec timestamps. */
     private fun startAudioThread() {
+        if (!config.audioEnabled) return
         val minBuffer = AudioRecord.getMinBufferSize(
             config.audioSampleRate,
             AudioFormat.CHANNEL_IN_MONO,
@@ -481,6 +533,9 @@ class Camera2VideoRecordingEngine(
         try { videoCodec?.stop() } catch (_: Exception) {}
         try { videoCodec?.release() } catch (_: Exception) {}
         try { muxer?.release() } catch (_: Exception) {}
+        try { preparedEncoderSurface?.release() } catch (_: Exception) {}
+        preparedEncoderSurface = null
+        encoderHandoff.markReleased()
         try { cameraThread?.quitSafely() } catch (_: Exception) {}
         audioRecord = null
         audioCodec = null

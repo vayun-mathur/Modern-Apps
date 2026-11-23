@@ -38,6 +38,43 @@ class PreviewEnginePolicyTest {
         assertEquals(setOf(CameraMode.PHOTO), PreviewEnginePolicy.supportedModes)
     }
 
+    @Test fun photoHasNoExclusionWhenGateOnAndUnlatched() {
+        assertEquals(
+            null,
+            PreviewEnginePolicy.exclusionReason(PreviewEngineInput(true, CameraMode.PHOTO)),
+        )
+    }
+
+    @Test fun everyNonPhotoModeNamesItsCaptureBlocker() {
+        // Preview alone is split-brain for these modes: selecting Camera2
+        // preview unbinds the CameraX session their capture/analysis needs.
+        val blockers = mapOf(
+            CameraMode.PORTRAIT to "PORTRAIT capture",
+            CameraMode.PANORAMA to "analysis bitmap",
+            CameraMode.PHOTOSPHERE to "analysis bitmap",
+            CameraMode.VIDEO to "CameraX Recorder",
+            CameraMode.TIMELAPSE to "CameraX Recorder",
+            CameraMode.CINEMATIC to "CameraX Recorder",
+            CameraMode.SLOW_MO to "high-speed",
+        )
+        for ((mode, fragment) in blockers) {
+            val reason = PreviewEnginePolicy.exclusionReason(PreviewEngineInput(true, mode))
+            assertTrue(reason!!.contains(fragment), "$mode reason must name its blocker: $reason")
+        }
+    }
+
+    @Test fun gateAndLatchReasonsWinOverModeBlockers() {
+        assertTrue(
+            PreviewEnginePolicy.exclusionReason(PreviewEngineInput(false, CameraMode.VIDEO))!!
+                .contains("gate off"),
+        )
+        assertTrue(
+            PreviewEnginePolicy.exclusionReason(
+                PreviewEngineInput(true, CameraMode.VIDEO, fallbackLatched = true),
+            )!!.contains("latched"),
+        )
+    }
+
     @Test fun ringGatesDefaultOn() {
         assertTrue(ReprocessRingGate.ENABLED)
         assertTrue(RawRingGate.ENABLED)
