@@ -11,9 +11,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import com.vayunmathur.library.ui.Text
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.maps.data.google.StreetViewDataSource
 import com.vayunmathur.maps.data.google.StreetViewPano
 
@@ -33,7 +33,7 @@ fun StreetViewRoute(lat: Double, lon: Double, onClose: () -> Unit) {
     when {
         pano != null -> StreetViewScreen(initialPano = pano!!, onClose = onClose)
         !resolved -> Box(Modifier.fillMaxSize().background(Color.Black)) {
-            CircularProgressIndicator(Modifier.align(Alignment.Center), color = Color.White)
+            Text("Loading\u2026", color = Color.White, modifier = Modifier.align(Alignment.Center))
         }
         else -> Unit
     }

@@ -32,10 +32,10 @@ import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.map.CameraState
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.IconDirectionsWalk
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Surface
+import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.rememberMessenger
 import com.vayunmathur.maps.R
 import com.vayunmathur.maps.data.google.StreetViewDataSource
@@ -123,7 +123,7 @@ fun BoxScope.StreetViewPegman(camera: CameraState, modifier: Modifier = Modifier
         }
 
         if (resolving) {
-            CircularProgressIndicator(Modifier.align(Alignment.Center))
+            Text("Loading\u2026", modifier = Modifier.align(Alignment.Center))
         }
 
     }

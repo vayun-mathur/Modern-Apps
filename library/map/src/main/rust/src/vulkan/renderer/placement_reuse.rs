@@ -54,10 +54,19 @@ pub(crate) struct PlacementKey {
     pub(super) density: u32,
     pub(super) extent: (u32, u32),
     pub(super) filter: crate::style::KindFilter,
-    /// Every resident tile with its upload stamp, so a tile that arrives or is replaced re-places
-    /// even though the camera has not moved. `camera.time_seconds` is deliberately *not* in this
-    /// key: it changes every frame and enters no collision box.
-    pub(super) tiles: Vec<(u64, u32)>,
+    /// Order-independent fingerprint of every resident tile with its upload
+    /// stamp, so a tile that arrives or is replaced re-places even though the
+    /// camera has not moved. `camera.time_seconds` is deliberately *not* in
+    /// this key: it changes every frame and enters no collision box.
+    /// Was a `Vec<(u64, u32)>`: building it allocated per `place_symbols` call
+    /// (twice per submitted frame -- pre-pass and record) and cloning the
+    /// cached key on the pan path allocated again, for a comparison a 64-bit
+    /// mix answers without touching the allocator. The mix is per-tile
+    /// splitmix64 summed, so tile iteration order cannot change it.
+    pub(super) tiles_fingerprint: u64,
+    /// Resident-tile count beside the fingerprint: same count + same
+    /// fingerprint is the identity test `same_universe` needs.
+    pub(super) tiles_len: usize,
     /// The style, by layer count. A style or toggle change re-tessellates the resident set, which
     /// restamps every tile above, so this only has to catch the layer set itself changing.
     pub(super) layers: usize,
@@ -172,7 +181,8 @@ impl PlacementKey {
             && self.density == other.density
             && self.extent == other.extent
             && self.filter == other.filter
-            && self.tiles == other.tiles
+            && self.tiles_fingerprint == other.tiles_fingerprint
+            && self.tiles_len == other.tiles_len
             && self.layers == other.layers
             && self.markers == other.markers
             && self.globe == other.globe

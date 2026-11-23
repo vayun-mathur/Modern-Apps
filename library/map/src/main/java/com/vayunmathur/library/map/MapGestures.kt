@@ -79,10 +79,13 @@ internal fun Modifier.mapGestures(
         val projection = cameraState.projection ?: return
         val dp = toDp(offsetPx)
         val screen = DpOffset(dp.x.dp, dp.y.dp)
-        onMapClick(projection.positionFromScreenLocation(screen))
+        // Project once: both callbacks report the same point, and the second
+        // projection was a duplicate Mercator + GeoPoint allocation per tap.
+        val position = projection.positionFromScreenLocation(screen)
+        onMapClick(position)
         // The screen point alongside the geo: hit-testing needs the Dp point
         // the tap landed on, which the geo alone cannot recover.
-        onMapClickWithScreen?.invoke(MapClick(projection.positionFromScreenLocation(screen), screen))
+        onMapClickWithScreen?.invoke(MapClick(position, screen))
     }
 
     return this

@@ -83,19 +83,13 @@ impl Renderer {
             density: camera.density.to_bits(),
             extent: (extent.width, extent.height),
             filter: filter.clone(),
-            tiles: ordered
-                .iter()
-                .map(|key| {
-                    (
-                        *key,
-                        self.tiles
-                            .get(key)
-                            .map(|t| t.uploaded_at)
-                            .unwrap_or(0.0)
-                            .to_bits(),
-                    )
-                })
-                .collect(),
+            tiles_fingerprint: crate::tile::select::tiles_fingerprint(ordered.iter().map(|key| {
+                (
+                    *key,
+                    self.tiles.get(key).map(|t| t.uploaded_at).unwrap_or(0.0).to_bits(),
+                )
+            })),
+            tiles_len: ordered.len(),
             layers: layers.len(),
             markers: self.marker_epoch,
         };

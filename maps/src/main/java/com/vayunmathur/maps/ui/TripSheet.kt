@@ -32,7 +32,6 @@ import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.HorizontalDivider
-import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.ModalBottomSheet
 import com.vayunmathur.library.ui.SheetValue
@@ -46,7 +45,7 @@ import com.vayunmathur.maps.platform.TripItineraryState
 /**
  * Fixed height for the sheet's status states (loading / missing trip).
  *
- * Both [LoadingState] and [EmptyState] default to `fillMaxSize`, which inside a
+ * Both the loading text and [EmptyState] default to `fillMaxSize`, which inside a
  * `ModalBottomSheet` measures the sheet at full height: the sheet opens
  * fullscreen while fetching and then snaps down once the itinerary arrives. A
  * bounded status block keeps the sheet at content height through the fetch.
@@ -85,9 +84,9 @@ fun TripSheet(
         Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 24.dp)) {
             when (state) {
                 TripItineraryState.Idle -> Unit
-                TripItineraryState.Loading -> LoadingState(
+                TripItineraryState.Loading -> Text(
+                    stringResource(R.string.transit_departures_loading),
                     modifier = Modifier.height(BoardStatusHeight),
-                    message = stringResource(R.string.transit_departures_loading),
                 )
                 TripItineraryState.Missing -> EmptyState(
                     title = stringResource(R.string.transit_departures_none),

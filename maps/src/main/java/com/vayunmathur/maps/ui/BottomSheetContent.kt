@@ -18,7 +18,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.IconHome
 import com.vayunmathur.library.ui.IconWork
-import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.LocalContentColor
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
@@ -149,7 +148,7 @@ fun BottomSheetContent(
                 // whose peek height is fixed — so the user got a blank card and no reason to
                 // believe anything was happening. RouteSheet has a "generating" placeholder of
                 // its own, but it was unreachable from here.
-                LoadingState(message = stringResource(R.string.generating_route))
+                Text(stringResource(R.string.generating_route))
             }
         }
         // `RoutableFeature` is an intermediate sealed interface, so this cannot be made

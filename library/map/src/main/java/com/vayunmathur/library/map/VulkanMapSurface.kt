@@ -208,23 +208,26 @@ internal fun VulkanMapSurface(
     // The cost is that the first frame of an interaction can be one frame late, where the pull
     // was immediate. The renderer's idle grace then holds the loop open for the rest of the
     // gesture, so it is one frame at the start of a movement and never during it.
+    // One collector for all four: position, globe flag, body and viewport all
+    // ride the same push channel (`SurfaceMapRenderer` pulls them out of the
+    // `CameraState` per frame, so flipping the settings toggle while idle still
+    // wakes the loop and redraws). Four separate snapshotFlow collectors were
+    // four coroutines waking on overlapping snapshot writes to call the same
+    // idempotent `invalidate()`; one flow reading all four states emits once
+    // per snapshot change and invalidates once. `invalidate()` itself is
+    // idempotent within a frame, so merging cannot lose a wake: any change to
+    // any of the four still emits and wakes the loop exactly as before.
     LaunchedEffect(host, cameraState) {
-        snapshotFlow { cameraState.position }.collect { renderer.invalidate() }
-    }
-    // The globe flag rides the same push channel as the camera: `SurfaceMapRenderer`
-    // pulls it out of the `CameraState` per frame, so flipping the settings toggle
-    // while idle still wakes the loop and redraws.
-    LaunchedEffect(host, cameraState) {
-        snapshotFlow { cameraState.globeEnabled }.collect { renderer.invalidate() }
-    }
-    // The body rides the same channel: switching Earth/Moon while idle still redraws.
-    LaunchedEffect(host, cameraState) {
-        snapshotFlow { cameraState.body }.collect { renderer.invalidate() }
-    }
-    // Separately, because a viewport change is rare and a camera change is per-frame: keeping
-    // them apart means the hot path compares one reference rather than allocating a pair.
-    LaunchedEffect(host, cameraState) {
-        snapshotFlow { cameraState.viewportDp }.collect { renderer.invalidate() }
+        snapshotFlow {
+            // Read all four so a change to any of them re-emits.
+            @Suppress("UNUSED_EXPRESSION")
+            cameraState.position
+            @Suppress("UNUSED_EXPRESSION")
+            cameraState.globeEnabled
+            @Suppress("UNUSED_EXPRESSION")
+            cameraState.body
+            cameraState.viewportDp
+        }.collect { renderer.invalidate() }
     }
 
     // Following the system theme costs nothing: the layer set is identical between

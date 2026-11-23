@@ -35,7 +35,6 @@ import com.vayunmathur.library.ui.IconClose
 import com.vayunmathur.library.ui.IconHistory
 import com.vayunmathur.library.ui.IconLocationOn
 import com.vayunmathur.library.ui.ListItem
-import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Spacing
 import com.vayunmathur.library.ui.Text
@@ -85,7 +84,7 @@ fun SearchSheet(
             contentPadding = PaddingValues(horizontal = Spacing.lg),
         )
         when (state.phase) {
-            SearchPhase.Searching -> LoadingState(Modifier.height(StatusBlockHeight))
+            SearchPhase.Searching -> Text("Loading\u2026", Modifier.height(StatusBlockHeight))
             SearchPhase.Empty -> EmptyState(
                 title = stringResource(R.string.no_results_found),
                 modifier = Modifier.height(StatusBlockHeight),

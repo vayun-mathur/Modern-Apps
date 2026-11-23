@@ -204,7 +204,7 @@ pub extern "system" fn Java_com_vayunmathur_library_map_MapNative_render<'l>(
     // Moon frames: no selection, no fetch, no eviction. The Earth resident set,
     // in-flight set and backoffs below are all left exactly as they were, so
     // switching back to Earth resumes mid-stream rather than refetching.
-    let (visible, keep): (Vec<select::TileId>, Vec<u64>) = if moon {
+    let (mut visible, keep): (Vec<select::TileId>, Vec<u64>) = if moon {
         (Vec::new(), Vec::new())
     } else {
         let visible = select::visible(&camera, min_zoom, max_zoom);
@@ -281,8 +281,11 @@ pub extern "system" fn Java_com_vayunmathur_library_map_MapNative_render<'l>(
         }
     }
     // Centre-first enqueue (issue 815): the middle of the screen fills before the edges, so a
-    // cold pan shows something useful as early as possible instead of scan order.
-    for tile in center_first(&visible).iter().chain(wash_extra.iter()) {
+    // cold pan shows something useful as early as possible instead of scan order. Sorted in
+    // place: the fetch loop is the only ordered consumer, and `retain_visible` below does not
+    // care about order, so the old copy-then-sort paid an allocation per frame for nothing.
+    select::sort_center_first(&mut visible);
+    for tile in visible.iter().chain(wash_extra.iter()) {
         let key = tile.key();
         if map.renderer.has_tile(key, generation, &snap_toggles, &snap_kinds)
             || map.absent.contains(&key)
@@ -395,30 +398,6 @@ pub extern "system" fn Java_com_vayunmathur_library_map_MapNative_render<'l>(
             false
         }
     }
-}
-
-/// The wanted tiles nearest the viewport centre first.
-///
-/// A cold pan shows its middle before its edges: the centre tile is what the user is looking
-/// at, and scan order would spend the first fetches on a corner. Sorts by squared distance to
-/// the set's own mean, which is the viewport centre for a coverage box. A handful of tiles, so
-/// the sort is noise next to one fetch.
-fn center_first(visible: &[select::TileId]) -> Vec<select::TileId> {
-    if visible.len() < 2 {
-        return visible.to_vec();
-    }
-    let (sx, sy) = visible
-        .iter()
-        .fold((0i64, 0i64), |(sx, sy), t| (sx + t.x as i64, sy + t.y as i64));
-    let n = visible.len() as i64;
-    let (cx, cy) = (sx / n, sy / n);
-    let mut out = visible.to_vec();
-    out.sort_by_key(|t| {
-        let dx = t.x as i64 - cx;
-        let dy = t.y as i64 - cy;
-        dx * dx + dy * dy
-    });
-    out
 }
 
 /// The last frame's per-step times in nanos, in [`Step::ALL`](crate::timing::Step) order.

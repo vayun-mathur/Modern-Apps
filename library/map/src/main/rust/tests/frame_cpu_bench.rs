@@ -292,3 +292,52 @@ fn worker_priority_vs_frame_time() {
         );
     }
 }
+
+/// Hot-path bookkeeping the optimisations removed allocations from: resident-set
+/// fingerprint (was a Vec build per placement call, twice per frame), LOD alpha
+/// with a caller-supplied resident test (was a HashSet build per record), and
+/// in-place centre-first sort (was a copy per frame). Host timings only.
+#[test]
+#[ignore = "timing harness; run with --ignored --nocapture"]
+fn per_frame_bookkeeping() {
+    use map_renderer::tile::select::{sort_center_first, tile_lod_alpha, tile_lod_alpha_with, tiles_fingerprint};
+    use std::collections::HashSet;
+    // Synthetic resident set: 64 tiles (the resident cap) at z14 around SF.
+    let tiles: Vec<select::TileId> = (0..8)
+        .flat_map(|dy| (0..8).map(move |dx| select::TileId { z: 14, x: 2620 + dx, y: 6330 + dy }))
+        .collect();
+    let resident: HashSet<u64> = tiles.iter().map(|t| t.key()).collect();
+    let frames = 5_000;
+    let t = Instant::now();
+    let mut acc = 0u64;
+    for _ in 0..frames {
+        acc ^= tiles_fingerprint(tiles.iter().map(|t| (t.key(), 12345u32)));
+    }
+    println!("fingerprint 64 tiles: {:.4} ms/frame", ms(t.elapsed()) / frames as f64);
+    std::hint::black_box(acc);
+    let t = Instant::now();
+    let mut a = 0f32;
+    for _ in 0..frames {
+        for tile in &tiles {
+            a += tile_lod_alpha(tile.key(), 0.0, 1.0, select::LOD_FADE_SECONDS, &resident);
+        }
+    }
+    println!("lod_alpha via HashSet: {:.4} ms/frame", ms(t.elapsed()) / frames as f64);
+    let t = Instant::now();
+    let mut b = 0f32;
+    for _ in 0..frames {
+        for tile in &tiles {
+            b += tile_lod_alpha_with(tile.key(), 0.0, 1.0, select::LOD_FADE_SECONDS, |k| resident.contains(&k));
+        }
+    }
+    println!("lod_alpha via lookup: {:.4} ms/frame", ms(t.elapsed()) / frames as f64);
+    assert_eq!(a, b);
+    let mut sorted = tiles.clone();
+    let t = Instant::now();
+    for _ in 0..frames {
+        sorted.clone_from(&tiles);
+        sort_center_first(&mut sorted);
+    }
+    println!("centre-first sort in place: {:.4} ms/frame", ms(t.elapsed()) / frames as f64);
+    std::hint::black_box(sorted);
+}

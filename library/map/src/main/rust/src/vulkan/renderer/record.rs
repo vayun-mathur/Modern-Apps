@@ -113,7 +113,7 @@ impl Renderer {
             self.scratch_ordered.clear();
             self.scratch_ordered.extend(self.tiles.keys().copied());
             self.scratch_ordered
-                .sort_by_key(|k| self.tiles.get(k).map(|t| t.z).unwrap_or(0));
+                .sort_by_cached_key(|k| self.tiles.get(k).map(|t| t.z).unwrap_or(0));
             // WS-D LOD cross-fade: one opacity per resident tile for this frame, written into
             // each tile draw's `Push.morph.x` below. A finer tile ramps 0→1 over
             // `LOD_FADE_SECONDS` from its `uploaded_at` stamp *while* a coarse ancestor is
@@ -121,21 +121,16 @@ impl Renderer {
             // beneath it stays fully opaque, so a freshly fetched area never fades up from the
             // background. Computed once here, not per layer.
             let now = camera.time_seconds;
-            self.scratch_resident.clear();
-            self.scratch_resident.extend(self.tiles.keys().copied());
+            // No separate resident HashSet: `self.tiles` already answers the
+            // ancestor lookup, so building scratch_resident per frame was pure
+            // hashing of every resident key for a set the map already is.
             self.scratch_tile_alpha.clear();
             for &key in &self.scratch_ordered {
                 let uploaded_at = self.tiles.get(&key).map(|t| t.uploaded_at).unwrap_or(0.0);
-                self.scratch_tile_alpha.insert(
-                    key,
-                    select::tile_lod_alpha(
-                        key,
-                        uploaded_at,
-                        now,
-                        select::LOD_FADE_SECONDS,
-                        &self.scratch_resident,
-                    ),
-                );
+                let alpha = select::tile_lod_alpha_with(key, uploaded_at, now, select::LOD_FADE_SECONDS, |ancestor| {
+                    self.tiles.contains_key(&ancestor)
+                });
+                self.scratch_tile_alpha.insert(key, alpha);
             }
             let Self {
                 scratch_draws: draws,

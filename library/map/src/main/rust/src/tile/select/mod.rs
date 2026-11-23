@@ -32,10 +32,11 @@ mod tests_part2;
 #[cfg(test)]
 mod tests_part3;
 
-pub use coverage::{bound, visible};
+pub use coverage::{bound, sort_center_first, visible};
 pub use cover::{relevant_keys, redundant_tiles, COVER_MAX_DEPTH};
 pub use fade::{
-    fade_in_progress, has_resident_ancestor, lod_fade_alpha, tile_lod_alpha, LOD_FADE_SECONDS,
+    fade_in_progress, has_resident_ancestor, lod_fade_alpha, suppression_can_skip, tile_lod_alpha,
+    tile_lod_alpha_with, tiles_fingerprint, LOD_FADE_SECONDS,
 };
 pub use resident::{evict, resident_set, stands_in_for_visible, zoom_out_burst, ANCESTOR_DEPTH, DESCENDANT_DEPTH, RESIDENT_BYTE_BUDGET, RESIDENT_TILE_CAP};
 pub use tile_id::TileId;

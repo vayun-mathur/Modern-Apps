@@ -302,7 +302,7 @@ impl Renderer {
         self.scratch_ordered.clear();
         self.scratch_ordered.extend(self.tiles.keys().copied());
         self.scratch_ordered
-            .sort_by_key(|k| self.tiles.get(k).map(|t| t.z).unwrap_or(0));
+            .sort_by_cached_key(|k| self.tiles.get(k).map(|t| t.z).unwrap_or(0));
         // Covered-stand-in suppression, before the early-out key: a fade
         // completing newly suppresses a stand-in, so the map must be current
         // for the version below to differ and this frame to actually submit.

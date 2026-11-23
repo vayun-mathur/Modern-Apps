@@ -37,6 +37,17 @@ impl Renderer {
     pub(super) fn refresh_suppression(&mut self, now: f32) {
         use crate::tile::select::{cover, tile_lod_alpha, LOD_FADE_SECONDS};
         let residency = self.residency_epoch.get();
+        // Fast path, checked BEFORE allocating the resident/settled sets below:
+        // residency unchanged since the last refresh and that refresh saw no
+        // fade in flight means the map cannot have changed. Settled-ness is
+        // monotonic in `now` (alpha ramps 0->1, wrap-safe via rem_euclid in
+        // lod_fade_alpha) and the tile set / uploaded_at stamps only change
+        // with a residency bump (upload / evict), so a fully-settled set stays
+        // fully settled. Previously this frame paid two HashSet builds plus a
+        // per-tile ancestor scan only to discover exactly this and return.
+        if crate::tile::select::suppression_can_skip(residency, self.suppression_residency, self.suppression_had_unsettled) {
+            return;
+        }
         let resident: HashSet<u64> = self.tiles.keys().copied().collect();
         let settled: HashSet<u64> = resident
             .iter()

@@ -74,9 +74,73 @@ pub fn tile_lod_alpha(
     duration: f32,
     resident: &std::collections::HashSet<u64>,
 ) -> f32 {
-    if has_resident_ancestor(key, resident) {
+    tile_lod_alpha_with(key, uploaded_at, now, duration, |ancestor| resident.contains(&ancestor))
+}
+
+/// Order-independent fingerprint of `(tile key, upload-stamp bits)` pairs:
+/// splitmix64 per pair, summed. Two frames with the same resident set in any
+/// iteration order fingerprint identically; any tile arriving, leaving, or
+/// being re-stamped changes it with overwhelming probability. The symbol
+/// placement key uses this instead of a `Vec` of pairs, so building or
+/// cloning the key allocates nothing.
+pub fn tiles_fingerprint(tiles: impl Iterator<Item = (u64, u32)>) -> u64 {
+    tiles.fold(0u64, |acc, (key, stamp)| {
+        let mut h = key ^ u64::from(stamp).wrapping_mul(0x9e37_79b9_7f4a_7c15);
+        h = (h ^ (h >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+        h = (h ^ (h >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+        acc.wrapping_add(h ^ (h >> 31))
+    })
+}
+
+/// Whether a covered-stand-in suppression refresh can be skipped outright:
+/// the resident set is the one the current map was computed against and no
+/// fade was in flight then. Settled-ness is monotonic in the frame clock, so
+/// a fully-settled set with unchanged residency stays fully settled.
+pub fn suppression_can_skip(residency: u64, computed_residency: u64, had_unsettled: bool) -> bool {
+    residency == computed_residency && !had_unsettled
+}
+
+/// [`tile_lod_alpha`] with the resident-ancestor test supplied by the caller,
+/// so a caller that already owns a keyed tile map (the record pass) need not
+/// build a separate resident `HashSet` per frame just to answer it. Output is
+/// identical: same ancestor walk, same fade ramp.
+pub fn tile_lod_alpha_with(
+    key: u64,
+    uploaded_at: f32,
+    now: f32,
+    duration: f32,
+    is_resident: impl Fn(u64) -> bool,
+) -> f32 {
+    let tile = TileId::from_key(key);
+    let has_ancestor = (1..=ANCESTOR_DEPTH).any(|levels| {
+        tile.ancestor(levels).is_some_and(|a| is_resident(a.key()))
+    });
+    if has_ancestor {
         lod_fade_alpha(now, uploaded_at, duration)
     } else {
         1.0
+    }
+}
+
+#[cfg(test)]
+mod fingerprint_tests {
+    use super::{suppression_can_skip, tiles_fingerprint};
+
+    #[test]
+    fn fingerprint_is_order_independent_and_stamp_sensitive() {
+        let a = tiles_fingerprint([(11, 1), (22, 2), (33, 3)].into_iter());
+        let b = tiles_fingerprint([(33, 3), (11, 1), (22, 2)].into_iter());
+        assert_eq!(a, b, "resident-set identity must not depend on iteration order");
+        assert_ne!(a, tiles_fingerprint([(11, 1), (22, 2), (33, 4)].into_iter()), "a re-stamped tile re-places");
+        assert_ne!(a, tiles_fingerprint([(11, 1), (22, 2)].into_iter()), "a tile leaving re-places");
+        assert_eq!(tiles_fingerprint(std::iter::empty()), 0);
+    }
+
+    #[test]
+    fn suppression_skips_only_when_same_residency_and_previously_settled() {
+        assert!(suppression_can_skip(7, 7, false));
+        assert!(!suppression_can_skip(8, 7, false), "an upload/eviction must recompute");
+        assert!(!suppression_can_skip(7, 7, true), "a fade in flight may complete and change coverage");
+        assert!(!suppression_can_skip(7, 8, false));
     }
 }

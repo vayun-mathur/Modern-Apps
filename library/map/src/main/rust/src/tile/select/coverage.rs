@@ -166,3 +166,41 @@ fn globe_visible(camera: &Camera, min_zoom: u8, max_zoom: u8) -> Vec<TileId> {
     }
     out
 }
+
+/// Sort `tiles` centre-first, in place: nearest the set's own mean (the
+/// viewport centre for a coverage box) first, so a cold pan fills its middle
+/// before its edges. Same ordering the fetch loop always used; sorting the
+/// caller's Vec instead of a copy saves one allocation per frame.
+pub fn sort_center_first(tiles: &mut [TileId]) {
+    if tiles.len() < 2 {
+        return;
+    }
+    let (sx, sy) = tiles.iter().fold((0i64, 0i64), |(sx, sy), t| (sx + t.x as i64, sy + t.y as i64));
+    let n = tiles.len() as i64;
+    let (cx, cy) = (sx / n, sy / n);
+    tiles.sort_by_cached_key(|t| {
+        let dx = t.x as i64 - cx;
+        let dy = t.y as i64 - cy;
+        dx * dx + dy * dy
+    });
+}
+
+#[cfg(test)]
+mod center_first_tests {
+    use super::sort_center_first;
+    use super::TileId;
+
+    #[test]
+    fn sorts_centre_outward_without_changing_the_set() {
+        let mut tiles: Vec<TileId> = (0..3)
+            .flat_map(|dy| (0..3).map(move |dx| TileId { z: 4, x: 9 + dx, y: 9 + dy }))
+            .collect();
+        let mut before = tiles.clone();
+        sort_center_first(&mut tiles);
+        assert_eq!((tiles[0].x, tiles[0].y), (10, 10));
+        before.sort_by_key(|t| t.key());
+        let mut after = tiles.clone();
+        after.sort_by_key(|t| t.key());
+        assert_eq!(before, after);
+    }
+}

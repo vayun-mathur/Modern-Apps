@@ -20,7 +20,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.PanoramaCrop
 import com.vayunmathur.library.ui.PanoramaSphere
@@ -88,7 +87,7 @@ fun StreetViewScreen(initialPano: StreetViewPano, onClose: () -> Unit) {
                     }
                 }
             }
-            loading -> CircularProgressIndicator(Modifier.align(Alignment.Center), color = Color.White)
+            loading -> Text("Loading\u2026", color = Color.White, modifier = Modifier.align(Alignment.Center))
             else -> Text(
                 stringResource(R.string.street_view_unavailable),
                 color = Color.White,

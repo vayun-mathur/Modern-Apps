@@ -23,7 +23,6 @@ import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.ui.ErrorState
-import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.IconRefresh
 import com.vayunmathur.library.ui.MaterialTheme
@@ -39,7 +38,7 @@ import com.vayunmathur.maps.platform.DeparturesState
 /**
  * Fixed height for the board's status states (loading / no departures).
  *
- * Both [LoadingState] and [EmptyState] default to `fillMaxSize`, which inside a
+ * Both the loading text and [EmptyState] default to `fillMaxSize`, which inside a
  * `ModalBottomSheet` measures the sheet at full height: the board opens
  * fullscreen while fetching and then snaps down once departures arrive. A
  * bounded status block keeps the sheet at content height through the fetch.
@@ -121,9 +120,9 @@ fun DeparturesSheet(
                 // so a board that had not been asked for yet claimed to be fetching. Idle is
                 // only reachable transiently as the sheet opens, and showing nothing for that
                 // frame is more honest than showing a spinner for a request nobody made.
-                is DeparturesState.Loading -> LoadingState(
+                is DeparturesState.Loading -> Text(
+                    stringResource(R.string.transit_departures_loading),
                     modifier = Modifier.height(BoardStatusHeight),
-                    message = stringResource(R.string.transit_departures_loading),
                 )
                 DeparturesState.Idle -> Unit
                 is DeparturesState.Loaded -> {
