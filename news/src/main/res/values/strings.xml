@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">News</string>
+    <!-- FeedScreen -->
+    <string name="feed_title">News</string>
+    <string name="feed_empty">No articles yet. Pull to refresh.</string>
+    <string name="feed_all_sources">All</string>
+    <string name="feed_refresh_failed">Could not refresh all sources; showing the cached feed.</string>
+    <!-- ReaderScreen -->
+    <string name="reader_title">Article</string>
+    <string name="reader_text_smaller">Smaller text</string>
+    <string name="reader_text_larger">Larger text</string>
+    <string name="reader_serif">Serif</string>
+    <string name="reader_sans">Sans</string>
+    <string name="reader_loading_failed">Could not load this article. Try the original page.</string>
+    <!-- SourcesScreen -->
+    <string name="sources_title">Sources</string>
+    <string name="sources_note">Articles are fetched directly from each publisher. No account and no server of ours is involved.</string>
+    <!-- SavedScreen -->
+    <string name="saved_title">Saved for later</string>
+    <string name="saved_empty">Nothing saved yet. Save an article from the reader to read it offline later.</string>
+</resources>

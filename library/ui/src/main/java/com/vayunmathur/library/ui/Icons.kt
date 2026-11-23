@@ -227,6 +227,10 @@ import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.Newspaper
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.RemoveCircleOutline
 import androidx.compose.material.icons.filled.Repeat
@@ -1978,3 +1982,19 @@ fun IconBugReport(modifier: Modifier = Modifier, tint: Color = LocalContentColor
 @Composable
 fun IconInstall(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
     AppIcon(Icons.Filled.SystemUpdateAlt, "Install", modifier, tint)
+
+@Composable
+fun IconBookmark(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.Filled.Bookmark, "Saved", modifier, tint)
+
+@Composable
+fun IconBookmarkBorder(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.Filled.BookmarkBorder, "Save for later", modifier, tint)
+
+@Composable
+fun IconNewspaper(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.Filled.Newspaper, "News", modifier, tint)
+
+@Composable
+fun IconOpenInNew(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.Filled.OpenInNew, "Open in browser", modifier, tint)
