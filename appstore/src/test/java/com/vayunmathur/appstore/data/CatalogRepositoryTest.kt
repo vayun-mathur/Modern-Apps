@@ -163,6 +163,9 @@ class CatalogRepositoryTest {
         seed(entity("com.example.a", source = AppSource.IZZY, versionCode = 7L, repoUrl = DefaultRepos.IZZY.url))
         val snapshot = repo.indexSnapshot()
         assertEquals(7L, snapshot["com.example.a"]?.versionCode)
+        // sourceOf reads the packageIndex StateFlow cache, which starts
+        // empty until Room emits: await that emission before asserting on it.
+        repo.packageIndex.first { it.containsKey("com.example.a") }
         assertEquals(AppSource.IZZY, repo.sourceOf("com.example.a"))
         assertNull(repo.sourceOf("com.example.missing"))
     }

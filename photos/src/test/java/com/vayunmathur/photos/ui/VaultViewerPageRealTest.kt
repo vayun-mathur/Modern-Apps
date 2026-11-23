@@ -105,9 +105,12 @@ class VaultViewerPageRealTest {
         secure.setVault(dao, "pw123")
         val stack = NavBackStack<Route>(arrayOf(Route.Gallery, Route.VaultViewer(row.id)))
         setContent { DynamicTheme { VaultViewerPage(stack, row.id, "pw123", secure) } }
-        rule.waitForIdle()
-        // The decrypted viewer file exists in the cache now.
-        assertTrue(File(app.cacheDir, "vault_view").listFiles()?.isNotEmpty() == true)
+        // Decryption runs on Dispatchers.IO inside produceState, which
+        // waitForIdle does not track: poll for the decrypted viewer file.
+        val viewerDir = File(app.cacheDir, "vault_view")
+        var attempts = 0
+        while (attempts++ < 200 && viewerDir.listFiles()?.isNotEmpty() != true) Thread.sleep(50)
+        assertTrue(viewerDir.listFiles()?.isNotEmpty() == true)
         val count = rule.onAllNodes(hasClickAction()).fetchSemanticsNodes().size
         for (i in 0 until minOf(count, 6)) {
             runCatching { rule.onAllNodes(hasClickAction())[i].performClick() }

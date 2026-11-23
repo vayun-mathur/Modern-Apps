@@ -322,7 +322,14 @@ class EmergencyScreensTest {
                 onPickOwner = { ownerPicks++ },
             )
         }
-        rule.onNodeWithText("Loading contacts…").performScrollTo().assertIsDisplayed()
+        // The loading row is now the canonical indicator, not a text row:
+        // the indicator is on screen and the old loading label is not.
+        rule.onNode(
+            androidx.compose.ui.test.SemanticsMatcher.keyIsDefined(
+                androidx.compose.ui.semantics.SemanticsProperties.ProgressBarRangeInfo,
+            ),
+        ).assertExists()
+        rule.onNodeWithText("Loading contacts…").assertDoesNotExist()
         rule.runOnIdle { stage.intValue = 1 }
         rule.onNodeWithText("Jamie Owner").performScrollTo().performClick()
         assertEquals(1, ownerPicks)

@@ -86,7 +86,15 @@ class LauncherDrawerUiTest {
 
     @Test fun loadingReadsLoadingApps() {
         show(state = DrawerUiState(apps = emptyList(), loading = true))
-        rule.onNodeWithText("Loading apps").assertIsDisplayed()
+        // Loading now renders the canonical indicator, not a text label:
+        // the indicator is on screen and neither text state is.
+        rule.onNode(
+            androidx.compose.ui.test.SemanticsMatcher.keyIsDefined(
+                androidx.compose.ui.semantics.SemanticsProperties.ProgressBarRangeInfo,
+            ),
+        ).assertExists()
+        rule.onNodeWithText("Loading apps").assertDoesNotExist()
+        rule.onNodeWithText("No apps found").assertDoesNotExist()
     }
 
     @Test fun listLayoutRendersRows() {

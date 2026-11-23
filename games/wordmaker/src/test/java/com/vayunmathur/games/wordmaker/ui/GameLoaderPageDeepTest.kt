@@ -9,6 +9,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.games.wordmaker.Route
 import com.vayunmathur.games.wordmaker.data.GameMode
@@ -365,6 +366,17 @@ class GameLoaderPageDeepTest {
             rule.onAllNodesWithText("Game Center").fetchSemanticsNodes().isNotEmpty()
         }
         rule.onNodeWithText("Game Center").assertIsDisplayed()
+        // The achievement statuses arrive on the manager's DataStore-backed
+        // flow after the scaffold title, and unlocked achievements sort
+        // first: earlier tests in this class unlock the level milestones
+        // through the shared store, which pushes "First Steps" below the
+        // fold. Scroll it into view instead of assuming it is first.
+        rule.waitUntil(timeoutMillis = 20000) {
+            rule.onAllNodesWithText("Completed").fetchSemanticsNodes().isNotEmpty() ||
+                rule.onAllNodesWithText("First Steps").fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNode(androidx.compose.ui.test.hasScrollAction())
+            .performScrollToNode(androidx.compose.ui.test.hasText("First Steps"))
         rule.onNodeWithText("First Steps").assertIsDisplayed()
     }
 

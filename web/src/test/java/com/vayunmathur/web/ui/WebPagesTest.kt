@@ -107,6 +107,10 @@ class WebPagesTest {
 
     @Test fun historyPageEmptyThenWithEntries() {
         val v = vm()
+        // The page shows its loading surface until the history flow has
+        // emitted once (hasLoaded); the empty state is only the contract
+        // after that, so await the loaded signal before asserting it.
+        await("history loaded") { v.hasLoadedHistory.value }
         rule.setContent { HistoryPage(v, backStack()) }
         rule.waitForIdle()
         rule.onNodeWithText("No history yet").assertIsDisplayed()
