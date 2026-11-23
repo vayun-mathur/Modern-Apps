@@ -1,5 +1,7 @@
 package com.vayunmathur.calendar.ui
 
+// SCAFFOLD SEARCH EXCEPTION: language-picker dialog-local search filter in this file; the screen's country search uses the scaffold search parameter
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,6 +15,7 @@ import androidx.compose.foundation.lazy.items
 import com.vayunmathur.calendar.R
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.library.ui.AppScaffold
+import com.vayunmathur.library.ui.ScaffoldSearch
 import com.vayunmathur.library.ui.AlertDialog
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
@@ -108,15 +111,13 @@ fun HolidayCalendarsScreen(viewModel: CalendarViewModel, backStack: NavBackStack
     AppScaffold(
         title = stringResource(R.string.holiday_calendars),
         backStack = backStack,
+        search = ScaffoldSearch(
+            query = query,
+            onQueryChange = { query = it },
+            placeholder = stringResource(R.string.search_countries),
+        ),
     ) { paddingValues ->
         Column(Modifier.padding(paddingValues).fillMaxSize()) {
-            OutlinedTextField(
-                value = query,
-                onValueChange = { query = it },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-                placeholder = { Text(stringResource(R.string.search_countries)) },
-                singleLine = true,
-            )
             LazyColumn(Modifier.fillMaxSize()) {
                 items(filtered, key = { it.code }) { country ->
                     val langCode = added[country.code]

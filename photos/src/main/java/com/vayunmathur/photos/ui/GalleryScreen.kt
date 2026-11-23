@@ -1,5 +1,7 @@
 package com.vayunmathur.photos.ui
 
+// SCAFFOLD SEARCH EXCEPTION: expandable SearchBar supplied as the AppScaffold topBar; its expanded overlay is the search-results photo grid
+
 import com.vayunmathur.library.util.DateNameStyle
 import android.app.Activity
 import android.content.Intent

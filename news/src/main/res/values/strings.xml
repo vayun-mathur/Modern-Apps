@@ -4,7 +4,7 @@
     <!-- FeedScreen -->
     <string name="feed_title">News</string>
     <string name="feed_empty">No articles yet. Pull to refresh.</string>
-    <string name="feed_all_sources">All</string>
+    <string name="feed_all_categories">All</string>
     <string name="feed_refresh_failed">Could not refresh all sources; showing the cached feed.</string>
     <string name="feed_search_placeholder">Search downloaded news</string>
     <string name="feed_search_empty">No downloaded articles match. Search covers titles and articles you have opened.</string>

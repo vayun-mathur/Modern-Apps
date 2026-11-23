@@ -17,7 +17,10 @@ import com.vayunmathur.library.ui.DateString
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.FloatingActionButton
 import com.vayunmathur.library.ui.IconAdd
+import com.vayunmathur.library.ui.IconButton
+import com.vayunmathur.library.ui.IconMenu
 import com.vayunmathur.library.ui.LazyListScaffold
+import com.vayunmathur.library.ui.ScaffoldSearch
 import com.vayunmathur.library.ui.rememberHaptics
 import com.vayunmathur.library.ui.rememberMessenger
 import com.vayunmathur.todo.R
@@ -133,22 +136,24 @@ fun TodoListScreen(
 
     LazyListScaffold(
         isRefreshing = !state.hasLoaded,
-        topBar = {
-            if (selected.isNotEmpty()) {
-                BulkActionBar(selected.size, state.lists, bulk)
-            } else {
-                TodoListTopBar(
-                    title = title,
-                    query = state.searchQuery,
-                    sort = state.sort,
-                    onQuery = actions::setSearchQuery,
-                    onSort = actions::setSort,
-                    onMenu = if (showMenu) actions::openDrawer else null,
-                    scrollBehavior = null,
-                    extraActions = extraActions,
-                )
-            }
+        // Search owns the bar's title slot (scaffold param); the drawer button
+        // and sort menu ride along as the bar's icon/actions. While bulk
+        // selection is active the search gives way to the bulk bar.
+        search = if (selected.isNotEmpty()) null else ScaffoldSearch(
+            query = state.searchQuery,
+            onQueryChange = actions::setSearchQuery,
+            placeholder = stringResource(R.string.search_in, title),
+        ),
+        navigationIcon = if (showMenu) {
+            { IconButton(onClick = actions::openDrawer) { IconMenu() } }
+        } else null,
+        actions = {
+            SortMenu(state.sort, actions::setSort)
+            extraActions()
         },
+        topBar = if (selected.isNotEmpty()) {
+            { BulkActionBar(selected.size, state.lists, bulk) }
+        } else null,
         floatingActionButton = {
             if (state.showAddButton && selected.isEmpty()) {
                 FloatingActionButton(onClick = { actions.createTodo() }) { IconAdd() }

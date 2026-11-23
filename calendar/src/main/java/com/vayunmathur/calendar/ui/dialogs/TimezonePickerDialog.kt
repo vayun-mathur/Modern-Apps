@@ -1,4 +1,6 @@
 package com.vayunmathur.calendar.ui.dialogs
+
+// SCAFFOLD SEARCH EXCEPTION: dialog-local timezone filter inside a picker dialog; no scaffold host
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row

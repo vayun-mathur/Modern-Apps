@@ -38,7 +38,7 @@ import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.library.ui.CommonSearchBar
+import com.vayunmathur.library.ui.ScaffoldSearch
 
 /**
  * Shown for ACTION_INSERT_OR_EDIT / SHOW_OR_CREATE_CONTACT (Fossify dialer "Add number to contact").
@@ -79,6 +79,11 @@ fun InsertOrEditContactScreen(
             }
         },
         onClose = onExit,
+        search = ScaffoldSearch(
+            query = searchQuery,
+            onQueryChange = { viewModel.setSearchQuery(it) },
+            placeholder = stringResource(R.string.search_contacts),
+        ),
         bottomBar = {
             Row(
                 Modifier.fillMaxWidth().padding(16.dp),
@@ -100,13 +105,6 @@ fun InsertOrEditContactScreen(
         },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
-            CommonSearchBar(
-                value = searchQuery,
-                onValueChange = { viewModel.setSearchQuery(it) },
-                placeholder = stringResource(R.string.search_contacts),
-                padding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                modifier = Modifier.fillMaxWidth()
-            )
 
             when {
                 contacts.isEmpty() && searchQuery.isEmpty() && !hasLoadedContacts -> {

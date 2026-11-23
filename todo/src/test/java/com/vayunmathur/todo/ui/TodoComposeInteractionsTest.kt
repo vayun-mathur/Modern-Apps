@@ -186,8 +186,11 @@ class TodoComposeInteractionsTest {
         rule.onNodeWithText("Toggle me").assertIsDisplayed()
     }
     @Test fun topBarSearchInput() {
-        var query: String? = null; var sort: SortMode? = null
-        rule.setContent { DynamicTheme { TodoListTopBar(title = "Inbox", query = "", sort = SortMode.MANUAL, onQuery = { query = it }, onSort = { sort = it }, onMenu = {}, scrollBehavior = null) } }
+        var query: String? = null
+        val capturing = object : TodoListActions {
+            override fun setSearchQuery(q: String) { query = q }
+        }
+        rule.setContent { DynamicTheme { TodoListScreen(state = TodoListUiState(view = TodoView.Inbox, lists = lists, now = now), actions = capturing) } }
         rule.onNodeWithText("Search Inbox").performTextInput("abc")
         assertEquals("abc", query)
     }

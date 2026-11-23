@@ -14,7 +14,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.contacts.R
 import com.vayunmathur.contacts.data.Contact
-import com.vayunmathur.library.ui.CommonSearchBar
+import com.vayunmathur.library.ui.ScaffoldSearch
 import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.ExtendedFloatingActionButton
@@ -59,6 +59,11 @@ fun ContactListPick(
 
     LazyListScaffold(
         isRefreshing = isLoading,
+        search = ScaffoldSearch(
+            query = query,
+            onQueryChange = { query = it },
+            placeholder = stringResource(R.string.search_contacts),
+        ),
         topBar = { TopAppBar(title = { Text(stringResource(R.string.app_name)) }) },
         floatingActionButton = {
             if (allowMultiple) {
@@ -72,15 +77,6 @@ fun ContactListPick(
         horizontalPadding = 16.dp,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        item(key = "pick-search") {
-            CommonSearchBar(
-                value = query,
-                onValueChange = { query = it },
-                placeholder = stringResource(R.string.search_contacts),
-                padding = PaddingValues(vertical = 8.dp),
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
         when {
             filtered.isEmpty() && isLoading -> {
                 item(key = "pick-loading") {

@@ -31,6 +31,11 @@ import kotlinx.serialization.json.jsonObject
  * - `language` is a BCP-47 tag stated per article by the server (its
  *   per-article refinement of the source default); when absent it
  *   defaults from [SourceCatalog] for the resolved source.
+ * - There is no category field. Category is derived client-side only:
+ *   the resolved catalog id maps to [NewsSource.categories] in
+ *   [SourceCatalog] (see [NewsCategory]), and the feed/search filters
+ *   apply that mapping to the article's `sourceId`. Unresolved ids have
+ *   no category and match the feed's "All" filter only.
  *
  * Pure and non-throwing: malformed documents/articles yield an empty or
  * partial list, which the repository treats as server-feed failure and

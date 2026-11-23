@@ -1,5 +1,7 @@
 package com.vayunmathur.launcher.ui
 
+// SCAFFOLD SEARCH EXCEPTION: bottom-sheet-local widget picker content hosted by a ModalBottomSheet, not a scaffold screen
+
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box

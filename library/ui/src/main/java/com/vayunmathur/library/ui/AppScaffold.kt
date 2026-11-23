@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.NavKey
 
@@ -66,6 +67,14 @@ enum class AppBarSize { Small, MediumFlexible, LargeFlexible }
  * flag. Set [refreshEnabled] = false to disable the pull gesture while still
  * reflecting a programmatic refresh. No other loading icon belongs in a
  * screen; the `ScaffoldLoading` lint rule flags standalone ones.
+ *
+ * Search belongs here too: pass [search] and the scaffold renders the
+ * shared inline filter field AS the top app bar, replacing the title in
+ * its title slot (the ListPage / notes / contacts placement), while
+ * navigation/actions keep rendering around it. The field sits above (and
+ * outside) the refresh box, so a refresh indicator drops in over the
+ * content under the bar as before. No standalone search bar belongs in a
+ * screen; the `ScaffoldSearch` lint rule flags them.
  */
 @Composable
 fun AppScaffold(
@@ -86,6 +95,7 @@ fun AppScaffold(
     isRefreshing: Boolean = false,
     onRefresh: (() -> Unit)? = null,
     refreshEnabled: Boolean = true,
+    search: ScaffoldSearch? = null,
     content: @Composable (PaddingValues) -> Unit,
 ) = AppScaffold(
     title = { Text(title, modifier = Modifier.semantics { heading() }) },
@@ -105,6 +115,7 @@ fun AppScaffold(
     isRefreshing = isRefreshing,
     onRefresh = onRefresh,
     refreshEnabled = refreshEnabled,
+    search = search,
     content = content,
 )
 
@@ -133,6 +144,7 @@ fun AppScaffold(
     isRefreshing: Boolean = false,
     onRefresh: (() -> Unit)? = null,
     refreshEnabled: Boolean = true,
+    search: ScaffoldSearch? = null,
     content: @Composable (PaddingValues) -> Unit,
 ) {
     val resolvedNavigationIcon = resolveNavigationIcon(navigationIcon, onClose, onNavigateBack)
@@ -141,7 +153,23 @@ fun AppScaffold(
         modifier = modifier.nestedScroll(behavior.nestedScrollConnection),
         topBar = {
             AppTopBar(
-                title = title,
+                // Search replaces the title in the bar's title slot (the
+                // ListPage / notes / contacts placement): while a screen
+                // searches, its name gives way to the field, whose
+                // placeholder carries the context. The title composable is
+                // not rendered at all in that state.
+                title = if (search != null) {
+                    {
+                        CommonSearchBar(
+                            value = search.query,
+                            onValueChange = search.onQueryChange,
+                            placeholder = search.placeholder,
+                            modifier = search.modifier,
+                            onSearch = search.onSearch,
+                            padding = PaddingValues(0.dp),
+                        )
+                    }
+                } else title,
                 subtitle = subtitle,
                 navigationIcon = resolvedNavigationIcon,
                 actions = actions,
@@ -166,9 +194,15 @@ fun AppScaffold(
 }
 
 /**
- * [AppScaffold] whose top bar is supplied by the screen (e.g. a search field), or
+ * [AppScaffold] whose top bar is supplied by the screen, or
  * omitted entirely with `topBar = {}`. Without a bar the content padding still
  * covers the status bar.
+ *
+ * This overload deliberately has no `search` parameter: a screen that supplies
+ * its whole bar owns that bar. Screen-level search goes through a titled
+ * overload's `search` parameter instead; a custom bar that is itself an
+ * expandable search surface (photos, youpipe) is the sanctioned exception and
+ * carries a `// SCAFFOLD SEARCH EXCEPTION: <reason>` marker.
  */
 @Composable
 fun AppScaffold(
@@ -219,6 +253,7 @@ fun <T : NavKey> AppScaffold(
     isRefreshing: Boolean = false,
     onRefresh: (() -> Unit)? = null,
     refreshEnabled: Boolean = true,
+    search: ScaffoldSearch? = null,
     content: @Composable (PaddingValues) -> Unit,
 ) = AppScaffold(
     title = title,
@@ -238,6 +273,7 @@ fun <T : NavKey> AppScaffold(
     isRefreshing = isRefreshing,
     onRefresh = onRefresh,
     refreshEnabled = refreshEnabled,
+    search = search,
     content = content,
 )
 

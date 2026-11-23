@@ -23,7 +23,7 @@ import com.vayunmathur.flashcards.ui.NoteListActions
 import com.vayunmathur.flashcards.ui.NoteListUiState
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Button
-import com.vayunmathur.library.ui.CommonSearchBar
+import com.vayunmathur.library.ui.ScaffoldSearch
 import com.vayunmathur.library.ui.ConfirmDialog
 import com.vayunmathur.library.ui.DropdownMenu
 import com.vayunmathur.library.ui.DropdownMenuItem
@@ -82,6 +82,11 @@ fun NoteListScreen(
 
     AppScaffold(
         isRefreshing = !state.hasLoaded,
+        search = if (!selection.isActive && state.notes.isNotEmpty()) ScaffoldSearch(
+            query = query,
+            onQueryChange = { query = it },
+            placeholder = stringResource(R.string.search_cards),
+        ) else null,
         title = {
             if (selection.isActive) {
                 Text(pluralStringResource(R.plurals.selected_count, selection.count, selection.count))
@@ -162,14 +167,6 @@ fun NoteListScreen(
                     onToggle = { tag ->
                         selectedTags = if (tag in selectedTags) selectedTags - tag else selectedTags + tag
                     },
-                )
-            }
-            if (state.notes.isNotEmpty()) {
-                CommonSearchBar(
-                    value = query,
-                    onValueChange = { query = it },
-                    placeholder = stringResource(R.string.search_cards),
-                    padding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
                 )
             }
             when {

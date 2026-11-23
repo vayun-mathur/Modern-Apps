@@ -1,6 +1,7 @@
 package com.vayunmathur.news.ui
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -13,7 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.AppScaffold
-import com.vayunmathur.library.ui.CommonSearchBar
+import com.vayunmathur.library.ui.ScaffoldSearch
 import com.vayunmathur.library.ui.FilterChip
 import com.vayunmathur.library.ui.IconBookmark
 import com.vayunmathur.library.ui.IconButton
@@ -21,10 +22,15 @@ import com.vayunmathur.library.ui.IconSettings
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.news.R
 import com.vayunmathur.news.domain.SourceCatalog
-import com.vayunmathur.news.platform.FILTER_ALL
 import com.vayunmathur.news.platform.NewsViewModel
 
-/** Merged newest-first feed with per-source filter chips and pull-to-refresh. */
+/**
+ * Merged newest-first feed with category filter chips and pull-to-refresh.
+ * The chip row is categories, not sources: chips are the categories of the
+ * enabled sources (plus the current selection, so it stays tappable), and
+ * per-source enable/disable lives only on the Sources screen. Selecting a
+ * category also narrows search results (see NewsViewModel.searchResults).
+ */
 @Composable
 fun FeedScreen(
     viewModel: NewsViewModel,
@@ -35,14 +41,22 @@ fun FeedScreen(
     val articles by viewModel.articles.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     val refreshFailed by viewModel.refreshFailed.collectAsState()
-    val filter by viewModel.sourceFilter.collectAsState()
+    val categoryFilter by viewModel.categoryFilter.collectAsState()
     val disabled by viewModel.disabledSourceIds.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val searchResults by viewModel.searchResults.collectAsState()
     val searching = searchQuery.isNotBlank()
     val shownArticles = if (searching) searchResults else articles
     AppScaffold(
-        title = stringResource(R.string.feed_title),
+        // The search field IS the top app bar (no "News" title): declared
+        // through the scaffold's search parameter, which renders the field
+        // in the bar's title slot — the ListPage / notes / contacts placement.
+        title = "",
+        search = ScaffoldSearch(
+            query = searchQuery,
+            onQueryChange = viewModel::setSearchQuery,
+            placeholder = stringResource(R.string.feed_search_placeholder),
+        ),
         isRefreshing = isRefreshing,
         onRefresh = viewModel::refresh,
         actions = {
@@ -51,25 +65,28 @@ fun FeedScreen(
         },
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            CommonSearchBar(
-                value = searchQuery,
-                onValueChange = viewModel::setSearchQuery,
-                placeholder = stringResource(R.string.feed_search_placeholder),
-            )
             if (!searching) {
+            // Category chips (single-select, "All" = no category filter).
+            // Categories come from the enabled sources only; the current
+            // selection is kept in the row even if its sources were since
+            // disabled, so the filter can always be changed back.
+            val enabledSources = SourceCatalog.sources.filter { it.id !in disabled }
+            val categories = (SourceCatalog.categoriesAmong(enabledSources) +
+                listOfNotNull(categoryFilter)).distinct()
+                .sortedBy { it.ordinal }
             LazyRow(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
                 item {
                     FilterChip(
-                        selected = filter == FILTER_ALL,
-                        onClick = { viewModel.setSourceFilter(FILTER_ALL) },
-                        label = { Text(stringResource(R.string.feed_all_sources)) },
+                        selected = categoryFilter == null,
+                        onClick = { viewModel.setCategoryFilter(null) },
+                        label = { Text(stringResource(R.string.feed_all_categories)) },
                     )
                 }
-                items(SourceCatalog.sources.filter { it.id !in disabled }) { source ->
+                items(categories) { category ->
                     FilterChip(
-                        selected = filter == source.id,
-                        onClick = { viewModel.setSourceFilter(source.id) },
-                        label = { Text(source.name) },
+                        selected = categoryFilter == category,
+                        onClick = { viewModel.setCategoryFilter(category) },
+                        label = { Text(category.label) },
                         modifier = Modifier.padding(start = 8.dp),
                     )
                 }

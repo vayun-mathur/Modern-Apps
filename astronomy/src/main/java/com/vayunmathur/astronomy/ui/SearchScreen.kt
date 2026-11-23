@@ -1,4 +1,6 @@
 package com.vayunmathur.astronomy.ui
+
+// SCAFFOLD SEARCH EXCEPTION: full-bleed sky-map screen with TopAppBarOverlay chrome; no scaffold host for the catalog search field
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column

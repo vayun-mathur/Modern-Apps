@@ -44,7 +44,7 @@ import com.vayunmathur.library.ui.IconClose
 import com.vayunmathur.library.ui.IconSearch
 import com.vayunmathur.library.ui.InputChip
 import com.vayunmathur.library.ui.MaterialTheme
-import com.vayunmathur.library.ui.SearchBarInputField
+import com.vayunmathur.library.ui.ScaffoldSearch
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.library.ui.R as UiR
@@ -109,9 +109,24 @@ internal fun SearchContent(
     searchedQuery: String? = null,
     onRetry: () -> Unit = onSearch,
 ) {
+    val focusManager = LocalFocusManager.current
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(focusRequest) { if (focusRequest > 0) focusRequester.requestFocus() }
     AppScaffold(
         modifier = modifier,
-        topBar = { SearchTopBar(query, onQueryChange, onSearch, enabled = !searching, focusRequest = focusRequest) },
+        title = "",
+        search = ScaffoldSearch(
+            query = query,
+            onQueryChange = onQueryChange,
+            placeholder = stringResource(R.string.search_products),
+            modifier = Modifier.focusRequester(focusRequester),
+            onSearch = {
+                if (!searching && query.isNotBlank()) {
+                    focusManager.clearFocus()
+                    onSearch()
+                }
+            },
+        ),
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             linkPrompt?.let { LinkPromptCard(it) }
@@ -135,42 +150,6 @@ internal fun SearchContent(
             )
         }
     }
-}
-
-@Composable
-private fun SearchTopBar(
-    query: String,
-    onQueryChange: (String) -> Unit,
-    onSearch: () -> Unit,
-    enabled: Boolean,
-    focusRequest: Int,
-) {
-    val focusManager = LocalFocusManager.current
-    val focusRequester = remember { FocusRequester() }
-    LaunchedEffect(focusRequest) { if (focusRequest > 0) focusRequester.requestFocus() }
-    val submit = {
-        if (enabled && query.isNotBlank()) {
-            focusManager.clearFocus()
-            onSearch()
-        }
-    }
-    SearchBarInputField(
-        query = query,
-        onQueryChange = onQueryChange,
-        onSearch = { submit() },
-        expanded = false,
-        onExpandedChange = {},
-        modifier = Modifier
-            .fillMaxWidth()
-            .windowInsetsPadding(WindowInsets.statusBars)
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .focusRequester(focusRequester),
-        placeholder = { Text(stringResource(R.string.search_products)) },
-        leadingIcon = { IconButton(onClick = submit) { IconSearch() } },
-        trailingIcon = if (query.isEmpty()) null else {
-            { IconButton(onClick = { onQueryChange("") }) { IconClose() } }
-        },
-    )
 }
 
 @Composable

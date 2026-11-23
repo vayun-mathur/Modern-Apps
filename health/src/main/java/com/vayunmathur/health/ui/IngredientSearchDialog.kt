@@ -1,5 +1,7 @@
 package com.vayunmathur.health.ui
 
+// SCAFFOLD SEARCH EXCEPTION: dialog-local ingredient search inside an AlertDialog; no scaffold host
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row

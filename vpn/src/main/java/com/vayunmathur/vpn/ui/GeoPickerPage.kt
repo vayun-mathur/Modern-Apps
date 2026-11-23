@@ -18,7 +18,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.vayunmathur.library.ui.CommonSearchBar
+import com.vayunmathur.library.ui.ScaffoldSearch
 import com.vayunmathur.library.ui.LazyListScaffold
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.util.NavBackStack
@@ -46,17 +46,14 @@ fun GeoPickerPage(backStack: NavBackStack<Route>, vm: VpnViewModel) {
 
     LazyListScaffold(
         title = stringResource(R.string.geo_picker_title),
+        search = ScaffoldSearch(
+            query = query,
+            onQueryChange = { query = it },
+            placeholder = stringResource(R.string.geo_search_hint),
+        ),
         horizontalPadding = 16.dp,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item {
-            CommonSearchBar(
-                value = query,
-                onValueChange = { query = it },
-                placeholder = stringResource(R.string.geo_search_hint),
-                padding = androidx.compose.foundation.layout.PaddingValues(0.dp),
-            )
-        }
         when {
             countries.isEmpty() -> item { Text(stringResource(R.string.geo_no_bundles)) }
             filtered.isEmpty() -> item { Text(stringResource(R.string.geo_no_matches)) }

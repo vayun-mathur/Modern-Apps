@@ -42,7 +42,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.vayunmathur.library.ui.BackupButtons
 import com.vayunmathur.library.room.SqlCipherDbCodec
-import com.vayunmathur.library.ui.CommonSearchBar
 import com.vayunmathur.library.ui.IconAdd
 import com.vayunmathur.library.ui.IconClose
 import com.vayunmathur.library.ui.IconDelete

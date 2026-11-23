@@ -29,7 +29,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.vayunmathur.library.ui.Button
-import com.vayunmathur.library.ui.CommonSearchBar
+import com.vayunmathur.library.ui.ScaffoldSearch
 import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.util.sharedText
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
@@ -169,8 +169,14 @@ fun NotesListScreen(
 
     LazyListScaffold(
         isRefreshing = !state.hasLoaded,
-        topBar = { Column {
-            if (isSelectionMode) {
+        search = if (isSelectionMode) null else ScaffoldSearch(
+            query = searchQuery,
+            onQueryChange = { actions.setSearchQuery(it) },
+            placeholder = stringResource(R.string.app_name),
+        ),
+        actions = backupButtons,
+        topBar = if (!isSelectionMode) null else {
+            {
                 TopAppBar(
                     title = { Text(selectedIds.size.toString()) },
                     navigationIcon = {
@@ -188,44 +194,8 @@ fun NotesListScreen(
                         }
                     }
                 )
-            } else {
-                TopAppBar(
-                    title = {
-                        CommonSearchBar(
-                            value = searchQuery,
-                            onValueChange = { actions.setSearchQuery(it) },
-                            placeholder = stringResource(R.string.app_name),
-                            padding = PaddingValues(0.dp)
-                        )
-                    },
-                    actions = backupButtons
-                )
             }
-            if (tags.isNotEmpty()) {
-                TagFilterRow(
-                    tags = tags,
-                    totalCount = state.notes.size,
-                    selected = activeTag,
-                    onSelect = { actions.setSelectedTag(it) },
-                    onRename = { from, to ->
-                        if (activeTag != null && tagKey(activeTag) == tagKey(from)) actions.setSelectedTag(to)
-                        actions.renameTag(from, to)
-                    },
-                    onDelete = { tag ->
-                        if (activeTag != null && tagKey(activeTag) == tagKey(tag)) actions.setSelectedTag(null)
-                        actions.deleteTag(tag)
-                    },
-                )
-            }
-            if (activeTag != null) {
-                Text(
-                    stringResource(R.string.tag_filter_reorder_hint),
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        } },
+        },
         floatingActionButton = {
             if (state.showAddButton && !isSelectionMode) {
                 FloatingActionButton(onClick = { actions.createNote() }) {
@@ -235,6 +205,36 @@ fun NotesListScreen(
         },
         state = listState,
     ) {
+            // Tag filter used to pin under the bar; with search owning the bar's
+            // title slot it now leads the list and scrolls with it.
+            if (tags.isNotEmpty()) {
+                item(key = "tag-filter") {
+                    TagFilterRow(
+                        tags = tags,
+                        totalCount = state.notes.size,
+                        selected = activeTag,
+                        onSelect = { actions.setSelectedTag(it) },
+                        onRename = { from, to ->
+                            if (activeTag != null && tagKey(activeTag) == tagKey(from)) actions.setSelectedTag(to)
+                            actions.renameTag(from, to)
+                        },
+                        onDelete = { tag ->
+                            if (activeTag != null && tagKey(activeTag) == tagKey(tag)) actions.setSelectedTag(null)
+                            actions.deleteTag(tag)
+                        },
+                    )
+                }
+            }
+            if (activeTag != null) {
+                item(key = "tag-hint") {
+                    Text(
+                        stringResource(R.string.tag_filter_reorder_hint),
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
             if (!state.hasLoaded && filtered.isEmpty()) {
                 item(key = "loading") {
                     androidx.compose.foundation.layout.Box(Modifier.fillParentMaxSize())

@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.dp
 import com.vayunmathur.globalesim.R
 import com.vayunmathur.globalesim.domain.QuoteMath
 import com.vayunmathur.globalesim.platform.EsimUiState
-import com.vayunmathur.library.ui.CommonSearchBar
+import com.vayunmathur.library.ui.ScaffoldSearch
 import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.ui.ExpandVisibility
 import com.vayunmathur.library.ui.IconSim
@@ -34,7 +34,6 @@ import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.OutlinedButton
 import com.vayunmathur.library.ui.Surface
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.TopAppBar
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.library.ui.animatedColor
 import com.vayunmathur.library.ui.animatedDp
@@ -62,18 +61,11 @@ fun PricingScreen(
     }
 
     LazyListScaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    CommonSearchBar(
-                        value = query,
-                        onValueChange = { query = it },
-                        placeholder = stringResource(R.string.search_countries),
-                        padding = PaddingValues(bottom = 8.dp),
-                    )
-                },
-            )
-        },
+        search = ScaffoldSearch(
+            query = query,
+            onQueryChange = { query = it },
+            placeholder = stringResource(R.string.search_countries),
+        ),
         horizontalPadding = 8.dp,
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {

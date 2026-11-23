@@ -1,4 +1,6 @@
 package com.vayunmathur.youpipe.ui
+
+// SCAFFOLD SEARCH EXCEPTION: expandable Material3 SearchBar whose expanded overlay is the search-results/suggestions surface (see the raw-scaffold exception below)
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.text.input.rememberTextFieldState

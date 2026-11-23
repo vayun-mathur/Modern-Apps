@@ -25,7 +25,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.appstore.data.UnifiedApp
 import com.vayunmathur.appstore.platform.AppStoreViewModel
-import com.vayunmathur.library.ui.CommonSearchBar
+import com.vayunmathur.library.ui.ScaffoldSearch
 import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.ui.ErrorState
 import com.vayunmathur.library.ui.FilterChip
@@ -54,15 +54,17 @@ fun SearchScreen(
         if (autoFocus) runCatching { focusRequester.requestFocus() }
     }
 
-    AppScaffold(topBar = {}, isRefreshing = state.isSearching) { padding ->
+    AppScaffold(
+        title = "",
+        isRefreshing = state.isSearching,
+        search = ScaffoldSearch(
+            query = state.query,
+            onQueryChange = actions::setSearch,
+            placeholder = stringResource(R.string.search_placeholder),
+            modifier = Modifier.focusRequester(focusRequester),
+        ),
+    ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
-            CommonSearchBar(
-                value = state.query,
-                onValueChange = actions::setSearch,
-                placeholder = stringResource(R.string.search_placeholder),
-                padding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                modifier = Modifier.focusRequester(focusRequester),
-            )
 
             LazyRow(
                 Modifier.fillMaxWidth(),

@@ -56,12 +56,19 @@ import androidx.compose.ui.unit.dp
  * [overlay] is drawn on top of the list in a [Box] exactly the list's size,
  * for chrome that must track the viewport itself - e.g. a fast-scroller whose
  * travel should run along the list, not the whole screen.
+ *
+ * [search] renders the shared search field AS the top bar's title slot
+ * (see [ScaffoldSearch]), with [navigationIcon]/[actions] around it; while
+ * it is supplied the [title] text and any custom [topBar] are not used.
+ * Screens whose bar swaps for a selection bar pass `search = null` while
+ * selecting and supply that bar through [topBar].
  */
 @Composable
 fun LazyListScaffold(
     modifier: Modifier = Modifier,
-    topBar: @Composable () -> Unit = {},
+    topBar: (@Composable () -> Unit)? = null,
     title: String = "",
+    navigationIcon: (@Composable () -> Unit)? = null,
     actions: (@Composable RowScope.() -> Unit)? = null,
     scrollBehavior: TopAppBarScrollBehavior? = null,
     bottomBar: @Composable () -> Unit = {},
@@ -77,17 +84,50 @@ fun LazyListScaffold(
     isRefreshing: Boolean = false,
     onRefresh: (() -> Unit)? = null,
     refreshEnabled: Boolean = true,
+    search: ScaffoldSearch? = null,
     content: LazyListScope.() -> Unit,
 ) {
     val behavior = scrollBehavior ?: appBarScrollBehavior()
+    // Search owns the bar: while [search] is supplied the scaffold builds the
+    // bar itself with the field in its title slot. Otherwise a custom
+    // [topBar] (when supplied) wins over the plain bar the scaffold builds
+    // from [title]/[actions]. When none of those are given, no bar is drawn
+    // (the historical default).
+    val searchBar: (@Composable () -> Unit)? = if (search == null) null else {
+        @Composable {
+            TopAppBar(
+                title = {
+                    CommonSearchBar(
+                        value = search.query,
+                        onValueChange = search.onQueryChange,
+                        placeholder = search.placeholder,
+                        modifier = search.modifier,
+                        onSearch = search.onSearch,
+                        padding = PaddingValues(0.dp),
+                    )
+                },
+                navigationIcon = navigationIcon ?: {},
+                actions = actions ?: {},
+                scrollBehavior = behavior,
+            )
+        }
+    }
+    val plainBar: (@Composable () -> Unit)? =
+        if (actions == null && title.isEmpty() && navigationIcon == null) null else {
+            @Composable {
+                TopAppBar(
+                    title = { Text(title) },
+                    navigationIcon = navigationIcon ?: {},
+                    actions = actions ?: {},
+                    scrollBehavior = behavior,
+                )
+            }
+        }
+    val resolvedTopBar: @Composable () -> Unit =
+        searchBar ?: topBar ?: plainBar ?: @Composable {}
     Scaffold(
     modifier.nestedScroll(behavior.nestedScrollConnection),
-    // A caller can either pass a fully custom [topBar], or - the common case -
-    // let the scaffold build a plain top bar from [title]/[actions]. When neither
-    // a title nor actions are given, no bar is drawn (the historical default).
-    if (actions != null || title.isNotEmpty()) {
-        { TopAppBar(title = { Text(title) }, actions = actions ?: {}, scrollBehavior = behavior) }
-    } else topBar,
+    resolvedTopBar,
     bottomBar,
     snackbarHost,
     floatingActionButton,

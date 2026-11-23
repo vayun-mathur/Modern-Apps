@@ -9,6 +9,7 @@ import com.vayunmathur.news.data.CachedArticle
 import com.vayunmathur.news.data.NewsPrefs
 import com.vayunmathur.news.data.NewsRepository
 import com.vayunmathur.news.domain.ExtractedArticle
+import com.vayunmathur.news.domain.NewsCategory
 import com.vayunmathur.news.domain.SourceCatalog
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -18,8 +19,14 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-/** Feed filtering: "all", a source id, or nothing matches (empty feed). */
-const val FILTER_ALL = "all"
+/**
+ * Feed category filtering: a null category filter is "All" (every
+ * enabled source); a non-null [NewsCategory] keeps only articles whose
+ * source carries that catalog tag (see [SourceCatalog.matchesCategory]).
+ * Categories never enable/disable sources — that stays per-source in
+ * [NewsPrefs] via the Sources screen; the category filter only narrows
+ * the already-enabled corpus.
+ */
 
 /** UI state and actions for feed, reader, sources and saved screens. */
 class NewsViewModel(
@@ -34,13 +41,31 @@ class NewsViewModel(
     private val _refreshFailed = MutableStateFlow(false)
     val refreshFailed: StateFlow<Boolean> = _refreshFailed.asStateFlow()
 
-    private val _sourceFilter = MutableStateFlow(FILTER_ALL)
-    val sourceFilter: StateFlow<String> = _sourceFilter.asStateFlow()
+    private val _categoryFilter = MutableStateFlow<NewsCategory?>(null)
+    val categoryFilter: StateFlow<NewsCategory?> = _categoryFilter.asStateFlow()
+
+    val disabledSourceIds: StateFlow<Set<String>> = prefs.disabledSourceIds
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
     private val _searchResults = MutableStateFlow<List<CachedArticle>>(emptyList())
-    val searchResults: StateFlow<List<CachedArticle>> = _searchResults.asStateFlow()
+
+    /**
+     * Search composes with the category filter: the repository search
+     * runs over the whole local corpus, and its results are then kept to
+     * the selected category (and enabled sources) exactly like the feed.
+     * So searching searches *within* the selected category, and changing
+     * the category while a query is active re-filters the visible
+     * results without a new search.
+     */
+    val searchResults: StateFlow<List<CachedArticle>> = combine(
+        _searchResults, _categoryFilter, disabledSourceIds,
+    ) { results, category, disabled ->
+        results.filter {
+            it.sourceId !in disabled && SourceCatalog.matchesCategory(it.sourceId, category)
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     private var searchJob: kotlinx.coroutines.Job? = null
 
     /** Debounced on-device search (local corpus only); blank query clears results. */
@@ -55,18 +80,15 @@ class NewsViewModel(
             kotlinx.coroutines.delay(SEARCH_DEBOUNCE_MS)
             val results = runCatching { repository.search(query) }.getOrDefault(emptyList())
             if (_searchQuery.value == query) {
-                _searchResults.value = results.filter { it.sourceId !in disabledSourceIds.value }
+                _searchResults.value = results
             }
         }
     }
 
-    val disabledSourceIds: StateFlow<Set<String>> = prefs.disabledSourceIds
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
-
     val articles: StateFlow<List<CachedArticle>> = combine(
-        repository.articles, _sourceFilter, disabledSourceIds,
-    ) { all, filter, disabled ->
-        all.filter { it.sourceId !in disabled && (filter == FILTER_ALL || it.sourceId == filter) }
+        repository.articles, _categoryFilter, disabledSourceIds,
+    ) { all, category, disabled ->
+        all.filter { it.sourceId !in disabled && SourceCatalog.matchesCategory(it.sourceId, category) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val bookmarked: StateFlow<List<CachedArticle>> = repository.bookmarked
@@ -89,8 +111,9 @@ class NewsViewModel(
         refresh()
     }
 
-    fun setSourceFilter(filter: String) {
-        _sourceFilter.value = filter
+    /** Single-select category filter; null is "All". Never enables/disables sources. */
+    fun setCategoryFilter(category: NewsCategory?) {
+        _categoryFilter.value = category
     }
 
     fun refresh() {

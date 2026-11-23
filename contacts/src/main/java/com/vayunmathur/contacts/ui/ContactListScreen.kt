@@ -29,7 +29,7 @@ import com.vayunmathur.contacts.domain.ContactSorting.sectionKey
 import com.vayunmathur.contacts.domain.ContactSorting.sortedByMode
 import com.vayunmathur.contacts.platform.ContactsActions
 import com.vayunmathur.library.ui.AlertDialog
-import com.vayunmathur.library.ui.CommonSearchBar
+import com.vayunmathur.library.ui.ScaffoldSearch
 import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.FloatingActionButton
@@ -45,7 +45,6 @@ import com.vayunmathur.library.ui.IconShare
 import com.vayunmathur.library.ui.LazyListScaffold
 import com.vayunmathur.library.ui.OverflowMenu
 import com.vayunmathur.library.ui.PopVisibility
-import com.vayunmathur.library.ui.SwappedTopBar
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.library.ui.TopAppBar
@@ -134,10 +133,50 @@ fun ContactListScreen(
 
     LazyListScaffold(
         isRefreshing = state.isLoading,
+        search = if (isSelectionMode) null else ScaffoldSearch(
+            query = state.searchQuery,
+            onQueryChange = { actions.setSearchQuery(it) },
+            placeholder = stringResource(R.string.search_contacts),
+            modifier = Modifier
+                .focusProperties { canFocus = isFocusableBySystem }
+                .pointerInput(Unit) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            awaitPointerEvent(PointerEventPass.Initial)
+                            if (!isFocusableBySystem) isFocusableBySystem = true
+                        }
+                    }
+                }
+                .onFocusChanged { focusState ->
+                    if (!focusState.isFocused) {
+                        isFocusableBySystem = false
+                    }
+                },
+        ),
         state = listState,
+        actions = {
+            IconButton(onClick = { actions.shareContacts(contacts, "all_contacts.vcf") }) {
+                IconShare()
+            }
+            OverflowMenu {
+                Item(
+                    text = stringResource(R.string.first_name),
+                    trailingIcon = if (sortMode == ContactSortMode.FirstName) {
+                        { IconCheck() }
+                    } else null,
+                    onClick = { onSortModeChange(ContactSortMode.FirstName) },
+                )
+                Item(
+                    text = stringResource(R.string.last_name),
+                    trailingIcon = if (sortMode == ContactSortMode.LastName) {
+                        { IconCheck() }
+                    } else null,
+                    onClick = { onSortModeChange(ContactSortMode.LastName) },
+                )
+            }
+        },
         topBar = {
-            SwappedTopBar(showingOverlay = isSelectionMode) { selecting ->
-                if (selecting) {
+            if (isSelectionMode) {
                 TopAppBar(
                     title = { Text(pluralStringResource(R.plurals.selected_count, selectedIds.size, selectedIds.size)) },
                     navigationIcon = {
@@ -166,54 +205,6 @@ fun ContactListScreen(
                         }
                     }
                 )
-            } else {
-                TopAppBar(
-                    title = {
-                        CommonSearchBar(
-                            value = state.searchQuery,
-                            onValueChange = { actions.setSearchQuery(it) },
-                            placeholder = stringResource(R.string.search_contacts),
-                            padding = PaddingValues(bottom = 8.dp),
-                            modifier = Modifier
-                                .focusProperties { canFocus = isFocusableBySystem }
-                                .pointerInput(Unit) {
-                                    awaitPointerEventScope {
-                                        while (true) {
-                                            awaitPointerEvent(PointerEventPass.Initial)
-                                            if (!isFocusableBySystem) isFocusableBySystem = true
-                                        }
-                                    }
-                                }
-                                .onFocusChanged { focusState ->
-                                    if (!focusState.isFocused) {
-                                        isFocusableBySystem = false
-                                    }
-                                }
-                        )
-                    },
-                    actions = {
-                        IconButton(onClick = { actions.shareContacts(contacts, "all_contacts.vcf") }) {
-                            IconShare()
-                        }
-                        OverflowMenu {
-                            Item(
-                                text = stringResource(R.string.first_name),
-                                trailingIcon = if (sortMode == ContactSortMode.FirstName) {
-                                    { IconCheck() }
-                                } else null,
-                                onClick = { onSortModeChange(ContactSortMode.FirstName) },
-                            )
-                            Item(
-                                text = stringResource(R.string.last_name),
-                                trailingIcon = if (sortMode == ContactSortMode.LastName) {
-                                    { IconCheck() }
-                                } else null,
-                                onClick = { onSortModeChange(ContactSortMode.LastName) },
-                            )
-                        }
-                    }
-                )
-                }
             }
         },
         floatingActionButton = {

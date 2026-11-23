@@ -26,7 +26,7 @@ import com.vayunmathur.health.data.ReferenceCatalog
 import com.vayunmathur.health.data.VaccineCatalog
 import com.vayunmathur.health.platform.MedicalViewModel
 import com.vayunmathur.library.ui.AppScaffold
-import com.vayunmathur.library.ui.CommonSearchBar
+import com.vayunmathur.library.ui.ScaffoldSearch
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.ListItem
 import com.vayunmathur.library.ui.MaterialTheme
@@ -180,31 +180,29 @@ fun CatalogPickerPage(
         backStack.pop()
     }
 
-    // Back clears the search before leaving, matching ListPage. With the field in the app bar
-    // there is nowhere else for a back press to sensibly go first.
+    // Back clears the search before leaving, matching ListPage. With the field in the
+    // scaffold's search slot there is nowhere else for a back press to sensibly go first.
     BackHandler(enabled = query.isNotEmpty()) { query = "" }
 
     AppScaffold(
-        // The search field *is* the title. These lists are the whole point of the screen, and a
-        // separate title bar above the field costs a row of height to say what the placeholder
-        // already says.
-        title = {
-            CommonSearchBar(
-                value = query,
-                onValueChange = { query = it },
-                placeholder = stringResource(
-                    when (route.kind) {
-                        CatalogKind.Vaccine -> R.string.search_vaccines
-                        CatalogKind.MedicationIngredient -> R.string.search_medications
-                        CatalogKind.MedicationProduct -> R.string.search_strengths
-                        CatalogKind.Allergen -> R.string.search_allergens
-                        CatalogKind.Condition -> R.string.search_conditions
-                        CatalogKind.LabTest -> R.string.search_lab_tests
-                    }
-                ),
-                padding = PaddingValues(0.dp),
-            )
-        },
+        // The search field lives in the scaffold's search slot under the bar;
+        // these lists are the whole point of the screen, so the bar itself
+        // carries no separate title text.
+        title = "",
+        search = ScaffoldSearch(
+            query = query,
+            onQueryChange = { query = it },
+            placeholder = stringResource(
+                when (route.kind) {
+                    CatalogKind.Vaccine -> R.string.search_vaccines
+                    CatalogKind.MedicationIngredient -> R.string.search_medications
+                    CatalogKind.MedicationProduct -> R.string.search_strengths
+                    CatalogKind.Allergen -> R.string.search_allergens
+                    CatalogKind.Condition -> R.string.search_conditions
+                    CatalogKind.LabTest -> R.string.search_lab_tests
+                }
+            ),
+        ),
         onNavigateBack = { backStack.pop() },
     ) { padding ->
         Column(modifier = Modifier.padding(padding)) {

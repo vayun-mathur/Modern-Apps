@@ -45,7 +45,8 @@ import com.vayunmathur.library.util.NavKey
  *
  * [isRefreshing]/[onRefresh] are forwarded to [AppScaffold]: while a refresh
  * runs the scaffold's pull-to-refresh indicator shows over the detail column
- * (see AppScaffold).
+ * (see AppScaffold). [search] is forwarded likewise and renders the shared
+ * search field under the bar (see [ScaffoldSearch]).
  *
  * On wide windows the scrolling column is centred and capped at
  * [DesktopContentMaxWidth] so forms and detail blocks keep a readable
@@ -69,6 +70,7 @@ fun DetailScaffold(
     isRefreshing: Boolean = false,
     onRefresh: (() -> Unit)? = null,
     refreshEnabled: Boolean = true,
+    search: ScaffoldSearch? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) = AppScaffold(
     title = title,
@@ -84,6 +86,7 @@ fun DetailScaffold(
     isRefreshing = isRefreshing,
     onRefresh = onRefresh,
     refreshEnabled = refreshEnabled,
+    search = search,
 ) { pad ->
     DetailColumn(pad, fillHeight = false, fullBleed = fullBleed, content)
 }
@@ -106,6 +109,7 @@ fun DetailScaffold(
     isRefreshing: Boolean = false,
     onRefresh: (() -> Unit)? = null,
     refreshEnabled: Boolean = true,
+    search: ScaffoldSearch? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) = AppScaffold(
     title = title,
@@ -121,6 +125,7 @@ fun DetailScaffold(
     isRefreshing = isRefreshing,
     onRefresh = onRefresh,
     refreshEnabled = refreshEnabled,
+    search = search,
 ) { pad ->
     DetailColumn(pad, fillHeight, fullBleed, content)
 }
@@ -142,6 +147,7 @@ fun <T : NavKey> DetailScaffold(
     isRefreshing: Boolean = false,
     onRefresh: (() -> Unit)? = null,
     refreshEnabled: Boolean = true,
+    search: ScaffoldSearch? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) = DetailScaffold(
     title = title,
@@ -158,6 +164,7 @@ fun <T : NavKey> DetailScaffold(
     isRefreshing = isRefreshing,
     onRefresh = onRefresh,
     refreshEnabled = refreshEnabled,
+    search = search,
     content = content,
 )
 
@@ -180,6 +187,7 @@ fun DetailLazyColumn(
     isRefreshing: Boolean = false,
     onRefresh: (() -> Unit)? = null,
     refreshEnabled: Boolean = true,
+    search: ScaffoldSearch? = null,
     content: LazyListScope.() -> Unit,
 ) = AppScaffold(
     title = title,
@@ -193,6 +201,7 @@ fun DetailLazyColumn(
     isRefreshing = isRefreshing,
     onRefresh = onRefresh,
     refreshEnabled = refreshEnabled,
+    search = search,
 ) { pad ->
     DetailList(pad, content)
 }
@@ -211,6 +220,7 @@ fun DetailLazyColumn(
     isRefreshing: Boolean = false,
     onRefresh: (() -> Unit)? = null,
     refreshEnabled: Boolean = true,
+    search: ScaffoldSearch? = null,
     content: LazyListScope.() -> Unit,
 ) = AppScaffold(
     title = title,
@@ -224,6 +234,7 @@ fun DetailLazyColumn(
     isRefreshing = isRefreshing,
     onRefresh = onRefresh,
     refreshEnabled = refreshEnabled,
+    search = search,
 ) { pad ->
     DetailList(pad, content)
 }
@@ -242,6 +253,7 @@ fun <T : NavKey> DetailLazyColumn(
     isRefreshing: Boolean = false,
     onRefresh: (() -> Unit)? = null,
     refreshEnabled: Boolean = true,
+    search: ScaffoldSearch? = null,
     content: LazyListScope.() -> Unit,
 ) = DetailLazyColumn(
     title = title,
@@ -255,6 +267,7 @@ fun <T : NavKey> DetailLazyColumn(
     isRefreshing = isRefreshing,
     onRefresh = onRefresh,
     refreshEnabled = refreshEnabled,
+    search = search,
     content = content,
 )
 

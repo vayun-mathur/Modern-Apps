@@ -33,6 +33,10 @@ import java.io.File
  *  - `// TOAST EXCEPTION: <reason>` with colon and non-empty reason
  *    (see [ToastDetector])
  *  - `// RAW ANIMATION EXCEPTION: <reason>` with colon and non-empty reason
+ *  - `// SCAFFOLD LOADING EXCEPTION: <reason>` with colon and non-empty reason
+ *    (see [ScaffoldLoadingDetector])
+ *  - `// SCAFFOLD SEARCH EXCEPTION: <reason>` with colon and non-empty reason
+ *    (see [ScaffoldSearchDetector])
  *
  * A reason may continue on immediately following `//` lines, which the shared
  * scaffold/animation markers use for multi-line justifications.
@@ -121,6 +125,22 @@ class ExceptionMarkerFormatDetector : Detector(), SourceCodeScanner {
                 report(context, node, file, source, base + text.indexOf(LOADING_PREFIX), LOADING_PREFIX.length,
                     "Exception marker without a reason. Append `: <reason>` to " +
                         "`// SCAFFOLD LOADING EXCEPTION:` so the opt-out stays reviewable.")
+            }
+            return
+        }
+
+        if (text.contains(SEARCH_KEYWORD)) {
+            if (!text.contains(SEARCH_PREFIX)) {
+                report(context, node, file, source, base + text.indexOf(SEARCH_KEYWORD), SEARCH_KEYWORD.length,
+                    "Malformed Scaffold Search exception marker: the colon is required and a marker without " +
+                        "it does NOT opt the file out. Use `// SCAFFOLD SEARCH EXCEPTION: <reason>`.")
+                return
+            }
+            val reason = reasonAfter(text, SEARCH_PREFIX)
+            if (!hasReason(source, comments, index, reason)) {
+                report(context, node, file, source, base + text.indexOf(SEARCH_PREFIX), SEARCH_PREFIX.length,
+                    "Exception marker without a reason. Append `: <reason>` to " +
+                        "`// SCAFFOLD SEARCH EXCEPTION:` so the opt-out stays reviewable.")
             }
             return
         }
@@ -219,6 +239,8 @@ class ExceptionMarkerFormatDetector : Detector(), SourceCodeScanner {
         private const val SCAFFOLD_PREFIX = "// RAW SCAFFOLD EXCEPTION"
         private const val LOADING_KEYWORD = "SCAFFOLD LOADING EXCEPTION"
         private const val LOADING_PREFIX = "// SCAFFOLD LOADING EXCEPTION:"
+        private const val SEARCH_KEYWORD = "SCAFFOLD SEARCH EXCEPTION"
+        private const val SEARCH_PREFIX = "// SCAFFOLD SEARCH EXCEPTION:"
         private const val TOAST_KEYWORD = "TOAST EXCEPTION"
         private const val TOAST_PREFIX = "// TOAST EXCEPTION:"
         private const val ANIMATION_KEYWORD = "RAW ANIMATION EXCEPTION"
@@ -237,7 +259,9 @@ class ExceptionMarkerFormatDetector : Detector(), SourceCodeScanner {
                 (JNI)` verbatim, `// RAW SCAFFOLD EXCEPTION: <reason>`, `// TOAST EXCEPTION: \
                 <reason>`, `// RAW ANIMATION EXCEPTION: <reason>`, `// SCAFFOLD LOADING EXCEPTION: <reason>` — each with a non-empty \
                 reason (which may continue on following `//` lines), so every opt-out stays \
-                reviewable.
+                reviewable. Scaffold-owned affordances use \
+                `// SCAFFOLD LOADING EXCEPTION: <reason>` and \
+                `// SCAFFOLD SEARCH EXCEPTION: <reason>` in the same shape.
                 """.trimIndent(),
             category = Category.CORRECTNESS,
             priority = 6,

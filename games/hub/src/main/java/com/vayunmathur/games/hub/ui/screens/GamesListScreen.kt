@@ -24,7 +24,7 @@ import com.vayunmathur.games.hub.ui.components.GameCard
 import com.vayunmathur.games.hub.util.GamesListActions
 import com.vayunmathur.games.hub.util.GamesListUiState
 import com.vayunmathur.library.ui.AppScaffold
-import com.vayunmathur.library.ui.CommonSearchBar
+import com.vayunmathur.library.ui.ScaffoldSearch
 import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.IconMoreVert
 import com.vayunmathur.library.ui.MaterialTheme
@@ -73,14 +73,12 @@ fun GamesListScreen(
     }
 
     AppScaffold(
-        title = {
-            CommonSearchBar(
-                value = search,
-                onValueChange = { search = it },
-                placeholder = stringResource(com.vayunmathur.games.hub.R.string.search_games),
-                padding = PaddingValues(0.dp),
-            )
-        },
+        title = "",
+        search = ScaffoldSearch(
+            query = search,
+            onQueryChange = { search = it },
+            placeholder = stringResource(com.vayunmathur.games.hub.R.string.search_games),
+        ),
         actions = {
             IconButton(onClick = { showSortMenu = true }) { IconMoreVert() }
             DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {

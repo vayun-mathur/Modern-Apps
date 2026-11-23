@@ -1,5 +1,7 @@
 package com.vayunmathur.launcher.ui
 
+// SCAFFOLD SEARCH EXCEPTION: app-drawer overlay over the home screen (not a scaffold screen); apps must stay draggable into the home gesture root
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box

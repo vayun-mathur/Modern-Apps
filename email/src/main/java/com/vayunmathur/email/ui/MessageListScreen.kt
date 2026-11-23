@@ -48,7 +48,7 @@ import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Card
 import com.vayunmathur.library.ui.CardDefaults
 import com.vayunmathur.library.ui.EmptyState
-import com.vayunmathur.library.ui.CommonSearchBar
+import com.vayunmathur.library.ui.ScaffoldSearch
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.FloatingActionButton
 import com.vayunmathur.library.ui.HorizontalDivider
@@ -113,7 +113,8 @@ fun MessageListScreen(
         title = {
             when {
                 selectionActive -> Text(pluralStringResource(R.plurals.selected_count, state.selectedUids.size, state.selectedUids.size))
-                isSearching -> CommonSearchBar(value = state.searchQuery, onValueChange = { actions.setSearchQuery(it) }, padding = PaddingValues(0.dp))
+                // Unseen while searching: the scaffold replaces the title slot with the field.
+                isSearching -> Text("")
                 else -> Text(if (state.selectedAccountEmail == null) stringResource(R.string.unified_inbox_label) else state.selectedFolderName)
             }
         },
@@ -148,6 +149,10 @@ fun MessageListScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         isRefreshing = state.isSyncing,
         onRefresh = { actions.refresh(context) },
+        search = if (isSearching && !selectionActive) ScaffoldSearch(
+            query = state.searchQuery,
+            onQueryChange = { actions.setSearchQuery(it) },
+        ) else null,
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
             Box(modifier = Modifier.fillMaxWidth().height(2.dp)) {

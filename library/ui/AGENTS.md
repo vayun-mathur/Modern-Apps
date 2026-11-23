@@ -69,6 +69,7 @@
 - com/vayunmathur/library/ui/SelectionMode.kt
 - com/vayunmathur/library/ui/SwipeActionsBox.kt
 - com/vayunmathur/library/ui/CommonSearchBar.kt
+- com/vayunmathur/library/ui/ScaffoldSearch.kt — scaffold `search` parameter value (screen-level search is declared here, never by placing CommonSearchBar in app content; fatal `ScaffoldSearch` lint)
 - com/vayunmathur/library/ui/OverflowMenu.kt
 - com/vayunmathur/library/ui/ConfirmDialog.kt
 - com/vayunmathur/library/ui/AddToListDialog.kt

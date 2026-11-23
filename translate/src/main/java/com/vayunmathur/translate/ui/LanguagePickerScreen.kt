@@ -14,7 +14,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.AppScaffold
-import com.vayunmathur.library.ui.CommonSearchBar
+import com.vayunmathur.library.ui.ScaffoldSearch
 import com.vayunmathur.library.ui.HorizontalDivider
 import com.vayunmathur.library.ui.IconCheck
 import com.vayunmathur.library.ui.IconHistory
@@ -43,17 +43,17 @@ fun LanguagePickerScreen(state: LanguagePickerUiState, actions: LanguagePickerAc
     AppScaffold(
         title = title,
         onNavigateBack = actions::goBack,
+        search = ScaffoldSearch(
+            query = state.query,
+            onQueryChange = actions::setQuery,
+            placeholder = stringResource(R.string.search_languages),
+        ),
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
         ) {
-            CommonSearchBar(
-                value = state.query,
-                onValueChange = actions::setQuery,
-                placeholder = stringResource(R.string.search_languages),
-            )
             val all = remember(state.forSource) {
                 if (state.forSource) Languages.SOURCES else Languages.TARGETS
             }
