@@ -75,6 +75,8 @@ class RawRingSessionTest {
 
     private fun snapshot() = CharacteristicsFacade.fromFakeMap(
         cameraId = "0",
+        // RAW ring combos are only guaranteed on LEVEL_3 lenses.
+        hardwareLevel = CameraMetadata.INFO_SUPPORTED_HARDWARE_LEVEL_3,
         lensFacingRaw = CameraMetadata.LENS_FACING_BACK,
         zoomRatioRange = Range(1f, 10f),
         sizesByFormat = mapOf(

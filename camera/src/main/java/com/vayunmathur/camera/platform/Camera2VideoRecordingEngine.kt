@@ -19,7 +19,7 @@ import com.vayunmathur.camera.platform.camera2.RecordingSessionOwnership
 import com.vayunmathur.library.log.Log
 import java.io.File
 
-/** Configuration for one custom-path recording. AVC/HEVC video + AAC audio only. */
+/** Configuration for one custom-path recording. AVC/HEVC/AV1 video + Opus audio only. */
 data class CustomRecordingConfig(
     val width: Int,
     val height: Int,
@@ -32,13 +32,17 @@ data class CustomRecordingConfig(
      */
     val captureFps: Int = fps,
     val videoMime: String = MediaFormat.MIMETYPE_VIDEO_AVC,
+    // Audio is always Opus (AudioEncoderPolicy.OPUS_MIME): there is no
+    // audio-mime field here because there is no second option to select,
+    // and a device without an Opus encoder records video-only instead.
     val audioSampleRate: Int = 48_000,
     val audioBitrateBps: Int = 128_000,
     val iFrameIntervalSec: Int = 1,
     /**
      * False records video only (slo-mo's contract, SloMoEnginePolicy
-     * piece 5): no AudioRecord/AAC codec is created and the muxer starts
-     * on the video track alone ([MuxerStartPolicy]).
+     * piece 5): no AudioRecord/Opus codec is created and the muxer starts
+     * on the video track alone ([MuxerStartPolicy]). Also the effective
+     * state when no Opus encoder exists (see [AudioEncoderPolicy]).
      */
     val audioEnabled: Boolean = true,
 )
@@ -61,7 +65,7 @@ data class CustomRecordingValidation(
  *
  * Ownership contract: this recorder opens the camera device itself, so the
  * CameraX session must be torn down before [start] and rebuilt after [stop].
- * It supports SDR AVC/HEVC + AAC only — no HLG, no vendor stabilization/EIS
+ * It supports SDR AVC/HEVC + Opus only — no HLG, no vendor stabilization/EIS
  * semantics, no AV1; [RecordingPathPolicy] keeps those recordings on CameraX.
  *
  * VERIFICATION STATUS: compile-checked and unit-tested at the policy/controller

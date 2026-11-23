@@ -46,7 +46,7 @@ data class SloMoEngineInput(
      *    [PreviewEnginePolicy]'s SLOW_MO exclusion.
      * 5. Audio/muxer contract. DONE: the engine/core take a no-audio
      *    configuration (`audioEnabled = false`, CameraX slo-mo's
-     *    contract) — no AudioRecord/AAC is created and the muxer starts
+     *    contract) — no AudioRecord/Opus codec is created and the muxer starts
      *    on the video track alone via [MuxerStartPolicy].
      * 6. Timestamp verification. DONE (device-proven 2026-11-22): the
      *    encoder ignores `KEY_CAPTURE_RATE` for output timing and its

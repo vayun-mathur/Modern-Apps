@@ -10,6 +10,7 @@ import android.media.MediaMuxer
 import android.media.MediaRecorder
 import android.os.Bundle
 import android.view.Surface
+import com.vayunmathur.camera.platform.camera2.AudioEncoderPolicy
 import com.vayunmathur.camera.platform.camera2.EncoderSurfaceHandoff
 import com.vayunmathur.camera.platform.camera2.MuxerStartPolicy
 import com.vayunmathur.camera.platform.camera2.RecordingSessionOwnership
@@ -50,6 +51,21 @@ class Camera2RecordingCore(
     @Volatile private var muxerStarted = false
     private var videoTrackIndex = -1
     private var audioTrackIndex = -1
+
+    /**
+     * True when this recording will mux an audio track: audio was
+     * requested AND an Opus encoder was created (see
+     * [AudioEncoderPolicy]). False means video-only — either audio was
+     * not requested, or no Opus encoder exists / the muxer rejected the
+     * Opus track. Never true for AAC: there is no AAC path.
+     */
+    private var audioTrackExpected = false
+
+    /** True once MediaMuxer has rejected the Opus track (dropped to video-only). */
+    private var audioMuxerRejected = false
+
+    /** True when the finished file will carry an Opus audio track. */
+    val hasAudioTrack: Boolean get() = audioTrackExpected && !audioMuxerRejected
 
     // Per-track PTS bases: encoder output timestamps start at the
     // sensor/monotonic clock (a huge base), audio at zero. Both tracks
@@ -113,20 +129,52 @@ class Camera2RecordingCore(
         encoderHandoff.markCodecConfigured()
     }
 
-    /** Creates the muxer and (when enabled) the audio codec. Video codec must already be configured. */
+    /**
+     * Creates the muxer and (when enabled) the Opus audio codec. Video
+     * codec must already be configured.
+     *
+     * Opus is the only audio encoding (see [AudioEncoderPolicy]): when
+     * no Opus encoder exists, or creating/configuring it fails, no audio
+     * codec is created at all and the recording proceeds video-only with
+     * a logged reason — never an AAC fallback.
+     */
     fun setupMuxerAndAudio(outputFile: File) {
         if (videoCodec == null) configureVideoCodec()
+        audioTrackExpected = false
+        audioMuxerRejected = false
         if (config.audioEnabled) {
-            val audioFormat = MediaFormat.createAudioFormat(
-                MediaFormat.MIMETYPE_AUDIO_AAC, config.audioSampleRate, 1,
-            ).apply {
-                setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectLC)
-                setInteger(MediaFormat.KEY_BIT_RATE, config.audioBitrateBps)
-                setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, AUDIO_MAX_INPUT_BYTES)
-            }
-            audioCodec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_AUDIO_AAC).apply {
-                configure(audioFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
-                start()
+            val mime = AudioEncoderPolicy.resolveAudioMime(
+                opusEncoderAvailable = CodecSupport.isOpusAudioEncoderAvailable,
+            )
+            if (mime == null) {
+                Log.error(
+                    "Camera2Recorder",
+                    "No Opus audio encoder on this device; recording video-only (AAC is not an option)",
+                )
+            } else {
+                try {
+                    val audioFormat = MediaFormat.createAudioFormat(
+                        mime, config.audioSampleRate, 1,
+                    ).apply {
+                        setInteger(MediaFormat.KEY_BIT_RATE, config.audioBitrateBps)
+                        setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, AUDIO_MAX_INPUT_BYTES)
+                    }
+                    audioCodec = MediaCodec.createEncoderByType(mime).apply {
+                        configure(audioFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
+                        start()
+                    }
+                    audioTrackExpected = true
+                } catch (e: Exception) {
+                    // Opus encoder unusable on this device: record
+                    // video-only rather than fall back to AAC.
+                    Log.error(
+                        "Camera2Recorder",
+                        "Opus audio encoder unavailable; recording video-only",
+                        e,
+                    )
+                    try { audioCodec?.release() } catch (_: Exception) {}
+                    audioCodec = null
+                }
             }
         }
         muxer = MediaMuxer(outputFile.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
@@ -166,12 +214,29 @@ class Camera2RecordingCore(
                 index == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
                     val format = codec.outputFormat
                     val m = muxer ?: return
-                    if (isVideo) videoTrackIndex = m.addTrack(format) else audioTrackIndex = m.addTrack(format)
+                    if (isVideo) {
+                        videoTrackIndex = m.addTrack(format)
+                    } else if (!audioMuxerRejected) {
+                        try {
+                            audioTrackIndex = m.addTrack(format)
+                        } catch (e: RuntimeException) {
+                            // MediaMuxer cannot mux Opus into MP4 on
+                            // this device/API level: drop the audio
+                            // track and keep the video (never AAC).
+                            Log.error(
+                                "Camera2Recorder",
+                                "MediaMuxer rejected the Opus track; recording video-only",
+                                e,
+                            )
+                            audioMuxerRejected = true
+                            audioTrackExpected = false
+                        }
+                    }
                     if (
                         !muxerStarted && MuxerStartPolicy.shouldStart(
                             hasVideoTrack = videoTrackIndex >= 0,
                             hasAudioTrack = audioTrackIndex >= 0,
-                            audioEnabled = config.audioEnabled,
+                            audioEnabled = audioTrackExpected,
                         )
                     ) {
                         m.start()
@@ -180,7 +245,8 @@ class Camera2RecordingCore(
                 }
                 index == MediaCodec.INFO_TRY_AGAIN_LATER -> return
                 index >= 0 -> {
-                    if (muxerStarted && info.size > 0) {
+                    val trackIndex = if (isVideo) videoTrackIndex else audioTrackIndex
+                    if (muxerStarted && info.size > 0 && trackIndex >= 0) {
                         val buffer: ByteBuffer = codec.getOutputBuffer(index) ?: continue
                         buffer.position(info.offset)
                         buffer.limit(info.offset + info.size)
@@ -212,7 +278,7 @@ class Camera2RecordingCore(
                                 info.flags,
                             )
                         }
-                        muxer?.writeSampleData(if (isVideo) videoTrackIndex else audioTrackIndex, buffer, adjusted)
+                        muxer?.writeSampleData(trackIndex, buffer, adjusted)
                     }
                     codec.releaseOutputBuffer(index, false)
                     if (info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) return
@@ -222,9 +288,10 @@ class Camera2RecordingCore(
         }
     }
 
-    /** AudioRecord (mono) -> audio encoder input buffers, with codec timestamps. No-op without audio. */
+    /** AudioRecord (mono) -> Opus encoder input buffers, with codec timestamps. No-op without audio. */
     fun startAudio() {
-        if (!config.audioEnabled) return
+        // No Opus encoder (or audio not requested): nothing to feed.
+        if (!config.audioEnabled || !audioTrackExpected) return
         val minBuffer = AudioRecord.getMinBufferSize(
             config.audioSampleRate,
             AudioFormat.CHANNEL_IN_MONO,
@@ -324,6 +391,8 @@ class Camera2RecordingCore(
         muxerStarted = false
         videoTrackIndex = -1
         audioTrackIndex = -1
+        audioTrackExpected = false
+        audioMuxerRejected = false
         videoBasePtsUs = -1L
         audioBasePtsUs = -1L
         videoFrameIndex = 0L

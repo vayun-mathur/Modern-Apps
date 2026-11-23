@@ -32,6 +32,8 @@ class StillCaptureTest {
         jpegRSizes: List<Size> = emptyList(),
     ): LensCharacteristicsSnapshot = CharacteristicsFacade.fromFakeMap(
         cameraId = "0",
+        // JPEG_R combos are only guaranteed on LEVEL_3 lenses.
+        hardwareLevel = CameraMetadata.INFO_SUPPORTED_HARDWARE_LEVEL_3,
         lensFacingRaw = lensFacingRaw,
         zoomRatioRange = Range(1f, 10f),
         hasFlashUnit = hasFlashUnit,

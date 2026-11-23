@@ -356,21 +356,86 @@ mod avif_tests {
         assert!(encode_avif(&[0u8; 4], 20_001, 1, 80.0, 10).is_none());
     }
 
+    /// Photo-like 12 MP frame (4080x3072): smooth gradients + sinusoidal
+    /// detail + deterministic sensor-like noise, so encode times are not
+    /// flattered by a flat/gradient-only synthetic.
+    fn photo_like(width: usize, height: usize) -> Vec<u8> {
+        let mut px = Vec::with_capacity(width * height * 4);
+        let mut state: u32 = 0x9E37_79B9;
+        let mut noise = move || {
+            state ^= state << 13;
+            state ^= state >> 17;
+            state ^= state << 5;
+            (state >> 24) as i32 - 128
+        };
+        for y in 0..height {
+            for x in 0..width {
+                let fx = x as f32 / width as f32;
+                let fy = y as f32 / height as f32;
+                let wave = ((x as f32 * 0.11).sin() * 18.0
+                    + (y as f32 * 0.043 + x as f32 * 0.017).sin() * 26.0
+                    + ((x + y) as f32 * 0.31).sin() * 8.0) as i32;
+                let n = noise() / 10;
+                let r = (40.0 + fx * 180.0) as i32 + wave + n;
+                let g = (60.0 + fy * 150.0) as i32 + wave / 2 + n;
+                let b = (90.0 + (1.0 - fx) * 110.0) as i32 - wave / 3 + n;
+                px.extend_from_slice(&[
+                    r.clamp(0, 255) as u8,
+                    g.clamp(0, 255) as u8,
+                    b.clamp(0, 255) as u8,
+                    255,
+                ]);
+            }
+        }
+        px
+    }
+
     /// Host-side encode-time probe for a 12 MP frame. Ignored by default
-    /// (it takes seconds); run with `cargo test -- --ignored bench_12mp`
-    /// to reproduce the latency figure in the change report.
+    /// (it takes seconds); run with
+    /// `cargo test --release -p camera_stitch bench_12mp -- --ignored --nocapture`
+    /// to reproduce the latency figures in the change report. Writes each
+    /// speed's .avif to $AVIF_BENCH_DIR (default /tmp/avif_bench) so an
+    /// external AV1 decoder (ffmpeg/dav1d) can score PSNR vs the source.
     #[test]
     #[ignore]
     fn bench_12mp_encode_time() {
-        let rgba = gradient(4000, 3000);
-        let start = std::time::Instant::now();
-        let bytes = encode_avif(&rgba, 4000, 3000, 80.0, 10).expect("encode must succeed");
-        println!(
-            "12MP AVIF encode: {:?} -> {} bytes",
-            start.elapsed(),
-            bytes.len()
-        );
-        assert!(has_avif_magic(&bytes));
+        let (w, h) = (4080usize, 3072usize);
+        let rgba = photo_like(w, h);
+        let dir = std::env::var("AVIF_BENCH_DIR").unwrap_or_else(|_| "/tmp/avif_bench".into());
+        let _ = std::fs::create_dir_all(&dir);
+        // Source dump for PSNR scoring (raw RGBA).
+        let _ = std::fs::write(format!("{dir}/source_{w}x{h}.rgba"), &rgba);
+        for speed in [4u8, 6, 8, 9, 10] {
+            let start = std::time::Instant::now();
+            let bytes = encode_avif(&rgba, w, h, 80.0, speed).expect("encode must succeed");
+            let ms = start.elapsed().as_millis();
+            let _ = std::fs::write(format!("{dir}/q80_s{speed}.avif"), &bytes);
+            println!("12MP AVIF q80 speed={speed} threads=default: {ms} ms -> {} bytes", bytes.len());
+            assert!(has_avif_magic(&bytes));
+        }
+        // Thread scaling at the production-adjacent speeds, via ravif directly.
+        let pixels: Vec<ravif::RGBA8> = rgba
+            .chunks_exact(4)
+            .map(|p| ravif::RGBA8::new(p[0], p[1], p[2], p[3]))
+            .collect();
+        for speed in [8u8, 10] {
+            for threads in [Some(1usize), Some(4), Some(8), Some(16)] {
+                let img = ravif::Img::new(pixels.as_slice(), w, h);
+                let start = std::time::Instant::now();
+                let enc = ravif::Encoder::new()
+                    .with_quality(80.0)
+                    .with_speed(speed)
+                    .with_bit_depth(ravif::BitDepth::Eight)
+                    .with_num_threads(threads)
+                    .encode_rgba(img)
+                    .expect("encode must succeed");
+                println!(
+                    "12MP AVIF q80 speed={speed} threads={threads:?}: {} ms -> {} bytes",
+                    start.elapsed().as_millis(),
+                    enc.avif_file.len()
+                );
+            }
+        }
     }
 }
 
