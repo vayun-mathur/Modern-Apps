@@ -120,7 +120,9 @@ internal fun CameraBottomControls(
         modes = {
             CameraModesPane(
                 cameraMode = cameraMode,
-                isPhotoType = state.isPhotoType,
+                // QR lives on the photo side of the picker (its row and the
+                // photo icon's selected state), though it captures nothing.
+                isPhotoType = state.isPhotoType || state.isQr,
                 sloMoSupported = state.sloMoSupported,
                 captureForResult = onCaptureResult != null,
                 onModeSelected = onModeSelected,

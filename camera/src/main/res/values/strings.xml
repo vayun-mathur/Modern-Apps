@@ -7,6 +7,7 @@
     <string name="mode_portrait">Portrait</string>
     <string name="mode_panorama">Pano</string>
     <string name="mode_photosphere">Sphere</string>
+    <string name="mode_qr">QR</string>
     <string name="mode_video">Video</string>
     <string name="mode_slo_mo">Slo-Mo</string>
     <string name="mode_cinematic">Cinematic</string>

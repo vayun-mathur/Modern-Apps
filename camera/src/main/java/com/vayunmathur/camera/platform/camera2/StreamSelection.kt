@@ -312,19 +312,55 @@ object StreamSelection {
     }
 
     /**
+     * [selectPreviewSize] for a request expressed in *view* (display)
+     * coordinates against [supported] sizes in *sensor* coordinates.
+     *
+     * Supported sizes are always sensor-oriented (a phone sensor lists
+     * 1440x1080, never 1080x1440), while the TextureView request is
+     * display-oriented (a 3:4 portrait box is 1080x1440). Comparing those
+     * aspects directly makes a square size (aspect 1.0, distance 0.25
+     * from 0.75) beat the sensor's native 4:3 (1.333, distance 0.583):
+     * on Pixel 9 Pro the preview then streamed 1080x1080 into a 1344x1792
+     * box — the HAL square-crops the 4:3 frame and the fill transform
+     * crops it again, showing ~56% of the captured frame area (a 1.33x
+     * tighter framing than the still). When the relative rotation swaps
+     * the axes (90/270), the request is swapped into sensor coordinates
+     * first, so aspect matching happens in one coordinate space.
+     */
+    fun selectPreviewSizeForView(
+        requested: FrameSize,
+        supported: List<FrameSize>,
+        sensorOrientationDegrees: Int,
+        displayRotationDegrees: Int,
+        facing: com.vayunmathur.camera.domain.LensFacing?,
+    ): FrameSize? {
+        val rotation = com.vayunmathur.camera.domain.AnalysisRotation.rotationDegrees(
+            sensorOrientationDegrees, displayRotationDegrees, facing,
+        )
+        val oriented = if (rotation == 90 || rotation == 270) {
+            FrameSize(requested.height, requested.width)
+        } else {
+            requested
+        }
+        return selectPreviewSize(oriented, supported)
+    }
+
+    /**
      * The preview size one session will actually configure for
      * [requested]: [supportedPreviewSizes] with the LIMITED 1080p cap
      * applied (the guaranteed-combination ceiling from
-     * [planSessionStreams]), then [selectPreviewSize]. This is the single
-     * selection both the session (validation) and the preview surface
-     * (buffer pinning in `PreviewSurfaceBridge`) must agree on — if the
-     * surface pins a different size than the session selected, the HAL
-     * stream and the TextureView buffer disagree and the view stretches.
-     * Null only when the lens reports no preview sizes at all.
+     * [planSessionStreams]), then [selectPreviewSizeForView] (the request
+     * is a view size; supported sizes are sensor-oriented). This is the
+     * single selection both the session (validation) and the preview
+     * surface (buffer pinning in `PreviewSurfaceBridge`) must agree on —
+     * if the surface pins a different size than the session selected, the
+     * HAL stream and the TextureView buffer disagree and the view
+     * stretches. Null only when the lens reports no preview sizes at all.
      */
     fun selectSessionPreviewSize(
         requested: FrameSize,
         snapshot: LensCharacteristicsSnapshot,
+        displayRotationDegrees: Int = 0,
     ): FrameSize? {
         val allSupported = supportedPreviewSizes(snapshot)
         val supported = if (isLimitedOrLower(snapshot)) {
@@ -334,7 +370,10 @@ object StreamSelection {
         } else {
             allSupported
         }
-        return selectPreviewSize(requested, supported)
+        return selectPreviewSizeForView(
+            requested, supported,
+            snapshot.sensorOrientationDegrees, displayRotationDegrees, snapshot.lensFacing,
+        )
     }
 
     /** The rejection for [requested], or null when a size can be selected. */

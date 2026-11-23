@@ -138,7 +138,9 @@ class Camera2Session(
             // size on such a lens when a capped size exists. The surface
             // pins its buffer to this same selection (see
             // StreamSelection.selectSessionPreviewSize).
-            val selected = StreamSelection.selectSessionPreviewSize(requestedSize, snapshot)
+            val selected = StreamSelection.selectSessionPreviewSize(
+                requestedSize, snapshot, displayRotationDegrees,
+            )
             if (selected == null) {
                 reportError(
                     "no supported preview sizes for camera $cameraId " +

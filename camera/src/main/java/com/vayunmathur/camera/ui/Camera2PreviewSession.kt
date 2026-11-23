@@ -108,7 +108,8 @@ internal class Camera2PreviewSession(
     private fun pinPreviewStream(requested: FrameSize) {
         val snapshot = facadeSnapshot ?: return
         val selected = com.vayunmathur.camera.platform.camera2.StreamSelection
-            .selectSessionPreviewSize(requested, snapshot) ?: return
+            .selectSessionPreviewSize(requested, snapshot, bridge.displayRotationDegrees)
+            ?: return
         bridge.setPreviewStream(selected, snapshot.sensorOrientationDegrees, lensFacing)
     }
 

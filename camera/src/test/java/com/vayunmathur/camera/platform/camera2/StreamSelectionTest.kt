@@ -198,6 +198,50 @@ class StreamSelectionTest {
         assertTrue(selected!!.area.toLong() <= StreamSelection.LIMITED_STREAM_MAX_PIXELS)
     }
 
+    @Test fun portraitViewSelectsNativeSensorAspectNotSquare() {
+        // Pixel 9 Pro regression: the HAL lists a square 1080x1080 size.
+        // The view request is display-oriented (1344x1792, 3:4 portrait)
+        // while supported sizes are sensor-oriented; comparing raw aspects
+        // made the square (1.0) beat 4:3 (1.333) for a 0.75 request, and
+        // the preview showed a twice-cropped ~56% of the still's frame.
+        val sizes = listOf(
+            Size(1920, 1080), Size(1440, 1080), Size(1080, 1080), Size(1280, 720),
+        )
+        val back = CharacteristicsFacade.fromFakeMap(
+            cameraId = "0",
+            lensFacingRaw = android.hardware.camera2.CameraMetadata.LENS_FACING_BACK,
+            hardwareLevel = android.hardware.camera2.CameraMetadata
+                .INFO_SUPPORTED_HARDWARE_LEVEL_LIMITED,
+            sensorOrientationDegrees = 90,
+            surfaceTextureSizes = sizes,
+        ).snapshot
+        assertEquals(
+            FrameSize(1440, 1080),
+            StreamSelection.selectSessionPreviewSize(FrameSize(1344, 1792), back),
+        )
+        // Front lens (sensor 270 on this device) swaps the same way.
+        val front = CharacteristicsFacade.fromFakeMap(
+            cameraId = "1",
+            lensFacingRaw = android.hardware.camera2.CameraMetadata.LENS_FACING_FRONT,
+            hardwareLevel = android.hardware.camera2.CameraMetadata
+                .INFO_SUPPORTED_HARDWARE_LEVEL_LIMITED,
+            sensorOrientationDegrees = 270,
+            surfaceTextureSizes = sizes,
+        ).snapshot
+        assertEquals(
+            FrameSize(1440, 1080),
+            StreamSelection.selectSessionPreviewSize(FrameSize(1344, 1792), front),
+        )
+        // Landscape display (relative rotation 0): the unswapped request
+        // is already sensor-oriented and still picks 4:3.
+        assertEquals(
+            FrameSize(1440, 1080),
+            StreamSelection.selectSessionPreviewSize(
+                FrameSize(1792, 1344), back, displayRotationDegrees = 90,
+            ),
+        )
+    }
+
     @Test fun supportedSizesPreferSurfaceTextureThenPrivate() {
         val withTexture = CharacteristicsFacade.fromFakeMap(
             cameraId = "0",

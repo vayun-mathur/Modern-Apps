@@ -136,6 +136,19 @@ internal fun CameraScreenEffects(
             cameraMode == CameraMode.PORTRAIT -> {
                 // Bokeh sink lifecycle (create/close) managed by DisposableEffect below.
             }
+            cameraMode == CameraMode.QR -> {
+                state.maskBitmap = null
+                // Dedicated scanner: QR + common barcodes off the Camera2
+                // analysis stream. Runs on the analysis executor (the
+                // stream's dispatcher), never the capture thread. Result
+                // handling is the shared qrResult flow, so the generic
+                // open-URL/copy card and the FIDO/eSIM/Wi-Fi action cards
+                // render exactly as they did for the ambient scanner.
+                val scanner = com.vayunmathur.camera.platform.QrBarcodeScanner { text, _ ->
+                    viewModel.setQrResult(text)
+                }
+                viewModel.setAnalysisSink(scanner::onAnalysisFrame)
+            }
             cameraMode == CameraMode.PANORAMA || cameraMode == CameraMode.PHOTOSPHERE -> {
                 state.maskBitmap = null
                 // Converted bitmaps off the Camera2 analysis stream;

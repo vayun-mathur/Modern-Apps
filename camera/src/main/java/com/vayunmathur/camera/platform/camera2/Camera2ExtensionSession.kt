@@ -111,7 +111,10 @@ class Camera2ExtensionSession(
             }
             val previewSizes = snapshot.extensionSupportFor(probe.mode)?.previewSizes
                 .orEmpty().map { FrameSize.from(it) }.distinct()
-            val selected = StreamSelection.selectPreviewSize(requestedSize, previewSizes)
+            val selected = StreamSelection.selectPreviewSizeForView(
+                requestedSize, previewSizes,
+                snapshot.sensorOrientationDegrees, displayRotationDegrees, snapshot.lensFacing,
+            )
             if (selected == null) {
                 reportError("no extension preview sizes for camera $cameraId")
                 return@execute

@@ -31,6 +31,7 @@ internal fun BoxScope.CameraPreviewOverlays(
     gridEnabled: Boolean,
     levelEnabled: Boolean,
     isPhotoType: Boolean,
+    isQr: Boolean = false,
     roll: Float,
     modifier: Modifier,
     timerCountdown: Int,
@@ -103,7 +104,7 @@ internal fun BoxScope.CameraPreviewOverlays(
     // Some vendor NIGHT extensions can't host a concurrent ImageAnalysis stream, so
     // the session binds without one and QR codes stop being read. Say so rather than
     // letting the scanner look broken.
-    if (isPhotoType && photoSessionActive && !analysisStreamActive) {
+    if ((isPhotoType || isQr) && photoSessionActive && !analysisStreamActive) {
         Text(
             text = stringResource(R.string.qr_scanning_paused),
             color = Color.White,

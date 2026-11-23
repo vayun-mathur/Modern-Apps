@@ -62,6 +62,10 @@ class PreviewSurfaceBridge(
     var lastTransform: PreviewTransform.Affine? = null
         private set
 
+    /** Display rotation (0/90/180/270) of the attached view, or 0 before attach. */
+    val displayRotationDegrees: Int
+        get() = (view?.display?.rotation ?: 0) * 90
+
     /**
      * Sets the buffer size the texture produces. Constrained high-speed
      * sessions reject any output whose size is outside the HFR list, so
@@ -109,7 +113,7 @@ class PreviewSurfaceBridge(
         }
         val stream = streamSize ?: return
         if (target.width <= 0 || target.height <= 0) return
-        val displayRotationDegrees = (target.display?.rotation ?: 0) * 90
+        val displayRotationDegrees = this.displayRotationDegrees
         val affine = PreviewTransform.compute(
             streamWidth = stream.width,
             streamHeight = stream.height,

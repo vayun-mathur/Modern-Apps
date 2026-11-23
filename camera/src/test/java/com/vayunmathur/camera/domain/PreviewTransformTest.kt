@@ -95,6 +95,24 @@ class PreviewTransformTest {
         }
     }
 
+    @Test fun deviceBoxFillsExactlyFromNativeAspectStream() {
+        // Pixel 9 Pro portrait pairing after stream selection picks the
+        // sensor's native 4:3: 1440x1080 stream into the 1344x1792 (3:4)
+        // TextureView fills exactly — scale 1344/1080 on both axes, no
+        // crop. (The square 1080x1080 stream this replaces needed scale
+        // 1.659 and cropped 25% of each axis.)
+        val t = assertNotNull(compute(1440, 1080, 1344, 1792))
+        assertEquals(90, t.rotationDegrees)
+        assertEquals(1344f / 1080f, t.scale, 0.001f)
+        assertTrue(PreviewTransform.isUniformScale(t))
+        val (x0, y0) = t.map(0f, 0f)
+        assertEquals(1344f, x0, 0.001f)
+        assertEquals(0f, y0, 0.001f)
+        val (x1, y1) = t.map(1440f, 1080f)
+        assertEquals(0f, x1, 0.001f)
+        assertEquals(1792f, y1, 0.001f)
+    }
+
     @Test fun degenerateSizesHaveNoTransform() {
         assertNull(compute(0, 1080, 1080, 1440))
         assertNull(compute(1440, 1080, 0, 1440))

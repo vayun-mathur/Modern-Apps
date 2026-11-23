@@ -9,7 +9,7 @@ import com.vayunmathur.camera.R
 import kotlin.math.roundToInt
 
 /** Capture modes selectable in the camera UI. */
-enum class CameraMode { PHOTO, PORTRAIT, PANORAMA, PHOTOSPHERE, VIDEO, SLOW_MO, TIMELAPSE, CINEMATIC }
+enum class CameraMode { PHOTO, PORTRAIT, PANORAMA, PHOTOSPHERE, QR, VIDEO, SLOW_MO, TIMELAPSE, CINEMATIC }
 /** Flash behaviour for still capture. */
 enum class FlashMode { ON, OFF, AUTO }
 
