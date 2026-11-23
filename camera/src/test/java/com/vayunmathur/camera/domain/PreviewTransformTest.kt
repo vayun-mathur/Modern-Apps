@@ -50,7 +50,10 @@ class PreviewTransformTest {
         val (topLeftX, topLeftY) = t.map(0f, 0f)
         assertEquals(1260f, topLeftX, 0.001f) // 540 + 4/3*540, rotated frame
         assertEquals(0f, topLeftY, 0.001f)
-        assertTrue(abs(t.a) + abs(t.d) > 0f)
+        // Rotated 90 degrees: the linear part lives on the anti-diagonal.
+        assertEquals(0f, t.a, 0.001f)
+        assertEquals(4f / 3f, abs(t.b), 0.001f)
+        assertEquals(4f / 3f, abs(t.c), 0.001f)
     }
 
     @Test fun landscapeDisplayRotationUnswapsAspect() {
