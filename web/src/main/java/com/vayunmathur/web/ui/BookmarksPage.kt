@@ -32,6 +32,7 @@ import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.ConfirmDialog
 import com.vayunmathur.library.ui.DesktopMaxWidthContainer
 import com.vayunmathur.library.ui.EmptyState
+import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.AlertDialog
 import com.vayunmathur.library.ui.DropdownMenu
 import com.vayunmathur.library.ui.DropdownMenuItem
@@ -64,10 +65,12 @@ fun BookmarksPage(
 ) {
     val bookmarks by viewModel.bookmarks.collectAsStateWithLifecycle()
     val folders by viewModel.folders.collectAsStateWithLifecycle()
+    val hasLoaded by viewModel.hasLoadedBookmarks.collectAsStateWithLifecycle()
 
     BookmarksScreen(
         bookmarks = bookmarks,
         folders = folders,
+        hasLoaded = hasLoaded,
         navigationIcon = { IconNavigation(backStack) },
         onOpen = { bm ->
             viewModel.externalIntentUrl(bm.url)
@@ -89,6 +92,7 @@ fun BookmarksPage(
 internal fun BookmarksScreen(
     bookmarks: List<Bookmark>,
     folders: List<BookmarkFolder>,
+    hasLoaded: Boolean = true,
     navigationIcon: @Composable () -> Unit = {},
     onOpen: (Bookmark) -> Unit = {},
     onDelete: (Bookmark) -> Unit = {},
@@ -178,7 +182,9 @@ internal fun BookmarksScreen(
                 }
             }
 
-            if (filtered.isEmpty() && bookmarks.isEmpty()) {
+            if (!hasLoaded && bookmarks.isEmpty()) {
+                LoadingState(Modifier.fillMaxSize())
+            } else if (filtered.isEmpty() && bookmarks.isEmpty()) {
                 EmptyState(
                     title = stringResource(R.string.no_bookmarks_yet),
                 )

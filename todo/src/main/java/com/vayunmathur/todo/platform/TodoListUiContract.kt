@@ -23,6 +23,8 @@ data class TodoListUiState(
     val showAddButton: Boolean = true,
     /** Epoch ms the relative due labels are computed against. */
     val now: Long = System.currentTimeMillis(),
+    /** False until the todos DAO emits at least once, so an empty list can show a spinner. */
+    val hasLoaded: Boolean = true,
 )
 
 /** Every method has a no-op default so a preview can render without behaviour. */

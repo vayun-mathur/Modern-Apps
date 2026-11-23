@@ -157,14 +157,11 @@ fun ImportIcsScreen(
     ) { paddingValues ->
         when {
             events == null -> {
-                Box(
+                com.vayunmathur.library.ui.LoadingState(
                     Modifier
                         .fillMaxSize()
                         .padding(paddingValues),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
+                )
             }
             events.isEmpty() -> {
                 EmptyState(

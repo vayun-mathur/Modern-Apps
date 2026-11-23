@@ -82,6 +82,8 @@ data class MetricDetailsUiState(
     /** Today, passed in rather than read from the clock so a preview renders a fixed date. */
     val today: LocalDate,
     val data: MetricDashboardData = MetricDashboardData(),
+    /** False until the first chart query lands, so no-data can show a spinner instead. */
+    val hasLoaded: Boolean = true,
 )
 
 /** Chart-screen callbacks. Same no-op-default arrangement as [TodayActions]. */

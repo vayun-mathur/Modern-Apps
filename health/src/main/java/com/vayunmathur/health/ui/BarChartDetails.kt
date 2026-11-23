@@ -20,12 +20,13 @@ fun BarChartDetails(
     backStack: NavBackStack<Route>, viewModel: HealthViewModel, config: HealthMetricConfig
 ) {
     val dataState by viewModel.barChartData.collectAsState()
+    val hasLoaded by viewModel.hasLoadedBarChart.collectAsState()
     // Read once: the screen compares the anchor date against it on every recomposition, and
     // a value that changes mid-composition would make the "next period" button flicker.
     val today = remember { Clock.System.todayIn(TimeZone.currentSystemDefault()) }
 
     BarChartDetailsScreen(
-        state = MetricDetailsUiState(config = config, today = today, data = dataState),
+        state = MetricDetailsUiState(config = config, today = today, data = dataState, hasLoaded = hasLoaded),
         actions = object : MetricDetailsActions {
             override fun loadBarChartData(
                 config: HealthMetricConfig,

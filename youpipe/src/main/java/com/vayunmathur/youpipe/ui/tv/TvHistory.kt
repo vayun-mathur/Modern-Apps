@@ -16,6 +16,7 @@ import androidx.compose.ui.res.stringResource
 import com.vayunmathur.library.tv.TvButton
 import com.vayunmathur.library.tv.TvDialog
 import com.vayunmathur.library.tv.TvEmptyState
+import com.vayunmathur.library.tv.TvLoading
 import com.vayunmathur.library.tv.TvGrid
 import com.vayunmathur.library.tv.TvInitialFocus
 import com.vayunmathur.library.tv.TvScreenHeader
@@ -40,6 +41,7 @@ fun TvHistoryPage(
     ypvm: YouPipeViewModel,
 ) {
     val history by ypvm.historyVideosByRecency.collectAsState()
+    val hasLoaded by ypvm.hasLoadedHistory.collectAsState()
     val historyById = remember(history) { history.associate { it.id to it.progress } }
     val videos = remember(history) { history.map { it.videoItem } }
     val rows = rememberTvVideoRows(videos, ypvm, historyById)
@@ -62,6 +64,10 @@ fun TvHistoryPage(
             onCancelSelection = { selectedIds = emptySet() },
             onClearClick = { confirmClear = true },
         )
+        if (!hasLoaded && rows.isEmpty()) {
+            TvLoading()
+            return@Column
+        }
         if (rows.isEmpty()) {
             TvEmptyState(title = stringResource(R.string.empty_recommendations))
             return@Column

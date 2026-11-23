@@ -13,6 +13,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vayunmathur.library.tv.TvEmptyState
+import com.vayunmathur.library.tv.TvLoading
 import com.vayunmathur.library.tv.TvGrid
 import com.vayunmathur.library.tv.TvInitialFocus
 import com.vayunmathur.library.tv.tvFullWidth
@@ -41,6 +42,8 @@ fun TvMyListTab(
     val watchlist by homeVm.watchlist.collectAsState(initial = emptyList())
     val entries by homeVm.continueWatching.collectAsState(initial = emptyList())
     val lists by listsVm.lists.collectAsState(initial = emptyList())
+    val hasLoadedLocal by homeVm.hasLoadedLocalLists.collectAsState(initial = false)
+    val hasLoadedLists by listsVm.hasLoadedLists.collectAsState(initial = false)
 
     // Per-list items: one collector per list, restarted whenever the list set changes.
     val itemsByList = remember { mutableStateMapOf<Long, List<UserListItem>>() }
@@ -60,6 +63,10 @@ fun TvMyListTab(
     }
     TvInitialFocus(firstFocus, key = firstKey)
 
+    if ((!hasLoadedLocal || !hasLoadedLists) && entries.isEmpty() && watchlist.isEmpty() && lists.isEmpty()) {
+        TvLoading()
+        return
+    }
     if (entries.isEmpty() && watchlist.isEmpty() && lists.isEmpty()) {
         TvEmptyState(
             title = stringResource(R.string.lists_empty),

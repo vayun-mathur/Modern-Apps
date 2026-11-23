@@ -34,6 +34,8 @@ data class DeckSummary(
 /** Everything the deck list draws. */
 data class DeckListUiState(
     val decks: List<DeckSummary> = emptyList(),
+    /** False until the decks DAO emits at least once, so an empty list can show a spinner. */
+    val hasLoaded: Boolean = true,
 )
 
 /** Callbacks for the deck list: opening, adding, deleting, reviewing, and reordering decks. */
@@ -66,6 +68,8 @@ data class NoteRow(
 data class NoteListUiState(
     val deckName: String = "",
     val notes: List<NoteRow> = emptyList(),
+    /** False until the notes DAO emits at least once, so an empty list can show a spinner. */
+    val hasLoaded: Boolean = true,
     val dueCount: Int = 0,
     /** Distinct tags across the deck's notes, for the filter row. */
     val tags: List<String> = emptyList(),

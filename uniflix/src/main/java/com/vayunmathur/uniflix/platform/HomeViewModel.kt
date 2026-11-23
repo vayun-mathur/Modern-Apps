@@ -11,7 +11,11 @@ import com.vayunmathur.library.util.AppMessages
 import com.vayunmathur.uniflix.data.TmdbApi
 import com.vayunmathur.uniflix.data.UniflixRepository
 import com.vayunmathur.uniflix.domain.MediaItem
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
 /** Home rows: trending + top-rated, served by the self-hosted TMDB proxy. */
@@ -57,11 +61,16 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    private val _hasLoadedLocalLists = MutableStateFlow(false)
+
+    /** Flips true once the watchlist/continue-watching DAOs emit; the TV lists start empty. */
+    val hasLoadedLocalLists: StateFlow<Boolean> = _hasLoadedLocalLists.asStateFlow()
+
     /** Continue-watching row source, newest first. */
-    val continueWatching get() = repository.continueWatching
+    val continueWatching get() = repository.continueWatching.onEach { _hasLoadedLocalLists.value = true }
 
     /** Watchlist row source, newest first. */
-    val watchlist get() = repository.watchlist
+    val watchlist get() = repository.watchlist.onEach { _hasLoadedLocalLists.value = true }
 
     fun watchlistSnapshot() = combine(repository.watchlist, repository.continueWatching) { w, _ -> w }
 }

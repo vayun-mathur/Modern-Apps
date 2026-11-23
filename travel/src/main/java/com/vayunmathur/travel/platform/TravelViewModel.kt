@@ -24,6 +24,7 @@ import com.vayunmathur.travel.network.TripDto
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 
@@ -148,7 +149,13 @@ class TravelViewModel(
     val recentSearches: StateFlow<List<RecentSearch>> = repository.observeRecent()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    private val _hasLoadedTrips = MutableStateFlow(false)
+
+    /** Flips true once the booked-trips DAO emits at least once; the list starts empty. */
+    val hasLoadedTrips: StateFlow<Boolean> = _hasLoadedTrips.asStateFlow()
+
     val bookedTrips: StateFlow<List<BookedTrip>> = repository.observeBookedTrips()
+        .onEach { _hasLoadedTrips.value = true }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Saved frequent-flyer accounts, applied as loyalty pricing at search. */

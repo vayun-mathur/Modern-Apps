@@ -72,7 +72,8 @@ fun LocationsPage(
     onLocationSelect: (SavedLocation) -> Unit,
     onClose: () -> Unit,
 ) {
-    val locations = viewModel.savedLocations.collectAsState().value.orEmpty()
+    val savedLocations by viewModel.savedLocations.collectAsState()
+    val locations = savedLocations.orEmpty()
     val forecasts by viewModel.forecasts.collectAsState()
     val resources = LocalResources.current
 
@@ -103,6 +104,7 @@ fun LocationsPage(
 
     LocationsScreen(
         state = LocationsUiState(
+            hasLoaded = savedLocations != null,
             rows = rows,
             activeLocationId = activeLocation?.id,
             deviceLocationLoading = deviceLocationLoading,

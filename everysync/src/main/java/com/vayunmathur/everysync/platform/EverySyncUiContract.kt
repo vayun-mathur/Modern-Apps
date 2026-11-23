@@ -33,6 +33,8 @@ data class AccountRow(
 /** Everything the accounts list draws. */
 data class AccountsUiState(
     val accounts: List<AccountRow> = emptyList(),
+    /** False until the accounts store emits at least once, so an empty list can show a spinner. */
+    val hasLoaded: Boolean = true,
 )
 
 /** Everything the per-account screen draws. */

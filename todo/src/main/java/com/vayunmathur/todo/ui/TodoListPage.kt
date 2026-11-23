@@ -29,6 +29,7 @@ fun TodoListPage(
     val query by viewModel.searchQuery.collectAsStateWithLifecycle()
     val sort by viewModel.sort.collectAsStateWithLifecycle()
     val lists by viewModel.lists.collectAsStateWithLifecycle()
+    val hasLoaded by viewModel.hasLoadedTodos.collectAsStateWithLifecycle()
     val quickAddRequest by viewModel.quickAddRequest.collectAsStateWithLifecycle()
 
     val actions = remember(backStack, viewModel, onMenu, view) {
@@ -59,6 +60,7 @@ fun TodoListPage(
             sort = sort,
             showAddButton = backStack.last() !is Route.TodoDetail,
             now = model.second,
+            hasLoaded = hasLoaded,
         ),
         actions = actions,
         quickAddLeading = { VoiceInputButton(onResult = viewModel::requestQuickAdd) },

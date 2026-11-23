@@ -43,6 +43,7 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -55,7 +56,13 @@ class NotesViewModel(
     private val repository: NotesRepository,
 ) : AndroidViewModel(application) {
 
+    private val _hasLoadedNotes = MutableStateFlow(false)
+
+    /** Flips true once the notes DAO emits at least once; the list starts empty. */
+    val hasLoadedNotes: StateFlow<Boolean> = _hasLoadedNotes.asStateFlow()
+
     val notes: StateFlow<List<Note>> = repository.notes
+        .onEach { _hasLoadedNotes.value = true }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Every tag across the live notes, most used first: the list filter row and editor autocomplete. */

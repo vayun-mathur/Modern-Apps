@@ -44,6 +44,7 @@ fun NoteListPage(
     val context = LocalContext.current
     val shareTitle = androidx.compose.ui.res.stringResource(R.string.share_deck)
     val decks by viewModel.decks.collectAsStateWithLifecycle()
+    val hasLoaded by viewModel.hasLoadedNotes.collectAsStateWithLifecycle()
     val notes by remember(deckId) { viewModel.notesForImpl(deckId) }
         .collectAsStateWithLifecycle(emptyList())
     val cards by remember(deckId) { viewModel.cardsForImpl(deckId) }
@@ -145,6 +146,7 @@ fun NoteListPage(
             dueCount = cards.count { !it.isSuspended && ((!it.isNew && it.dueDate <= now) || it.isNew) },
             tags = allTags,
             decks = decks.filter { it.id != deckId }.map { DeckOption(it.id, it.name) },
+            hasLoaded = hasLoaded,
         ),
         actions = actions,
         deckNameSharedKey = "flashcards-deck-name-$deckId",

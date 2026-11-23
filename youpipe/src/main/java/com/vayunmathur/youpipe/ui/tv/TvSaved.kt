@@ -13,6 +13,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vayunmathur.library.tv.TvButton
 import com.vayunmathur.library.tv.TvEmptyState
+import com.vayunmathur.library.tv.TvLoading
 import com.vayunmathur.library.tv.TvGrid
 import com.vayunmathur.library.tv.TvInfoCard
 import com.vayunmathur.library.tv.TvInitialFocus
@@ -42,6 +43,7 @@ fun TvSavedPage(
     ypvm: YouPipeViewModel,
 ) {
     val playlists by ypvm.playlists.collectAsStateWithLifecycle()
+    val hasLoaded by ypvm.hasLoadedPlaylists.collectAsStateWithLifecycle()
     val downloadedVideos by ypvm.downloadedVideos.collectAsStateWithLifecycle()
     val allPlaylistItems by ypvm.allPlaylistItems.collectAsStateWithLifecycle()
     val counts = remember(allPlaylistItems) { allPlaylistItems.groupingBy { it.playlistId }.eachCount() }
@@ -53,6 +55,7 @@ fun TvSavedPage(
         TvSavedHeader(backStack)
         TvSavedGrid(
             backStack = backStack,
+            hasLoaded = hasLoaded,
             watchLater = watchLater,
             userPlaylists = userPlaylists,
             counts = counts,
@@ -79,6 +82,7 @@ private fun TvSavedHeader(backStack: NavBackStack<TvRoute>) {
 @Composable
 private fun TvSavedGrid(
     backStack: NavBackStack<TvRoute>,
+    hasLoaded: Boolean,
     watchLater: Playlist?,
     userPlaylists: List<Playlist>,
     counts: Map<Long, Int>,
@@ -88,7 +92,11 @@ private fun TvSavedGrid(
     val savedTitle = stringResource(UiR.string.saved)
     TvGrid(columns = 3, modifier = modifier) {
         tvSavedPinnedSection(backStack, watchLater, counts, downloadedCount)
-        if (userPlaylists.isEmpty()) {
+        if (!hasLoaded && userPlaylists.isEmpty()) {
+            tvFullWidth(key = "loading") {
+                TvLoading()
+            }
+        } else if (userPlaylists.isEmpty()) {
             tvFullWidth(key = "empty") {
                 TvEmptyState(title = stringResource(R.string.playlist_empty))
             }

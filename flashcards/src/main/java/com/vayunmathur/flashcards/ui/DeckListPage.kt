@@ -63,6 +63,7 @@ import kotlin.math.roundToInt
 fun DeckListPage(backStack: NavBackStack<Route>, viewModel: FlashcardsViewModel) {
     val decks by viewModel.decks.collectAsStateWithLifecycle()
     val cards by viewModel.cards.collectAsStateWithLifecycle()
+    val hasLoaded by viewModel.hasLoadedDecks.collectAsStateWithLifecycle()
 
     val now = System.currentTimeMillis()
     val summaries = decks.sortedBy { it.position }.map { deck ->
@@ -92,7 +93,7 @@ fun DeckListPage(backStack: NavBackStack<Route>, viewModel: FlashcardsViewModel)
     }
 
     DeckListScreen(
-        state = DeckListUiState(decks = summaries),
+        state = DeckListUiState(decks = summaries, hasLoaded = hasLoaded),
         actions = actions,
     )
 }

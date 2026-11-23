@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vayunmathur.library.ui.AppPullToRefreshBox
+import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.AssistChip
 import com.vayunmathur.library.ui.ElevatedCard
@@ -46,6 +47,7 @@ import androidx.compose.ui.res.stringResource
 @Composable
 fun TripsPage(backStack: NavBackStack<Route>, viewModel: TravelViewModel) {
     val trips by viewModel.bookedTrips.collectAsStateWithLifecycle()
+    val hasLoaded by viewModel.hasLoadedTrips.collectAsStateWithLifecycle()
     val pending = trips.any { isTripPollingStatus(it.status) }
 
     AppScaffold(
@@ -57,6 +59,10 @@ fun TripsPage(backStack: NavBackStack<Route>, viewModel: TravelViewModel) {
             }
         },
     ) { padding ->
+        if (!hasLoaded && trips.isEmpty()) {
+            LoadingState(Modifier.fillMaxSize().padding(padding))
+            return@AppScaffold
+        }
         AppPullToRefreshBox(
             isRefreshing = pending && trips.isNotEmpty(),
             onRefresh = { trips.forEach { viewModel.refreshStoredTrip(it.orderId) } },

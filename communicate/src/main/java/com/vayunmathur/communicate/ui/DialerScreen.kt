@@ -90,22 +90,13 @@ fun DialerScreen() {
                     }
                     // Keyed on the contact list only: the query must never re-run the provider query.
                     val rows = contacts.value
-                    when {
-                        rows == null -> com.vayunmathur.library.ui.LoadingState(Modifier.weight(1f))
-                        rows.isEmpty() -> EmptyState(
-                            title = stringResource(R.string.empty_contacts),
-                            icon = { IconContacts() },
-                            modifier = Modifier.weight(1f),
-                        )
-                        else -> {
-                            DialerContent(
-                                contacts = rows,
-                                onPlace = ::place,
-                                selectedLine = selectedLine,
-                                modifier = Modifier.weight(1f),
-                            )
-                        }
-                    }
+                    DialerContent(
+                        contacts = rows.orEmpty(),
+                        onPlace = ::place,
+                        selectedLine = selectedLine,
+                        modifier = Modifier.weight(1f),
+                        hasLoaded = rows != null,
+                    )
                 }
             }
         }

@@ -20,6 +20,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vayunmathur.library.tv.TvButton
 import com.vayunmathur.library.tv.TvDialog
 import com.vayunmathur.library.tv.TvEmptyState
+import com.vayunmathur.library.tv.TvLoading
 import com.vayunmathur.library.tv.TvGrid
 import com.vayunmathur.library.tv.TvInitialFocus
 import com.vayunmathur.library.tv.TvScreenHeader
@@ -50,6 +51,7 @@ fun TvPlaylistDetailPage(
         .collectAsStateWithLifecycle(initialValue = null)
     val itemsFlow = remember(playlistId) { ypvm.playlistItemsFor(playlistId) }
     val playlistItems by itemsFlow.collectAsStateWithLifecycle(initialValue = emptyList())
+    val loadedPlaylistIds by ypvm.loadedPlaylistIds.collectAsStateWithLifecycle()
     val history by ypvm.historyVideos.collectAsState()
     val historyById = remember(history) { history.associate { it.id to it.progress } }
     val mandatory = playlist?.mandatory == true
@@ -71,6 +73,7 @@ fun TvPlaylistDetailPage(
     TvPlaylistDetailBody(
         backStack = backStack,
         ypvm = ypvm,
+        hasLoaded = playlistId in loadedPlaylistIds,
         playlist = playlist,
         playlistItems = playlistItems,
         rows = rows,
@@ -94,6 +97,7 @@ fun TvPlaylistDetailPage(
 private fun TvPlaylistDetailBody(
     backStack: NavBackStack<TvRoute>,
     ypvm: YouPipeViewModel,
+    hasLoaded: Boolean = true,
     playlist: Playlist?,
     playlistItems: List<PlaylistItem>,
     rows: List<TvVideoRow>,
@@ -115,6 +119,10 @@ private fun TvPlaylistDetailBody(
             isSelectionMode = isSelectionMode,
             onDeletePlaylist = onDeletePlaylist,
         )
+        if (!hasLoaded && rows.isEmpty()) {
+            TvLoading()
+            return@Column
+        }
         if (rows.isEmpty()) {
             TvEmptyState(title = stringResource(R.string.playlist_empty))
             return@Column

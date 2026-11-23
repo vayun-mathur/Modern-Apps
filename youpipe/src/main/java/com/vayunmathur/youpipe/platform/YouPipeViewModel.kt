@@ -146,14 +146,32 @@ class YouPipeViewModel(
         .onEach { _hasLoadedSubscriptionVideos.value = true }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    private val _hasLoadedHistory = MutableStateFlow(false)
+
+    /** Flips true once the history DAO emits at least once; the TV history grid starts empty. */
+    val hasLoadedHistory: StateFlow<Boolean> = _hasLoadedHistory.asStateFlow()
+
+    private val _hasLoadedDownloads = MutableStateFlow(false)
+
+    /** Flips true once the downloads DAO emits at least once; the TV downloads grid starts empty. */
+    val hasLoadedDownloads: StateFlow<Boolean> = _hasLoadedDownloads.asStateFlow()
+
+    private val _hasLoadedPlaylists = MutableStateFlow(false)
+
+    /** Flips true once the playlists DAO emits at least once; the TV saved grid starts empty. */
+    val hasLoadedPlaylists: StateFlow<Boolean> = _hasLoadedPlaylists.asStateFlow()
+
     val historyVideos: StateFlow<List<HistoryVideo>> = repository.historyVideos
+        .onEach { _hasLoadedHistory.value = true }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val downloadedVideos: StateFlow<List<DownloadedVideo>> = repository.downloadedVideos
+        .onEach { _hasLoadedDownloads.value = true }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** All playlists sorted by their persisted [Playlist.position]. */
     val playlists: StateFlow<List<Playlist>> = repository.playlists
+        .onEach { _hasLoadedPlaylists.value = true }
         .map { list -> list.sortedBy { it.position } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
@@ -165,11 +183,13 @@ class YouPipeViewModel(
 
     /** History sorted most-recent-first, as shown by the History screen. */
     val historyVideosByRecency: StateFlow<List<HistoryVideo>> = repository.historyVideos
+        .onEach { _hasLoadedHistory.value = true }
         .map { list -> list.sortedByDescending { it.timestamp } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Downloaded videos sorted most-recent-first, as shown by the Downloads screen. */
     val downloadedVideosByRecency: StateFlow<List<DownloadedVideo>> = repository.downloadedVideos
+        .onEach { _hasLoadedDownloads.value = true }
         .map { list -> list.sortedByDescending { it.timestamp } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
@@ -216,9 +236,16 @@ class YouPipeViewModel(
 
     fun playlistById(id: Long): Flow<Playlist?> = repository.playlistStore.playlistById(id)
 
+    private val _loadedPlaylistIds = MutableStateFlow<Set<Long>>(emptySet())
+
+    /** Playlist ids whose items query has emitted at least once (empty then means truly empty). */
+    val loadedPlaylistIds: StateFlow<Set<Long>> = _loadedPlaylistIds.asStateFlow()
+
     /** The items of [playlistId], sorted by their persisted [PlaylistItem.position]. */
     fun playlistItemsFor(playlistId: Long): Flow<List<PlaylistItem>> =
-        repository.playlistStore.playlistItemsFor(playlistId).map { list -> list.sortedBy { it.position } }
+        repository.playlistStore.playlistItemsFor(playlistId)
+            .onEach { _loadedPlaylistIds.value = _loadedPlaylistIds.value + playlistId }
+            .map { list -> list.sortedBy { it.position } }
 
     // ===================== Mutations =====================
 

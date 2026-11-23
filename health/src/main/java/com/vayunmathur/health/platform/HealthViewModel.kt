@@ -51,6 +51,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
@@ -111,14 +112,21 @@ class HealthViewModel(
     fun minInRange(type: RecordType, start: kotlin.time.Instant, end: kotlin.time.Instant): Flow<Double?> =
         repository.minInRange(type, start, end)
 
+    private val _hasLoadedRecords = MutableStateFlow(false)
+
+    /** Flips true once any records query emits at least once; detail lists start empty. */
+    val hasLoadedRecords: StateFlow<Boolean> = _hasLoadedRecords.asStateFlow()
+
     fun getAllRecordsInRange(
         type: RecordType,
         start: kotlin.time.Instant,
         end: kotlin.time.Instant,
     ): Flow<List<Record>> = repository.getAllInRange(type, start, end)
+        .onEach { _hasLoadedRecords.value = true }
 
     fun getAllRecordsOfType(type: RecordType): Flow<List<Record>> =
         repository.getRecordsFlow(type)
+            .onEach { _hasLoadedRecords.value = true }
 
     /**
      * Selects the sleep session to show for [day]: searches the window from 12h before the day's
@@ -129,7 +137,9 @@ class HealthViewModel(
         val tz = TimeZone.currentSystemDefault()
         val searchStart = day.atStartOfDayIn(tz).minus(12.hours)
         val searchEnd = day.atStartOfDayIn(tz).plus(24.hours)
-        return repository.getAllInRange(RecordType.Sleep, searchStart, searchEnd).map { records ->
+        return repository.getAllInRange(RecordType.Sleep, searchStart, searchEnd)
+            .onEach { _hasLoadedRecords.value = true }
+            .map { records ->
             records.filter {
                 val endLocal = it.endTime.atZone(ZoneId.systemDefault()).toLocalDate().toKotlinLocalDate()
                 endLocal == day
@@ -245,6 +255,11 @@ class HealthViewModel(
     private val _barChartData = MutableStateFlow(MetricDashboardData())
     val barChartData: StateFlow<MetricDashboardData> = _barChartData.asStateFlow()
 
+    private val _hasLoadedBarChart = MutableStateFlow(false)
+
+    /** Flips true once the first chart query lands; the chart starts with no data. */
+    val hasLoadedBarChart: StateFlow<Boolean> = _hasLoadedBarChart.asStateFlow()
+
     fun loadBarChartData(config: HealthMetricConfig, anchorDate: LocalDate, selectedTab: Int) {
         // Default dispatcher: the DAO calls suspend onto Room's own pool, and the
         // sortedBy/groupBy/Map chains in getListOfAverages/getListOfSums run on
@@ -273,6 +288,7 @@ class HealthViewModel(
             _barChartData.value = HealthChartData.buildDashboardData(
                 config, selectedTab, rawPairs, mappedChart, mappedSecondaryChart, history,
             )
+            _hasLoadedBarChart.value = true
         }
     }
 

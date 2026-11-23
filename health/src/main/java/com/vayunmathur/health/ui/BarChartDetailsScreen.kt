@@ -35,6 +35,7 @@ import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.DashboardSection
 import com.vayunmathur.library.ui.DashboardSectionDivider
 import com.vayunmathur.library.ui.EmptyState
+import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.IconArrowForward
 import com.vayunmathur.library.ui.IconBack
@@ -235,7 +236,13 @@ fun BarChartDetailsScreen(
 
                 Spacer(Modifier.height(16.dp))
 
-                if (!hasData) {
+                if (!hasData && !state.hasLoaded) {
+                    LoadingState(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(180.dp),
+                    )
+                } else if (!hasData) {
                     EmptyState(
                         title = stringResource(R.string.no_data_available),
                         modifier = Modifier

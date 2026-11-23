@@ -7,13 +7,22 @@ import androidx.lifecycle.viewModelScope
 import com.vayunmathur.uniflix.data.UniflixRepository
 import com.vayunmathur.uniflix.data.UserList
 import com.vayunmathur.uniflix.data.UserListItem
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
 /** Local lists hub: create lists, add/remove items. */
 class ListsViewModel(app: Application) : AndroidViewModel(app) {
     private val repository = UniflixRepository.get(app)
 
-    val lists get() = repository.userLists
+    private val _hasLoadedLists = MutableStateFlow(false)
+
+    /** Flips true once the user-lists DAO emits at least once; the TV lists start empty. */
+    val hasLoadedLists: StateFlow<Boolean> = _hasLoadedLists.asStateFlow()
+
+    val lists get() = repository.userLists.onEach { _hasLoadedLists.value = true }
     fun items(listId: Long) = repository.listItems(listId)
 
     fun createList(name: String) {

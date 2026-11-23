@@ -28,6 +28,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -46,7 +47,13 @@ class EverySyncViewModel(app: Application) : AndroidViewModel(app) {
         const val PASSWORDS_DATA_TYPE = "passwords"
     }
 
+    private val _hasLoadedAccounts = kotlinx.coroutines.flow.MutableStateFlow(false)
+
+    /** Flips true once the accounts store emits at least once; the list starts empty. */
+    val hasLoadedAccounts: StateFlow<Boolean> = _hasLoadedAccounts.asStateFlow()
+
     val accounts = store.accountsFlow()
+        .onEach { _hasLoadedAccounts.value = true }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /** Account names with a sync currently in progress. */

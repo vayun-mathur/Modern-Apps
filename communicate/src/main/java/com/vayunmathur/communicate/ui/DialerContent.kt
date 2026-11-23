@@ -35,6 +35,7 @@ import com.vayunmathur.communicate.data.LineChoice
 import com.vayunmathur.communicate.data.T9
 import com.vayunmathur.communicate.data.voicemailNumber
 import com.vayunmathur.library.ui.EmptyState
+import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.IconCall
 import com.vayunmathur.library.ui.IconContacts
 import com.vayunmathur.library.ui.ListItem
@@ -56,6 +57,8 @@ fun DialerContent(
     onPlace: (String) -> Unit,
     modifier: Modifier = Modifier,
     selectedLine: LineChoice? = null,
+    /** False while the contacts provider query is still running; an empty list then shows a spinner. */
+    hasLoaded: Boolean = true,
 ) {
     var number by remember { mutableStateOf("") }
     val context = LocalContext.current
@@ -79,7 +82,9 @@ fun DialerContent(
         else contacts.filterIndexed { index, _ -> T9.matches(entries[index], query) }
     }
     Column(modifier = modifier.fillMaxSize()) {
-        if (contacts.isEmpty()) {
+        if (!hasLoaded && contacts.isEmpty()) {
+            LoadingState(Modifier.weight(1f))
+        } else if (contacts.isEmpty()) {
             EmptyState(
                 title = stringResource(R.string.empty_contacts),
                 icon = { IconContacts() },

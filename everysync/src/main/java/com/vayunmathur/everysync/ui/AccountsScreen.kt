@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import com.vayunmathur.library.ui.EmptyState
+import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
@@ -56,6 +57,7 @@ fun AccountsScreen(backStack: NavBackStack<Route>, viewModel: EverySyncViewModel
     )
     PermissionsChecker(permissions, stringResource(R.string.need_permissions)) {
         val accounts by viewModel.accounts.collectAsStateWithLifecycle()
+        val hasLoaded by viewModel.hasLoadedAccounts.collectAsStateWithLifecycle()
         val syncing by viewModel.syncing.collectAsStateWithLifecycle()
         val context = LocalContext.current
         val actions = remember(viewModel, backStack) {
@@ -71,7 +73,8 @@ fun AccountsScreen(backStack: NavBackStack<Route>, viewModel: EverySyncViewModel
         }
         AccountsScreen(
             state = AccountsUiState(
-                accounts.map { account ->
+                hasLoaded = hasLoaded,
+                accounts = accounts.map { account ->
                     AccountRow(
                         accountName = account.accountName,
                         providerId = account.providerId,
@@ -109,7 +112,9 @@ fun AccountsScreen(state: AccountsUiState, actions: AccountsActions) {
             }
         },
     ) { padding ->
-        if (state.accounts.isEmpty()) {
+        if (!state.hasLoaded && state.accounts.isEmpty()) {
+            LoadingState(Modifier.fillMaxSize().padding(padding))
+        } else if (state.accounts.isEmpty()) {
             EmptyState(
                 title = stringResource(R.string.no_accounts),
                 modifier = Modifier.fillMaxSize().padding(padding),

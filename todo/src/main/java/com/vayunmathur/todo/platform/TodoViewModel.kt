@@ -33,6 +33,9 @@ import com.vayunmathur.todo.domain.format.ExportFormat
 import com.vayunmathur.todo.domain.format.ImportedTask
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
@@ -60,7 +63,13 @@ class TodoViewModel(
         }
     }
 
+    private val _hasLoadedTodos = MutableStateFlow(false)
+
+    /** Flips true once the todos DAO emits at least once; the list starts empty. */
+    val hasLoadedTodos: StateFlow<Boolean> = _hasLoadedTodos.asStateFlow()
+
     val todos: StateFlow<List<Todo>> = repository.todos
+        .onEach { _hasLoadedTodos.value = true }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), emptyList())
     val lists: StateFlow<List<TodoList>> = repository.lists
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), emptyList())

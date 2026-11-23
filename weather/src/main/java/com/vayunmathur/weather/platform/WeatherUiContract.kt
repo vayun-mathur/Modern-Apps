@@ -67,6 +67,8 @@ data class LocationRow(
 /** Everything the locations drawer draws. */
 data class LocationsUiState(
     val rows: List<LocationRow> = emptyList(),
+    /** False until the saved-locations DAO emits at least once (the VM flow starts null). */
+    val hasLoaded: Boolean = true,
     val activeLocationId: Long? = null,
     /** True while a device-location fix is being requested. */
     val deviceLocationLoading: Boolean = false,

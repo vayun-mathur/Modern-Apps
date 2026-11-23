@@ -31,6 +31,7 @@ import androidx.compose.ui.zIndex
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.CommonSearchBar
 import com.vayunmathur.library.ui.EmptyState
+import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.util.sharedText
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.FloatingActionButton
@@ -234,7 +235,12 @@ fun NotesListScreen(
         },
         state = listState,
     ) {
-            if (filtered.isEmpty() && searchQuery.isNotBlank()) {
+            if (!state.hasLoaded && filtered.isEmpty()) {
+                item(key = "loading") {
+                    LoadingState(Modifier.fillParentMaxSize())
+                }
+            }
+            if (filtered.isEmpty() && searchQuery.isNotBlank() && state.hasLoaded) {
                 item(key = "no-results") {
                     EmptyState(
                         title = stringResource(R.string.no_results_for, searchQuery),

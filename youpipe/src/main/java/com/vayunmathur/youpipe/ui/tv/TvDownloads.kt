@@ -20,6 +20,7 @@ import com.vayunmathur.library.image.ImageRequest
 import com.vayunmathur.library.image.compose.AsyncImage
 import com.vayunmathur.library.tv.TvButton
 import com.vayunmathur.library.tv.TvEmptyState
+import com.vayunmathur.library.tv.TvLoading
 import com.vayunmathur.library.tv.TvGrid
 import com.vayunmathur.library.tv.TvInfoCard
 import com.vayunmathur.library.tv.TvInitialFocus
@@ -48,6 +49,7 @@ fun TvDownloadsPage(
     ypvm: YouPipeViewModel,
 ) {
     val downloadedVideos by ypvm.downloadedVideos.collectAsState()
+    val hasLoaded by ypvm.hasLoadedDownloads.collectAsState()
     val activeDownloads by DownloadManager.activeDownloads.collectAsState()
     val downloads by ypvm.downloadedVideosByRecency.collectAsState()
     val historyById = remember(downloadedVideos) { emptyMap<Long, Long>() }
@@ -73,6 +75,7 @@ fun TvDownloadsPage(
     TvInitialFocus(firstFocus)
     Column(Modifier.fillMaxSize()) {
         TvDownloadsContent(
+            hasLoaded = hasLoaded,
             modifier = Modifier.weight(1f),
             activeDownloads = activeDownloads, rows = rows,
             activeTitle = activeTitle, doneTitle = doneTitle,
@@ -110,6 +113,7 @@ private fun deleteSelectedDownloads(
 
 @Composable
 private fun TvDownloadsContent(
+    hasLoaded: Boolean = true,
     modifier: Modifier = Modifier,
     activeDownloads: Map<Long, DownloadStatus>,
     rows: List<TvVideoRow>,
@@ -131,6 +135,10 @@ private fun TvDownloadsContent(
         onCancelSelection = onCancelSelection,
     )
     val activeList = remember(activeDownloads) { activeDownloads.toList() }
+    if (!hasLoaded && rows.isEmpty() && activeList.isEmpty()) {
+        TvLoading()
+        return
+    }
     if (rows.isEmpty() && activeList.isEmpty()) {
         TvEmptyState(title = stringResource(R.string.playlist_empty))
         return

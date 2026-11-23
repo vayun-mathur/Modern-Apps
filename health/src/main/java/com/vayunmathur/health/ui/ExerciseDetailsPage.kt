@@ -53,6 +53,7 @@ import com.vayunmathur.library.ui.DateString
 import com.vayunmathur.library.ui.rememberIs24Hour
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.EmptyState
+import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.util.NavBackStack
 import kotlinx.serialization.json.Json
@@ -80,6 +81,7 @@ private val dateFormatter: DateTimeFormat<LocalDate> get() = LocalDate.Format {
 @Composable
 fun ExerciseDetailsPage(backStack: NavBackStack<Route>, viewModel: HealthViewModel) {
     val records by remember { viewModel.getAllRecordsOfType(RecordType.Exercise) }.collectAsState(emptyList())
+    val hasLoaded by viewModel.hasLoadedRecords.collectAsState()
 
     AppScaffold(
         title = {
@@ -90,7 +92,9 @@ fun ExerciseDetailsPage(backStack: NavBackStack<Route>, viewModel: HealthViewMod
         },
         onNavigateBack = { backStack.pop() },
     ) { padding ->
-        if (records.isEmpty()) {
+        if (!hasLoaded && records.isEmpty()) {
+            LoadingState(Modifier.fillMaxSize().padding(padding))
+        } else if (records.isEmpty()) {
             EmptyState(
                 title = stringResource(R.string.no_workouts),
                 modifier = Modifier

@@ -139,6 +139,7 @@ fun SleepDetailsPage(backStack: NavBackStack<Route>, viewModel: HealthViewModel)
                 val day = today.minus(initialPage - page, DateTimeUnit.DAY)
                 val record by remember(day) { viewModel.sleepRecordForDay(day) }
                     .collectAsState(null)
+                val hasLoaded by viewModel.hasLoadedRecords.collectAsState()
 
                 LazyColumn(
                     modifier = Modifier
@@ -158,10 +159,14 @@ fun SleepDetailsPage(backStack: NavBackStack<Route>, viewModel: HealthViewModel)
                         Box(
                             Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center
                         ) {
-                            Text(
-                                stringResource(R.string.no_data_available),
-                                color = MaterialTheme.colorScheme.outline
-                            )
+                            if (!hasLoaded) {
+                                com.vayunmathur.library.ui.LoadingState()
+                            } else {
+                                Text(
+                                    stringResource(R.string.no_data_available),
+                                    color = MaterialTheme.colorScheme.outline
+                                )
+                            }
                         }
                     }
                 }

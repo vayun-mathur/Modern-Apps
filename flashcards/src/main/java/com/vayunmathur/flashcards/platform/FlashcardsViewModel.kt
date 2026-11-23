@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -54,15 +55,27 @@ class FlashcardsViewModel(
 
     internal val ds = DataStoreUtils.getInstance(application)
 
+    private val _hasLoadedDecks = MutableStateFlow(false)
+
+    /** Flips true once the decks DAO emits at least once; the deck list starts empty. */
+    val hasLoadedDecks: StateFlow<Boolean> = _hasLoadedDecks.asStateFlow()
+
     val decks: StateFlow<List<Deck>> = repository.decks
+        .onEach { _hasLoadedDecks.value = true }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** All cards across every deck; the deck list derives per-deck counts from this. */
     val cards: StateFlow<List<Card>> = repository.cards
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    private val _hasLoadedNotes = MutableStateFlow(false)
+
+    /** Flips true once the notes DAO emits at least once; a deck's note list starts empty. */
+    val hasLoadedNotes: StateFlow<Boolean> = _hasLoadedNotes.asStateFlow()
+
     /** All notes across every deck; the note-type manager derives per-type counts from this. */
     val notes: StateFlow<List<Note>> = repository.notes
+        .onEach { _hasLoadedNotes.value = true }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Every note type with its ordered fields and templates. */

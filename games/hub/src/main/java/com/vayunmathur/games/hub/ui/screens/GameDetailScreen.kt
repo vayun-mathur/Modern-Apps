@@ -39,6 +39,7 @@ import com.vayunmathur.games.hub.util.formatRelativeTime
 import com.vayunmathur.games.hub.viewmodel.GameHubViewModel
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.EmptyState
+import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.OutlinedButton
 import com.vayunmathur.library.ui.Card
@@ -63,6 +64,7 @@ fun GameDetailScreen(
     modifier: Modifier = Modifier
 ) {
     val game by viewModel.getGameFlow(gameId).collectAsStateWithLifecycle(initialValue = null)
+    val loadedGameIds by viewModel.loadedGameIds.collectAsStateWithLifecycle()
     val achievements by viewModel.getAchievementsForGameFlow(gameId).collectAsStateWithLifecycle(initialValue = emptyList())
     val sessions by viewModel.getSessionsForGameFlow(gameId).collectAsStateWithLifecycle(initialValue = emptyList())
     val activity by viewModel.getActivityForGameFlow(gameId).collectAsStateWithLifecycle(initialValue = emptyList())
@@ -82,6 +84,10 @@ fun GameDetailScreen(
         backStack = backStack,
     ) { padding ->
         val g = game
+        if (g == null && gameId !in loadedGameIds) {
+            LoadingState(Modifier.fillMaxSize().padding(padding))
+            return@AppScaffold
+        }
         if (g == null) {
             EmptyState(
                 title = stringResource(R.string.game_not_found),

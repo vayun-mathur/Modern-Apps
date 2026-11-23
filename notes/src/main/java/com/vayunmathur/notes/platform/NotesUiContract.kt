@@ -24,6 +24,8 @@ data class NotesListUiState(
     val selectedTag: String? = null,
     /** Hidden while a note is already open beside the list in the list-detail layout. */
     val showAddButton: Boolean = true,
+    /** False until the notes DAO emits at least once, so an empty list can show a spinner. */
+    val hasLoaded: Boolean = true,
 )
 
 /**

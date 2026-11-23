@@ -65,6 +65,7 @@ fun NotesListPage(backStack: NavBackStack<Route>, viewModel: NotesViewModel) {
     val filteredNotes by viewModel.filteredNotes.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val selectedTag by viewModel.selectedTag.collectAsStateWithLifecycle()
+    val hasLoaded by viewModel.hasLoadedNotes.collectAsStateWithLifecycle()
 
     val actions = remember(backStack, viewModel) {
         object : NotesListActions {
@@ -86,6 +87,7 @@ fun NotesListPage(backStack: NavBackStack<Route>, viewModel: NotesViewModel) {
             searchQuery = searchQuery,
             selectedTag = selectedTag,
             showAddButton = backStack.last() !is Route.Note,
+            hasLoaded = hasLoaded,
         ),
         actions = actions,
         // Passed in rather than built inside the screen: the backup buttons need the

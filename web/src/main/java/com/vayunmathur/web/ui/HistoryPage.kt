@@ -44,6 +44,7 @@ import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.ConfirmDialog
 import com.vayunmathur.library.ui.DesktopMaxWidthContainer
 import com.vayunmathur.library.ui.EmptyState
+import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.AlertDialog
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.IconButton
@@ -68,6 +69,7 @@ fun HistoryPage(
     backStack: NavBackStack<Route>,
 ) {
     val history by viewModel.history.collectAsStateWithLifecycle()
+    val hasLoaded by viewModel.hasLoadedHistory.collectAsStateWithLifecycle()
     var showClearConfirm by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
@@ -87,7 +89,9 @@ fun HistoryPage(
         },
     ) { paddingValues ->
         DesktopMaxWidthContainer(modifier = Modifier.padding(paddingValues)) {
-            if (history.isEmpty()) {
+            if (!hasLoaded && history.isEmpty()) {
+                LoadingState(Modifier.fillMaxSize())
+            } else if (history.isEmpty()) {
                 EmptyState(
                     title = stringResource(R.string.no_history_yet),
                     modifier = Modifier.fillMaxSize(),

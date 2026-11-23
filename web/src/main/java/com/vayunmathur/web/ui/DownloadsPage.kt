@@ -28,6 +28,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.DesktopMaxWidthContainer
 import com.vayunmathur.library.ui.EmptyState
+import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.IconDownload
@@ -46,6 +47,7 @@ fun DownloadsPage(
     backStack: NavBackStack<Route>,
 ) {
     val downloads by viewModel.downloads.collectAsStateWithLifecycle()
+    val hasLoaded by viewModel.hasLoadedDownloads.collectAsStateWithLifecycle()
 
     AppScaffold(
         title = stringResource(R.string.downloads),
@@ -57,7 +59,9 @@ fun DownloadsPage(
         },
     ) { paddingValues ->
         DesktopMaxWidthContainer(modifier = Modifier.padding(paddingValues)) {
-        if (downloads.isEmpty()) {
+        if (!hasLoaded && downloads.isEmpty()) {
+            LoadingState(Modifier.fillMaxSize())
+        } else if (downloads.isEmpty()) {
             EmptyState(
                 title = stringResource(R.string.no_downloads),
                 modifier = Modifier.fillMaxSize(),

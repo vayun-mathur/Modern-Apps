@@ -33,6 +33,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -151,6 +152,18 @@ class WebViewModel(
 
     private val _downloads = MutableStateFlow<List<DownloadEntry>>(emptyList())
     val downloads: StateFlow<List<DownloadEntry>> = _downloads
+
+    private val _hasLoadedBookmarks = MutableStateFlow(false)
+    /** Flips true once the bookmarks DAO emits at least once; the list starts empty. */
+    val hasLoadedBookmarks: StateFlow<Boolean> = _hasLoadedBookmarks.asStateFlow()
+
+    private val _hasLoadedHistory = MutableStateFlow(false)
+    /** Flips true once the history DAO emits at least once; the list starts empty. */
+    val hasLoadedHistory: StateFlow<Boolean> = _hasLoadedHistory.asStateFlow()
+
+    private val _hasLoadedDownloads = MutableStateFlow(false)
+    /** Flips true once the downloads DAO emits at least once; the list starts empty. */
+    val hasLoadedDownloads: StateFlow<Boolean> = _hasLoadedDownloads.asStateFlow()
 
     private val _installedSites = MutableStateFlow<List<InstalledSite>>(emptyList())
     val installedSites: StateFlow<List<InstalledSite>> = _installedSites
@@ -393,12 +406,12 @@ class WebViewModel(
     }
 
     private fun observeRepository() {
-        viewModelScope.launch { repository.bookmarks.allFlow().collect { _bookmarks.value = it } }
+        viewModelScope.launch { repository.bookmarks.allFlow().collect { _bookmarks.value = it; _hasLoadedBookmarks.value = true } }
         viewModelScope.launch { repository.bookmarks.foldersFlow().collect { _folders.value = it } }
-        viewModelScope.launch { repository.history.allFlow().collect { _history.value = it } }
+        viewModelScope.launch { repository.history.allFlow().collect { _history.value = it; _hasLoadedHistory.value = true } }
         viewModelScope.launch { repository.permissions.allFlow().collect { _sitePermissions.value = it } }
         viewModelScope.launch { repository.storage.allFlow().collect { _storageInfos.value = it } }
-        viewModelScope.launch { repository.downloads.allFlow().collect { _downloads.value = it } }
+        viewModelScope.launch { repository.downloads.allFlow().collect { _downloads.value = it; _hasLoadedDownloads.value = true } }
         viewModelScope.launch { repository.installed.allFlow().collect { _installedSites.value = it } }
         viewModelScope.launch {
             repository.shields.allFlow().collect { settings ->

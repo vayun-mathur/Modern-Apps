@@ -23,6 +23,10 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -231,8 +235,14 @@ class GameHubViewModel(
 
     val statsFlow: StateFlow<CrossGameStats> = crossGameStatsFlowWithDefs
 
+    private val _loadedGameIds = MutableStateFlow<Set<String>>(emptySet())
+
+    /** Game ids whose DAO query has emitted at least once (a null game then means not found). */
+    val loadedGameIds: StateFlow<Set<String>> = _loadedGameIds.asStateFlow()
+
     // Per-game flows
     fun getGameFlow(gameId: String): Flow<HubGameEntity?> = repository.games.gameByIdFlow(gameId)
+        .onEach { _loadedGameIds.update { it + gameId } }
 
     fun getAchievementsForGameFlow(gameId: String): Flow<List<AchievementWithProgress>> =
         repository.achievements.byGameWithProgressFlow(gameId)
