@@ -5,9 +5,6 @@
     <string name="open_gallery">גלריה</string>
     <string name="settings_aspect_ratio">יחס תצוגה</string>
     <string name="settings_location">מיקום</string>
-    <string name="audio_source_mic_label">מיקרופון</string>
-    <string name="audio_source_mic_description">מיקרופון ראשי</string>
-    <string name="audio_source_unprocessed_description">גולמי, ללא עיבוד</string>
     <string name="qr_result">קוד QR</string>
     <string name="open_url">פתיחת כתובת</string>
     <string name="copy_text">העתקה</string>

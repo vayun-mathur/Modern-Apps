@@ -38,6 +38,8 @@ class Camera2RecordingCore(
     val config: CustomRecordingConfig,
     private val initialBitrateBps: () -> Int,
     ownership: RecordingSessionOwnership = RecordingSessionOwnership.ENGINE_OWNED,
+    /** Live input-device list for [config]'s preferred-device choice (engine-supplied). */
+    private val audioInputDevices: () -> List<android.media.AudioDeviceInfo> = { emptyList() },
 ) {
     val lifecycle = SharedRecordingCoreLifecycle(ownership)
     private val encoderHandoff = EncoderSurfaceHandoff()
@@ -303,6 +305,8 @@ class Camera2RecordingCore(
         }
         @SuppressLint("MissingPermission")
         val record = AudioRecord(
+            // Internal source is always CAMCORDER for video; the user's
+            // choice is the physical device below, never this source type.
             MediaRecorder.AudioSource.CAMCORDER,
             config.audioSampleRate,
             AudioFormat.CHANNEL_IN_MONO,
@@ -310,6 +314,25 @@ class Camera2RecordingCore(
             maxOf(minBuffer, AUDIO_MAX_INPUT_BYTES),
         )
         audioRecord = record
+        // Prefer the chosen physical mic (Auto clears any preference so the
+        // system routes). A disconnected/rejected device never fails the
+        // recording: the seam swallows it and recording continues on the
+        // system-routed input. If the device disconnects mid-recording,
+        // Android reroutes the live AudioRecord itself; the read loop
+        // below just keeps running.
+        val applied = com.vayunmathur.camera.platform.camera2.PreferredAudioDeviceApplication.apply(
+            selection = config.audioInputDevice,
+            devices = runCatching { audioInputDevices() }.getOrDefault(emptyList()),
+            idOf = { it.id },
+            typeOf = { it.type },
+            setPreferred = { device -> record.setPreferredDevice(device) },
+        )
+        if (!applied.selection.isAuto && !applied.applied) {
+            Log.status(
+                "Camera2Recorder",
+                "Preferred audio input unavailable; recording on the system-routed input",
+            )
+        }
         record.startRecording()
         audioThread = Thread({
             val chunk = ByteArray(AUDIO_CHUNK_BYTES)

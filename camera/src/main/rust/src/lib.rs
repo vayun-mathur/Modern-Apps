@@ -23,6 +23,7 @@ mod raw_night;
 #[allow(dead_code)]
 mod raw_jni;
 mod avif;
+mod avif_mux;
 mod luma;
 
 use imgbuf::Rgba;

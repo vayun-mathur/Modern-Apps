@@ -2,7 +2,6 @@ package com.vayunmathur.camera.platform
 
 import android.graphics.ColorMatrix
 import androidx.annotation.StringRes
-import android.media.MediaRecorder
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
@@ -58,35 +57,13 @@ enum class MotionPhotoDuration(val seconds: Int) {
     THREE(MOTION_THREE_SECONDS),
     FIVE(MOTION_FIVE_SECONDS),
 }
-/** Audio input sources selectable for video recording. */
-enum class AudioInputSource(
-    @StringRes val labelRes: Int,
-    @StringRes val descriptionRes: Int,
-    val specValue: Int,
-) {
-    CAMCORDER(
-        R.string.audio_source_camcorder_label,
-        R.string.audio_source_camcorder_description,
-        MediaRecorder.AudioSource.CAMCORDER
-    ),
-    MIC(R.string.audio_source_mic_label, R.string.audio_source_mic_description, MediaRecorder.AudioSource.MIC),
-    VOICE_COMMUNICATION(
-        R.string.audio_source_voice_communication_label,
-        R.string.audio_source_voice_communication_description,
-        MediaRecorder.AudioSource.VOICE_COMMUNICATION
-    ),
-    UNPROCESSED(
-        R.string.audio_source_unprocessed_label,
-        R.string.audio_source_unprocessed_description,
-        MediaRecorder.AudioSource.UNPROCESSED
-    ),
-}
-
 /**
- * The bind-time recording settings snapshot: video codec, audio source and
- * front mirroring are baked into the recording engine when the session binds
- * and cannot change mid-recording. (Audio is always Opus — see
- * AudioEncoderPolicy — so there is no audio-codec value to snapshot.)
+ * The bind-time recording settings snapshot: video codec, audio input
+ * device and front mirroring are baked into the recording engine when the
+ * session binds and cannot change mid-recording. (Audio is always Opus —
+ * see AudioEncoderPolicy — so there is no audio-codec value to snapshot.
+ * The internal `MediaRecorder.AudioSource` is always CAMCORDER for video;
+ * [audioInputDevice] only picks the physical microphone feeding it.)
  * The user's chosen (desired) values live in the individual
  * CameraViewModel flows and persist immediately; this snapshot is what
  * a bind actually uses, held unchanged while a recording is in progress and
@@ -94,7 +71,8 @@ enum class AudioInputSource(
  */
 data class BindTimeSettings(
     val videoCodec: VideoCodec,
-    val audioInputSource: AudioInputSource,
+    val audioInputDevice: com.vayunmathur.camera.platform.camera2.AudioInputDeviceSelection =
+        com.vayunmathur.camera.platform.camera2.AudioInputDeviceSelection.AUTO,
     val mirrorFront: Boolean,
 )
 

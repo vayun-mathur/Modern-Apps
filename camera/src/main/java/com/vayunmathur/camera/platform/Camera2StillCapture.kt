@@ -71,19 +71,13 @@ internal fun CameraViewModel.tryCaptureCamera2Still(): Boolean {
         hasJpegOutput = session.hasJpegOutput,
         nightRoute = nightPreviewActiveMutable.value || nightCaptureApplies(),
         processedRoute = warmthMutable.value != 0f || shadowsMutable.value != 0f,
-        // Mirrors the (private) Motion Photo eligibility in CameraPhotoCapture:
-        // a plain 4:3 PHOTO shot with no bake would route to Motion Photo.
-        // An effective AVIF selection precludes that diversion (a Motion
-        // Photo is a JPEG+MP4 trailer): the plain Camera2 still is taken
-        // and encoded to .avif instead. The format is read here, at
-        // capture time, so a settings change after bind is honoured.
-        motionPhotoRoute = cameraModeMutable.value == CameraMode.PHOTO &&
-            !captureForResult &&
-            warmthMutable.value == 0f && shadowsMutable.value == 0f &&
-            aspectRatioMutable.value == AspectRatioOption.RATIO_4_3 &&
-            !StillFormatRouting.avifPrecludesMotionPhoto(
-                requestedStillFormat(), StitchNative.isAvailable,
-            ),
+        // The shared Motion Photo eligibility (CameraPhotoCapture): a plain
+        // 4:3 PHOTO shot with no bake, the user's toggle on, and no effective
+        // AVIF selection would route to Motion Photo, so it is excluded from
+        // the direct Camera2 still. Read at capture time via
+        // [motionPhotoEligible], so a settings change after bind is honoured
+        // exactly as on the other route.
+        motionPhotoRoute = motionPhotoEligible(),
         captureForResult = captureForResult,
         burst = burstActiveMutable.value,
     )

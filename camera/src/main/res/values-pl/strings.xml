@@ -25,14 +25,6 @@
     <string name="codec_hevc_label">H.265 / HEVC</string>
     <string name="open_gallery">Galeria</string>
     <string name="settings_audio_source">Źródło sygnału dźwieku</string>
-    <string name="audio_source_camcorder_label">Kamera</string>
-    <string name="audio_source_camcorder_description">Domyślne, dostrojone do wideo</string>
-    <string name="audio_source_mic_label">Mikrofon</string>
-    <string name="audio_source_mic_description">Główny mikrofon</string>
-    <string name="audio_source_voice_communication_label">Głos</string>
-    <string name="audio_source_voice_communication_description">Redukcja szumów i echa</string>
-    <string name="audio_source_unprocessed_label">Nieprzetworzone</string>
-    <string name="audio_source_unprocessed_description">Surowy, bez obróbki</string>
     <string name="settings_mirror_front">Lustrzane odbicie selfie</string>
     <string name="settings_mirror_front_description">Lustrzane odbicie podglądu z przedniego aparatu oraz zapisanych zdjęć selfie</string>
     <string name="qr_scanning_paused">Skanowanie kodów QR wstrzymane</string>

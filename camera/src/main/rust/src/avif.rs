@@ -17,6 +17,9 @@
 
 use ravif::{Encoder, Img, RGBA8};
 
+#[cfg(test)]
+use crate::avif_mux::{parse_boxes, read_uint};
+
 /// Largest width/height accepted, matching the night-frame JNI guard.
 const MAX_DIM: usize = 20_000;
 
@@ -44,7 +47,7 @@ pub fn encode_avif(rgba: &[u8], width: usize, height: usize, quality: f32, speed
 
 /// True when [exif] is a TIFF payload (`II*\0` / `MM\0*`) or an
 /// already-framed HEIF Exif item (`[u32 offset][…][TIFF…]`).
-fn looks_like_exif(exif: &[u8]) -> bool {
+pub(crate) fn looks_like_exif(exif: &[u8]) -> bool {
     if exif.starts_with(b"II\x2a\0") || exif.starts_with(b"MM\0\x2a") {
         return true;
     }

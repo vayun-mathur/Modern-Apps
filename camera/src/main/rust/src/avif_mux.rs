@@ -5,13 +5,13 @@
 use crate::avif::looks_like_exif;
 
 /// One parsed ISOBMFF box: type plus absolute payload span in the file.
-struct BoxSpan {
-    typ: [u8; 4],
-    start: usize,
-    payload: std::ops::Range<usize>,
+pub(crate) struct BoxSpan {
+    pub(crate) typ: [u8; 4],
+    pub(crate) start: usize,
+    pub(crate) payload: std::ops::Range<usize>,
 }
 
-fn parse_boxes(bytes: &[u8], span: std::ops::Range<usize>) -> Vec<BoxSpan> {
+pub(crate) fn parse_boxes(bytes: &[u8], span: std::ops::Range<usize>) -> Vec<BoxSpan> {
     let mut out = Vec::new();
     let mut off = span.start;
     while off + 8 <= span.end && off + 8 <= bytes.len() {
@@ -40,7 +40,7 @@ fn parse_boxes(bytes: &[u8], span: std::ops::Range<usize>) -> Vec<BoxSpan> {
     out
 }
 
-fn read_uint(bytes: &[u8], pos: &mut usize, size: usize) -> Option<u64> {
+pub(crate) fn read_uint(bytes: &[u8], pos: &mut usize, size: usize) -> Option<u64> {
     let mut value = 0u64;
     for _ in 0..size {
         value = (value << 8) | *bytes.get(*pos)? as u64;

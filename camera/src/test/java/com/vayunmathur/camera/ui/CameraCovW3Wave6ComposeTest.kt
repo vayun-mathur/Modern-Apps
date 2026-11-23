@@ -80,7 +80,7 @@ class CameraCovW3Wave6ComposeTest {
             flashMode = com.vayunmathur.camera.platform.FlashMode.AUTO,
             torchEnabled = false,
             videoCodec = viewModel.videoCodecMutable.value,
-            audioInputSource = viewModel.audioInputSourceMutable.value,
+            audioInputDevice = viewModel.audioInputDeviceMutable.value,
             isRecording = mode == CameraMode.VIDEO,
             recordingDuration = 12,
             timerCountdown = 0,

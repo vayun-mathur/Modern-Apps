@@ -174,21 +174,27 @@ internal fun CameraViewModel.stillCaptureIsZsl(): Boolean =
  * Only at the native 4:3 ratio: the motion still is saved as raw JPEG bytes (to preserve the
  * Ultra HDR gain map + motion trailer), which can't carry CameraX's crop. For other ratios the
  * single-shot path saves a cropped JPEG.
+ *
+ * The user's on/off setting gates first (off = plain stills always), and an
+ * effective AVIF selection precludes the diversion (a Motion Photo is a JPEG
+ * with an MP4 trailer): without that check a plain shot silently landed as
+ * .jpg whatever the format setting said. Both this router and the Camera2
+ * route in [tryCaptureCamera2Still] call this, so the decision is read once,
+ * at capture time, on every route.
  */
-private fun CameraViewModel.motionPhotoEligible(): Boolean {
-    val plainPhoto = cameraModeMutable.value == CameraMode.PHOTO && !captureForResult
-    val noBake = warmthMutable.value == 0f && shadowsMutable.value == 0f
-    // An effective AVIF selection precludes the Motion Photo diversion on
-    // the CameraX path too (a Motion Photo is a JPEG with an MP4 trailer):
-    // without this check a CameraX-served plain shot (Camera2 fallback
-    // latch, gate off) silently landed as .jpg whatever the setting said.
-    // The Camera2 path already applies the same check in
-    // tryCaptureCamera2Still; the format is read here, at capture time.
+internal fun CameraViewModel.motionPhotoEligible(): Boolean {
     val avifPrecludes = com.vayunmathur.camera.domain.StillFormatRouting.avifPrecludesMotionPhoto(
         requestedStillFormat(), StitchNative.isAvailable,
     )
-    return plainPhoto && noBake && !avifPrecludes &&
-        aspectRatioMutable.value == AspectRatioOption.RATIO_4_3
+    return com.vayunmathur.camera.domain.MotionPhotoEligibility.isEligible(
+        com.vayunmathur.camera.domain.MotionPhotoInputs(
+            enabled = motionPhotoEnabledMutable.value,
+            plainPhoto = cameraModeMutable.value == CameraMode.PHOTO && !captureForResult,
+            noBake = warmthMutable.value == 0f && shadowsMutable.value == 0f,
+            avifPrecludes = avifPrecludes,
+            nativeFourThree = aspectRatioMutable.value == AspectRatioOption.RATIO_4_3,
+        )
+    )
 }
 
 /**
@@ -283,6 +289,12 @@ fun CameraViewModel.stopBurst() {
 
 /** Appends an analysis frame to the Motion-Photo ring buffer, trimming by age then count. */
 fun CameraViewModel.addMotionFrame(bitmap: Bitmap, timestampNanos: Long, rotationDegrees: Int) {
+    // Motion Photo off: buffer nothing. This call takes ownership of the
+    // bitmap, so recycle it rather than leak it.
+    if (!motionPhotoEnabledMutable.value) {
+        bitmap.recycle()
+        return
+    }
     synchronized(motionLock) {
         motionFrames.addLast(CameraViewModel.MotionFrame(bitmap, timestampNanos, rotationDegrees))
         val windowNanos = motionPhotoDurationMutable.value.seconds * 1_000_000_000L

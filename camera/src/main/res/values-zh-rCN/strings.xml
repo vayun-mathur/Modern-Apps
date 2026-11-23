@@ -25,14 +25,6 @@
     <string name="auto">自动</string>
     <string name="night_2">夜景 %1$s%%</string>
     <string name="settings_audio_source">音频输入源</string>
-    <string name="audio_source_camcorder_label">摄像机</string>
-    <string name="audio_source_camcorder_description">默认，针对视频优化</string>
-    <string name="audio_source_mic_label">麦克风</string>
-    <string name="audio_source_mic_description">主麦克风</string>
-    <string name="audio_source_voice_communication_label">语音</string>
-    <string name="audio_source_voice_communication_description">噪声和回声消除</string>
-    <string name="audio_source_unprocessed_label">未处理</string>
-    <string name="audio_source_unprocessed_description">原始，未经处理</string>
     <string name="settings_mirror_front">自拍镜像</string>
     <string name="settings_mirror_front_description">镜像前置摄像头预览和已保存的自拍照</string>
     <string name="qr_scanning_paused">二维码扫描已暂停</string>

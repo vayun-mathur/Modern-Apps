@@ -121,9 +121,9 @@ class CameraCovW3ComposeTest {
             rule.waitForIdle()
         }
         // Open the audio-source dropdown and pick an entry if present.
-        val audioNodes = rule.onAllNodesWithText("Camcorder", substring = true).fetchSemanticsNodes()
+        val audioNodes = rule.onAllNodesWithText("Auto", substring = true).fetchSemanticsNodes()
         if (audioNodes.isNotEmpty()) {
-            rule.onAllNodesWithText("Camcorder", substring = true)[0].performClick()
+            rule.onAllNodesWithText("Auto", substring = true)[0].performClick()
             rule.waitForIdle()
         }
         assertTrue(toggles.isNotEmpty())
@@ -135,14 +135,21 @@ class CameraCovW3ComposeTest {
         rule.setContent { SettingsPage(backStack, viewModel) }
         rule.waitForIdle()
         // Audio dropdown: the button shows "<label> — <description>"; pick a menu entry.
-        val audio = rule.onAllNodesWithText("Camcorder", substring = true).fetchSemanticsNodes()
+        val audio = rule.onAllNodesWithText("Auto", substring = true).fetchSemanticsNodes()
         if (audio.isNotEmpty()) {
-            rule.onAllNodesWithText("Camcorder", substring = true)[0].performClick()
+            rule.onAllNodesWithText("Auto", substring = true)[0].performClick()
             rule.waitForIdle()
             val mics = rule.onAllNodesWithText("Microphone", substring = true).fetchSemanticsNodes()
             if (mics.isNotEmpty()) {
                 rule.onAllNodesWithText("Microphone", substring = true)[mics.size - 1].performClick()
                 rule.waitForIdle()
+            } else {
+                // No physical device (Auto only): re-pick Auto to close the menu.
+                val autos = rule.onAllNodesWithText("Auto", substring = true).fetchSemanticsNodes()
+                if (autos.isNotEmpty()) {
+                    rule.onAllNodesWithText("Auto", substring = true)[autos.size - 1].performClick()
+                    rule.waitForIdle()
+                }
             }
         }
         // Motion-duration dropdown lives below the fold; scroll to its label first.

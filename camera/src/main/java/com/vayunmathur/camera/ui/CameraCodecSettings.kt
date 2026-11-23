@@ -15,7 +15,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.camera.R
-import com.vayunmathur.camera.platform.AudioInputSource
+import com.vayunmathur.camera.platform.camera2.AudioInputDeviceOption
+import com.vayunmathur.camera.platform.camera2.AudioInputDeviceSelection
 import com.vayunmathur.camera.platform.CodecSupport
 import com.vayunmathur.camera.platform.VideoCodec
 import com.vayunmathur.library.ui.DropdownMenu
@@ -28,17 +29,20 @@ import com.vayunmathur.library.ui.SettingsSection
 import com.vayunmathur.library.ui.Text
 
 /**
- * Codec and audio-source pickers owned by [SettingsPage]: the video codec
- * and audio input source dropdowns. (There is no audio-codec picker:
- * recording audio is always Opus.) Stateless: the caller passes values
+ * Codec and audio-device pickers owned by [SettingsPage]: the video codec
+ * and audio input device dropdowns. The device picker lists physical
+ * microphones (Auto = system routing, then each connected device); there
+ * is no AudioSource-type or audio-codec picker (recording audio is always
+ * Opus from the CAMCORDER source). Stateless: the caller passes values
  * plus change callbacks.
  */
 @Composable
 fun CameraCodecSettings(
     videoCodec: VideoCodec,
-    audioInputSource: AudioInputSource,
+    audioInputDevice: AudioInputDeviceSelection,
+    audioInputDeviceOptions: List<AudioInputDeviceOption>,
     onVideoCodecChange: (VideoCodec) -> Unit,
-    onAudioInputSourceChange: (AudioInputSource) -> Unit,
+    onAudioInputDeviceChange: (AudioInputDeviceSelection) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier) {
@@ -101,10 +105,14 @@ fun CameraCodecSettings(
             }
         }
 
-        SettingsSection(title = stringResource(R.string.settings_audio_source)) {
+        SettingsSection(title = stringResource(R.string.settings_audio_input_device)) {
             // Built from [OutlinedButton] + [DropdownMenu] rather than the library's
             // `ExposedDropdownMenu` wrapper, which currently recurses into itself.
             var audioExpanded by remember { mutableStateOf(false) }
+            // A chosen device that is no longer connected shows as Auto.
+            val selectedOption = audioInputDeviceOptions.firstOrNull {
+                it.selection == audioInputDevice
+            } ?: audioInputDeviceOptions.firstOrNull()
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -115,7 +123,8 @@ fun CameraCodecSettings(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        "${stringResource(audioInputSource.labelRes)} — ${stringResource(audioInputSource.descriptionRes)}",
+                        listOfNotNull(selectedOption?.label, selectedOption?.description)
+                            .joinToString(" — "),
                         modifier = Modifier.weight(1f),
                         textAlign = TextAlign.Start,
                         maxLines = 1,
@@ -127,21 +136,23 @@ fun CameraCodecSettings(
                     expanded = audioExpanded,
                     onDismissRequest = { audioExpanded = false }
                 ) {
-                    AudioInputSource.entries.forEach { source ->
+                    audioInputDeviceOptions.forEach { option ->
                         SelectableDropdownMenuItem(
-                            selected = source == audioInputSource,
+                            selected = option.selection == selectedOption?.selection,
                             onClick = {
-                                onAudioInputSourceChange(source)
+                                onAudioInputDeviceChange(option.selection)
                                 audioExpanded = false
                             },
                             text = {
                                 Column {
-                                    Text(stringResource(source.labelRes))
-                                    Text(
-                                        stringResource(source.descriptionRes),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                    Text(option.label)
+                                    option.description?.let { description ->
+                                        Text(
+                                            description,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
                                 }
                             },
                             selectedLeadingIcon = { IconCheck() },

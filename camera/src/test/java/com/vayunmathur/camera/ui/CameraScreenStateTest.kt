@@ -4,7 +4,6 @@ import android.hardware.camera2.CameraMetadata
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import com.vayunmathur.camera.platform.AspectRatioOption
-import com.vayunmathur.camera.platform.AudioInputSource
 import com.vayunmathur.camera.platform.CameraMode
 import com.vayunmathur.camera.platform.FlashMode
 import com.vayunmathur.camera.platform.TimerDuration
@@ -37,7 +36,7 @@ class CameraScreenStateTest {
         flashMode = FlashMode.OFF,
         torchEnabled = false,
         videoCodec = VideoCodec.AVC,
-        audioInputSource = AudioInputSource.CAMCORDER,
+        audioInputDevice = com.vayunmathur.camera.platform.camera2.AudioInputDeviceSelection.AUTO,
         isRecording = false,
         recordingDuration = 0,
         timerCountdown = 0,

@@ -36,7 +36,7 @@ class BottomControlsComposeExtraTest {
         selectedLens = null, availableLenses = emptyList(), hasFlashUnit = true,
         flashMode = FlashMode.AUTO, torchEnabled = false,
         videoCodec = viewModel.videoCodecMutable.value,
-        audioInputSource = viewModel.audioInputSourceMutable.value,
+        audioInputDevice = viewModel.audioInputDeviceMutable.value,
         isRecording = mode == CameraMode.VIDEO, recordingDuration = 65, timerCountdown = 0,
         qrResult = null,
         aspectRatio = AspectRatioOption.RATIO_4_3,

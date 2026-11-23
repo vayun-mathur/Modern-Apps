@@ -91,7 +91,10 @@ internal object AvifHardwareEncoder {
         var codec: MediaCodec? = null
         try {
             codec = MediaCodec.createByCodecName(codecName)
-            val format = MediaFormat.createImageFormat(AVIF_IMAGE_MIME, width, height).apply {
+            val format = MediaFormat().apply {
+                setString(MediaFormat.KEY_MIME, AVIF_IMAGE_MIME)
+                setInteger(MediaFormat.KEY_WIDTH, width)
+                setInteger(MediaFormat.KEY_HEIGHT, height)
                 setInteger(
                     MediaFormat.KEY_COLOR_FORMAT,
                     MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible,

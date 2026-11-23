@@ -237,7 +237,7 @@ internal fun CameraScreenEffects(
     // backgrounded and rebound on resume. Without this the ManualLifecycleOwner stays RESUMED,
     // the OS reclaims the camera while we're away, and the preview comes back frozen.
     val lifecycleOwner = LocalLifecycleOwner.current
-    // Codec/audio/mirror are fixed at bind time (Recorder mime, AudioSource, MirrorMode), so
+    // Codec/audio-device/mirror are fixed at bind time (Recorder mime, preferred device, MirrorMode), so
     // they join the effect keys: changing them in Settings rebinds instead of silently waiting
     // for the next mode switch. The keys are the APPLIED snapshot (bindTimeSettings), not the
     // live desired values: while recording the snapshot is held, so a Settings change made

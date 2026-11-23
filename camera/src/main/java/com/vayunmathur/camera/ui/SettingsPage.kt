@@ -32,14 +32,16 @@ import androidx.compose.ui.unit.dp
 import com.vayunmathur.camera.R
 import com.vayunmathur.camera.platform.CameraViewModel
 import com.vayunmathur.camera.platform.MotionPhotoDuration
+import com.vayunmathur.camera.platform.requestedStillFormat
 import com.vayunmathur.camera.data.SafDocuments
 import com.vayunmathur.camera.data.SaveTarget
 import com.vayunmathur.camera.data.clearSaveTreeUri
-import com.vayunmathur.camera.data.setAudioInputSource
+import com.vayunmathur.camera.data.setAudioInputDevice
 import com.vayunmathur.camera.data.setEdgeSharpeningEnabled
 import com.vayunmathur.camera.data.setLocationEnabled
 import com.vayunmathur.camera.data.setMirrorFront
 import com.vayunmathur.camera.data.setMotionPhotoDuration
+import com.vayunmathur.camera.data.setMotionPhotoEnabled
 import com.vayunmathur.camera.data.setNoiseReductionEnabled
 import com.vayunmathur.camera.data.setSaveTreeUri
 import com.vayunmathur.camera.data.setPhotoFormat
@@ -58,13 +60,40 @@ fun <T : NavKey> SettingsPage(backStack: NavBackStack<T>, viewModel: CameraViewM
     val locationEnabled by viewModel.locationEnabled.collectAsState()
     val videoCodec by viewModel.videoCodec.collectAsState()
     val photoFormat by viewModel.photoFormat.collectAsState()
-    val audioInputSource by viewModel.audioInputSource.collectAsState()
+    val audioInputDevice by viewModel.audioInputDevice.collectAsState()
     val mirrorFront by viewModel.mirrorFront.collectAsState()
     val noiseReductionEnabled by viewModel.noiseReductionEnabled.collectAsState()
     val edgeSharpeningEnabled by viewModel.edgeSharpeningEnabled.collectAsState()
     val motionPhotoDuration by viewModel.motionPhotoDuration.collectAsState()
+    val motionPhotoEnabled by viewModel.motionPhotoEnabled.collectAsState()
     val saveTarget by viewModel.saveTarget.collectAsState()
     val context = LocalContext.current
+    // Physical input devices, refreshed when devices connect/disconnect.
+    var audioDeviceOptions by remember {
+        mutableStateOf(com.vayunmathur.camera.platform.camera2.AudioInputDevices.options(context))
+    }
+    androidx.compose.runtime.DisposableEffect(context) {
+        val audioManager = context.getSystemService(android.media.AudioManager::class.java)
+        val callback = object : android.media.AudioDeviceCallback() {
+            override fun onAudioDevicesAdded(addedDevices: Array<out android.media.AudioDeviceInfo>?) {
+                audioDeviceOptions =
+                    com.vayunmathur.camera.platform.camera2.AudioInputDevices.options(context)
+            }
+            override fun onAudioDevicesRemoved(removedDevices: Array<out android.media.AudioDeviceInfo>?) {
+                audioDeviceOptions =
+                    com.vayunmathur.camera.platform.camera2.AudioInputDevices.options(context)
+            }
+        }
+        audioManager?.registerAudioDeviceCallback(callback, null)
+        onDispose { audioManager?.unregisterAudioDeviceCallback(callback) }
+    }
+    // Effective picker selection: a disconnected chosen device shows as Auto.
+    val effectiveAudioDevice = remember(audioDeviceOptions, audioInputDevice) {
+        com.vayunmathur.camera.platform.camera2.AudioInputDevicePolicy.resolve(
+            audioInputDevice,
+            com.vayunmathur.camera.platform.camera2.AudioInputDevices.enumerate(context),
+        )
+    }
     val messenger = rememberMessenger()
     val saveLocationError = stringResource(R.string.settings_save_location_error)
     // Bind-time settings (codec/audio/mirror) changed mid-recording are persisted
@@ -139,9 +168,10 @@ fun <T : NavKey> SettingsPage(backStack: NavBackStack<T>, viewModel: CameraViewM
             )
             CameraCodecSettings(
                 videoCodec = videoCodec,
-                audioInputSource = audioInputSource,
+                audioInputDevice = effectiveAudioDevice,
+                audioInputDeviceOptions = audioDeviceOptions,
                 onVideoCodecChange = { viewModel.setVideoCodec(it); noteIfDeferred() },
-                onAudioInputSourceChange = { viewModel.setAudioInputSource(it); noteIfDeferred() },
+                onAudioInputDeviceChange = { viewModel.setAudioInputDevice(it); noteIfDeferred() },
             )
 
             SettingsSection(title = stringResource(R.string.settings_mirror_front)) {
@@ -160,9 +190,15 @@ fun <T : NavKey> SettingsPage(backStack: NavBackStack<T>, viewModel: CameraViewM
             CameraPostProcessingSettings(
                 noiseReductionEnabled = noiseReductionEnabled,
                 edgeSharpeningEnabled = edgeSharpeningEnabled,
+                motionPhotoEnabled = motionPhotoEnabled,
                 motionPhotoDuration = motionPhotoDuration,
+                // Effective AVIF only (native encoder present): a JPEG-fallback
+                // AVIF selection leaves Motion Photo available, as at capture.
+                motionPhotoBlockedByAvif = com.vayunmathur.camera.domain.StillFormatRouting
+                    .avifPrecludesMotionPhoto(viewModel.requestedStillFormat(), com.vayunmathur.camera.platform.StitchNative.isAvailable),
                 onNoiseReductionChange = { viewModel.setNoiseReductionEnabled(it) },
                 onEdgeSharpeningChange = { viewModel.setEdgeSharpeningEnabled(it) },
+                onMotionPhotoEnabledChange = { viewModel.setMotionPhotoEnabled(it) },
                 onMotionDurationChange = { viewModel.setMotionPhotoDuration(it) },
             )
 

@@ -17,14 +17,6 @@
     <string name="codec_av1_label">AV1</string>
     <string name="codec_av1_description">Mest effektiv</string>
     <string name="settings_audio_source">Ljudingångskälla</string>
-    <string name="audio_source_camcorder_label">Videokamera</string>
-    <string name="audio_source_camcorder_description">Standard, anpassad för videoinspelning</string>
-    <string name="audio_source_mic_label">Mikrofon</string>
-    <string name="audio_source_mic_description">Huvudmikrofon</string>
-    <string name="audio_source_voice_communication_label">Röst</string>
-    <string name="audio_source_voice_communication_description">Brus- och ekodämpning</string>
-    <string name="audio_source_unprocessed_label">Obearbetat</string>
-    <string name="audio_source_unprocessed_description">Rått, utan bearbetning</string>
     <string name="qr_result">QR-kod</string>
     <string name="open_url">Öppna URL</string>
     <string name="no_app_to_open_url">Ingen app kan öppna länken</string>

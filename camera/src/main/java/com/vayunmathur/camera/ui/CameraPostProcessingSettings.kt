@@ -28,16 +28,25 @@ import com.vayunmathur.library.ui.Text
 
 /**
  * Post-processing settings rows owned by [SettingsPage]: the noise-reduction and
- * edge-sharpening toggles (issue #662) plus the Motion-Photo clip-length picker
- * (issue #712). Stateless: the caller passes values plus change callbacks.
+ * edge-sharpening toggles (issue #662) plus the Motion Photo on/off toggle and
+ * clip-length picker (issue #712). Stateless: the caller passes values plus
+ * change callbacks.
+ *
+ * [motionPhotoBlockedByAvif] is an effective AVIF selection: a Motion Photo is
+ * a JPEG with an MP4 trailer, so the toggle renders disabled with that reason
+ * (its stored value is kept) and captures stay plain stills. The clip-length
+ * picker only shows while Motion Photo is on.
  */
 @Composable
 fun CameraPostProcessingSettings(
     noiseReductionEnabled: Boolean,
     edgeSharpeningEnabled: Boolean,
+    motionPhotoEnabled: Boolean,
     motionPhotoDuration: MotionPhotoDuration,
+    motionPhotoBlockedByAvif: Boolean,
     onNoiseReductionChange: (Boolean) -> Unit,
     onEdgeSharpeningChange: (Boolean) -> Unit,
+    onMotionPhotoEnabledChange: (Boolean) -> Unit,
     onMotionDurationChange: (MotionPhotoDuration) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -58,6 +67,21 @@ fun CameraPostProcessingSettings(
             )
         }
 
+        SettingsSection(title = stringResource(R.string.settings_motion_photo)) {
+            SettingsSwitchRow(
+                title = stringResource(R.string.settings_motion_photo_description),
+                supportingText = if (motionPhotoBlockedByAvif) {
+                    stringResource(R.string.settings_motion_photo_requires_jpeg)
+                } else {
+                    null
+                },
+                checked = motionPhotoEnabled,
+                enabled = !motionPhotoBlockedByAvif,
+                onCheckedChange = onMotionPhotoEnabledChange,
+            )
+        }
+
+        if (motionPhotoEnabled) {
         SettingsSection(title = stringResource(R.string.settings_motion_duration)) {
             // Built from [OutlinedButton] + [DropdownMenu] like the codec/audio pickers
             // in SettingsPage, rather than the library's `ExposedDropdownMenu` wrapper,
@@ -100,6 +124,7 @@ fun CameraPostProcessingSettings(
                     }
                 }
             }
+        }
         }
     }
 }

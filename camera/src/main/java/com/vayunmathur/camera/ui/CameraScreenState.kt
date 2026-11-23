@@ -6,7 +6,7 @@ import androidx.compose.runtime.MutableIntState
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.setValue
 import com.vayunmathur.camera.platform.AspectRatioOption
-import com.vayunmathur.camera.platform.AudioInputSource
+import com.vayunmathur.camera.platform.camera2.AudioInputDeviceSelection
 import com.vayunmathur.camera.platform.CameraMode
 import com.vayunmathur.camera.platform.CameraViewModel
 import com.vayunmathur.camera.platform.FlashMode
@@ -30,7 +30,7 @@ import com.vayunmathur.camera.platform.VideoCodec
     val flashMode: FlashMode,
     val torchEnabled: Boolean,
     val videoCodec: VideoCodec,
-    val audioInputSource: AudioInputSource,
+    val audioInputDevice: AudioInputDeviceSelection,
     val isRecording: Boolean,
     val recordingDuration: Long,
     val timerCountdown: Int,

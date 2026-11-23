@@ -8,7 +8,7 @@ import androidx.core.net.toUri
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
 import com.vayunmathur.camera.platform.AspectRatioOption
-import com.vayunmathur.camera.platform.AudioInputSource
+import com.vayunmathur.camera.platform.camera2.AudioInputDeviceSelection
 import com.vayunmathur.camera.platform.CameraViewModel
 import com.vayunmathur.camera.platform.CodecSupport
 import com.vayunmathur.camera.platform.FlashMode
@@ -17,6 +17,7 @@ import com.vayunmathur.camera.platform.PhotoFormat
 import com.vayunmathur.camera.platform.TimerDuration
 import com.vayunmathur.camera.platform.VideoCodec
 import com.vayunmathur.camera.platform.applyManualControls
+import com.vayunmathur.camera.platform.clearMotionFrames
 import com.vayunmathur.camera.platform.currentCropAspectRatio
 import com.vayunmathur.camera.platform.registerLevelSensor
 import com.vayunmathur.camera.platform.unregisterLevelSensor
@@ -27,7 +28,7 @@ internal fun CameraViewModel.loadSettings() {
     if (levelEnabledMutable.value) registerLevelSensor()
 }
 
-/** Flash/timer/aspect/codec/audio-source/save-target/last-capture restores. */
+/** Flash/timer/aspect/codec/audio-device/save-target/last-capture restores. */
 private fun CameraViewModel.loadCaptureSettings() {
     ds.getString("camera_flash")?.let {
         runCatching { flashModeMutable.value = FlashMode.valueOf(it) }
@@ -49,18 +50,17 @@ private fun CameraViewModel.loadCaptureSettings() {
     ds.getString("camera_motion_duration")?.let {
         runCatching { motionPhotoDurationMutable.value = MotionPhotoDuration.valueOf(it) }
     }
-    ds.getString("camera_audio_source")?.let {
-        audioInputSourceMutable.value = try {
-            AudioInputSource.valueOf(it)
-        } catch (_: Exception) {
-            AudioInputSource.CAMCORDER
-        }
+    // Physical input device (id+type), not an AudioSource type. A stale
+    // or malformed stored value parses to Auto, never crashes.
+    ds.getString("camera_audio_input_device")?.let {
+        audioInputDeviceMutable.value = AudioInputDeviceSelection.parse(it)
     }
-    // Opus-only: the retired audio-codec setting (camera_audio_codec) is
-    // never read again — audio encoding is not selectable. Drop any
-    // stored value so it cannot linger or be misread later; an unknown
-    // or stale value is simply deleted, never parsed.
-    viewModelScope.launch { ds.removeKeys(listOf("camera_audio_codec")) }
+    // Retired settings are never read again: the AudioSource-type choice
+    // (camera_audio_source, e.g. a stale "CAMCORDER"/"MIC" value) and the
+    // audio-codec choice (camera_audio_codec; Opus-only). Drop any stored
+    // values so they cannot linger or be misread later; they are simply
+    // deleted, never parsed.
+    viewModelScope.launch { ds.removeKeys(listOf("camera_audio_codec", "camera_audio_source")) }
     loadSaveTarget()
     // Guard against a blank persisted value: Uri.parse("") yields a non-null
     ds.getString("camera_last_capture")?.takeIf { it.isNotBlank() }?.let { lastCaptureUriMutable.value = it.toUri() }
@@ -76,6 +76,8 @@ private fun CameraViewModel.loadPreferenceToggles() {
     ds.getString("camera_mirror_front")?.let { mirrorFrontMutable.value = it.toBoolean() }
     ds.getString("camera_noise_reduction")?.let { noiseReductionEnabledMutable.value = it.toBoolean() }
     ds.getString("camera_edge_sharpening")?.let { edgeSharpeningEnabledMutable.value = it.toBoolean() }
+    // Absent key keeps the ViewModel default (on), so existing users see no change.
+    ds.getString("camera_motion_photo_enabled")?.let { motionPhotoEnabledMutable.value = it.toBoolean() }
 }
 
 fun CameraViewModel.setFlashMode(mode: FlashMode) {
@@ -156,15 +158,27 @@ fun CameraViewModel.setVideoCodec(codec: VideoCodec) {
     viewModelScope.launch { ds.setString("camera_video_codec", codec.name) }
 }
 
+/**
+ * Motion Photo on/off. Off takes plain stills always: no capture diversion
+ * and no ring-buffer accumulation, whatever the length/ratio/format. Drops
+ * any frames buffered while it was on so a later re-enable cannot attach a
+ * clip from before the off period.
+ */
+fun CameraViewModel.setMotionPhotoEnabled(enabled: Boolean) {
+    motionPhotoEnabledMutable.value = enabled
+    if (!enabled) clearMotionFrames()
+    viewModelScope.launch { ds.setString("camera_motion_photo_enabled", enabled.toString()) }
+}
+
 /** Motion-Photo clip length (issue #712); applies to the next capture's ring buffer. */
 fun CameraViewModel.setMotionPhotoDuration(duration: MotionPhotoDuration) {
     motionPhotoDurationMutable.value = duration
     viewModelScope.launch { ds.setString("camera_motion_duration", duration.name) }
 }
 
-fun CameraViewModel.setAudioInputSource(source: AudioInputSource) {
-    audioInputSourceMutable.value = source
-    viewModelScope.launch { ds.setString("camera_audio_source", source.name) }
+fun CameraViewModel.setAudioInputDevice(selection: AudioInputDeviceSelection) {
+    audioInputDeviceMutable.value = selection
+    viewModelScope.launch { ds.setString("camera_audio_input_device", selection.encode()) }
 }
 
 fun CameraViewModel.toggleGrid() {

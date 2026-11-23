@@ -45,6 +45,13 @@ data class CustomRecordingConfig(
      * state when no Opus encoder exists (see [AudioEncoderPolicy]).
      */
     val audioEnabled: Boolean = true,
+    /**
+     * Physical microphone to prefer (Auto = system routing). Applied to
+     * the AudioRecord via `setPreferredDevice` in the recording core; the
+     * internal AudioSource stays CAMCORDER regardless of this choice.
+     */
+    val audioInputDevice: com.vayunmathur.camera.platform.camera2.AudioInputDeviceSelection =
+        com.vayunmathur.camera.platform.camera2.AudioInputDeviceSelection.AUTO,
 )
 
 /** Read-back summary of a finished file (see [Camera2VideoRecordingEngine.validateOutput]). */
@@ -127,6 +134,9 @@ class Camera2VideoRecordingEngine(
         config,
         initialBitrateBps = { controller.currentBitrateBps },
         ownership = RecordingSessionOwnership.ENGINE_OWNED,
+        audioInputDevices = {
+            com.vayunmathur.camera.platform.camera2.AudioInputDevices.enumerateInfos(context)
+        },
     )
 
     @Volatile private var running = false

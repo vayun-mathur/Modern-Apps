@@ -48,7 +48,7 @@ class CameraCovX4ComposeTest {
         selectedLens = null, availableLenses = emptyList(), hasFlashUnit = true,
         flashMode = com.vayunmathur.camera.platform.FlashMode.AUTO, torchEnabled = false,
         videoCodec = viewModel.videoCodecMutable.value,
-        audioInputSource = viewModel.audioInputSourceMutable.value,
+        audioInputDevice = viewModel.audioInputDeviceMutable.value,
         isRecording = mode == CameraMode.VIDEO, recordingDuration = 12, timerCountdown = 0,
         qrResult = null,
         aspectRatio = com.vayunmathur.camera.platform.AspectRatioOption.RATIO_4_3,
@@ -139,14 +139,21 @@ class CameraCovX4ComposeTest {
         val reset = rule.onAllNodesWithText("Reset", substring = true).fetchSemanticsNodes()
         assertTrue(reset.isNotEmpty())
         // Open the audio dropdown and pick the last microphone entry.
-        val audio = rule.onAllNodesWithText("Camcorder", substring = true).fetchSemanticsNodes()
+        val audio = rule.onAllNodesWithText("Auto", substring = true).fetchSemanticsNodes()
         if (audio.isNotEmpty()) {
-            rule.onAllNodesWithText("Camcorder", substring = true)[0].performClick()
+            rule.onAllNodesWithText("Auto", substring = true)[0].performClick()
             rule.waitForIdle()
             val mics = rule.onAllNodesWithText("Microphone", substring = true).fetchSemanticsNodes()
             if (mics.isNotEmpty()) {
                 rule.onAllNodesWithText("Microphone", substring = true)[mics.size - 1].performClick()
                 rule.waitForIdle()
+            } else {
+                // No physical device (Auto only): re-pick Auto to close the menu.
+                val autos = rule.onAllNodesWithText("Auto", substring = true).fetchSemanticsNodes()
+                if (autos.isNotEmpty()) {
+                    rule.onAllNodesWithText("Auto", substring = true)[autos.size - 1].performClick()
+                    rule.waitForIdle()
+                }
             }
         }
         assertEquals("settings", viewModel.foregroundRoute)

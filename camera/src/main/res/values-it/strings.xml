@@ -28,12 +28,4 @@
     <string name="settings_mirror_front">Rifletti selfie</string>
     <string name="settings_mirror_front_description">Rifletti l\'anteprima della fotocamera frontale e i selfie salvati</string>
     <string name="settings_audio_source">Sorgente input audio</string>
-    <string name="audio_source_camcorder_label">Camcorder</string>
-    <string name="audio_source_camcorder_description">Predefinito, regolato per i video</string>
-    <string name="audio_source_mic_label">Microfono</string>
-    <string name="audio_source_mic_description">Microfono principale</string>
-    <string name="audio_source_voice_communication_label">Voce</string>
-    <string name="audio_source_voice_communication_description">Cancellazione di rumore ed eco</string>
-    <string name="audio_source_unprocessed_label">Non processato</string>
-    <string name="audio_source_unprocessed_description">Grezzo, nessun processo</string>
 </resources>

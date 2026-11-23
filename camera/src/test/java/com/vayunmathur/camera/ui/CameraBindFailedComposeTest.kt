@@ -38,7 +38,7 @@ class CameraBindFailedComposeTest {
         flashMode = FlashMode.OFF,
         torchEnabled = false,
         videoCodec = viewModel.videoCodecMutable.value,
-        audioInputSource = viewModel.audioInputSourceMutable.value,
+        audioInputDevice = viewModel.audioInputDeviceMutable.value,
         isRecording = false,
         recordingDuration = 0,
         timerCountdown = 0,

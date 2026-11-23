@@ -113,8 +113,8 @@ internal object AvifCodecProbe {
             } catch (_: Exception) {
                 false
             },
-            maxWidth = video?.upper?.width,
-            maxHeight = video?.upper?.height,
+            maxWidth = video?.supportedWidths?.upper,
+            maxHeight = video?.supportedHeights?.upper,
         )
     }
 }

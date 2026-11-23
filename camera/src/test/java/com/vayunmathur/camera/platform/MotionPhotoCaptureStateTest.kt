@@ -149,6 +149,25 @@ class MotionPhotoCaptureStateTest {
     }
 
     @Test
+    fun motionPhotoOffRoutesToPlainStillAndBuffersNothing() {
+        val v = vm()
+        // Default is on, preserving the pre-toggle behaviour.
+        assertTrue(v.motionPhotoEnabled.value)
+        v.motionPhotoEnabledMutable.value = false
+        // 4:3 + JPEG + a length set: still a plain still, queue untouched.
+        assertEquals(StillRoute.SINGLE, v.routeStillCapture())
+        assertEquals(0, v.motionSaveQueue.pending)
+        // No ring-buffer accumulation while off (bitmap is recycled).
+        val frame = Bitmap.createBitmap(4, 4, Bitmap.Config.ARGB_8888)
+        v.addMotionFrame(frame, 0L, 90)
+        assertTrue(frame.isRecycled)
+        assertTrue(v.drainMotionFrames().isEmpty())
+        // Re-enabling restores the previous diversion.
+        v.motionPhotoEnabledMutable.value = true
+        assertEquals(StillRoute.MOTION_PHOTO, v.routeStillCapture())
+    }
+
+    @Test
     fun nonMotionModesDoNotTouchTheQueue() {
         val v = vm()
         v.aspectRatioMutable.value = AspectRatioOption.RATIO_16_9

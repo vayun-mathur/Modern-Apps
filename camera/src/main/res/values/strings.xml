@@ -90,7 +90,13 @@
     <string name="photo_format_avif_label">AVIF</string>
     <string name="photo_format_avif_description">Smaller files, slower to save; Ultra HDR and Motion Photos stay JPEG</string>
 
-    <!-- Motion-Photo duration settings (SettingsPage, issue #712) -->
+    <!-- Motion-Photo settings (SettingsPage, issue #712) -->
+    <!-- SettingsPage: section header for the motion-photo on/off toggle -->
+    <string name="settings_motion_photo">Motion photo</string>
+    <!-- SettingsPage: summary explaining the motion-photo toggle -->
+    <string name="settings_motion_photo_description">Save a short clip with each photo</string>
+    <!-- SettingsPage: reason shown under the disabled motion-photo toggle when AVIF is the effective format -->
+    <string name="settings_motion_photo_requires_jpeg">Motion Photo needs JPEG</string>
     <!-- SettingsPage: section header for motion-photo clip-length selection -->
     <string name="settings_motion_duration">Motion photo length</string>
     <!-- Motion-Photo duration: clip length in seconds. %1$d = seconds -->
@@ -99,25 +105,11 @@
         <item quantity="other">%1$d seconds</item>
     </plurals>
 
-    <!-- Audio input source settings (SettingsPage): mic source used for video recordings -->
-    <!-- SettingsPage: section header for audio input source selection -->
-    <string name="settings_audio_source">Audio input source</string>
-    <!-- Audio source option label: camcorder (default, tuned for video) -->
-    <string name="audio_source_camcorder_label">Camcorder</string>
-    <!-- Audio source description: default mic tuned for video recording -->
-    <string name="audio_source_camcorder_description">Default, tuned for video</string>
-    <!-- Audio source option label: main microphone -->
-    <string name="audio_source_mic_label">Microphone</string>
-    <!-- Audio source description: the device's main microphone -->
-    <string name="audio_source_mic_description">Main microphone</string>
-    <!-- Audio source option label: voice communication -->
-    <string name="audio_source_voice_communication_label">Voice</string>
-    <!-- Audio source description: noise and echo cancellation, good for speaking to camera -->
-    <string name="audio_source_voice_communication_description">Noise and echo cancellation</string>
-    <!-- Audio source option label: unprocessed / raw audio -->
-    <string name="audio_source_unprocessed_label">Unprocessed</string>
-    <!-- Audio source description: raw audio with no processing -->
-    <string name="audio_source_unprocessed_description">Raw, no processing</string>
+    <!-- Audio input device settings (SettingsPage): physical mic used for video recordings -->
+    <!-- SettingsPage: section header for audio input device selection -->
+    <string name="settings_audio_input_device">Audio input device</string>
+    <!-- SettingsPage (locale fallback): legacy header name kept for translations -->
+    <string name="settings_audio_source">Audio input device</string>
 
     <!-- QR code detection overlay -->
     <!-- QrResultOverlay: header title when QR code detected -->

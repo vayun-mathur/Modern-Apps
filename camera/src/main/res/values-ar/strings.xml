@@ -16,14 +16,6 @@
     <string name="codec_av1_label">AV1</string>
     <string name="codec_av1_description">الأكثر كفاءة</string>
     <string name="settings_audio_source">مصدر إدخال الصوت</string>
-    <string name="audio_source_camcorder_label">كاميرا الفيديو</string>
-    <string name="audio_source_camcorder_description">الافتراضي، مُضَبَّط للفيديو</string>
-    <string name="audio_source_mic_label">ميكروفون</string>
-    <string name="audio_source_mic_description">الميكروفون الرئيسي</string>
-    <string name="audio_source_voice_communication_label">صوتي</string>
-    <string name="audio_source_voice_communication_description">إلغاء الضوضاء والصدى</string>
-    <string name="audio_source_unprocessed_label">غير معالج</string>
-    <string name="audio_source_unprocessed_description">خام، لا معالجة</string>
     <string name="qr_result">رمز QR</string>
     <string name="open_url">فتح عنوان الـ URL</string>
     <string name="no_app_to_open_url">لا تطبيق يمكنه فتح هذا الرابط</string>

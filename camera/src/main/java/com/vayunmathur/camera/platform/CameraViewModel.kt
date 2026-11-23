@@ -216,8 +216,14 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
     internal val motionPhotoDurationMutable = MutableStateFlow(MotionPhotoDuration.THREE)
     val motionPhotoDuration = motionPhotoDurationMutable.asStateFlow()
 
-    internal val audioInputSourceMutable = MutableStateFlow(AudioInputSource.CAMCORDER)
-    val audioInputSource = audioInputSourceMutable.asStateFlow()
+    // Motion Photo on/off. Default on preserves the pre-toggle behaviour:
+    // eligible plain stills diverted to Motion Photo with no explicit opt-in.
+    internal val motionPhotoEnabledMutable = MutableStateFlow(true)
+    val motionPhotoEnabled = motionPhotoEnabledMutable.asStateFlow()
+
+    internal val audioInputDeviceMutable =
+        MutableStateFlow(com.vayunmathur.camera.platform.camera2.AudioInputDeviceSelection.AUTO)
+    val audioInputDevice = audioInputDeviceMutable.asStateFlow()
 
     // No recording audio-codec state: audio is always Opus
     // (AudioEncoderPolicy), with a video-only recording when a device
@@ -408,11 +414,11 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
 
     /** The user's chosen bind-time settings, before any recording deferral. */
     private val desiredBindSettings = combine(
-        videoCodecMutable, audioInputSourceMutable, mirrorFrontMutable
-    ) { video, source, mirror -> BindTimeSettings(video, source, mirror) }
+        videoCodecMutable, audioInputDeviceMutable, mirrorFrontMutable
+    ) { video, device, mirror -> BindTimeSettings(video, device, mirror) }
 
     /**
-     * The bind-time settings a session bind must actually use. Codec, audio source and
+     * The bind-time settings a session bind must actually use. Codec, audio input device and
      * mirroring are fixed when the Recorder/VideoCapture is built, so changing them used
      * to rebind the session mid-recording: teardown stopped the active recording with no
      * warning and the user lost the take believing it continued. While recording, this
@@ -426,13 +432,15 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
     }
         .runningFold(
             BindTimeSettings(
-                CodecSupport.defaultVideoCodec, AudioInputSource.CAMCORDER, true
+                CodecSupport.defaultVideoCodec,
+                com.vayunmathur.camera.platform.camera2.AudioInputDeviceSelection.AUTO, true
             )
         ) { held, gate -> if (gate.recording) held else gate.settings }
         .stateIn(
             viewModelScope, SharingStarted.Eagerly,
             BindTimeSettings(
-                CodecSupport.defaultVideoCodec, AudioInputSource.CAMCORDER, true
+                CodecSupport.defaultVideoCodec,
+                com.vayunmathur.camera.platform.camera2.AudioInputDeviceSelection.AUTO, true
             )
         )
 

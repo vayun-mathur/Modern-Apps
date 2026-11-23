@@ -192,6 +192,8 @@ internal fun CameraViewModel.startRecording() {
         fps = 30,
         videoMime = mime,
         audioEnabled = audioEnabled,
+        // Physical mic from the bind-time snapshot (held during a take).
+        audioInputDevice = bindTimeSettings.value.audioInputDevice,
     )
     val controller = com.vayunmathur.camera.domain.LiveBitrateController(decision)
     val engine = Camera2VideoRecordingEngine(

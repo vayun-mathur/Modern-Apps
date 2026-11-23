@@ -17,14 +17,6 @@
     <string name="codec_av1_label">AV1</string>
     <string name="codec_av1_description">Ən səmərəli</string>
     <string name="settings_audio_source">Audio giriş mənbəyi</string>
-    <string name="audio_source_camcorder_label">Video kamera</string>
-    <string name="audio_source_camcorder_description">Standart, video üçün tənzimlənib</string>
-    <string name="audio_source_mic_label">Mikrofon</string>
-    <string name="audio_source_mic_description">Əsas mikrofon</string>
-    <string name="audio_source_voice_communication_label">Səs</string>
-    <string name="audio_source_voice_communication_description">Səs-küyün və əks-sədanın ləğvi</string>
-    <string name="audio_source_unprocessed_label">Emal olunmamış</string>
-    <string name="audio_source_unprocessed_description">Xam, emal olunmamış</string>
     <string name="qr_result">QR kodu</string>
     <string name="open_url">URL aç</string>
     <string name="no_app_to_open_url">Heç bir tətbiq bu linki aça bilmir</string>
