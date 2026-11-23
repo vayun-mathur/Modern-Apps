@@ -46,7 +46,7 @@ data class CustomRecordingConfig(
      */
     val audioEnabled: Boolean = true,
     /**
-     * Physical microphone to prefer (Auto = system routing). Applied to
+     * Physical microphone to prefer (no explicit choice = system routing). Applied to
      * the AudioRecord via `setPreferredDevice` in the recording core; the
      * internal AudioSource stays CAMCORDER regardless of this choice.
      */

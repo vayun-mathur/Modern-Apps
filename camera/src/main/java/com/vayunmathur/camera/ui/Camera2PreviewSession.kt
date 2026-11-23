@@ -75,14 +75,18 @@ internal class Camera2PreviewSession(
         val liveCameraId = resolvedCameraId
         if (liveSession == null || liveCameraId == null) return@PreviewSurfaceBridge
         when (event) {
-            is PreviewSurfaceEvent.Available -> liveSession.open(
-                cameraId = liveCameraId,
-                surface = event.surface,
-                requestedSize = FrameSize(event.width, event.height),
-            )
+            is PreviewSurfaceEvent.Available -> {
+                pinPreviewStream(FrameSize(event.width, event.height))
+                liveSession.open(
+                    cameraId = liveCameraId,
+                    surface = event.surface,
+                    requestedSize = FrameSize(event.width, event.height),
+                )
+            }
             is PreviewSurfaceEvent.SizeChanged -> {
                 // No resize API on the Phase-2 session: reopen at the new
                 // size so the stream is re-validated up front.
+                pinPreviewStream(FrameSize(event.width, event.height))
                 liveSession.close()
                 liveSession.open(
                     cameraId = liveCameraId,
@@ -92,6 +96,20 @@ internal class Camera2PreviewSession(
             }
             is PreviewSurfaceEvent.Destroyed -> liveSession.close()
         }
+    }
+
+    /**
+     * Pins the bridge's buffer to the size the session will select for
+     * [requested] and installs its fill transform. Must run before
+     * `open`: the HAL reads the buffer size at configure time, so pinning
+     * after streaming starts would leave the stream at the view size and
+     * the transform describing a different buffer than the one streaming.
+     */
+    private fun pinPreviewStream(requested: FrameSize) {
+        val snapshot = facadeSnapshot ?: return
+        val selected = com.vayunmathur.camera.platform.camera2.StreamSelection
+            .selectSessionPreviewSize(requested, snapshot) ?: return
+        bridge.setPreviewStream(selected, snapshot.sensorOrientationDegrees, lensFacing)
     }
 
     private val errorGate = OnceErrorReporter(onError)
@@ -173,6 +191,13 @@ internal class Camera2PreviewSession(
             listener = object : Camera2Session.Listener {
                 override fun onStreaming(previewSize: com.vayunmathur.camera.platform.camera2.FrameSize) {
                     streamed = true
+                    // Re-assert the streamed size: same size as pinned, so
+                    // this only (re)applies the transform for it.
+                    facadeSnapshot?.let { snapshot ->
+                        bridge.setPreviewStream(
+                            previewSize, snapshot.sensorOrientationDegrees, lensFacing,
+                        )
+                    }
                 }
 
                 override fun onError(message: String) {
@@ -228,6 +253,11 @@ internal class Camera2PreviewSession(
         val liveSurface = bridge.state.surface
         val cameraId = resolvedCameraId
         if (built != null && liveSurface != null && cameraId != null) {
+            pinPreviewStream(
+                com.vayunmathur.camera.platform.camera2.FrameSize(
+                    bridge.state.width, bridge.state.height,
+                ),
+            )
             built.open(
                 cameraId = cameraId,
                 surface = liveSurface,

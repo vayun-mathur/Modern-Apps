@@ -51,7 +51,7 @@ private fun CameraViewModel.loadCaptureSettings() {
         runCatching { motionPhotoDurationMutable.value = MotionPhotoDuration.valueOf(it) }
     }
     // Physical input device (id+type), not an AudioSource type. A stale
-    // or malformed stored value parses to Auto, never crashes.
+    // or malformed stored value parses to no explicit choice, never crashes.
     ds.getString("camera_audio_input_device")?.let {
         audioInputDeviceMutable.value = AudioInputDeviceSelection.parse(it)
     }

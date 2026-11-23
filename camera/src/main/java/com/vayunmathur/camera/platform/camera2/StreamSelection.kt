@@ -311,6 +311,32 @@ object StreamSelection {
         )
     }
 
+    /**
+     * The preview size one session will actually configure for
+     * [requested]: [supportedPreviewSizes] with the LIMITED 1080p cap
+     * applied (the guaranteed-combination ceiling from
+     * [planSessionStreams]), then [selectPreviewSize]. This is the single
+     * selection both the session (validation) and the preview surface
+     * (buffer pinning in `PreviewSurfaceBridge`) must agree on — if the
+     * surface pins a different size than the session selected, the HAL
+     * stream and the TextureView buffer disagree and the view stretches.
+     * Null only when the lens reports no preview sizes at all.
+     */
+    fun selectSessionPreviewSize(
+        requested: FrameSize,
+        snapshot: LensCharacteristicsSnapshot,
+    ): FrameSize? {
+        val allSupported = supportedPreviewSizes(snapshot)
+        val supported = if (isLimitedOrLower(snapshot)) {
+            allSupported.filter {
+                it.area.toLong() <= LIMITED_STREAM_MAX_PIXELS
+            }.ifEmpty { allSupported }
+        } else {
+            allSupported
+        }
+        return selectPreviewSize(requested, supported)
+    }
+
     /** The rejection for [requested], or null when a size can be selected. */
     fun rejectionFor(
         requested: FrameSize,

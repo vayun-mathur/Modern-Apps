@@ -51,9 +51,9 @@ class CameraCovC2SettingsTest {
     }
 
     @Test fun settingsPageSelectsAudioInputDevice() {
-        // The picker is a physical-device picker: Auto plus connected
-        // devices (only Auto under Robolectric, which has no input
-        // hardware), never AudioSource-type labels like "Camcorder".
+        // The picker lists only real physical devices (none under
+        // Robolectric, which has no input hardware), never a synthetic
+        // default row or AudioSource-type labels like "Camcorder".
         val viewModel = vm()
         val backStack = NavBackStack<TestRoute>(arrayOf(TestRoute.Home))
         rule.setContent { SettingsPage(backStack, viewModel) }
@@ -68,11 +68,22 @@ class CameraCovC2SettingsTest {
             rule.onAllNodesWithText("Camcorder", substring = true).fetchSemanticsNodes().isEmpty(),
             "Settings must not offer AudioSource-type choices",
         )
-        // Open the dropdown by clicking the current (Auto) row and re-pick Auto.
-        rule.onNodeWithText("Auto", substring = true).performClick()
+        // No synthetic row: with no real devices the button shows the
+        // record-time system-route placeholder, and opening it offers no
+        // "Auto" (or any other synthetic) entry to pick.
+        assertTrue(
+            rule.onAllNodesWithText("Auto", substring = true).fetchSemanticsNodes().isEmpty(),
+            "Settings must not offer a synthetic Auto audio device",
+        )
+        rule.onNodeWithText(
+            str(com.vayunmathur.camera.R.string.settings_audio_input_device_unselected),
+            substring = true,
+        ).performClick()
         rule.waitForIdle()
-        val autos = rule.onAllNodesWithText("Auto", substring = true).fetchSemanticsNodes()
-        rule.onAllNodesWithText("Auto", substring = true)[autos.size - 1].performClick()
+        assertTrue(
+            rule.onAllNodesWithText("Auto", substring = true).fetchSemanticsNodes().isEmpty(),
+            "Audio dropdown must contain only real devices",
+        )
         assertEquals(
             com.vayunmathur.camera.platform.camera2.AudioInputDeviceSelection.AUTO,
             viewModel.audioInputDevice.value,

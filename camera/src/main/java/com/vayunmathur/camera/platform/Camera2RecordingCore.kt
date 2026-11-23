@@ -314,8 +314,8 @@ class Camera2RecordingCore(
             maxOf(minBuffer, AUDIO_MAX_INPUT_BYTES),
         )
         audioRecord = record
-        // Prefer the chosen physical mic (Auto clears any preference so the
-        // system routes). A disconnected/rejected device never fails the
+        // Prefer the chosen physical mic (no explicit choice clears any
+        // preference so the system routes). A disconnected/rejected device never fails the
         // recording: the seam swallows it and recording continues on the
         // system-routed input. If the device disconnects mid-recording,
         // Android reroutes the live AudioRecord itself; the read loop
@@ -326,6 +326,11 @@ class Camera2RecordingCore(
             idOf = { it.id },
             typeOf = { it.type },
             setPreferred = { device -> record.setPreferredDevice(device) },
+            nameOf = { it.productName?.toString() },
+            addressOf = { it.address },
+            // No explicit/disc. choice: the platform's current routed input
+            // for this record (a real device), if it is already known.
+            routedDevice = { runCatching { record.routedDevice }.getOrNull() },
         )
         if (!applied.selection.isAuto && !applied.applied) {
             Log.status(

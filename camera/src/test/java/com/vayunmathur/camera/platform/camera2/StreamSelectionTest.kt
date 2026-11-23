@@ -176,6 +176,28 @@ class StreamSelectionTest {
         assertNull(plan.previewMaxPixels)
     }
 
+    @Test fun sessionPreviewSizeAppliesLimitedCapAndMatchesSessionSelection() {
+        // LIMITED lens with a 4K-class SurfaceTexture size: the session
+        // selection (and the surface buffer pin, which uses this same
+        // helper) must stay at/under the 1080p guaranteed cap.
+        val snapshot = CharacteristicsFacade.fromFakeMap(
+            cameraId = "0",
+            hardwareLevel = android.hardware.camera2.CameraMetadata
+                .INFO_SUPPORTED_HARDWARE_LEVEL_LIMITED,
+            sizesByFormat = mapOf(ImageFormat.PRIVATE to listOf(Size(640, 480))),
+            surfaceTextureSizes = listOf(
+                Size(4000, 3000), Size(1920, 1080), Size(1440, 1080), Size(1280, 720),
+            ),
+        ).snapshot
+        // Portrait view request (TextureView in a 3:4 box): no portrait
+        // sizes exist, so closest aspect under the cap wins — never 4K.
+        val selected = StreamSelection.selectSessionPreviewSize(
+            FrameSize(1080, 1440), snapshot,
+        )
+        assertEquals(FrameSize(1440, 1080), selected)
+        assertTrue(selected!!.area.toLong() <= StreamSelection.LIMITED_STREAM_MAX_PIXELS)
+    }
+
     @Test fun supportedSizesPreferSurfaceTextureThenPrivate() {
         val withTexture = CharacteristicsFacade.fromFakeMap(
             cameraId = "0",

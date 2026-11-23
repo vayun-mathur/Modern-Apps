@@ -87,7 +87,7 @@ fun <T : NavKey> SettingsPage(backStack: NavBackStack<T>, viewModel: CameraViewM
         audioManager?.registerAudioDeviceCallback(callback, null)
         onDispose { audioManager?.unregisterAudioDeviceCallback(callback) }
     }
-    // Effective picker selection: a disconnected chosen device shows as Auto.
+    // Effective picker selection: a disconnected chosen device selects no row.
     val effectiveAudioDevice = remember(audioDeviceOptions, audioInputDevice) {
         com.vayunmathur.camera.platform.camera2.AudioInputDevicePolicy.resolve(
             audioInputDevice,

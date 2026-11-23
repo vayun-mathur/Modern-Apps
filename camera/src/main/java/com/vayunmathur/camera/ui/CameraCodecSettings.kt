@@ -31,7 +31,7 @@ import com.vayunmathur.library.ui.Text
 /**
  * Codec and audio-device pickers owned by [SettingsPage]: the video codec
  * and audio input device dropdowns. The device picker lists physical
- * microphones (Auto = system routing, then each connected device); there
+ * microphones (only real connected devices; no synthetic default row); there
  * is no AudioSource-type or audio-codec picker (recording audio is always
  * Opus from the CAMCORDER source). Stateless: the caller passes values
  * plus change callbacks.
@@ -109,10 +109,11 @@ fun CameraCodecSettings(
             // Built from [OutlinedButton] + [DropdownMenu] rather than the library's
             // `ExposedDropdownMenu` wrapper, which currently recurses into itself.
             var audioExpanded by remember { mutableStateOf(false) }
-            // A chosen device that is no longer connected shows as Auto.
+            // Only real devices are listed; a chosen device that is no
+            // longer connected (or no explicit choice yet) selects no row.
             val selectedOption = audioInputDeviceOptions.firstOrNull {
                 it.selection == audioInputDevice
-            } ?: audioInputDeviceOptions.firstOrNull()
+            }
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -123,8 +124,9 @@ fun CameraCodecSettings(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        listOfNotNull(selectedOption?.label, selectedOption?.description)
-                            .joinToString(" — "),
+                        selectedOption?.let {
+                            listOfNotNull(it.label, it.description).joinToString(" — ")
+                        } ?: stringResource(R.string.settings_audio_input_device_unselected),
                         modifier = Modifier.weight(1f),
                         textAlign = TextAlign.Start,
                         maxLines = 1,

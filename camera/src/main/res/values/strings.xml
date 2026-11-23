@@ -108,6 +108,8 @@
     <!-- Audio input device settings (SettingsPage): physical mic used for video recordings -->
     <!-- SettingsPage: section header for audio input device selection -->
     <string name="settings_audio_input_device">Audio input device</string>
+    <!-- SettingsPage: audio input button when no device is explicitly chosen; the platform route at record time applies -->
+    <string name="settings_audio_input_device_unselected">System route at recording</string>
     <!-- SettingsPage (locale fallback): legacy header name kept for translations -->
     <string name="settings_audio_source">Audio input device</string>
 
