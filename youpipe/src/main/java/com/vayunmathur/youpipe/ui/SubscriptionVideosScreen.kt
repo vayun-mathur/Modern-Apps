@@ -14,7 +14,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import com.vayunmathur.library.ui.CircularProgressIndicator
+import com.vayunmathur.library.ui.LinearProgressIndicator
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Scaffold
 import com.vayunmathur.library.ui.adaptiveGridCells
@@ -68,9 +68,7 @@ fun SubscriptionVideosScreen(
         LazyColumn(Modifier.padding(paddingValues)) {
             if (state.fetchProgress in 0f..1f) {
                 item {
-                    Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator({ state.fetchProgress })
-                    }
+                    LinearProgressIndicator({ state.fetchProgress }, modifier = Modifier.fillMaxWidth().padding(16.dp))
                 }
             }
             if (state.isLoading) {

@@ -20,11 +20,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import androidx.compose.foundation.layout.fillMaxWidth
 import com.vayunmathur.library.tv.TvButton
 import com.vayunmathur.library.tv.TvDialog
 import com.vayunmathur.library.tv.TvListRow
 import com.vayunmathur.library.tv.TvScreenHeader
-import com.vayunmathur.library.ui.CircularProgressIndicator
+import com.vayunmathur.library.ui.LinearProgressIndicator
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.youpipe.R
 import com.vayunmathur.youpipe.platform.YouPipeViewModel
@@ -103,7 +104,7 @@ private fun TvDataSettingsRows(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         if (isLoading) {
-            CircularProgressIndicator(progress = { progress })
+            LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
         }
         Text(
             text = stringResource(R.string.title_history),

@@ -26,7 +26,6 @@ import androidx.media3.session.MediaController
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.vayunmathur.library.tv.TvButton
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.FadeVisibility
 import com.vayunmathur.youpipe.R
 import com.vayunmathur.youpipe.platform.CastPlayback
@@ -100,10 +99,8 @@ private fun BoxScope.TvPlayerCueOverlay(cues: List<Cue>) {
 @Composable
 private fun BoxScope.TvPlayerBufferingSpinner(buffering: Boolean) {
     if (buffering) {
-        CircularProgressIndicator(
-            modifier = Modifier.align(Alignment.Center),
-            color = Color.White,
-        )
+        // TV media-surface buffering affordance: progress text, no spinner (TvLoading is screen-level only).
+        Text("Loading\u2026", color = Color.White, modifier = Modifier.align(Alignment.Center))
     }
 }
 

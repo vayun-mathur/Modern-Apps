@@ -12,7 +12,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Button
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.DesktopMaxWidthContainer
 import com.vayunmathur.library.ui.IconHistory
 import com.vayunmathur.library.ui.IconButton
@@ -36,6 +35,7 @@ fun HomeScreen(
     onOpenAddons: () -> Unit,
 ) {
     AppScaffold(
+        isRefreshing = state.loading,
         title = "Uniflix",
         actions = {
             IconButton(onClick = onOpenSearch) { IconSearch() }
@@ -47,9 +47,6 @@ fun HomeScreen(
                 modifier = Modifier.fillMaxWidth().padding(16.dp).verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                if (state.loading) {
-                    CircularProgressIndicator()
-                }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = onOpenMovies) { Text("Movies") }
                     Button(onClick = onOpenSeries) { Text("Series") }

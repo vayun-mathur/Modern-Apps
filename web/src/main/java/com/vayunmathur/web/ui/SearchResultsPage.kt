@@ -23,7 +23,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Button
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.DesktopMaxWidthContainer
 import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.ui.friendlyError
@@ -127,6 +126,7 @@ fun SearchResultsPage(
     AppScaffold(
         title = query,
         modifier = modifier,
+        isRefreshing = loading,
     ) { paddingValues ->
         DesktopMaxWidthContainer(modifier = Modifier.padding(paddingValues)) {
             Column(Modifier.fillMaxSize()) {
@@ -149,10 +149,7 @@ fun SearchResultsPage(
                 }
                 Box(Modifier.fillMaxSize().weight(1f)) {
                     when {
-                        loading && response == null -> Box(
-                            Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center,
-                        ) { CircularProgressIndicator() }
+                        loading && response == null -> Box(Modifier.fillMaxSize())
 
                         failure != null && response == null -> SearchErrorState(
                             message = failure.orEmpty(),

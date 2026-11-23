@@ -22,7 +22,6 @@ import com.vayunmathur.library.ui.IconImage
 import com.vayunmathur.library.ui.IconMoreVert
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.OutlinedTextField
-import com.vayunmathur.library.ui.AppPullToRefreshBox
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.library.ui.AppScaffold
@@ -109,6 +108,8 @@ fun AlbumDetailScreen(
         title = if (isSelectionMode) pluralStringResource(R.plurals.items_selected, selectedIds.size, selectedIds.size) else title,
         onNavigateBack = if (isSelectionMode) null else ({ backStack.pop() }),
         onClose = if (isSelectionMode) ({ onClearSelection() }) else null,
+        isRefreshing = isRefreshing,
+        onRefresh = onRefresh,
         actions = {
             if (isSelectionMode) {
                 if (selectedIds.size == 1) {
@@ -150,13 +151,6 @@ fun AlbumDetailScreen(
                 modifier = Modifier.fillMaxSize().padding(padding),
             )
         } else {
-            AppPullToRefreshBox(
-                isRefreshing = isRefreshing,
-                onRefresh = onRefresh,
-                modifier = Modifier.fillMaxSize(),
-                // Below the top app bar: the scaffold's top inset is the exact clearance.
-                topClearance = padding.calculateTopPadding(),
-            ) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -197,7 +191,6 @@ fun AlbumDetailScreen(
                         }
                     }
                 }
-            }
         }
     }
 

@@ -8,7 +8,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -35,7 +34,6 @@ import com.vayunmathur.email.ui.composer.EmailHtmlEditor
 import com.vayunmathur.email.ui.composer.EmailHtmlEditorController
 import com.vayunmathur.email.ui.composer.InlineAttachment
 import com.vayunmathur.library.ui.AppScaffold
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.DropdownMenu
 import com.vayunmathur.library.ui.DropdownMenuItem
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
@@ -279,8 +277,8 @@ fun ComposerScreen(
                     }
                 )
             }, enabled = !sending && fromAccount != null && hasRecipient && hasBody) {
-                if (sending) CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                else IconSend()
+                // Busy affordance is the disabled state above; no spinner icon.
+                IconSend()
             }
         },
         bottomBar = {

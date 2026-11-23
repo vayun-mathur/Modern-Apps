@@ -4,6 +4,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -18,7 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.vayunmathur.library.ui.AppScaffold
-import com.vayunmathur.library.ui.CircularProgressIndicator
+import com.vayunmathur.library.ui.LinearProgressIndicator
 import com.vayunmathur.library.ui.ConfirmDialog
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.SettingsRow
@@ -59,18 +60,15 @@ fun DataSettingsPage(
     AppScaffold(
         title = stringResource(R.string.settings_data),
         backStack = backStack,
+        isRefreshing = isLoading,
     ) { padding ->
-        if (isLoading) {
-            Box(Modifier.fillMaxSize().padding(padding)) {
-                CircularProgressIndicator({ progress }, modifier = Modifier.align(Alignment.Center))
-            }
-        } else {
-            Column(
+        Column(
                 Modifier
                     .fillMaxSize()
                     .padding(padding)
                     .verticalScroll(rememberScrollState())
             ) {
+                if (isLoading) LinearProgressIndicator({ progress }, modifier = Modifier.fillMaxWidth())
                 SettingsSection(title = stringResource(R.string.title_history)) {
                     SettingsRow(
                         title = stringResource(R.string.clear_history),
@@ -96,7 +94,6 @@ fun DataSettingsPage(
                     )
                 }
             }
-        }
     }
 
     if (showClearHistoryDialog) {

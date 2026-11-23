@@ -1,6 +1,7 @@
 package com.vayunmathur.fooddelivery.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -75,8 +76,9 @@ fun DealsScreen(onMerchantClick: (Int) -> Unit) {
         }
     }
 
-    AppScaffold(topBar = {}, isLoading = loading) { padding ->
+    AppScaffold(topBar = {}, isRefreshing = loading) { padding ->
         when {
+            loading -> Box(Modifier.fillMaxSize().padding(padding))
             deals.isEmpty() -> EmptyState(
                 title = stringResource(R.string.no_deals_yet),
                 message = stringResource(R.string.deals_will_appear_here),

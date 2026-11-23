@@ -58,7 +58,6 @@ import com.vayunmathur.library.ui.AlertDialog
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.Card
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.Icon
 import com.vayunmathur.library.ui.IconButton
@@ -83,10 +82,10 @@ fun LearnHomeScreen(onOpenStage: (String, String) -> Unit) {
         }
     }
     // No app bar: the tab has no title worth showing and no actions, so the content gets the space.
-    AppScaffold(topBar = {}) { pad ->
+    AppScaffold(topBar = {}, isRefreshing = categories == null) { pad ->
         val cats = categories
         if (cats == null) {
-            Box(Modifier.fillMaxSize().padding(pad), Alignment.Center) { CircularProgressIndicator() }
+            // Content composed under scaffold indicator; guard empty branch.
             return@AppScaffold
         }
         LazyColumn(
@@ -171,9 +170,9 @@ fun LearnStageScreen(
     AppScaffold(
         title = stage?.title ?: stringResource(R.string.tab_learn),
         onNavigateBack = onBack,
+        isRefreshing = stage == null || level == null,
     ) { pad ->
         if (stage == null || level == null) {
-            Box(Modifier.fillMaxSize().padding(pad), Alignment.Center) { CircularProgressIndicator() }
             return@AppScaffold
         }
         LearnStageContent(

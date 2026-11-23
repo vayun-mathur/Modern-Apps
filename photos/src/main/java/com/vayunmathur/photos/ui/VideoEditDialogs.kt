@@ -8,7 +8,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.vayunmathur.library.ui.LoadingIndicator
+import com.vayunmathur.library.ui.LinearProgressIndicator
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.photos.R
@@ -40,9 +40,9 @@ internal fun ExportProgressDialog(progress: Float, onCancel: () -> Unit) {
         text = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (progress > 0f) {
-                    LoadingIndicator(progress = { progress })
+                    LinearProgressIndicator(progress = { progress }, modifier = Modifier.weight(1f))
                 } else {
-                    LoadingIndicator()
+                    LinearProgressIndicator(modifier = Modifier.weight(1f))
                 }
                 Spacer(Modifier.width(16.dp))
                 Text("${(progress * 100).toInt()}%")

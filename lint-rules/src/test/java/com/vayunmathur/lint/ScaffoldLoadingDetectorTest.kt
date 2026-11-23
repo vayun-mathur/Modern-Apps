@@ -53,7 +53,7 @@ class ScaffoldLoadingDetectorTest : LintDetectorTest() {
     }
 
     @Test
-    fun scaffoldLoadingParameterIsClean() {
+    fun scaffoldRefreshParameterIsClean() {
         lint().files(UI_STUBS, MODIFIER_STUB, LAYOUT_STUBS, COMPOSABLE_STUB, kotlin(
             """
             package com.vayunmathur.example.ui
@@ -62,7 +62,7 @@ class ScaffoldLoadingDetectorTest : LintDetectorTest() {
             import androidx.compose.ui.Modifier
             import com.vayunmathur.library.ui.AppScaffold
             @Composable fun Screen(loading: Boolean) {
-                AppScaffold(title = "T", isLoading = loading) {
+                AppScaffold(title = "T", isRefreshing = loading, onRefresh = {}) {
                     Box(Modifier.fillMaxSize()) { }
                 }
             }
@@ -71,7 +71,7 @@ class ScaffoldLoadingDetectorTest : LintDetectorTest() {
     }
 
     @Test
-    fun sectionLocalIndicatorIsClean() {
+    fun sectionLocalIndicatorIsFlagged() {
         lint().files(UI_STUBS, MODIFIER_STUB, LAYOUT_STUBS, COMPOSABLE_STUB, kotlin(
             """
             package com.vayunmathur.example.ui
@@ -86,11 +86,11 @@ class ScaffoldLoadingDetectorTest : LintDetectorTest() {
                 }
             }
             """.trimIndent(),
-        )).run().expectClean()
+        )).run().expectErrorCount(1)
     }
 
     @Test
-    fun sizedDeterminateAndButtonIndicatorsAreClean() {
+    fun sizedDeterminateAndButtonIndicatorsAreFlagged() {
         lint().files(UI_STUBS, MODIFIER_STUB, LAYOUT_STUBS, COMPOSABLE_STUB, kotlin(
             """
             package com.vayunmathur.example.ui
@@ -108,11 +108,11 @@ class ScaffoldLoadingDetectorTest : LintDetectorTest() {
                 }
             }
             """.trimIndent(),
-        )).run().expectClean()
+        )).run().expectErrorCount(3)
     }
 
     @Test
-    fun standaloneIndicatorBeforeScaffoldIsClean() {
+    fun standaloneIndicatorBeforeScaffoldIsFlagged() {
         lint().files(UI_STUBS, MODIFIER_STUB, LAYOUT_STUBS, COMPOSABLE_STUB, kotlin(
             """
             package com.vayunmathur.example.ui
@@ -127,6 +127,34 @@ class ScaffoldLoadingDetectorTest : LintDetectorTest() {
                     return
                 }
                 AppScaffold(title = "T") { Box(Modifier.fillMaxSize()) { } }
+            }
+            """.trimIndent(),
+        )).run().expectErrorCount(1)
+    }
+
+    @Test
+    fun handRolledPullToRefreshIsFlagged() {
+        lint().files(UI_STUBS, MODIFIER_STUB, LAYOUT_STUBS, COMPOSABLE_STUB, kotlin(
+            """
+            package com.vayunmathur.example.ui
+            import androidx.compose.runtime.Composable
+            import com.vayunmathur.library.ui.AppPullToRefreshBox
+            @Composable fun Screen(loading: Boolean) {
+                AppPullToRefreshBox(isRefreshing = loading, onRefresh = {}) { }
+            }
+            """.trimIndent(),
+        )).run().expectErrorCount(1)
+    }
+
+    @Test
+    fun determinateBarIsClean() {
+        lint().files(UI_STUBS, MODIFIER_STUB, LAYOUT_STUBS, COMPOSABLE_STUB, kotlin(
+            """
+            package com.vayunmathur.example.ui
+            import androidx.compose.runtime.Composable
+            import com.vayunmathur.library.ui.LinearProgressIndicator
+            @Composable fun Screen() {
+                LinearProgressIndicator(progress = { 0.5f })
             }
             """.trimIndent(),
         )).run().expectClean()
@@ -193,10 +221,13 @@ class ScaffoldLoadingDetectorTest : LintDetectorTest() {
             import androidx.compose.ui.Modifier
             @Composable fun AppScaffold(
                 title: String,
-                isLoading: Boolean = false,
-                loadingMessage: String? = null,
+                isRefreshing: Boolean = false,
+                onRefresh: (() -> Unit)? = null,
+                refreshEnabled: Boolean = true,
                 content: @Composable (PaddingValues) -> Unit,
             ) {}
+            @Composable fun AppPullToRefreshBox(isRefreshing: Boolean, onRefresh: () -> Unit, content: @Composable () -> Unit) {}
+            @Composable fun LinearProgressIndicator(progress: () -> Float) {}
             @Composable fun LoadingState(modifier: Modifier = Modifier, message: String? = null) {}
             @Composable fun LoadingIndicator(modifier: Modifier = Modifier) {}
             @Composable fun LoadingIndicator(progress: () -> Float, modifier: Modifier = Modifier) {}

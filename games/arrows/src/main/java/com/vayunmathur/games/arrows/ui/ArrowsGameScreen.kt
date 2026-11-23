@@ -32,7 +32,6 @@ import com.vayunmathur.games.arrows.ui.components.ArrowsBoard
 import com.vayunmathur.library.ui.AppBarAlignment
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Button
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.ConfirmDialog
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.OutlinedButton
@@ -115,7 +114,7 @@ fun ArrowsGameScreen(
                         .fillMaxWidth()
                         .padding(Spacing.xxl),
                     contentAlignment = Alignment.Center,
-                ) { CircularProgressIndicator() }
+                ) { Text("Loading\u2026") }
             }
 
             else -> BoxWithConstraints(

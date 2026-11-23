@@ -19,7 +19,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.log.Log
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.pdf.R
@@ -76,7 +75,7 @@ fun SafePdfPageCanvas(
                     modifier = Modifier.align(Alignment.Center).padding(16.dp),
                 )
             } else {
-                CircularProgressIndicator(Modifier.align(Alignment.Center))
+                Text("Loading\u2026", modifier = Modifier.align(Alignment.Center))
             }
             return@BoxWithConstraints
         }

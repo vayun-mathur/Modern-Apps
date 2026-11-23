@@ -31,7 +31,6 @@ import com.vayunmathur.library.ui.FloatingActionButton
 import com.vayunmathur.library.ui.LazyListScaffold
 import com.vayunmathur.library.ui.ListItem
 import com.vayunmathur.library.ui.ListItemDefaults
-import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Surface
 import com.vayunmathur.library.ui.Text
@@ -79,6 +78,7 @@ fun GroupsScreen(state: GroupsUiState, actions: ContactsActions, expandGroupId: 
     }
 
     LazyListScaffold(
+        isRefreshing = state.isLoading,
         floatingActionButton = {
             FloatingActionButton(onClick = { showAddDialog = true }) {
                 IconAdd()
@@ -90,7 +90,7 @@ fun GroupsScreen(state: GroupsUiState, actions: ContactsActions, expandGroupId: 
             if (state.groups.isEmpty()) {
                 item(key = "groups-empty") {
                     if (state.isLoading) {
-                        LoadingState(modifier = Modifier.fillParentMaxSize())
+                        Box(modifier = Modifier.fillParentMaxSize())
                     } else {
                         EmptyState(
                             title = stringResource(R.string.no_groups_yet),

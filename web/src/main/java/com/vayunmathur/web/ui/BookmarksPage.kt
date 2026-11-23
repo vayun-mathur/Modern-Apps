@@ -32,7 +32,6 @@ import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.ConfirmDialog
 import com.vayunmathur.library.ui.DesktopMaxWidthContainer
 import com.vayunmathur.library.ui.EmptyState
-import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.AlertDialog
 import com.vayunmathur.library.ui.DropdownMenu
 import com.vayunmathur.library.ui.DropdownMenuItem
@@ -112,6 +111,7 @@ internal fun BookmarksScreen(
 
     AppScaffold(
         title = stringResource(R.string.bookmarks),
+        isRefreshing = !hasLoaded,
         navigationIcon = navigationIcon,
         actions = {
             IconButton(onClick = { showNewFolderDialog = true }) {
@@ -183,7 +183,7 @@ internal fun BookmarksScreen(
             }
 
             if (!hasLoaded && bookmarks.isEmpty()) {
-                LoadingState(Modifier.fillMaxSize())
+                Box(Modifier.fillMaxSize())
             } else if (filtered.isEmpty() && bookmarks.isEmpty()) {
                 EmptyState(
                     title = stringResource(R.string.no_bookmarks_yet),

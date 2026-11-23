@@ -33,7 +33,6 @@ import com.vayunmathur.games.minesweeper.ui.components.MineFieldGrid
 import com.vayunmathur.library.ui.AppBarAlignment
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Button
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.ConfirmDialog
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.IconFlag
@@ -103,7 +102,7 @@ fun GameBoardScreen(
         ) {
             if (game == null) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+                    Text("Loading\u2026")
                 }
                 return@BoxWithConstraints
             }

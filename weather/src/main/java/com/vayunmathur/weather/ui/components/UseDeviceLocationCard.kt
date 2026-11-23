@@ -9,7 +9,6 @@ import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.Icon
 import com.vayunmathur.library.ui.ListItem
 import com.vayunmathur.library.ui.ListItemDefaults
-import com.vayunmathur.library.ui.LoadingIndicator
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Surface
 import com.vayunmathur.library.ui.Text
@@ -47,7 +46,7 @@ fun UseDeviceLocationCard(onClick: () -> Unit, isLoading: Boolean = false) {
                     contentAlignment = Alignment.Center,
                 ) {
                     if (isLoading) {
-                        LoadingIndicator(modifier = Modifier.size(24.dp))
+                        Text("Loading\u2026", style = MaterialTheme.typography.labelSmall)
                     } else {
                         IconMyLocation(
                             tint = MaterialTheme.colorScheme.onSurface,

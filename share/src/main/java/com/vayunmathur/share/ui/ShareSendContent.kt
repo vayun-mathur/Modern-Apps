@@ -23,7 +23,6 @@ import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.Card
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.DesktopMaxWidthContainer
 import com.vayunmathur.library.ui.LinearProgressIndicator
 import com.vayunmathur.library.ui.MaterialTheme
@@ -102,7 +101,6 @@ fun ShareSendContent(
                         modifier = Modifier.padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        CircularProgressIndicator(modifier = Modifier.padding(end = 12.dp))
                         Text(stringResource(R.string.share_scanning), modifier = Modifier.weight(1f))
                     }
                 }

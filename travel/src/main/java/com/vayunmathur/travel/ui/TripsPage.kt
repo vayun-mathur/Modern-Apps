@@ -16,8 +16,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.vayunmathur.library.ui.AppPullToRefreshBox
-import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.AssistChip
 import com.vayunmathur.library.ui.ElevatedCard
@@ -53,6 +51,8 @@ fun TripsPage(backStack: NavBackStack<Route>, viewModel: TravelViewModel) {
     AppScaffold(
         title = stringResource(R.string.my_trips),
         backStack = backStack,
+        isRefreshing = !hasLoaded || pending,
+        onRefresh = { trips.forEach { viewModel.refreshStoredTrip(it.orderId) } },
         actions = {
             IconButton(onClick = { trips.forEach { viewModel.refreshStoredTrip(it.orderId) } }) {
                 IconRefresh()
@@ -60,12 +60,10 @@ fun TripsPage(backStack: NavBackStack<Route>, viewModel: TravelViewModel) {
         },
     ) { padding ->
         if (!hasLoaded && trips.isEmpty()) {
-            LoadingState(Modifier.fillMaxSize().padding(padding))
+            androidx.compose.foundation.layout.Box(Modifier.fillMaxSize().padding(padding))
             return@AppScaffold
         }
-        AppPullToRefreshBox(
-            isRefreshing = pending && trips.isNotEmpty(),
-            onRefresh = { trips.forEach { viewModel.refreshStoredTrip(it.orderId) } },
+        androidx.compose.foundation.layout.Box(
             modifier = Modifier.fillMaxSize().padding(padding),
         ) {
             LazyColumn(

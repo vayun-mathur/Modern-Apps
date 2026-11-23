@@ -72,8 +72,7 @@ fun DashboardScreen(state: ScreenTimeUiState, actions: DashboardActions) {
     LazyListScaffold(
         title = stringResource(R.string.app_name),
         horizontalPadding = 0.dp,
-        isLoading = state.loading,
-        loadingMessage = stringResource(R.string.apps_loading),
+        isRefreshing = state.loading,
     ) {
         item { PeriodToggle(state.period, actions.onSetPeriod) }
 
@@ -82,6 +81,9 @@ fun DashboardScreen(state: ScreenTimeUiState, actions: DashboardActions) {
         }
 
         when {
+            state.loading -> {
+                // First load: empty list under the scaffold refresh indicator, no premature empty/no-access state.
+            }
             !state.hasUsageAccess -> item {
                 SettingsSection {
                     SettingsRow(

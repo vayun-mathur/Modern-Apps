@@ -34,9 +34,8 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ocr.OcrEngine
-import com.vayunmathur.library.ui.CircularProgressIndicator
-import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
+import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.pdf.R
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -169,7 +168,7 @@ internal fun SafePdfPageViewer(
                 },
         ) {
             when (val loadState = bundle.loadState) {
-                LoadState.Loading -> CircularProgressIndicator(Modifier.align(Alignment.Center))
+                LoadState.Loading -> Text("Loading\u2026", modifier = Modifier.align(Alignment.Center))
                 is LoadState.Error -> Text(
                     text = androidx.compose.ui.res.stringResource(
                         if (loadState.notPdf) R.string.safe_pdf_not_a_pdf else R.string.safe_pdf_error

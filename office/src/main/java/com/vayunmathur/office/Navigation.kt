@@ -14,7 +14,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import com.vayunmathur.library.ui.CircularProgressIndicator
+import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.office.platform.OfficeViewModel
 import com.vayunmathur.office.platform.clearDocument
@@ -72,7 +72,7 @@ fun Navigation(viewModel: OfficeViewModel, activity: MainActivity, intentUri: Ur
                 is OfficeViewModel.ViewState.Error -> activity.EditorError(s.message, { leaveEditor() })
                 else -> Box(
                     Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                    contentAlignment = Alignment.Center) { Text("Loading\u2026") }
             }
         }
         OfficeTabs(

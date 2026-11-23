@@ -30,7 +30,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.library.util.AppMessages
 import com.vayunmathur.library.ui.AppScaffold
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.HorizontalDivider
 import com.vayunmathur.library.ui.IconButton
@@ -104,7 +103,7 @@ fun EmlViewerScreen(
     }
 
     AppScaffold(
-        isLoading = loading,
+        isRefreshing = loading,
         title = {
             val t = parsed?.message?.subject ?: uriString.substringAfterLast('/').substringAfterLast("%2F")
             Text(t.ifBlank { stringResource(R.string.e_mail_file) }, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -144,6 +143,11 @@ fun EmlViewerScreen(
                         }) { Text(stringResource(R.string.retry)) }
                     }
                 }
+            }
+            loading || parsed == null -> {
+                // Content stays composed under the scaffold's top indicator:
+                // empty placeholder until the parse lands, never parsed!!.
+                Box(modifier = Modifier.fillMaxSize().padding(padding))
             }
             else -> {
                 val msg = parsed!!.message
@@ -236,9 +240,7 @@ private fun EmlAttachmentItem(attachment: EmlAttachment) {
 
     Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(text = "${attachment.fileName} · ${humanSize(attachment.bytes.size.toLong())}", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
-        if (opening) {
-            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-        } else {
+        if (!opening) {
             Text(stringResource(R.string.open), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall, modifier = Modifier.clickable {
                 opening = true
                 openEmlAttachment(context, attachment) { success ->

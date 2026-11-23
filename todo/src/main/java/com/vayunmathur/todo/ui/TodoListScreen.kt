@@ -18,7 +18,6 @@ import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.FloatingActionButton
 import com.vayunmathur.library.ui.IconAdd
 import com.vayunmathur.library.ui.LazyListScaffold
-import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.rememberHaptics
 import com.vayunmathur.library.ui.rememberMessenger
 import com.vayunmathur.todo.R
@@ -133,6 +132,7 @@ fun TodoListScreen(
     }
 
     LazyListScaffold(
+        isRefreshing = !state.hasLoaded,
         topBar = {
             if (selected.isNotEmpty()) {
                 BulkActionBar(selected.size, state.lists, bulk)
@@ -170,7 +170,7 @@ fun TodoListScreen(
         }
         if (!state.hasLoaded && model.openCount == 0 && model.completed.isEmpty()) {
             item(key = "loading") {
-                LoadingState(Modifier.fillParentMaxSize())
+                androidx.compose.foundation.layout.Box(Modifier.fillParentMaxSize())
             }
         }
         if (model.openCount == 0 && state.hasLoaded) {

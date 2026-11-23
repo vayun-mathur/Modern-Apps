@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -27,7 +26,7 @@ internal fun SignalRegistrationStepScaffold(
     onBack: () -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    DetailScaffold(title = "Register Signal") {
+    DetailScaffold(title = "Register Signal", isRefreshing = busy) {
         Text(
             "Registers this number as the PRIMARY Signal device. This will link Signal to this app — " +
                 "use a test number.",
@@ -35,11 +34,7 @@ internal fun SignalRegistrationStepScaffold(
         )
         content()
         if (busy) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                CircularProgressIndicator(modifier = Modifier.width(20.dp).height(20.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Working…")
-            }
+            Text("Working…")
         }
         status?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
         Spacer(Modifier.height(8.dp))

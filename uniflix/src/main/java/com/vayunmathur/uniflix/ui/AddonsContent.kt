@@ -12,7 +12,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Button
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.DesktopMaxWidthContainer
 import com.vayunmathur.library.ui.IconAdd
 import com.vayunmathur.library.ui.IconButton
@@ -87,7 +86,7 @@ fun AddonsContent(
                         onOpenDetail = { onOpenDetail(row.entity.dbId) },
                     )
                 }
-                if (refreshing) CircularProgressIndicator()
+                if (refreshing) Text("Loading\u2026")
             }
         }
     }

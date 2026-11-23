@@ -21,7 +21,6 @@ import androidx.core.net.toUri
 import com.vayunmathur.email.R
 import com.vayunmathur.email.data.Attachment
 import com.vayunmathur.email.platform.MessageThreadActions
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.IconDownload
 import com.vayunmathur.library.ui.MaterialTheme
@@ -49,7 +48,8 @@ fun AttachmentItem(attachment: Attachment, actions: MessageThreadActions) {
                 downloading = true
                 actions.downloadAttachment(attachment, { path -> downloading = false; localPath = path; AppMessages.show(resources.getString(R.string.saved_to_downloads)) }, { error -> downloading = false; AppMessages.show(resources.getString(R.string.download_failed, error)) })
             }, enabled = !downloading) {
-                if (downloading) CircularProgressIndicator(modifier = Modifier.size(16.dp)) else IconDownload(modifier = Modifier.size(16.dp))
+                // Busy affordance is the disabled state above; no spinner icon.
+                IconDownload(modifier = Modifier.size(16.dp))
             }
         }
     }

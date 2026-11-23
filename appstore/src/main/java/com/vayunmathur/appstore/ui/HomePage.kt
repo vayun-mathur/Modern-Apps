@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import com.vayunmathur.library.ui.AppPullToRefreshBox
 import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.ui.IconPackage
 import com.vayunmathur.library.ui.Scaffold
@@ -35,8 +34,6 @@ import com.vayunmathur.appstore.data.UnifiedApp
 import com.vayunmathur.appstore.platform.AppStoreViewModel
 import com.vayunmathur.library.ui.Card
 import com.vayunmathur.library.ui.CardDefaults
-import com.vayunmathur.library.ui.CircularProgressIndicator
-import com.vayunmathur.library.ui.LoadingIndicator
 import com.vayunmathur.library.ui.FilterChip
 import com.vayunmathur.library.ui.IconChevronRight
 import com.vayunmathur.library.ui.IconDownload
@@ -74,10 +71,6 @@ internal fun StatusLine(message: String, isSyncing: Boolean) {
         Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (isSyncing) {
-            CircularProgressIndicator(Modifier.size(14.dp))
-            Spacer(Modifier.width(10.dp))
-        }
         Text(
             message.ifBlank { stringResource(R.string.sync_in_progress) },
             style = MaterialTheme.typography.labelMedium,
@@ -146,13 +139,3 @@ internal fun CategoryRow(
     }
 }
 
-@Composable
-internal fun LoadingRow() {
-    Row(
-        Modifier.fillMaxWidth().height(160.dp),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        LoadingIndicator()
-    }
-}

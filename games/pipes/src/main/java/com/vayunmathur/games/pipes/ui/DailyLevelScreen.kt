@@ -25,7 +25,6 @@ import com.vayunmathur.games.pipes.platform.PipesViewModel
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Card
 import com.vayunmathur.library.ui.CardDefaults
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.IconCheck
 import com.vayunmathur.library.ui.IconStar
@@ -39,9 +38,9 @@ fun DailyLevelScreen(backStack: NavBackStack<Route>, viewModel: PipesViewModel) 
     val dailyPack by viewModel.dailyPack.collectAsState()
     val dailyStats by viewModel.dailyStats.collectAsState()
     LaunchedEffect(Unit) { viewModel.refreshDaily() }
-    AppScaffold(title = stringResource(UiR.string.daily_challenge), backStack = backStack) { paddingValues ->
+    AppScaffold(title = stringResource(UiR.string.daily_challenge), backStack = backStack, isRefreshing = dailyPack?.levels == null) { paddingValues ->
         val levels = dailyPack?.levels
-        if (levels == null) { Box(Modifier.fillMaxSize().padding(paddingValues), Alignment.Center) { CircularProgressIndicator() }; return@AppScaffold }
+        if (levels == null) { return@AppScaffold }
         LazyVerticalGrid(GridCells.Adaptive(88.dp), Modifier.fillMaxSize(), contentPadding = paddingValues + PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 0.dp), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             itemsIndexed(levels) { index, levelData -> Card(Modifier.fillMaxWidth().clickable { backStack.add(Route.DailyGame(index)) }, colors = CardDefaults.cardColors(com.vayunmathur.library.ui.MaterialTheme.colorScheme.surface)) { Box(Modifier.fillMaxSize().padding(8.dp)) { Text("${index + 1}", Modifier.align(Alignment.Center)); val levelStat = dailyStats[levelData.id]; Box(Modifier.size(20.dp).align(Alignment.CenterEnd), Alignment.Center) { when { levelStat == null -> return@Box; levelStat.bestScore <= levelData.optimalMoves -> IconStar(); else -> IconCheck() } } } } }
         }

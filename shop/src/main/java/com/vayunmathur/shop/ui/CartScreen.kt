@@ -29,7 +29,6 @@ import com.vayunmathur.library.image.compose.AsyncImage
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.Card
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.IconShoppingCart
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
@@ -125,8 +124,7 @@ internal fun CartContent(
                         enabled = startingStore == null,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        if (startingStore == store) CircularProgressIndicator(Modifier.size(20.dp))
-                        else Text(
+                        Text(
                             if (byShop.size > 1) {
                                 stringResource(R.string.checkout_with_store, lines.first().displayName)
                             } else {

@@ -4,7 +4,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -51,7 +50,7 @@ fun WhatsAppBackupImportScreen(onBack: () -> Unit) {
         }
     }
 
-    DetailScaffold(title = "Import WhatsApp backup") {
+    DetailScaffold(title = "Import WhatsApp backup", isRefreshing = busy) {
         Text("Select a msgstore.db.crypt15 file and enter its 64-character hex backup key.")
 
         OutlinedButton(
@@ -94,7 +93,6 @@ fun WhatsAppBackupImportScreen(onBack: () -> Unit) {
             modifier = Modifier.fillMaxWidth(),
         ) { Text("Import") }
 
-        if (busy) CircularProgressIndicator()
         status?.let { Text(it, style = androidx.compose.material3.MaterialTheme.typography.bodySmall) }
 
         OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Back") }

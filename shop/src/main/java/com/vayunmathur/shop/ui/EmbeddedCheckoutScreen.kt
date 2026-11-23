@@ -34,7 +34,6 @@ import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Button
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.rememberMessenger
 import com.vayunmathur.shop.R
@@ -135,7 +134,7 @@ fun EmbeddedCheckoutScreen(
                         }
                     },
                 )
-                if (loading) CircularProgressIndicator(Modifier.align(Alignment.Center))
+                if (loading) Text("Loading\u2026", modifier = Modifier.align(Alignment.Center))
             }
         }
     }

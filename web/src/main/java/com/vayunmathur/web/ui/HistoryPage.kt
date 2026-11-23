@@ -44,7 +44,6 @@ import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.ConfirmDialog
 import com.vayunmathur.library.ui.DesktopMaxWidthContainer
 import com.vayunmathur.library.ui.EmptyState
-import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.AlertDialog
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.IconButton
@@ -79,6 +78,7 @@ fun HistoryPage(
 
     AppScaffold(
         title = stringResource(R.string.history),
+        isRefreshing = !hasLoaded,
         backStack = backStack,
         actions = {
             if (history.isNotEmpty()) {
@@ -90,7 +90,7 @@ fun HistoryPage(
     ) { paddingValues ->
         DesktopMaxWidthContainer(modifier = Modifier.padding(paddingValues)) {
             if (!hasLoaded && history.isEmpty()) {
-                LoadingState(Modifier.fillMaxSize())
+                Box(Modifier.fillMaxSize())
             } else if (history.isEmpty()) {
                 EmptyState(
                     title = stringResource(R.string.no_history_yet),

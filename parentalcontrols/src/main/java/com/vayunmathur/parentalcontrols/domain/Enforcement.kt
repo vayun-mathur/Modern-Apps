@@ -28,13 +28,20 @@ data class EnforcementInput(
     val deviceOverBudget: Boolean = false,
     /** Packages whose per-app daily budget has already been observed as spent today. */
     val reachedPackages: Set<String> = emptySet(),
+    /**
+     * Packages that must never be blocked (see [ExemptApps.kt]): the home/launcher and
+     * dialer role holders, system Settings and this app. They are removed from scope
+     * outright — a stale restriction row for one of them governs nothing.
+     */
+    val exemptPackages: Set<String> = emptySet(),
 )
 
 /**
  * Decide, for every package in scope, whether it is blocked and why.
  *
  * Scope is launchable packages plus every restricted package (a restricted app stays
- * governed even if it currently has no launcher entry). The crucial property — the one the
+ * governed even if it currently has no launcher entry), minus [EnforcementInput.exemptPackages].
+ * The crucial property — the one the
  * old enforcer got wrong — is that downtime, school time and the device-wide daily limit
  * are *allow-list* features: they block every launchable app that is not explicitly
  * approved, including apps the parent has never touched and therefore has no restriction
@@ -42,7 +49,7 @@ data class EnforcementInput(
  */
 fun decideEnforcement(input: EnforcementInput): Map<String, EnforcementReason> {
     val byPackage = input.restrictions.associateBy { it.packageName }
-    val scope = input.launchablePackages + byPackage.keys
+    val scope = (input.launchablePackages + byPackage.keys) - input.exemptPackages
     val result = LinkedHashMap<String, EnforcementReason>()
     for (packageName in scope) {
         val rule = byPackage[packageName]

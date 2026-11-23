@@ -22,7 +22,6 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.AlertDialog
 import com.vayunmathur.library.ui.Checkbox
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.OutlinedTextField
 import com.vayunmathur.library.ui.Text
@@ -111,8 +110,6 @@ internal fun AddCardDialog(
                 }
                 if (adding) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                        Spacer(Modifier.width(12.dp))
                         Text(stringResource(R.string.adding_card))
                     }
                 }

@@ -33,7 +33,6 @@ import com.vayunmathur.library.ui.IconAdd
 import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.IconFolderOpen
-import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.IconMoreVert
 import com.vayunmathur.library.ui.IconShare
 import com.vayunmathur.library.ui.IconUpload
@@ -82,6 +81,7 @@ fun NoteListScreen(
     val plainList = query.isNotBlank() || selectedTags.isNotEmpty() || selection.isActive
 
     AppScaffold(
+        isRefreshing = !state.hasLoaded,
         title = {
             if (selection.isActive) {
                 Text(pluralStringResource(R.plurals.selected_count, selection.count, selection.count))
@@ -173,7 +173,7 @@ fun NoteListScreen(
                 )
             }
             when {
-                !state.hasLoaded && state.notes.isEmpty() -> LoadingState(
+                !state.hasLoaded && state.notes.isEmpty() -> androidx.compose.foundation.layout.Box(
                     modifier = Modifier.fillMaxSize(),
                 )
                 state.notes.isEmpty() -> EmptyState(

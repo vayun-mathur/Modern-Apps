@@ -31,7 +31,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
 import com.vayunmathur.appstore.data.UnifiedApp
 import com.vayunmathur.appstore.platform.AppStoreViewModel
-import com.vayunmathur.library.ui.LoadingIndicator
 
 /** Binds [AppStoreViewModel] to the stateless [SearchScreen]. */
 @Composable
@@ -56,12 +55,9 @@ fun SearchPage(
 
 @Composable
 internal fun Loading() {
-    androidx.compose.foundation.layout.Box(
-        Modifier.fillMaxSize(),
-        contentAlignment = androidx.compose.ui.Alignment.Center,
-    ) {
-        LoadingIndicator()
-    }
+    // Empty placeholder while searching: the scaffold's top refresh
+    // indicator (isRefreshing = isSearching) owns the progress affordance.
+    androidx.compose.foundation.layout.Box(Modifier.fillMaxSize())
 }
 
 internal fun SourceFilter.labelRes(): Int = when (this) {

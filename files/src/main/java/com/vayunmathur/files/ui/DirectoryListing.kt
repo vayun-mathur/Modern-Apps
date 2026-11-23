@@ -25,7 +25,6 @@ import com.vayunmathur.files.platform.searchMatches
 import com.vayunmathur.files.ui.components.DirectoryItem
 import com.vayunmathur.files.ui.components.GridItem
 import com.vayunmathur.library.ui.EmptyState
-import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.HorizontalDivider
 import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.IconClose
@@ -148,8 +147,8 @@ internal fun DirectoryListing(
             }
 
             if (useRecursive && isSearchLoading && allItems.isEmpty()) {
-                LoadingState(
-                    message = stringResource(R.string.searching_files),
+                Text(
+                    stringResource(R.string.searching_files),
                     modifier = Modifier.weight(1f).fillMaxWidth(),
                 )
             } else if (allItems.isEmpty()) {

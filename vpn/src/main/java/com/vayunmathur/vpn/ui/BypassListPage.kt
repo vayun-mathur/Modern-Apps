@@ -18,7 +18,6 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.AppScaffold
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.ListItem
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Switch
@@ -56,12 +55,12 @@ fun BypassListPage(backStack: NavBackStack<Route>) {
     AppScaffold(
         title = stringResource(R.string.bypass_list_title),
         backStack = backStack,
+        isRefreshing = apps == null,
     ) { pad ->
         val list = apps
         if (list == null) {
             Box(Modifier.fillMaxSize().padding(pad), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    CircularProgressIndicator()
                     Text(
                         stringResource(R.string.bypass_loading_apps),
                         Modifier.padding(top = 12.dp),

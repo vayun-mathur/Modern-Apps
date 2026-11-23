@@ -54,8 +54,10 @@ fun DialerScreen() {
         CommunicateRepository.placeCall(context, choice, target)
     }
 
+    var isRefreshing by remember { mutableStateOf(false) }
     AppScaffold(
         title = stringResource(R.string.dialer_title),
+        isRefreshing = isRefreshing,
         actions = {
             val sel = selectedLine
             if (lineChoices.size > 1 && sel != null) {
@@ -88,6 +90,7 @@ fun DialerScreen() {
                         permissionRevision) {
                         value = withContext(Dispatchers.IO) { CommunicateRepository.loadContacts(context) }
                     }
+                    androidx.compose.runtime.SideEffect { isRefreshing = contacts.value == null }
                     // Keyed on the contact list only: the query must never re-run the provider query.
                     val rows = contacts.value
                     DialerContent(

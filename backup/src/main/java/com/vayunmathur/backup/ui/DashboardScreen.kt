@@ -19,7 +19,6 @@ import com.vayunmathur.backup.platform.BackupUiState
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.Card
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.DesktopMaxWidthContainer
 import com.vayunmathur.library.ui.ListItem
 import com.vayunmathur.library.ui.MaterialTheme
@@ -40,7 +39,7 @@ fun DashboardScreen(
     onBackupNow: () -> Unit,
     onRestoreNow: () -> Unit,
 ) {
-    AppScaffold(title = stringResource(R.string.app_name)) { padding ->
+    AppScaffold(title = stringResource(R.string.app_name), isRefreshing = state.busy) { padding ->
         // Letterboxed on expanded windows so the form keeps a readable measure.
         DesktopMaxWidthContainer(Modifier.padding(padding)) {
             Column(
@@ -54,8 +53,6 @@ fun DashboardScreen(
             state.message?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
             if (state.busy) {
                 Row {
-                    CircularProgressIndicator()
-                    Spacer(Modifier.width(12.dp))
                     Text(stringResource(R.string.dashboard_working))
                 }
             }

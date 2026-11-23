@@ -17,17 +17,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Button
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.DrawerState
 import com.vayunmathur.library.ui.DrawerValue
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.isExpandedWidth
-import com.vayunmathur.library.ui.LoadingIndicator
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.ModalDrawerSheet
 import com.vayunmathur.library.ui.ModalNavigationDrawer
 import com.vayunmathur.library.ui.OutlinedButton
-import com.vayunmathur.library.ui.PullToRefreshBox
 import com.vayunmathur.library.ui.Scaffold
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.rememberDrawerState
@@ -205,7 +202,7 @@ internal fun ForecastScaffold(
     Scaffold(
         // RAW SCAFFOLD EXCEPTION: bespoke full-bleed home. The forecast
         // scrolls under a floating in-content MainSearchBar (there is no top
-        // app bar), inside a ModalNavigationDrawer + PullToRefreshBox, and the
+        // app bar), inside a ModalNavigationDrawer, and the
         // body consumes the scaffold insets itself. No shared scaffold fits.
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -248,12 +245,6 @@ private fun EmptyHome(viewModel: WeatherViewModel, onAddLocation: () -> Unit) {
                     onClick = { onUseCurrent() },
                     enabled = !requesting,
                 ) {
-                    if (requesting) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.padding(end = 8.dp),
-                            strokeWidth = 2.dp,
-                        )
-                    }
                     Text(if (requesting) stringResource(R.string.locating) else stringResource(R.string.use_current_location))
                 }
             }

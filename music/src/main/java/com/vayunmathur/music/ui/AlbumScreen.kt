@@ -41,7 +41,7 @@ fun AlbumsTabContent(backStack: NavBackStack<Route>, musicViewModel: MusicViewMo
         AlbumArt(album.uri.toUri(), Modifier.size(40.dp).clip(RoundedCornerShape(8.dp)).sharedContainer("music-album-art-${album.id}"))
     }, searchEnabled = true, fab = {
         ShufflePlayFab(musicViewModel)
-    }, searchString = { it.name }, loading = !loaded,
+    }, searchString = { it.name }, isRefreshing = !loaded,
     // getAlbums already returns them sorted by name.
     )
 }

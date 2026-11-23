@@ -5,12 +5,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import com.vayunmathur.library.ui.CircularProgressIndicator
+import com.vayunmathur.library.ui.LinearProgressIndicator
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.LazyListScaffold
 import com.vayunmathur.library.ui.ListItem
 import com.vayunmathur.library.ui.Text
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -50,10 +51,9 @@ fun SubscriptionsPage(
                     ListItem(
                         content = { Text(stringResource(R.string.loading_recent_subscriptions)) },
                         trailingContent = {
-                            CircularProgressIndicator(
+                            LinearProgressIndicator(
                                 progress = { fetchProgress },
-                                modifier = Modifier.size(24.dp),
-                                strokeWidth = 2.dp
+                                modifier = Modifier.width(64.dp)
                             )
                         }
                     )

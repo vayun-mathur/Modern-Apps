@@ -56,6 +56,7 @@ fun AppDetailScreen(
         title = { Text(app.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         onNavigateBack = onBack,
         alignment = AppBarAlignment.Center,
+        isRefreshing = state.isLoadingDetails,
         actions = {
             IconButton(onClick = { actions.shareApp(app) }) { IconShare() }
         },

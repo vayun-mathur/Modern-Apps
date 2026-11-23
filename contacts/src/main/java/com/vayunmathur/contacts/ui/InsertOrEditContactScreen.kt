@@ -33,7 +33,6 @@ import com.vayunmathur.contacts.platform.ContactViewModel
 import com.vayunmathur.contacts.platform.addPhoneNumberToContact
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.library.ui.Button
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Text
@@ -70,6 +69,7 @@ fun InsertOrEditContactScreen(
     }
 
     AppScaffold(
+        isRefreshing = !hasLoadedContacts,
         title = {
             Column {
                 Text(stringResource(R.string.add_number_to_contact))
@@ -110,9 +110,7 @@ fun InsertOrEditContactScreen(
 
             when {
                 contacts.isEmpty() && searchQuery.isEmpty() && !hasLoadedContacts -> {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
+                    Box(Modifier.fillMaxSize())
                 }
                 contacts.isEmpty() && searchQuery.isEmpty() -> {
                     Column(

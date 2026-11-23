@@ -22,7 +22,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Card
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.FloatingActionButton
 import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.IconCamera
@@ -77,10 +76,7 @@ fun TextTranslateScreen(state: TextTranslateUiState, actions: TextTranslateActio
             ) {
                 when (state.micState) {
                     MicState.LISTENING -> IconStop()
-                    MicState.TRANSCRIBING -> CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        strokeWidth = 2.dp,
-                    )
+                    MicState.TRANSCRIBING -> Text("\u2026")
                     MicState.IDLE -> IconMic()
                 }
             }
@@ -256,8 +252,6 @@ private fun OutputCard(
                 // TranslateViewModel loads the engine on init. Show a loading
                 // spinner if the engine is still initializing.
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                    Spacer(Modifier.width(8.dp))
                     Text(stringResource(R.string.loading_translator), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 return@Column
@@ -271,7 +265,7 @@ private fun OutputCard(
                 )
                 if (isTranslating) {
                     Spacer(Modifier.width(8.dp))
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                    Text("\u2026")
                 }
             }
 

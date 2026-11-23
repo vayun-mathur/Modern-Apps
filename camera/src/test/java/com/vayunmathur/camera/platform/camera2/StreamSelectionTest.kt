@@ -96,6 +96,86 @@ class StreamSelectionTest {
         assertNull(StreamSelection.selectAnalysisSize(noYuv))
     }
 
+    @Test fun limitedPlanIsGuaranteedComboOnly() {
+        val snapshot = CharacteristicsFacade.fromFakeMap(
+            cameraId = "0",
+            hardwareLevel = android.hardware.camera2.CameraMetadata
+                .INFO_SUPPORTED_HARDWARE_LEVEL_LIMITED,
+            sizesByFormat = mapOf(
+                ImageFormat.JPEG to listOf(Size(4080, 3072)),
+                ImageFormat.JPEG_R to listOf(Size(4080, 3072)),
+                ImageFormat.RAW_SENSOR to listOf(Size(4080, 2288)),
+                ImageFormat.YUV_420_888 to listOf(
+                    Size(4080, 3072), Size(1920, 1080), Size(1280, 960),
+                ),
+            ),
+            availableCapabilities = setOf(
+                android.hardware.camera2.CameraMetadata.REQUEST_AVAILABLE_CAPABILITIES_RAW,
+            ),
+        ).snapshot
+        val plan = StreamSelection.planSessionStreams(
+            snapshot, ringEnabled = true, rawEnabled = true,
+            ultraHdrEnabled = true, hasAnalysisConsumer = true,
+        )
+        // Richest legal LIMITED combo: JPEG MAX + one YUV <=1080p, no
+        // JPEG_R / RAW / second YUV, preview capped at 1080p.
+        assertEquals(FrameSize(4080, 3072), plan.jpeg)
+        assertNull(plan.jpegR)
+        assertNull(plan.raw)
+        assertNull(plan.ring)
+        assertEquals(FrameSize(1280, 960), plan.analysis)
+        assertEquals(StreamSelection.LIMITED_STREAM_MAX_PIXELS, plan.previewMaxPixels)
+        // Without an analysis consumer the single YUV serves the ring.
+        val ringPlan = StreamSelection.planSessionStreams(
+            snapshot, ringEnabled = true, rawEnabled = true,
+            ultraHdrEnabled = true, hasAnalysisConsumer = false,
+        )
+        assertEquals(FrameSize(1920, 1080), ringPlan.ring)
+        assertNull(ringPlan.analysis)
+    }
+
+    @Test fun fullPlanKeepsRichOutputs() {
+        // FULL (1) is below LEVEL_3: no guaranteed RAW/JPEG_R combo, so the
+        // conservative guaranteed plan applies there too.
+        val snapshot = CharacteristicsFacade.fromFakeMap(
+            cameraId = "0",
+            hardwareLevel = android.hardware.camera2.CameraMetadata
+                .INFO_SUPPORTED_HARDWARE_LEVEL_FULL,
+            sizesByFormat = mapOf(
+                ImageFormat.JPEG to listOf(Size(4080, 3072)),
+                ImageFormat.JPEG_R to listOf(Size(4080, 3072)),
+                ImageFormat.YUV_420_888 to listOf(Size(1920, 1080), Size(1280, 960)),
+            ),
+        ).snapshot
+        val plan = StreamSelection.planSessionStreams(
+            snapshot, ringEnabled = false, rawEnabled = false,
+            ultraHdrEnabled = true, hasAnalysisConsumer = true,
+        )
+        assertNull(plan.jpegR)
+        assertEquals(FrameSize(1280, 960), plan.analysis)
+        assertEquals(StreamSelection.LIMITED_STREAM_MAX_PIXELS, plan.previewMaxPixels)
+    }
+
+    @Test fun level3PlanKeepsRichOutputs() {
+        val snapshot = CharacteristicsFacade.fromFakeMap(
+            cameraId = "0",
+            hardwareLevel = android.hardware.camera2.CameraMetadata
+                .INFO_SUPPORTED_HARDWARE_LEVEL_3,
+            sizesByFormat = mapOf(
+                ImageFormat.JPEG to listOf(Size(4080, 3072)),
+                ImageFormat.JPEG_R to listOf(Size(4080, 3072)),
+                ImageFormat.YUV_420_888 to listOf(Size(1920, 1080), Size(1280, 960)),
+            ),
+        ).snapshot
+        val plan = StreamSelection.planSessionStreams(
+            snapshot, ringEnabled = false, rawEnabled = false,
+            ultraHdrEnabled = true, hasAnalysisConsumer = true,
+        )
+        assertEquals(FrameSize(4080, 3072), plan.jpegR)
+        assertEquals(FrameSize(1280, 960), plan.analysis)
+        assertNull(plan.previewMaxPixels)
+    }
+
     @Test fun supportedSizesPreferSurfaceTextureThenPrivate() {
         val withTexture = CharacteristicsFacade.fromFakeMap(
             cameraId = "0",

@@ -59,8 +59,11 @@ fun HomeContent(
     noAddress: Boolean = false,
     onMerchantClick: (Int) -> Unit = {},
 ) {
-    AppScaffold(topBar = {}, isLoading = loading) { padding ->
-        if (noAddress) {
+    AppScaffold(topBar = {}, isRefreshing = loading) { padding ->
+        if (loading) {
+            // First load: content stays under the scaffold refresh indicator, no premature empty/no-address state.
+            Box(Modifier.fillMaxSize().padding(padding))
+        } else if (noAddress) {
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     IconHome(modifier = Modifier.size(48.dp),

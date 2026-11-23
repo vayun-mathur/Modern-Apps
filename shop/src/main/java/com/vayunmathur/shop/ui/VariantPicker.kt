@@ -35,7 +35,6 @@ import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.image.compose.AsyncImage
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Button
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.DetailSection
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text

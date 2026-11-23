@@ -29,7 +29,6 @@ import androidx.media3.common.util.UnstableApi
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.IconSave
-import com.vayunmathur.library.ui.LoadingIndicator
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.photos.R
 import com.vayunmathur.photos.data.VideoTool
@@ -66,8 +65,9 @@ fun VideoEditPage(vm: VideoEditViewModel, id: Long, uri: String?) {
 
     val currentPhoto = photo
     if (currentPhoto == null) {
+        // Viewer context without a scaffold: text affordance, no loading icon.
         Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
-            LoadingIndicator()
+            Text("Loading…", color = Color.White)
         }
         return
     }

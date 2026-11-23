@@ -29,7 +29,6 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.compose.PlayerSurface
 import androidx.media3.ui.compose.SURFACE_TYPE_TEXTURE_VIEW
 import androidx.media3.ui.compose.material3.buttons.PlayPauseButton
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.ExternalIntents
 import com.vayunmathur.library.ui.FadeVisibility
 import com.vayunmathur.library.ui.IconButton
@@ -249,10 +248,8 @@ fun VideoPlayer(
                 }
 
                 if (isBuffering) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(48.dp).align(Alignment.Center),
-                        color = Color.White
-                    )
+                    // Media-surface buffering affordance: overlay text, no spinner.
+                    Text("Loading\u2026", color = Color.White, modifier = Modifier.align(Alignment.Center))
                 }
                 VideoPlayerSeekRow(
                     currentPosition = currentPosition,

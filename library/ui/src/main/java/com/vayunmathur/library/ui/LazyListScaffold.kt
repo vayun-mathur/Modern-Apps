@@ -50,8 +50,8 @@ import androidx.compose.ui.unit.dp
  * already pass their own margin (e.g. 16.dp) can pass [Spacing.lg] explicitly
  * to stay fixed, or `0.dp` to opt out entirely.
  *
- * [isLoading] replaces the list with the canonical loading state (the scaffold's
- * bars stay); see [AppScaffold] for the whole-content loading semantics.
+ * [isRefreshing]/[onRefresh] drive the scaffold's pull-to-refresh indicator
+ * over the list (the scaffold's bars stay); see [AppScaffold].
  *
  * [overlay] is drawn on top of the list in a [Box] exactly the list's size,
  * for chrome that must track the viewport itself - e.g. a fast-scroller whose
@@ -74,8 +74,9 @@ fun LazyListScaffold(
     verticalArrangement: Arrangement.Vertical = Arrangement.Top,
     containerColor: Color = MaterialTheme.colorScheme.background,
     overlay: @Composable BoxScope.() -> Unit = {},
-    isLoading: Boolean = false,
-    loadingMessage: String? = null,
+    isRefreshing: Boolean = false,
+    onRefresh: (() -> Unit)? = null,
+    refreshEnabled: Boolean = true,
     content: LazyListScope.() -> Unit,
 ) {
     val behavior = scrollBehavior ?: appBarScrollBehavior()
@@ -93,13 +94,7 @@ fun LazyListScaffold(
     floatingActionButtonPosition,
     containerColor,
 ) { pad ->
-    if (isLoading) {
-        LoadingState(
-            modifier = Modifier.fillMaxSize().padding(pad),
-            message = loadingMessage,
-        )
-        return@Scaffold
-    }
+  ScaffoldRefreshBox(isRefreshing = isRefreshing, onRefresh = onRefresh, refreshEnabled = refreshEnabled, padding = pad) { refreshPad ->
     val dir = LocalLayoutDirection.current
     // Only the width class above compact adds padding; on phones this is
     // exactly [horizontalPadding], unchanged from before.
@@ -119,5 +114,6 @@ fun LazyListScaffold(
         )
         overlay()
     }
+  }
 }
 }

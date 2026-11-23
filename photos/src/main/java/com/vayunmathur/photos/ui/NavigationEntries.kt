@@ -13,7 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.fragment.app.FragmentActivity
 import androidx.activity.compose.LocalActivity
 import android.net.Uri
-import com.vayunmathur.library.ui.LoadingIndicator
+import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.util.AppMessages
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.photos.Route
@@ -90,8 +90,9 @@ internal fun SecureFolderEntry(
                 },
             )
         }
+        // Gate context without a scaffold: text affordance, no loading icon.
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            LoadingIndicator()
+            Text("Loading…")
         }
     } else {
         SecureFolderPage(backStack, vaultPassword!!, secureFolderViewModel)

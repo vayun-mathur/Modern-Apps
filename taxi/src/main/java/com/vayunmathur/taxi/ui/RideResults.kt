@@ -30,7 +30,6 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.Card
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.HorizontalDivider
 import com.vayunmathur.library.ui.IconLocationOn
 import com.vayunmathur.library.ui.IconSearch
@@ -58,8 +57,6 @@ internal fun ResultsSection(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            CircularProgressIndicator()
-            Spacer(Modifier.height(12.dp))
             Text(
                 stringResource(R.string.comparing_fares),
                 style = MaterialTheme.typography.bodyMedium,
@@ -265,8 +262,6 @@ internal fun LoadingRow(text: String) {
         Modifier.fillMaxWidth().padding(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-        Spacer(Modifier.width(12.dp))
         Text(
             text,
             style = MaterialTheme.typography.bodyMedium,

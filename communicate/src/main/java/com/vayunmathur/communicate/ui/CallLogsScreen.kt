@@ -53,8 +53,10 @@ fun CallLogsScreen() {
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     var tick by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
     var pendingDelete by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<CommunicateCallLogEntry?>(null) }
+    var isRefreshing by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     AppScaffold(
         title = stringResource(R.string.call_logs_title),
+        isRefreshing = isRefreshing,
     ) { padding ->
         DefaultDialerGate(modifier = Modifier.padding(padding)) { roleRevision ->
             PermissionGate(
@@ -69,8 +71,9 @@ fun CallLogsScreen() {
                     tick) {
                     value = withContext(Dispatchers.IO) { CommunicateRepository.loadCallLogsMerged(context) }
                 }
+                androidx.compose.runtime.SideEffect { isRefreshing = callLogs.value == null }
                 when (val rows = callLogs.value) {
-                    null -> com.vayunmathur.library.ui.LoadingState(Modifier.padding(padding))
+                    null -> androidx.compose.foundation.layout.Box(Modifier.padding(padding))
                     emptyList<CommunicateCallLogEntry>() -> EmptyState(
                         title = stringResource(R.string.empty_call_logs),
                         icon = { IconHistory() },

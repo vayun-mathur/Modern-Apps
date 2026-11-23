@@ -16,7 +16,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.AppScaffold
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.taxi.R
@@ -50,14 +49,12 @@ fun CurrentRideScreen() {
         return
     }
 
-    AppScaffold(title = stringResource(R.string.nav_current_ride)) { padding ->
+    AppScaffold(title = stringResource(R.string.nav_current_ride), isRefreshing = loading) { padding ->
         Box(
             Modifier.fillMaxSize().padding(padding).padding(24.dp),
             contentAlignment = Alignment.Center,
         ) {
-            if (loading) {
-                CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
-            } else {
+            if (!loading) {
                 Text(
                     stringResource(R.string.no_current_ride),
                     style = MaterialTheme.typography.bodyLarge,

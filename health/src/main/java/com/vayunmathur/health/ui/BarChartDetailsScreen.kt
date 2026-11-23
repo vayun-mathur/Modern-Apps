@@ -35,7 +35,6 @@ import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.DashboardSection
 import com.vayunmathur.library.ui.DashboardSectionDivider
 import com.vayunmathur.library.ui.EmptyState
-import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.IconArrowForward
 import com.vayunmathur.library.ui.IconBack
@@ -103,6 +102,7 @@ fun BarChartDetailsScreen(
     }
 
     AppScaffold(
+        isRefreshing = !state.hasLoaded,
         title = {
             Text(
                 stringResource(config.titleRes),
@@ -237,7 +237,7 @@ fun BarChartDetailsScreen(
                 Spacer(Modifier.height(16.dp))
 
                 if (!hasData && !state.hasLoaded) {
-                    LoadingState(
+                    androidx.compose.foundation.layout.Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(180.dp),

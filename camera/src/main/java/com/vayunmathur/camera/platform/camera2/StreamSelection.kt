@@ -223,6 +223,94 @@ object StreamSelection {
         }
     }
 
+    /** 1080p pixel budget: the LIMITED guaranteed-combination cap for PRIV/YUV targets. */
+    const val LIMITED_STREAM_MAX_PIXELS: Long = 1920L * 1080L
+
+    /**
+     * True when this lens must be planned against the conservative
+     * guaranteed stream-combination table. Note the Android constants are
+     * NOT ordered: LIMITED=0, FULL=1, LEGACY=2, LEVEL_3=3, EXTERNAL=4.
+     * Only LEVEL_3 guarantees RAW/second-JPEG-class combinations, so every
+     * other level (and an unreadable level) gets the guaranteed combo.
+     */
+    fun isLimitedOrLower(snapshot: LensCharacteristicsSnapshot): Boolean =
+        snapshot.hardwareLevel !=
+            android.hardware.camera2.CameraMetadata.INFO_SUPPORTED_HARDWARE_LEVEL_3
+
+    /** Largest YUV size at or under [capPixels], else the smallest YUV size; null when no YUV. */
+    fun selectYuvSizeAtMost(snapshot: LensCharacteristicsSnapshot, capPixels: Long): FrameSize? {
+        val yuv = supportedYuvSizes(snapshot)
+        if (yuv.isEmpty()) return null
+        val under = yuv.filter { it.area.toLong() <= capPixels }
+        return if (under.isNotEmpty()) {
+            under.maxWithOrNull(compareBy({ it.area }, { it.width }, { it.height }))
+        } else {
+            yuv.minWithOrNull(compareBy({ it.area }, { it.width }, { it.height }))
+        }
+    }
+
+    /** Sizes chosen for one capture session, legal by construction for the lens level. */
+    data class SessionStreamPlan(
+        val jpeg: FrameSize?,
+        val jpegR: FrameSize?,
+        val ring: FrameSize?,
+        val raw: FrameSize?,
+        val analysis: FrameSize?,
+        /** Preview pixel cap implied by the combination, or null for no cap. */
+        val previewMaxPixels: Long?,
+    )
+
+    /**
+     * Plans one session's outputs from the guaranteed stream-combination
+     * table for the lens's hardware level — never by trial configure.
+     *
+     * LIMITED/LEGACY (and unknown levels) guarantee, alongside a preview,
+     * at most: one JPEG at MAX size, one YUV target at ≤1080p, and a
+     * preview (PRIVATE) target at ≤1080p. There is no guaranteed second
+     * JPEG-class stream (JPEG_R), no RAW stream, and no second YUV stream,
+     * so the richest legal LIMITED combination is preview(≤1080p) +
+     * JPEG(MAX) + one YUV(≤1080p). That single YUV serves analysis when a
+     * consumer exists (QR/luma/motion keep working) and the ZSL ring
+     * otherwise; stills fall back to a regular capture when the ring is
+     * not configured. FULL/LEVEL_3 lenses keep the richer selection.
+     */
+    fun planSessionStreams(
+        snapshot: LensCharacteristicsSnapshot,
+        ringEnabled: Boolean,
+        rawEnabled: Boolean,
+        ultraHdrEnabled: Boolean,
+        hasAnalysisConsumer: Boolean,
+    ): SessionStreamPlan {
+        val jpeg = selectJpegSize(snapshot)
+        if (isLimitedOrLower(snapshot)) {
+            return SessionStreamPlan(
+                jpeg = jpeg,
+                jpegR = null,
+                // The single YUV serves the ring only when no analysis
+                // consumer exists; a 1080p ring is not per-frame processed.
+                ring = if (!hasAnalysisConsumer && ringEnabled) {
+                    selectYuvSizeAtMost(snapshot, LIMITED_STREAM_MAX_PIXELS)
+                } else {
+                    null
+                },
+                raw = null,
+                // Analysis is per-frame processed (plane stats), so it gets
+                // the preview-class cap (<=1280x960), not a 1080p frame:
+                // full-rate preview must not pay for sensor-class YUV.
+                analysis = if (hasAnalysisConsumer) selectAnalysisSize(snapshot) else null,
+                previewMaxPixels = LIMITED_STREAM_MAX_PIXELS,
+            )
+        }
+        return SessionStreamPlan(
+            jpeg = jpeg,
+            jpegR = if (ultraHdrEnabled && snapshot.supportsJpegR) selectJpegRSize(snapshot) else null,
+            ring = if (ringEnabled) selectRingSize(snapshot) else null,
+            raw = if (rawEnabled) selectRawRingSize(snapshot) else null,
+            analysis = if (hasAnalysisConsumer) selectAnalysisSize(snapshot) else null,
+            previewMaxPixels = null,
+        )
+    }
+
     /** The rejection for [requested], or null when a size can be selected. */
     fun rejectionFor(
         requested: FrameSize,

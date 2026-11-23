@@ -14,7 +14,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.AppScaffold
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.DesktopMaxWidthContainer
 import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.ui.OutlinedTextField
@@ -34,6 +33,7 @@ fun SearchScreen(
     AppScaffold(
         title = "Search",
         onNavigateBack = onBack,
+        isRefreshing = state.loading,
     ) { padding ->
         DesktopMaxWidthContainer(Modifier.padding(padding)) {
             Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -45,7 +45,6 @@ fun SearchScreen(
                     singleLine = true,
                 )
                 if (state.loading) {
-                    CircularProgressIndicator()
                     return@Column
                 }
                 if (state.query.isNotBlank() && state.results.isEmpty()) {

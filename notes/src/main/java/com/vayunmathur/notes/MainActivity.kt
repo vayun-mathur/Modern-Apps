@@ -7,8 +7,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.lifecycleScope
-import com.vayunmathur.library.ui.LoadingIndicator
 import com.vayunmathur.library.ui.MaActivity
+import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.util.IntentHelper
 import com.vayunmathur.library.util.onFileDrop
 import com.vayunmathur.notes.data.NotesRepository
@@ -68,7 +68,7 @@ class MainActivity : MaActivity() {
             // instead of a blank screen while it runs on Dispatchers.IO.
             if (ready) Navigation(notesViewModel)
             else Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                LoadingIndicator()
+                Text("Loading…")
             }
         }
     }

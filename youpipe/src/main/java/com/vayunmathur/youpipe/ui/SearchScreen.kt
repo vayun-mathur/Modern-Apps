@@ -13,7 +13,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import com.vayunmathur.library.ui.EmptyState
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.ListItem
 import com.vayunmathur.library.ui.ListItemDefaults
 import com.vayunmathur.library.ui.MaterialTheme
@@ -166,8 +165,9 @@ fun SearchScreen(
         },
     ) { paddingValues ->
         if (state.recommendationsLoading) {
+            // Raw Scaffold (SearchBar) has no refresh slot: progress text affordance.
             Box(Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+                Text("Loading\u2026")
             }
         } else if (state.recommendations.isEmpty()) {
             EmptyState(

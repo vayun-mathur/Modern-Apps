@@ -30,7 +30,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.vayunmathur.library.ui.LoadingIndicator
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.photos.R
 import com.vayunmathur.photos.platform.WallpaperLoadState
@@ -77,10 +76,8 @@ internal fun WallpaperPreview(
         when {
             loadState == WallpaperLoadState.Loading ||
                 (bitmap == null && loadState == WallpaperLoadState.Idle) -> {
-                LoadingIndicator(
-                    modifier = Modifier.size(48.dp),
-                    color = Color.White,
-                )
+                // Viewer context without a scaffold: text affordance, no loading icon.
+                Text("Loading…", color = Color.White)
             }
             loadState == WallpaperLoadState.Failed || bitmap == null -> {
                 Text(

@@ -11,9 +11,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import com.vayunmathur.library.ui.EmptyState
-import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.AppScaffold
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.FloatingActionButton
 import com.vayunmathur.library.ui.IconAdd
@@ -100,6 +98,7 @@ fun AccountsScreen(backStack: NavBackStack<Route>, viewModel: EverySyncViewModel
 @Composable
 fun AccountsScreen(state: AccountsUiState, actions: AccountsActions) {
     AppScaffold(
+        isRefreshing = !state.hasLoaded,
         title = stringResource(R.string.accounts_title),
         actions = {
             IconButton(onClick = { actions.openSettings() }) {
@@ -113,7 +112,7 @@ fun AccountsScreen(state: AccountsUiState, actions: AccountsActions) {
         },
     ) { padding ->
         if (!state.hasLoaded && state.accounts.isEmpty()) {
-            LoadingState(Modifier.fillMaxSize().padding(padding))
+            Box(Modifier.fillMaxSize().padding(padding))
         } else if (state.accounts.isEmpty()) {
             EmptyState(
                 title = stringResource(R.string.no_accounts),
@@ -152,7 +151,7 @@ fun AccountsScreen(state: AccountsUiState, actions: AccountsActions) {
                         },
                         trailingContent = {
                             if (account.syncing) {
-                                CircularProgressIndicator(Modifier.size(24.dp))
+                                Text(stringResource(R.string.syncing))
                             } else {
                                 IconButton(onClick = { actions.syncNow(account.accountName) }) {
                                     IconRefresh()

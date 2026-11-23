@@ -6,6 +6,7 @@ import com.vayunmathur.appstore.platform.LibraryUiState
 import com.vayunmathur.appstore.platform.SourceFilter
 import com.vayunmathur.appstore.platform.setLibraryFilter
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -42,13 +43,17 @@ fun LibraryScreen(
 ) {
     // Whole-content loading: the list IS the content and the chips only filter a
     // loaded list, so there is no meaningful filter state before the first sweep.
-    // isLoading is gated on hasLoaded, which never resets, so filtering a loaded
+    // isRefreshing is gated on hasLoaded, which never resets, so filtering a loaded
     // library (even down to empty) keeps the chips visible above the empty state.
+    // While the first sweep runs the scaffold shows its top indicator over an
+    // empty placeholder: neither chips nor the empty state may show before load.
     AppScaffold(
         topBar = {},
-        isLoading = !state.hasLoaded && state.apps.isEmpty(),
+        isRefreshing = !state.hasLoaded && state.apps.isEmpty(),
     ) { padding ->
-        Column(Modifier.fillMaxSize().padding(top = padding.calculateTopPadding())) {
+        if (!state.hasLoaded) {
+            Box(Modifier.fillMaxSize().padding(padding))
+        } else Column(Modifier.fillMaxSize().padding(top = padding.calculateTopPadding())) {
             LazyRow(
                 Modifier.fillMaxWidth(),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),

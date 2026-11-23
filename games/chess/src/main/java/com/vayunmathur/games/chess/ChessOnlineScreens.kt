@@ -37,7 +37,6 @@ import com.vayunmathur.games.chess.platform.OnlineConnection
 import com.vayunmathur.games.chess.platform.OnlineLobby
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Button
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.ConfirmDialog
 import com.vayunmathur.library.ui.IconClock
 import com.vayunmathur.library.ui.IconFlag
@@ -133,7 +132,6 @@ internal fun ChessOnlineGameDestination(viewModel: OnlineChessViewModel, gameId:
                         .padding(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    CircularProgressIndicator()
                     Text(stringResource(R.string.online_reconnecting))
                 }
             }
@@ -258,7 +256,6 @@ private fun SigningInRow() {
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        CircularProgressIndicator()
         Text(stringResource(R.string.online_signing_in))
     }
 }
@@ -309,7 +306,6 @@ private fun SeekRow(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            CircularProgressIndicator()
             Text(stringResource(R.string.online_seeking, seeking.timeControl.label))
             OutlinedButton(onClick = onCancel) {
                 Text(stringResource(UiR.string.cancel))
@@ -347,7 +343,6 @@ private fun ChallengeRow(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                CircularProgressIndicator()
                 Text(stringResource(R.string.online_challenge_sent, challenging.username))
             }
         } else {

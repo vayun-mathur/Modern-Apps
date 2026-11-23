@@ -15,7 +15,6 @@ import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.AlertDialog
 import com.vayunmathur.library.ui.Button
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.HorizontalDivider
 import com.vayunmathur.library.ui.ListItem
@@ -134,7 +133,7 @@ fun HolidayCalendarsScreen(viewModel: CalendarViewModel, backStack: NavBackStack
                         },
                         trailingContent = {
                             if (isBusy) {
-                                CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                                Text("Loading…")
                             } else if (isAdded) {
                                 Switch(checked = true, onCheckedChange = { removeCountry(country.code) })
                             } else {

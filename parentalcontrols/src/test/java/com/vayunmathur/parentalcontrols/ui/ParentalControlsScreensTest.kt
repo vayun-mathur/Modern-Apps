@@ -378,4 +378,24 @@ class ParentalControlsScreensTest {
         rule.onNodeWithText("Filter explicit sites").performClick()
         rule.onNodeWithText("Filter explicit sites").assertIsDisplayed()
     }
+
+    @Test
+    fun webFiltersRowIsHonestAboutEnforcement() {
+        // No hook enforces this yet: unsupervised installs get the tier-only label,
+        // supervised installs still get "not yet enforced" rather than a working claim.
+        rule.setContent {
+            DynamicTheme { WebContentFiltersScreen(enabled = true, onEnabledChange = {}, enforcementAvailable = false) }
+        }
+        rule.onNodeWithText("Supervised devices only — on this device the setting is saved, but nothing is filtered.")
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun webFiltersRowOnSupervisedDeviceStillSaysNotEnforced() {
+        rule.setContent {
+            DynamicTheme { WebContentFiltersScreen(enabled = true, onEnabledChange = {}, enforcementAvailable = true) }
+        }
+        rule.onNodeWithText("Not yet enforced — this setting is saved, but it does not filter sites yet.")
+            .assertIsDisplayed()
+    }
 }

@@ -39,7 +39,6 @@ import com.vayunmathur.games.hub.util.formatRelativeTime
 import com.vayunmathur.games.hub.viewmodel.GameHubViewModel
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.EmptyState
-import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.OutlinedButton
 import com.vayunmathur.library.ui.Card
@@ -82,10 +81,11 @@ fun GameDetailScreen(
     AppScaffold(
         title = KnownGames.displayName(gameId, game?.displayName),
         backStack = backStack,
+        isRefreshing = game == null && gameId !in loadedGameIds,
     ) { padding ->
         val g = game
         if (g == null && gameId !in loadedGameIds) {
-            LoadingState(Modifier.fillMaxSize().padding(padding))
+            androidx.compose.foundation.layout.Box(Modifier.fillMaxSize().padding(padding))
             return@AppScaffold
         }
         if (g == null) {

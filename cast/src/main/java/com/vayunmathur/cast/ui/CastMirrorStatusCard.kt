@@ -16,7 +16,6 @@ import com.vayunmathur.cast.platform.CastUiState
 import com.vayunmathur.cast.platform.MirrorPhase
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.Card
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.IconScreenShare
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.OutlinedButton
@@ -51,7 +50,7 @@ fun CastMirrorStatusCard(
                     modifier = Modifier.weight(1f),
                 )
                 if (state.mirrorPhase == MirrorPhase.Negotiating) {
-                    CircularProgressIndicator()
+                    Text("Loading\u2026")
                 }
             }
             // Both degradations are worth saying out loud: a silent audio stream or a video-only cast

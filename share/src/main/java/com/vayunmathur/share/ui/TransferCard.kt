@@ -21,7 +21,6 @@ import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.Card
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.DesktopMaxWidthContainer
 import com.vayunmathur.library.ui.LinearProgressIndicator
 import com.vayunmathur.library.ui.MaterialTheme
@@ -54,7 +53,6 @@ fun TransferCard(
             when (state) {
                 ShareState.Handshaking -> {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        CircularProgressIndicator(Modifier.padding(end = 8.dp))
                         Text(stringResource(R.string.share_connecting))
                     }
                 }

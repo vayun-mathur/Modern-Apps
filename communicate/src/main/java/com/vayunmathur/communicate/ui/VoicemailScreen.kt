@@ -80,8 +80,10 @@ fun VoicemailScreen() {
         }
     }
 
+    var isRefreshing by remember { mutableStateOf(false) }
     AppScaffold(
         title = stringResource(R.string.voicemail_title),
+        isRefreshing = isRefreshing,
     ) { padding ->
         DefaultDialerGate(modifier = Modifier.padding(padding)) { roleRevision ->
             PermissionGate(
@@ -98,8 +100,9 @@ fun VoicemailScreen() {
                 ) {
                     value = CommunicateRepository.loadVoicemailsMerged(context)
                 }
+                androidx.compose.runtime.SideEffect { isRefreshing = voicemails.value == null }
                 when (val rows = voicemails.value) {
-                    null -> com.vayunmathur.library.ui.LoadingState(Modifier.padding(padding))
+                    null -> androidx.compose.foundation.layout.Box(Modifier.padding(padding))
                     emptyList<VoicemailEntry>() -> EmptyState(
                         title = stringResource(R.string.empty_voicemails),
                         message = stringResource(R.string.empty_voicemails_setup),

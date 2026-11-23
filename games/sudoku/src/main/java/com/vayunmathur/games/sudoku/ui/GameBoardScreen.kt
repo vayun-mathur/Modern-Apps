@@ -33,7 +33,6 @@ import com.vayunmathur.games.sudoku.ui.components.NumberPad
 import com.vayunmathur.games.sudoku.ui.components.SudokuGrid
 import com.vayunmathur.library.ui.AppBarAlignment
 import com.vayunmathur.library.ui.AppScaffold
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.ConfirmDialog
 import com.vayunmathur.library.ui.FilledTonalButton
 import com.vayunmathur.library.ui.IconEdit
@@ -98,7 +97,7 @@ fun GameBoardScreen(
         ) {
             if (game == null) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+                    Text("Loading\u2026")
                 }
                 return@BoxWithConstraints
             }

@@ -18,7 +18,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vayunmathur.library.ui.Card
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.youpipe.R
@@ -67,8 +66,6 @@ fun AddToWatchLater(
     Dialog({ backStack.pop() }) {
         Card {
             Row(Modifier.padding(24.dp), verticalAlignment = Alignment.CenterVertically) {
-                CircularProgressIndicator(Modifier.size(24.dp))
-                Spacer(Modifier.width(16.dp))
                 Text(stringResource(R.string.adding_to_watch_later))
             }
         }

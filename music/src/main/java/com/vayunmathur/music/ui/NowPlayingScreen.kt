@@ -1,6 +1,6 @@
 package com.vayunmathur.music.ui
 
-import androidx.compose.material3.CircularProgressIndicator
+import com.vayunmathur.library.ui.Text
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.rememberCoroutineScope
@@ -27,7 +27,6 @@ import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Scaffold
-import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.library.ui.TopAppBar
 import com.vayunmathur.library.ui.TopAppBarDefaults
@@ -221,13 +220,13 @@ private fun CastButton(state: NowPlayingUiState) {
             // A track still being encoded is the window in which seeking does not work and in which a
             // failure can still appear, so it is worth showing even though playback has started.
             if (growing != null) {
-                CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                Text("\u2026")
             } else {
                 IconCastConnected(tint = MaterialTheme.colorScheme.primary)
             }
         }
-        CastPlayback.State.Connecting -> IconButton(onClick = {}) {
-            CircularProgressIndicator(modifier = Modifier.size(20.dp))
+        CastPlayback.State.Connecting -> IconButton(onClick = {}, enabled = false) {
+            Text("\u2026")
         }
         CastPlayback.State.Idle -> IconButton(
             onClick = { picker.launch(Unit) },

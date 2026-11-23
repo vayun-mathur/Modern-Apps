@@ -38,7 +38,6 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.compose.PlayerSurface
 import androidx.media3.ui.compose.SURFACE_TYPE_TEXTURE_VIEW
 import com.vayunmathur.library.ui.Button
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.FadeVisibility
 import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.IconPause
@@ -187,10 +186,7 @@ fun WatchScreen(
         }
 
         if (loading) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(48.dp).align(Alignment.Center),
-                color = Color.White,
-            )
+            Text("Loading\u2026", color = Color.White, modifier = Modifier.align(Alignment.Center))
         }
 
         if (noAddons) {
@@ -255,10 +251,7 @@ fun WatchScreen(
                     }
                 }
                 if (playerState.isBuffering && player != null) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(56.dp).align(Alignment.Center),
-                        color = Color.White,
-                    )
+                    Text("Loading\u2026", color = Color.White, modifier = Modifier.align(Alignment.Center))
                 }
 
                 if (player != null) {

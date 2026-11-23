@@ -21,10 +21,25 @@ internal fun Camera2Session.configureSession(opened: DeviceHandle, gen: Long, re
         createCaptureSessionWithAnalysisFallback(opened, gen)
         return
     }
+    // Outputs are chosen analytically from the guaranteed stream
+    // combination table for this lens's hardware level (see
+    // StreamSelection.planSessionStreams): a LIMITED lens gets
+    // preview(<=1080p) + JPEG(MAX) + one YUV(<=1080p) and no JPEG_R/RAW/
+    // second-YUV stream, so the first configure is legal by construction.
+    // The profile ladder in Camera2PreviewSession remains only as a
+    // safety net for HALs that reject even guaranteed combinations.
+    val consumer = analysisConsumer
+    val plan = StreamSelection.planSessionStreams(
+        snapshot = snapshot,
+        ringEnabled = ringConfig.enabled,
+        rawEnabled = rawRingConfig.enabled,
+        ultraHdrEnabled = ultraHdrEnabled,
+        hasAnalysisConsumer = consumer != null && !analysisComboDropped,
+    )
     // Second output: the JPEG still reader, when the lens reports JPEG
     // sizes and the driver can create it. Failure degrades to
     // preview-only (capture() then fails cleanly, policy excludes it).
-    val jpegSize = StreamSelection.selectJpegSize(snapshot)
+    val jpegSize = plan.jpeg
     val output = jpegSize?.let { size ->
         runCatching { driver.createStillOutput(size) }.getOrNull()?.also { created ->
             created.setListener(JpegImageListener { bytes, width, height, _ ->
@@ -37,11 +52,7 @@ internal fun Camera2Session.configureSession(opened: DeviceHandle, gen: Long, re
     // Additional output: the JPEG_R (Ultra HDR) reader, only when the
     // facade advertises JPEG_R sizes. Failure degrades to no Ultra HDR
     // output (captures requesting it fall back to the JPEG output).
-    val jpegRSize = if (ultraHdrEnabled && snapshot.supportsJpegR) {
-        StreamSelection.selectJpegRSize(snapshot)
-    } else {
-        null
-    }
+    val jpegRSize = plan.jpegR
     val createdUltraHdr = jpegRSize?.let { size ->
         runCatching { driver.createUltraHdrStillOutput(size) }.getOrNull()?.also { created ->
             created.setListener(JpegImageListener { bytes, width, height, _ ->
@@ -54,11 +65,7 @@ internal fun Camera2Session.configureSession(opened: DeviceHandle, gen: Long, re
     // Third output: the YUV ring, only when this session was built
     // with the ring enabled. Failure degrades to no-ring (the
     // policy then excludes the ring path, capture stays Phase 4a).
-    val selectedRingSize = if (ringConfig.enabled) {
-        StreamSelection.selectRingSize(snapshot)
-    } else {
-        null
-    }
+    val selectedRingSize = plan.ring
     val createdRing = selectedRingSize?.let { size ->
         runCatching { driver.createRingOutput(size) }.getOrNull()?.also { created ->
             created.setListener(RingFrameListener { frame -> onRingFrame(frame) })
@@ -69,12 +76,8 @@ internal fun Camera2Session.configureSession(opened: DeviceHandle, gen: Long, re
     // Fourth output: the RAW ring, only when built with it enabled and
     // the facade proves RAW. RAW stream combos vary wildly per HAL, so
     // failure degrades to no RAW ring (policy excludes the RAW path).
-    val selectedRawSize = if (rawRingConfig.enabled) {
-        StreamSelection.selectRawRingSize(snapshot)
-    } else {
-        null
-    }
-    val selectedRawFormat = snapshot.rawRingFormat
+    val selectedRawSize = plan.raw
+    val selectedRawFormat = if (selectedRawSize != null) snapshot.rawRingFormat else null
     val createdRawRing = if (selectedRawSize != null && selectedRawFormat != null) {
         runCatching {
             driver.createRawRingOutput(selectedRawSize, selectedRawFormat)
@@ -89,12 +92,7 @@ internal fun Camera2Session.configureSession(opened: DeviceHandle, gen: Long, re
     rawRingFormat = if (createdRawRing != null) selectedRawFormat else null
     // Optional analysis output: only when a consumer was supplied.
     // Failure degrades to no analysis (preview/still unaffected).
-    val consumer = analysisConsumer
-    val selectedAnalysisSize = if (consumer != null && !analysisComboDropped) {
-        StreamSelection.selectAnalysisSize(snapshot)
-    } else {
-        null
-    }
+    val selectedAnalysisSize = plan.analysis
     val createdAnalysis = if (selectedAnalysisSize != null && consumer != null) {
         runCatching {
             driver.createAnalysisOutput(
@@ -112,6 +110,14 @@ internal fun Camera2Session.configureSession(opened: DeviceHandle, gen: Long, re
     }
     analysisOutput = createdAnalysis
     analysisSize = if (createdAnalysis != null) selectedAnalysisSize else null
+    com.vayunmathur.library.log.Log.status(
+        "Camera2Session",
+        "configure attempt gen=$gen reuse=$reuseOutputs hw=${snapshot.hardwareLevel} " +
+            "preview=${previewSurface?.let { "set" }} jpeg=$jpegSize jpegR=$jpegRSize " +
+            "ring=$selectedRingSize raw=$selectedRawSize/${selectedRawFormat} analysis=$selectedAnalysisSize " +
+            "caps=${snapshot.availableCapabilities} maxJpeg=${StreamSelection.supportedJpegSizes(snapshot).maxByOrNull { it.area }} " +
+            "maxYuv=${StreamSelection.supportedYuvSizes(snapshot).maxByOrNull { it.area }}",
+    )
     createCaptureSessionWithAnalysisFallback(opened, gen)
 }
 

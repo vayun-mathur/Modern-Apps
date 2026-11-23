@@ -6,6 +6,7 @@ import com.vayunmathur.appstore.platform.HomeActions
 import com.vayunmathur.appstore.platform.HomeUiState
 import com.vayunmathur.appstore.platform.SectionLayout
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -32,10 +33,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.appstore.data.UnifiedApp
 import com.vayunmathur.appstore.platform.AppStoreViewModel
-import com.vayunmathur.library.ui.AppPullToRefreshBox
 import com.vayunmathur.library.ui.Card
 import com.vayunmathur.library.ui.CardDefaults
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.ui.FilterChip
 import com.vayunmathur.library.ui.IconChevronRight
@@ -64,13 +63,11 @@ fun HomeScreen(
     onOpenUpdates: () -> Unit = {},
     onOpenBrowse: (AppSection) -> Unit = {},
 ) {
-    AppScaffold(topBar = {}) { padding ->
-        AppPullToRefreshBox(
-            isRefreshing = state.isSyncing,
-            onRefresh = { actions.refresh() },
-            modifier = Modifier.fillMaxSize(),
-            topClearance = padding.calculateTopPadding(),
-        ) {
+    AppScaffold(
+        topBar = {},
+        isRefreshing = state.isSyncing || state.isLoading,
+        onRefresh = { actions.refresh() },
+    ) { padding ->
             // A package can legitimately sit in several sections at once - a new release is also a
             // top download - but one detail page cannot morph from two origins. The first section
             // listing a package owns the morph; later copies of it open without one.
@@ -114,7 +111,9 @@ fun HomeScreen(
                 if (state.sections.isEmpty()) {
                     item("empty") {
                         if (state.isLoading) {
-                            LoadingRow()
+                            // First load: empty placeholder under the scaffold's
+                            // top indicator, never the empty state or a spinner row.
+                            Box(Modifier.fillMaxWidth().height(320.dp))
                         } else {
                             EmptyState(
                                 title = stringResource(R.string.home_empty_title),
@@ -163,6 +162,5 @@ fun HomeScreen(
                     }
                 }
             }
-        }
     }
 }

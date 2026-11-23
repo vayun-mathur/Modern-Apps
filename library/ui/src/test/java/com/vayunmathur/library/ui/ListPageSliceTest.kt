@@ -41,7 +41,7 @@ class ListPageSliceTest {
                 viewPage = { Home },
                 scrollBehavior = appBarScrollBehavior(),
                 searchEnabled = searchEnabled,
-                loading = loading,
+                isRefreshing = loading,
             )
         }
     }
@@ -58,8 +58,8 @@ class ListPageSliceTest {
         rule.onNodeWithText("Things").assertIsDisplayed()
     }
 
-    @Test fun loadingShowsIndicator() {
-        page(emptyList(), loading = true)
-        rule.waitForIdle()
+    @Test fun refreshingKeepsListComposed() {
+        page(listOf(Item(1, "Alpha")), loading = true)
+        rule.onNodeWithText("Alpha").assertIsDisplayed()
     }
 }

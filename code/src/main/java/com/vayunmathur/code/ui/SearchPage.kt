@@ -25,11 +25,10 @@ import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.code.Route
 import com.vayunmathur.code.platform.EditorViewModel
 import com.vayunmathur.library.ui.AppScaffold
-import com.vayunmathur.library.ui.CircularProgressIndicator
+import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.IconSearch
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.OutlinedTextField
-import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.library.util.NavBackStack
 import kotlinx.coroutines.delay
@@ -83,7 +82,7 @@ fun SearchPage(viewModel: EditorViewModel, backStack: NavBackStack<Route>) {
                 state.isSearching -> Row(
                     Modifier.fillMaxWidth().padding(16.dp),
                     horizontalArrangement = Arrangement.Center,
-                ) { CircularProgressIndicator() }
+                ) { Text("Loading\u2026") }
 
                 query.isNotBlank() && state.searchResults.isEmpty() -> Text(
                     stringResource(R.string.no_results),

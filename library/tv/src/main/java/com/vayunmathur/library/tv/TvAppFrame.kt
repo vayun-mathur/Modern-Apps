@@ -75,6 +75,8 @@ fun TvAppFrame(
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
     backReturnsToRail: Boolean = true,
+    isRefreshing: Boolean = false,
+    refreshingLabel: String? = null,
     content: @Composable () -> Unit,
 ) {
     var railFocused by remember { mutableStateOf(false) }
@@ -118,6 +120,7 @@ fun TvAppFrame(
             CompositionLocalProvider(LocalTvContentStart provides TvDimens.InsideFrameStart) {
                 content()
             }
+            if (isRefreshing) TvRefreshIndicator(refreshingLabel)
         }
     }
 }
@@ -150,6 +153,8 @@ fun <T : NavKey> TvAppFrame(
     destinations: List<TvRouteDestination<T>>,
     modifier: Modifier = Modifier,
     backReturnsToRail: Boolean = true,
+    isRefreshing: Boolean = false,
+    refreshingLabel: String? = null,
     content: @Composable (T) -> Unit,
 ) {
     val current = backStack.last()
@@ -162,6 +167,8 @@ fun <T : NavKey> TvAppFrame(
         },
         modifier = modifier,
         backReturnsToRail = backReturnsToRail,
+        isRefreshing = isRefreshing,
+        refreshingLabel = refreshingLabel,
     ) { content(current) }
 }
 

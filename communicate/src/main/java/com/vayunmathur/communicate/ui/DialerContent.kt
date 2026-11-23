@@ -35,7 +35,6 @@ import com.vayunmathur.communicate.data.LineChoice
 import com.vayunmathur.communicate.data.T9
 import com.vayunmathur.communicate.data.voicemailNumber
 import com.vayunmathur.library.ui.EmptyState
-import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.IconCall
 import com.vayunmathur.library.ui.IconContacts
 import com.vayunmathur.library.ui.ListItem
@@ -83,7 +82,7 @@ fun DialerContent(
     }
     Column(modifier = modifier.fillMaxSize()) {
         if (!hasLoaded && contacts.isEmpty()) {
-            LoadingState(Modifier.weight(1f))
+            Box(Modifier.weight(1f))
         } else if (contacts.isEmpty()) {
             EmptyState(
                 title = stringResource(R.string.empty_contacts),

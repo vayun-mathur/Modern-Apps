@@ -18,7 +18,6 @@ import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.ListItem
 import com.vayunmathur.library.ui.ListItemDefaults
 import com.vayunmathur.library.ui.LazyListScaffold
-import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.ModalBottomSheet
 import com.vayunmathur.library.ui.Text
@@ -106,6 +105,7 @@ fun LocationsScreen(
     }
 
     LazyListScaffold(
+        isRefreshing = !state.hasLoaded,
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         state = listState,
         horizontalPadding = 16.dp,
@@ -154,11 +154,6 @@ fun LocationsScreen(
             }
         },
     ) {
-        if (!state.hasLoaded && localData.isEmpty()) {
-            item(key = "loading") {
-                LoadingState(Modifier.fillParentMaxSize())
-            }
-        }
         val showDeviceLocationCard = localData.none { it.location.isCurrent }
         if (showDeviceLocationCard) {
             item {

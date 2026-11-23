@@ -51,5 +51,5 @@ fun PlaylistsTabContent(backStack: NavBackStack<Route>, musicViewModel: MusicVie
     }, searchEnabled = true, fab = {
         NewPlaylistFab(musicViewModel)
         ShufflePlayFab(musicViewModel)
-    }, searchString = { it.name }, sortOrder = byName, loading = !loaded)
+    }, searchString = { it.name }, sortOrder = byName, isRefreshing = !loaded)
 }

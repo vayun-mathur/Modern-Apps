@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -19,7 +18,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.FilledTonalButton
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.SegmentedButton
@@ -115,11 +113,7 @@ internal fun WallpaperControls(
                 enabled = canSet && !isSetting,
             ) {
                 if (isSetting) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp,
-                    )
-                    Spacer(Modifier.width(8.dp))
+                    // Busy is encoded by the disabled button + label, no spinner icon.
                     Text(stringResource(R.string.setting_wallpaper))
                 } else {
                     Text(stringResource(R.string.set_wallpaper))

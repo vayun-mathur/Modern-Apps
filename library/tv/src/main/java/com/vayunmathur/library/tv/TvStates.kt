@@ -76,20 +76,57 @@ fun TvEmptyState(
 }
 
 /**
- * Centered spinner. Focusable so the D-pad is not left dead while content loads; pass a
- * [focusRequester] via [modifier] if the screen should start here.
+ * The TV refresh indicator: a small spinner with an optional [label] at the
+ * top of the screen, over content that stays composed underneath.
+ *
+ * TV has no pull gesture, so this is the scaffold-owned equivalent of the
+ * phone scaffold's pull-to-refresh indicator (see TvAppFrame's
+ * `isRefreshing`): a screen that is refreshing keeps its rows on screen, and
+ * a first load shows this over an empty content area. Focusable so the
+ * D-pad is not left dead while content loads; pass a [focusRequester] via
+ * [modifier] if the screen should start here.
  */
 @Composable
 fun TvLoading(modifier: Modifier = Modifier, label: String? = null) {
-    Box(modifier.fillMaxSize().focusable(), contentAlignment = Alignment.Center) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+    Box(modifier.fillMaxSize().focusable(), contentAlignment = Alignment.TopCenter) {
+        androidx.compose.foundation.layout.Row(
+            modifier = Modifier.padding(top = 24.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             CircularProgressIndicator(
                 color = MaterialTheme.colorScheme.primary,
                 trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier.size(48.dp),
+                modifier = Modifier.size(32.dp),
+            )
+            if (label != null) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Top refresh indicator overlaid on composed content by [TvAppFrame] while
+ * `isRefreshing` is true. Unlike [TvLoading] it does not take focus or fill
+ * the screen: the content underneath stays interactive for the D-pad.
+ */
+@Composable
+internal fun TvRefreshIndicator(label: String?) {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+        androidx.compose.foundation.layout.Row(
+            modifier = Modifier.padding(top = 24.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            CircularProgressIndicator(
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                modifier = Modifier.size(32.dp),
             )
             if (label != null) {
                 Text(

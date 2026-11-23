@@ -13,6 +13,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -35,7 +36,7 @@ import com.vayunmathur.camera.R
 import com.vayunmathur.camera.domain.FidoRequestType
 import com.vayunmathur.camera.domain.fidoRequestType
 import com.vayunmathur.library.ui.Button
-import com.vayunmathur.library.ui.CircularProgressIndicator
+import com.vayunmathur.library.ui.LinearProgressIndicator
 import com.vayunmathur.library.ui.FilledTonalButton
 import com.vayunmathur.library.ui.IconBedtime
 import com.vayunmathur.library.ui.IconClose
@@ -303,13 +304,12 @@ internal fun LongExposureOverlay(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Box(contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            LinearProgressIndicator(
                 progress = { progress },
-                modifier = Modifier.size(80.dp),
+                modifier = Modifier.fillMaxWidth(),
                 color = Color.White,
                 trackColor = Color.White.copy(alpha = 0.2f),
-                strokeWidth = 4.dp
             )
             Text(
                 text = remainingText,

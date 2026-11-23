@@ -160,7 +160,7 @@ fun SleepDetailsPage(backStack: NavBackStack<Route>, viewModel: HealthViewModel)
                             Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center
                         ) {
                             if (!hasLoaded) {
-                                com.vayunmathur.library.ui.LoadingState()
+                                Text("Loading…")
                             } else {
                                 Text(
                                     stringResource(R.string.no_data_available),

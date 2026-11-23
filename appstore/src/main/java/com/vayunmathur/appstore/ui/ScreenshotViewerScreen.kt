@@ -30,7 +30,6 @@ import androidx.compose.ui.unit.IntSize
 import com.vayunmathur.library.image.compose.AsyncImage
 import com.vayunmathur.library.image.compose.AsyncImageState
 import com.vayunmathur.library.ui.AppScaffold
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.FadeVisibility
 import com.vayunmathur.library.ui.IconClose
 import com.vayunmathur.library.ui.MaterialTheme
@@ -170,7 +169,8 @@ private fun ZoomableScreenshot(
             onState = { state = it },
         )
         when (state) {
-            AsyncImageState.Loading -> CircularProgressIndicator(color = Color.White)
+            // Image-loading placeholder: empty box, no spinner icon.
+            AsyncImageState.Loading -> Box(Modifier.fillMaxSize())
             is AsyncImageState.Error -> Text(
                 stringResource(R.string.screenshot_load_failed),
                 color = Color.White,

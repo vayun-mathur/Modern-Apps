@@ -51,7 +51,6 @@ import com.vayunmathur.games.chess.util.GameResult
 import com.vayunmathur.library.ui.AlertDialog
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Button
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.IconGameCenterTrophy
@@ -444,7 +443,6 @@ private fun AiThinkingIndicator() {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
         Text(stringResource(R.string.ai_thinking), style = MaterialTheme.typography.bodyLarge)
     }
 }

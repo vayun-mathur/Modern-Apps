@@ -68,6 +68,7 @@ fun RcsRegistrationScreen(
     DetailScaffold(
         title = stringResource(R.string.rcs_status_title),
         onNavigateBack = onBack,
+        isRefreshing = probing,
     ) {
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(bottom = 8.dp)) {
@@ -135,13 +136,7 @@ fun RcsRegistrationScreen(
         }
 
         if (probing) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                androidx.compose.material3.CircularProgressIndicator(
-                    modifier = Modifier.width(20.dp).height(20.dp),
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.rcs_provisioning))
-            }
+            Text(stringResource(R.string.rcs_provisioning))
         }
 
         // Last-known carrier config URL (null = never probed).

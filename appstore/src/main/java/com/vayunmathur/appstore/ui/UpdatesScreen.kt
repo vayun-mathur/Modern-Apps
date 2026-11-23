@@ -5,6 +5,7 @@ import com.vayunmathur.appstore.platform.UpdatesActions
 import com.vayunmathur.appstore.platform.UpdatesUiState
 import android.text.format.DateUtils
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -27,7 +28,6 @@ import androidx.compose.ui.unit.dp
 import com.vayunmathur.appstore.data.UnifiedApp
 import com.vayunmathur.appstore.data.installer.InstallStage
 import com.vayunmathur.appstore.platform.AppStoreViewModel
-import com.vayunmathur.library.ui.AppPullToRefreshBox
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.ui.IconCheck
@@ -44,27 +44,12 @@ fun UpdatesScreen(
 ) {
     val anyInstalling = state.stages.values.any { it !is InstallStage.Failed }
     val total = state.updates.size + state.foreignUpdates.size
-    // While checking with nothing to show, the scaffold replaces the content
-    // (and with it the in-content status line), so the checking status must
-    // ride on the loading surface or it would vanish behind the spinner.
-    val checkingMessage = if (state.isChecking) {
-        state.statusMessage.ifBlank { stringResource(R.string.updates_checking) }
-    } else {
-        null
-    }
 
     AppScaffold(
         topBar = {},
-        isLoading = total == 0 && state.isChecking,
-        loadingMessage = checkingMessage,
+        isRefreshing = state.isChecking,
+        onRefresh = { actions.checkForUpdates() },
     ) { padding ->
-        AppPullToRefreshBox(
-            isRefreshing = state.isChecking,
-            onRefresh = { actions.checkForUpdates() },
-            modifier = Modifier.fillMaxSize(),
-            // Below the status bar: the scaffold's top inset is the exact clearance.
-            topClearance = padding.calculateTopPadding(),
-        ) {
             Column(Modifier.fillMaxSize().padding(padding)) {
                 if (state.updates.isNotEmpty()) {
                     Row(
@@ -84,8 +69,13 @@ fun UpdatesScreen(
                     }
                 }
 
-                val status = state.statusMessage.takeIf { it.isNotBlank() }
-                    ?: state.lastCheckedAt.takeIf { it > 0 }?.let {
+                // Keep the checking status visible in content: content now stays
+                // composed under the scaffold's top refresh indicator.
+                val status = if (state.isChecking) {
+                    state.statusMessage.ifBlank { stringResource(R.string.updates_checking) }
+                } else {
+                    state.statusMessage.takeIf { it.isNotBlank() }
+                } ?: state.lastCheckedAt.takeIf { it > 0 }?.let {
                         stringResource(
                             R.string.updates_last_checked,
                             DateUtils.getRelativeTimeSpanString(
@@ -104,7 +94,11 @@ fun UpdatesScreen(
                     )
                 }
 
-                if (total == 0) {
+                if (total == 0 && state.isChecking) {
+                    // First check in flight: empty placeholder under the top
+                    // indicator, never the up-to-date empty state.
+                    Box(Modifier.fillMaxSize())
+                } else if (total == 0) {
                     EmptyState(
                         title = stringResource(R.string.all_apps_up_to_date),
                         message = stringResource(R.string.updates_empty_message),
@@ -153,6 +147,5 @@ fun UpdatesScreen(
                     }
                 }
             }
-        }
     }
 }

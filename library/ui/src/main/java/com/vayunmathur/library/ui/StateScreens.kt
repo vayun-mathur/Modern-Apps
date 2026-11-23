@@ -82,13 +82,14 @@ fun EmptyState(
 }
 
 /**
- * Shown while content is being fetched or built.
- *
- * This is the canonical whole-content loading UI: a centred indeterminate
+ * Library-internal whole-content loading UI: a centred indeterminate
  * [LoadingIndicator] (MaterialComponents.kt) plus an optional [message].
- * Screens must render this (or a bare [LoadingIndicator] in a small slot)
- * whenever their model says data is still loading - never a blank screen
- * and never the loaded-but-empty [EmptyState].
+ *
+ * App screens must NOT render this: refresh/loading indication is owned by
+ * the scaffold's pull-to-refresh box (`isRefreshing`/`onRefresh` on the
+ * AppScaffold family; TV: TvAppFrame/TvLoading), and the `ScaffoldLoading`
+ * lint flags this composable in app code. This remains only for
+ * library-internal helpers that compose before any scaffold exists.
  *
  * The spinner animates indefinitely, so under Robolectric it never lets
  * the paused looper idle: tests must await CONTENT (text, a row, a node),

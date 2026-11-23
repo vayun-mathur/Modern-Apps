@@ -53,6 +53,9 @@ private const val BOUNDARY_LOOKBACK_MINUTES = 1L
  * 5. The device-wide budget has a trigger of its own: [BedtimeScheduler] arms a periodic
  *    check while a device limit exists, and the spent transition is notified exactly once
  *    (marked in [LimitState]) instead of only being noticed on unrelated window boundaries.
+ * 6. Exempt packages (home/launcher, dialer, Settings, this app — `domain/ExemptApps.kt`,
+ *    resolved by [ExemptPackages]) are outside the decision's scope, so a stale rule row
+ *    for one of them can neither block it nor produce a lock notice for it.
  */
 class Enforcer(private val context: Context) {
 
@@ -104,9 +107,10 @@ class Enforcer(private val context: Context) {
         val downtime = rules.downtimeNow()
         val school = rules.schoolTimeNow()
         val all = rules.allRulesNow()
-        notifyBedtimeOpened(bedtime, now, minuteAgo, all)
-        notifyDowntimeOpened(bedtime, downtime, now, minuteAgo, all)
-        notifySchoolOpened(bedtime, downtime, school, now, minuteAgo, all)
+        val exempt = ExemptPackages.resolve(context)
+        notifyBedtimeOpened(bedtime, now, minuteAgo, all, exempt)
+        notifyDowntimeOpened(bedtime, downtime, now, minuteAgo, all, exempt)
+        notifySchoolOpened(bedtime, downtime, school, now, minuteAgo, all, exempt)
     }
 
     private fun notifyWindowOpened(
@@ -124,9 +128,11 @@ class Enforcer(private val context: Context) {
         now: LocalDateTime,
         minuteAgo: LocalDateTime,
         all: List<AppRule>,
+        exempt: Set<String>,
     ) = notifyWindowOpened(
         bedtime.activeAt(now), bedtime.activeAt(minuteAgo),
-        all.filter { it.blockedAtBedtime }.map { it.packageName }, BlockReason.Bedtime,
+        all.filter { it.blockedAtBedtime && it.packageName !in exempt }.map { it.packageName },
+        BlockReason.Bedtime,
     )
 
     private suspend fun notifyDowntimeOpened(
@@ -135,6 +141,7 @@ class Enforcer(private val context: Context) {
         now: LocalDateTime,
         minuteAgo: LocalDateTime,
         all: List<AppRule>,
+        exempt: Set<String>,
     ) {
         if (!downtime.activeAt(now) || downtime.activeAt(minuteAgo)) return
         val bedtimeNow = bedtime.activeAt(now)
@@ -143,8 +150,8 @@ class Enforcer(private val context: Context) {
         // the notice set must match the blocked set or the child is never told why.
         val targets = (launchablePackages() + all.map { it.packageName })
             .filter { pkg ->
-                val rule = byPackage[pkg]
-                rule?.allowedInDowntime != true && !(rule?.blockedAtBedtime == true && bedtimeNow)
+                pkg !in exempt && byPackage[pkg]?.allowedInDowntime != true &&
+                    !(byPackage[pkg]?.blockedAtBedtime == true && bedtimeNow)
             }
         for (pkg in targets) LockNotifier.notifyLocked(context, BlockReason.Downtime, pkg)
     }
@@ -156,6 +163,7 @@ class Enforcer(private val context: Context) {
         now: LocalDateTime,
         minuteAgo: LocalDateTime,
         all: List<AppRule>,
+        exempt: Set<String>,
     ) {
         if (!school.activeAt(now) || school.activeAt(minuteAgo)) return
         if (downtime.activeAt(now)) return // downtime's notices already cover this minute
@@ -163,8 +171,8 @@ class Enforcer(private val context: Context) {
         val byPackage = all.associateBy { it.packageName }
         val targets = (launchablePackages() + all.map { it.packageName })
             .filter { pkg ->
-                val rule = byPackage[pkg]
-                rule?.allowedInDowntime != true && !(rule?.blockedAtBedtime == true && bedtimeNow)
+                pkg !in exempt && byPackage[pkg]?.allowedInDowntime != true &&
+                    !(byPackage[pkg]?.blockedAtBedtime == true && bedtimeNow)
             }
         for (pkg in targets) LockNotifier.notifyLocked(context, BlockReason.SchoolTime, pkg)
     }
@@ -231,6 +239,7 @@ class Enforcer(private val context: Context) {
                 schoolTimeActive = schoolSchedule.activeAt(now),
                 deviceOverBudget = deviceOverBudget,
                 reachedPackages = limitState.reachedPackages(),
+                exemptPackages = ExemptPackages.resolve(context),
             ),
         )
 
@@ -256,10 +265,10 @@ class Enforcer(private val context: Context) {
     }
 
     /**
-     * Launchable packages a child could open, minus packages blocking would break:
-     * ourselves (the parent must always be able to reach the controls), Settings, the
-     * home/launcher package and the default dialer (calls stay available in every window,
-     * matching the lock screens' promise).
+     * Launchable packages a child could open, minus the exempt packages blocking would
+     * break (see [ExemptPackages]): ourselves (the parent must always be able to reach
+     * the controls), Settings, the home/launcher package and the default dialer (calls
+     * stay available in every window, matching the lock screens' promise).
      */
     internal fun launchablePackages(): Set<String> {
         val pm = context.packageManager
@@ -270,22 +279,9 @@ class Enforcer(private val context: Context) {
             @Suppress("DEPRECATION") pm.queryIntentActivities(launcherIntent, 0)
         }
         val packages = resolved.mapNotNull { it.activityInfo?.packageName }.toMutableSet()
-        packages.remove(context.packageName)
-        packages.remove(SETTINGS_PACKAGE)
-        resolveSinglePackage(
-            Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME),
-        )?.let { packages.remove(it) }
-        resolveSinglePackage(Intent(Intent.ACTION_DIAL))?.let { packages.remove(it) }
+        packages.removeAll(ExemptPackages.resolve(context))
         return packages
     }
-
-    private fun resolveSinglePackage(intent: Intent): String? = runCatching {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            context.packageManager.resolveActivity(intent, PackageManager.ResolveInfoFlags.of(0))
-        } else {
-            @Suppress("DEPRECATION") context.packageManager.resolveActivity(intent, 0)
-        }?.activityInfo?.packageName
-    }.getOrNull()
 
     /** The user-facing reason an app is blocked. Ordering matches precedence. */
     enum class BlockReason {
@@ -308,10 +304,6 @@ class Enforcer(private val context: Context) {
         val deviceBonus = bonuses.filter { it.packageName == null }.sumOf { it.bonusMinutes }
         val deviceLimit = deviceLimitMinutes?.let { it + deviceBonus } ?: return false
         return limits.totalUsedToday() >= java.time.Duration.ofMinutes(deviceLimit.toLong())
-    }
-
-    private companion object {
-        const val SETTINGS_PACKAGE = "com.android.settings"
     }
 }
 

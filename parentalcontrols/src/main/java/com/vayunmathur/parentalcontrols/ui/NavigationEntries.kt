@@ -103,7 +103,10 @@ internal fun EntryProviderScope<Route>.gatedEntries(
     }
     entry<Route.WebFilters>(metadata = DetailPage()) {
         GateRedirect(pinVerified.value, backStack, PinGateTarget.WebFilters)
-        if (pinVerified.value) WebContentFiltersScreen()
+        if (pinVerified.value) {
+            val state by viewModel.state.collectAsStateWithLifecycle()
+            WebContentFiltersScreen(enforcementAvailable = state.enforcementAvailable)
+        }
     }
 }
 

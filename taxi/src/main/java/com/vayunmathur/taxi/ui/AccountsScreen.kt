@@ -27,7 +27,6 @@ import com.vayunmathur.library.ui.AlertDialog
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.Card
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.HorizontalDivider
 import com.vayunmathur.library.ui.ListItem
 import com.vayunmathur.library.ui.MaterialTheme
@@ -263,9 +262,7 @@ private fun PaymentRow(
                 )
             }
         }
-        if (busy) {
-            CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-        } else {
+        if (!busy) {
             if (!account.isDefault) {
                 TextButton(onClick = onSetDefault) {
                     Text(stringResource(R.string.card_set_default))
@@ -300,8 +297,6 @@ private fun LoadingCard(message: String) {
             Modifier.fillMaxWidth().padding(14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-            Spacer(Modifier.width(12.dp))
             Text(
                 message,
                 style = MaterialTheme.typography.bodyMedium,

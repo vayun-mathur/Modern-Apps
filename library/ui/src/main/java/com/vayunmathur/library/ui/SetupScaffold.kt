@@ -62,8 +62,9 @@ fun SetupScaffold(
     secondaryAction: SetupAction? = null,
     scrollBehavior: TopAppBarScrollBehavior? = null,
     fullBleed: Boolean = false,
-    isLoading: Boolean = false,
-    loadingMessage: String? = null,
+    isRefreshing: Boolean = false,
+    onRefresh: (() -> Unit)? = null,
+    refreshEnabled: Boolean = true,
     content: @Composable ColumnScope.() -> Unit = {},
 ) = AppScaffold(
     title = "",
@@ -72,8 +73,9 @@ fun SetupScaffold(
     onClose = onClose,
     scrollBehavior = scrollBehavior,
     bottomBar = { SetupFooter(primaryAction, secondaryAction) },
-    isLoading = isLoading,
-    loadingMessage = loadingMessage,
+    isRefreshing = isRefreshing,
+    onRefresh = onRefresh,
+    refreshEnabled = refreshEnabled,
 ) { pad ->
     SetupColumn(pad, title, subtitle, icon, fullBleed, content)
 }
@@ -90,8 +92,9 @@ fun <T : NavKey> SetupScaffold(
     secondaryAction: SetupAction? = null,
     scrollBehavior: TopAppBarScrollBehavior? = null,
     fullBleed: Boolean = false,
-    isLoading: Boolean = false,
-    loadingMessage: String? = null,
+    isRefreshing: Boolean = false,
+    onRefresh: (() -> Unit)? = null,
+    refreshEnabled: Boolean = true,
     content: @Composable ColumnScope.() -> Unit = {},
 ) = SetupScaffold(
     title = title,
@@ -103,8 +106,9 @@ fun <T : NavKey> SetupScaffold(
     secondaryAction = secondaryAction,
     scrollBehavior = scrollBehavior,
     fullBleed = fullBleed,
-    isLoading = isLoading,
-    loadingMessage = loadingMessage,
+    isRefreshing = isRefreshing,
+    onRefresh = onRefresh,
+    refreshEnabled = refreshEnabled,
     content = content,
 )
 

@@ -30,6 +30,8 @@
     <string name="web_filters_toggle_hint">Blur explicit sites and turn on SafeSearch in supported browsers.</string>
     <!-- Web content filters screen: honest status under the toggle, which has no enforcement hook yet. -->
     <string name="web_filters_not_yet_enforced">Not yet enforced — this setting is saved, but it does not filter sites yet.</string>
+    <!-- Web content filters screen: status on a device without supervision, where the toggle belongs to the supervised tier only. -->
+    <string name="web_filters_supervision_only">Supervised devices only — on this device the setting is saved, but nothing is filtered.</string>
 
     <!-- Bedtime screen: title, also the label of its row in Settings > Parental controls. Noun phrase. -->
     <string name="bedtime_title">Child bedtime</string>

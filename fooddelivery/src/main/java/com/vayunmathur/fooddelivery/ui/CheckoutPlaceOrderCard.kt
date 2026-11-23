@@ -3,7 +3,6 @@ package com.vayunmathur.fooddelivery.ui
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
@@ -19,7 +18,6 @@ import com.vayunmathur.fooddelivery.data.SavedAddress
 import com.vayunmathur.fooddelivery.data.paymentIntentId
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.Card
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.Text
 import kotlinx.coroutines.launch
 
@@ -81,14 +79,11 @@ fun CheckoutPlaceOrderCard(
                 enabled = checkoutResponse != null && !paying && !fetchingPrices,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                if (paying || fetchingPrices) {
-                    CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                // Busy is encoded by the disabled button (enabled= above), no spinner icon.
+                if (payTotal != null) {
+                    Text("Place Order · $%.2f".format(payTotal))
                 } else {
-                    if (payTotal != null) {
-                        Text("Place Order · $%.2f".format(payTotal))
-                    } else {
-                        Text(stringResource(R.string.place_order))
-                    }
+                    Text(stringResource(R.string.place_order))
                 }
             }
         }

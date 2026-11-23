@@ -47,7 +47,8 @@ fun ProfileDetailScreen(
     if (profile == null) {
         // Still loading, erased, or the eUICC was re-read and no longer reports it.
         if (state.loading) {
-            DetailScaffold(title = "", onNavigateBack = { backStack.pop() }, isLoading = true) {}
+            // Profile is null while loading: refresh follows that same state condition, not a hardcoded true.
+            DetailScaffold(title = "", onNavigateBack = { backStack.pop() }, isRefreshing = state.loading) {}
         } else {
             backStack.pop()
         }
@@ -69,6 +70,7 @@ fun ProfileDetailScreen(
             Text(label, modifier = Modifier.sharedText("euicc-profile-name-${profile.iccid}"))
         },
         onNavigateBack = { backStack.pop() },
+        isRefreshing = state.loading,
         actions = {
             TextButton(onClick = { renaming = true }, enabled = !state.loading) {
                 Text(stringResource(R.string.rename_profile_title))

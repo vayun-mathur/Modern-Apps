@@ -55,7 +55,7 @@ import com.vayunmathur.code.platform.setGitUsername
 import com.vayunmathur.library.ui.AlertDialog
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Button
-import com.vayunmathur.library.ui.CircularProgressIndicator
+import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.HorizontalDivider
 import com.vayunmathur.library.ui.IconAdd
 import com.vayunmathur.library.ui.IconButton
@@ -68,7 +68,6 @@ import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.OutlinedTextField
 import com.vayunmathur.library.ui.OverflowMenu
 import com.vayunmathur.library.ui.SettingsSection
-import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.library.util.NavBackStack
 import java.io.File
@@ -99,7 +98,7 @@ fun GitPage(viewModel: EditorViewModel, backStack: NavBackStack<Route>) {
                 Row(
                     Modifier.fillMaxWidth().padding(12.dp),
                     horizontalArrangement = Arrangement.Center,
-                ) { CircularProgressIndicator() }
+                ) { Text("Loading\u2026") }
             }
             viewModel.gitMessage?.let { message ->
                 Row(

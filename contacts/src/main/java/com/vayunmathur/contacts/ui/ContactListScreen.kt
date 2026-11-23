@@ -43,7 +43,6 @@ import com.vayunmathur.library.ui.IconMove
 import com.vayunmathur.library.ui.IconPerson
 import com.vayunmathur.library.ui.IconShare
 import com.vayunmathur.library.ui.LazyListScaffold
-import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.OverflowMenu
 import com.vayunmathur.library.ui.PopVisibility
 import com.vayunmathur.library.ui.SwappedTopBar
@@ -134,6 +133,7 @@ fun ContactListScreen(
     }
 
     LazyListScaffold(
+        isRefreshing = state.isLoading,
         state = listState,
         topBar = {
             SwappedTopBar(showingOverlay = isSelectionMode) { selecting ->
@@ -247,7 +247,7 @@ fun ContactListScreen(
                         title = stringResource(R.string.no_contacts_found),
                         modifier = Modifier.fillParentMaxSize(),
                     )
-                    state.isLoading -> LoadingState(modifier = Modifier.fillParentMaxSize())
+                    state.isLoading -> androidx.compose.foundation.layout.Box(Modifier.fillParentMaxSize())
                     else -> EmptyState(
                         title = stringResource(R.string.no_contacts_yet),
                         modifier = Modifier.fillParentMaxSize(),

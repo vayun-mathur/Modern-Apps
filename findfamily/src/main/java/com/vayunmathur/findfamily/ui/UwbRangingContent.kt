@@ -17,7 +17,6 @@ import com.vayunmathur.findfamily.platform.RangingSample
 import com.vayunmathur.findfamily.platform.UwbSessionManager
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Button
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
@@ -131,7 +130,6 @@ private fun StatusBlock(main: String, sub: String? = null, progress: Boolean) {
         verticalArrangement = Arrangement.Center
     ) {
         if (progress) {
-            CircularProgressIndicator()
             Spacer(Modifier.height(16.dp))
         }
         Text(

@@ -20,7 +20,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.AlertDialog
 import com.vayunmathur.library.ui.LazyListScaffold
-import com.vayunmathur.library.ui.LoadingIndicator
 import com.vayunmathur.library.ui.SettingsRow
 import com.vayunmathur.library.ui.SettingsSection
 import com.vayunmathur.library.ui.SettingsSwitchRow
@@ -122,7 +121,7 @@ fun WindowScheduleScreen(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        LoadingIndicator()
+                        Text("Loading\u2026")
                     }
                 }
             }

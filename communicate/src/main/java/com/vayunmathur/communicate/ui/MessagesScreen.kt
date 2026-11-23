@@ -219,8 +219,10 @@ fun MessagesScreen(onOpenThread: (SmsThread) -> Unit, onOpenAccounts: () -> Unit
         )
     }
 
+    var isRefreshing by remember { mutableStateOf(false) }
     AppScaffold(
         title = stringResource(R.string.messages_title),
+        isRefreshing = isRefreshing,
         actions = {
             IconButton(onClick = onOpenAccounts) { IconPerson() }
         },
@@ -261,7 +263,7 @@ fun MessagesScreen(onOpenThread: (SmsThread) -> Unit, onOpenAccounts: () -> Unit
                     // No value=null reset: keep the previous list visible while the
                     // resume-triggered reload runs in the background (avoids a
                     // loading flash on every return from a thread). The
-                    // denied->granted transition still shows LoadingState first
+                    // denied->granted transition still shows the scaffold indicator first
                     // because this content is newly composed (initialValue=null).
                     value = withContext(Dispatchers.IO) {
                         val rows = CommunicateRepository.loadSmsThreadsMerged(context)
@@ -294,8 +296,9 @@ fun MessagesScreen(onOpenThread: (SmsThread) -> Unit, onOpenAccounts: () -> Unit
                     }
                 }
 
+                androidx.compose.runtime.SideEffect { isRefreshing = threads.value == null }
                 when (val rows = threads.value) {
-                    null -> com.vayunmathur.library.ui.LoadingState(Modifier.padding(padding))
+                    null -> androidx.compose.foundation.layout.Box(Modifier.padding(padding))
                     emptyList<SmsThread>() -> EmptyState(
                         title = stringResource(R.string.empty_messages),
                         message = stringResource(R.string.empty_messages_hint),

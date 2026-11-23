@@ -16,7 +16,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.FontFamily
-import com.vayunmathur.library.ui.AppPullToRefreshBox
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.DashboardSection
 import com.vayunmathur.library.ui.DashboardSectionDivider
@@ -32,7 +31,6 @@ import com.vayunmathur.library.ui.IconInstall
 import com.vayunmathur.library.ui.IconMerge
 import com.vayunmathur.library.ui.IconRefresh
 import com.vayunmathur.library.ui.ListItem
-import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Spacing
 import com.vayunmathur.library.ui.Text
@@ -54,14 +52,14 @@ fun HomeScreen(
     onOpenPrs: () -> Unit,
 ) {
     AppScaffold(
+        isRefreshing = state.loading,
+        onRefresh = onRefresh,
         title = "Developer",
         actions = {
             IconButton(onClick = onRefresh) { IconRefresh() }
         },
     ) { padding ->
-        AppPullToRefreshBox(
-            isRefreshing = state.loading,
-            onRefresh = onRefresh,
+        androidx.compose.foundation.layout.Box(
             modifier = Modifier.fillMaxSize(),
         ) {
             LazyColumn(
@@ -100,7 +98,7 @@ fun HomeScreen(
                 }
                 item { QuickLinksSection(state, onOpenTests, onOpenCatalog, onOpenPush, onOpenIssues, onOpenPrs) }
                 if (state.loading && state.repos.isEmpty()) {
-                    item { LoadingState(message = "Loading repositories…", modifier = Modifier.fillMaxWidth().height(160.dp)) }
+                    item { Text("Loading repositories…", modifier = Modifier.fillMaxWidth().height(160.dp)) }
                 }
                 state.error?.let { error ->
                     if (state.repos.isEmpty()) {

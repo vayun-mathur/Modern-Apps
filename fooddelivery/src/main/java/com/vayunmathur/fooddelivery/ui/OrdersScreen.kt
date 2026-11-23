@@ -111,8 +111,10 @@ fun OrdersScreen(onTrackOrder: (Int) -> Unit = {}) {
         loading = false
     }
 
-    AppScaffold(topBar = {}, isLoading = loading) { padding ->
-        if (!isLoggedIn) {
+    AppScaffold(topBar = {}, isRefreshing = loading) { padding ->
+        if (loading) {
+            Box(Modifier.fillMaxSize().padding(padding))
+        } else if (!isLoggedIn) {
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     IconPerson(modifier = Modifier.size(48.dp),

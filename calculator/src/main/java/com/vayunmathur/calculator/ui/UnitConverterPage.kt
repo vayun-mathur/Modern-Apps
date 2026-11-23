@@ -39,7 +39,6 @@ import com.vayunmathur.library.ui.FilledTonalIconButton
 import com.vayunmathur.library.ui.IconArrowDropDown
 import com.vayunmathur.library.ui.IconCheck
 import com.vayunmathur.library.ui.IconSwapLanguages
-import com.vayunmathur.library.ui.LoadingIndicator
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.OutlinedButton
 import com.vayunmathur.library.ui.OutlinedTextField
@@ -106,7 +105,6 @@ internal fun CurrencyStatus(loading: Boolean, error: String?, onRetry: () -> Uni
         verticalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
         if (loading) {
-            LoadingIndicator()
             Text(
                 stringResource(R.string.currency_loading),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,

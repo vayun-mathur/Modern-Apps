@@ -34,7 +34,6 @@ import com.vayunmathur.games.nonogram.ui.components.NonogramBoard
 import com.vayunmathur.library.ui.AppBarAlignment
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Button
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.ConfirmDialog
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.MaterialTheme
@@ -174,7 +173,7 @@ fun NonogramGameScreen(
                     game == null -> Box(
                         Modifier.fillMaxWidth().padding(Spacing.xxl),
                         contentAlignment = Alignment.Center,
-                    ) { CircularProgressIndicator() }
+                    ) { Text("Loading\u2026") }
 
                     sidePanel -> {
                         Row(

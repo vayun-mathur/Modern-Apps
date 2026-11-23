@@ -22,7 +22,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vayunmathur.library.ui.AssistChip
 import com.vayunmathur.library.ui.rememberIs24Hour
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.ElevatedCard
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.FilterChip
@@ -65,6 +64,7 @@ fun FlightResultsScreen(
     actions: FlightResultsActions,
 ) {
     LazyListScaffold(
+        isRefreshing = state.loading,
         topBar = {
             TopAppBar(
                 title = { Text(title) },
@@ -179,7 +179,6 @@ private fun OfferExpiryBanner(expiresAt: String, onExpired: () -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             if (expired) {
-                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                 Text(stringResource(R.string.refreshing_prices), style = MaterialTheme.typography.bodySmall)
             } else {
                 Text(

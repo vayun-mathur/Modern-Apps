@@ -20,7 +20,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.AssistChip
 import com.vayunmathur.library.ui.Button
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.ElevatedCard
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.HorizontalDivider
@@ -62,6 +61,7 @@ fun OfferReviewPage(
     AppScaffold(
         title = stringResource(R.string.review_flight),
         backStack = backStack,
+        isRefreshing = review.loading,
     ) { padding ->
         val offer = review.offer
         Column(
@@ -273,7 +273,6 @@ private fun PriceSummaryCard(offer: OfferDto, loading: Boolean) {
             ) {
                 Text(stringResource(R.string.total), style = MaterialTheme.typography.titleMedium)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (loading) CircularProgressIndicator()
                     Text(
                         formatMoney(offer.totalAmount, offer.currency),
                         style = MaterialTheme.typography.titleLarge,

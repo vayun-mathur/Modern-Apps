@@ -9,8 +9,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardOptions
@@ -43,7 +41,6 @@ import com.vayunmathur.email.platform.ServerConfig
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.Checkbox
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.ElevatedCard
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.HorizontalDivider
@@ -193,9 +190,9 @@ private fun OutlookOAuthForm(
                 },
                 modifier = Modifier.fillMaxWidth(),
             ) {
+                // Busy affordance is the disabled state plus progress text; no spinner.
                 if (working) {
-                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                    Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.testing_connection))
+                    Text(stringResource(R.string.testing_connection))
                 } else Text(stringResource(R.string.test_connection_and_save))
             }
         }
@@ -303,8 +300,9 @@ private fun PasswordForm(
             },
             modifier = Modifier.fillMaxWidth(),
         ) {
+            // Busy affordance is the disabled state plus progress text; no spinner.
             if (working) {
-                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.testing_connection))
+                Text(stringResource(R.string.testing_connection))
             } else Text(stringResource(R.string.test_connection_and_save))
         }
     }

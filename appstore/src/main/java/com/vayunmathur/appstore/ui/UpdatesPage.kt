@@ -13,7 +13,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.res.pluralStringResource
-import com.vayunmathur.library.ui.AppPullToRefreshBox
 import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.ui.IconCheck
 import com.vayunmathur.library.ui.IconDownload

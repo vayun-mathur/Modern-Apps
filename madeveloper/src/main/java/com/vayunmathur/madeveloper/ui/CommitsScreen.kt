@@ -11,12 +11,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.vayunmathur.library.ui.AppPullToRefreshBox
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.DashboardSection
 import com.vayunmathur.library.ui.ErrorState
-import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Spacing
 import com.vayunmathur.library.ui.Text
@@ -40,10 +38,10 @@ fun CommitsScreen(
         title = "Commits",
         subtitle = "$repoName · $branch",
         onNavigateBack = onBack,
+        isRefreshing = browser == null,
+        onRefresh = { viewModel.loadCommits(repoName, loadMore = false) },
     ) { padding ->
-        AppPullToRefreshBox(
-            isRefreshing = false,
-            onRefresh = { viewModel.loadCommits(repoName, loadMore = false) },
+        androidx.compose.foundation.layout.Box(
             modifier = Modifier.fillMaxSize(),
         ) {
             LazyColumn(
@@ -62,7 +60,7 @@ fun CommitsScreen(
                 }
                 if (browser == null) {
                     if (viewModel.state.repoError == null) {
-                        item { LoadingState(message = "Loading commits…", modifier = Modifier.fillMaxWidth().height(160.dp)) }
+                        item { Text("Loading commits…", modifier = Modifier.fillMaxWidth().height(160.dp)) }
                     }
                 } else {
                     item {

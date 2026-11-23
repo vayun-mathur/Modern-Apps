@@ -18,12 +18,11 @@ import com.vayunmathur.cast.platform.CastActions
 import com.vayunmathur.cast.platform.CastConnection
 import com.vayunmathur.cast.platform.CastUiState
 import com.vayunmathur.library.ui.AppScaffold
-import com.vayunmathur.library.ui.CircularProgressIndicator
+import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.HorizontalDivider
 import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.IconRefresh
 import com.vayunmathur.library.ui.MaterialTheme
-import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
 
 /**
@@ -53,9 +52,7 @@ fun CastPickerContent(
         modifier = modifier,
         actions = {
             if (state.isScanning) {
-                CircularProgressIndicator(
-                    modifier = Modifier.padding(horizontal = 16.dp).size(24.dp),
-                )
+                Text("Loading\u2026", modifier = Modifier.padding(horizontal = 16.dp))
             } else {
                 IconButton(onClick = actions::startScan) { IconRefresh() }
             }

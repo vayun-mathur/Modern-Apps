@@ -47,7 +47,6 @@ import com.vayunmathur.email.platform.MessageListUiState
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Card
 import com.vayunmathur.library.ui.CardDefaults
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.ui.CommonSearchBar
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
@@ -147,7 +146,8 @@ fun MessageListScreen(
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        isLoading = state.messages.isEmpty() && state.searchQuery.isEmpty() && state.isSyncing,
+        isRefreshing = state.isSyncing,
+        onRefresh = { actions.refresh(context) },
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
             Box(modifier = Modifier.fillMaxWidth().height(2.dp)) {
@@ -179,15 +179,11 @@ fun MessageListScreen(
                             "email-subject-${msg.accountEmail}-${msg.threadId ?: msg.id}"
                     }
             }
-            com.vayunmathur.library.ui.AppPullToRefreshBox(
-                isRefreshing = state.isSyncing,
-                onRefresh = { actions.refresh(context) },
-                modifier = Modifier.fillMaxSize(),
-                // The box sits below the top bar, sync bar, and filter-chip row,
-                // so only a small clearance is needed; the slot stays centered.
-                topClearance = 8.dp,
-            ) {
-                if (state.messages.isEmpty() && state.searchQuery.isEmpty()) {
+            if (state.messages.isEmpty() && state.searchQuery.isEmpty() && state.isSyncing) {
+                    // First sync in flight: empty placeholder under the scaffold's
+                    // top indicator, never the empty state.
+                    Box(modifier = Modifier.fillMaxSize())
+                } else if (state.messages.isEmpty() && state.searchQuery.isEmpty()) {
                     EmptyState(
                         title = stringResource(R.string.no_messages_found_pull_down_to_refresh),
                         modifier = Modifier.fillMaxSize(),
@@ -201,11 +197,7 @@ fun MessageListScreen(
                                         Text(stringResource(R.string.ai_summary), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSecondaryContainer)
                                         Spacer(Modifier.height(8.dp))
                                         if (state.aiSummaryLoading) {
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                                                Spacer(Modifier.width(8.dp))
-                                                Text(stringResource(R.string.generating_summary), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
-                                            }
+                                            Text(stringResource(R.string.generating_summary), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
                                         } else {
                                             Text(state.aiSummary ?: "", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSecondaryContainer)
                                         }
@@ -287,7 +279,6 @@ fun MessageListScreen(
                         }
                     }
                 }
-            }
         }
     }
 }

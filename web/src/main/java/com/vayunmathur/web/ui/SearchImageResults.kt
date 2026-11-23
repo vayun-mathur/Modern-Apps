@@ -32,7 +32,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.image.compose.AsyncImage
 import com.vayunmathur.library.ui.Button
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.ui.friendlyError
 import com.vayunmathur.library.ui.MaterialTheme
@@ -101,7 +100,7 @@ fun SearchImageResults(
     }
     when {
         loading && items.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
+            Text("Loading…")
         }
         errorState != null && items.isEmpty() -> SearchImageErrorState(
             message = errorState.error.orEmpty(),

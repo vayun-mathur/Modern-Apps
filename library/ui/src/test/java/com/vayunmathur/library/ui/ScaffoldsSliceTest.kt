@@ -9,6 +9,8 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import org.junit.Rule
@@ -184,80 +186,97 @@ class ScaffoldsSliceTest {
         assertEquals(1, selected)
     }
 
-    @Test fun appScaffoldLoadingReplacesContentButKeepsChrome() {
+    @Test fun appScaffoldRefreshingKeepsContentComposedUnderIndicator() {
         rule.setContent {
             AppScaffold(
                 title = "Inbox",
-                isLoading = true,
-                loadingMessage = "Fetching mail",
+                isRefreshing = true,
+                onRefresh = {},
                 scrollBehavior = appBarScrollBehavior(),
             ) { Text("Body text") }
         }
-        // Chrome stays, content is not composed, canonical loading message shows.
+        // Chrome stays and content stays composed: pull-to-refresh semantics,
+        // not content replacement.
         rule.onNodeWithText("Inbox").assertIsDisplayed()
-        rule.onNodeWithText("Fetching mail").assertIsDisplayed()
-        rule.onNodeWithText("Body text").assertDoesNotExist()
+        rule.onNodeWithText("Body text").assertIsDisplayed()
     }
 
-    @Test fun appScaffoldNotLoadingShowsContent() {
+    @Test fun appScaffoldNotRefreshingShowsContent() {
         rule.setContent {
             AppScaffold(
                 title = "Inbox",
-                isLoading = false,
-                loadingMessage = "Fetching mail",
+                isRefreshing = false,
+                onRefresh = {},
                 scrollBehavior = appBarScrollBehavior(),
             ) { Text("Body text") }
         }
         rule.onNodeWithText("Body text").assertIsDisplayed()
-        rule.onNodeWithText("Fetching mail").assertDoesNotExist()
     }
 
-    @Test fun appScaffoldTopBarOverloadLoadingReplacesContent() {
+    @Test fun appScaffoldProgrammaticRefreshWithGestureDisabledKeepsContent() {
+        var refreshes = 0
         rule.setContent {
-            AppScaffold(topBar = {}, isLoading = true, loadingMessage = "Loading browse") {
-                Text("Browse body")
-            }
+            AppScaffold(
+                topBar = {},
+                isRefreshing = true,
+                onRefresh = { refreshes++ },
+                refreshEnabled = false,
+            ) { Text("Browse body") }
         }
-        rule.onNodeWithText("Loading browse").assertIsDisplayed()
-        rule.onNodeWithText("Browse body").assertDoesNotExist()
+        // Programmatic refreshing is still reflected, content composed, and
+        // the disabled gesture cannot fire onRefresh.
+        rule.onNodeWithText("Browse body").assertIsDisplayed()
+        rule.onNodeWithText("Browse body").performTouchInput { swipeDown() }
+        assertEquals(0, refreshes)
     }
 
-    @Test fun detailScaffoldLoadingReplacesContent() {
+    @Test fun appScaffoldRefreshCallbackWiredWhenEnabled() {
+        // The enabled box composes without error and keeps content; the pull
+        // gesture itself is exercised by the M3 PullToRefreshBox upstream.
+        rule.setContent {
+            AppScaffold(
+                topBar = {},
+                isRefreshing = false,
+                onRefresh = {},
+                refreshEnabled = true,
+            ) { Text("Feed body") }
+        }
+        rule.onNodeWithText("Feed body").assertIsDisplayed()
+    }
+
+    @Test fun detailScaffoldRefreshingKeepsContent() {
         rule.setContent {
             DetailScaffold(
                 title = "Profile",
-                isLoading = true,
-                loadingMessage = "Loading profile",
+                isRefreshing = true,
+                onRefresh = {},
             ) { Text("Profile body") }
         }
-        rule.onNodeWithText("Loading profile").assertIsDisplayed()
-        rule.onNodeWithText("Profile body").assertDoesNotExist()
+        rule.onNodeWithText("Profile body").assertIsDisplayed()
     }
 
-    @Test fun lazyListScaffoldLoadingReplacesList() {
+    @Test fun lazyListScaffoldRefreshingKeepsList() {
         rule.setContent {
             LazyListScaffold(
                 title = "Dashboard",
-                isLoading = true,
-                loadingMessage = "Loading usage",
+                isRefreshing = true,
+                onRefresh = {},
             ) {
                 item { Text("Usage row") }
             }
         }
-        rule.onNodeWithText("Loading usage").assertIsDisplayed()
-        rule.onNodeWithText("Usage row").assertDoesNotExist()
+        rule.onNodeWithText("Usage row").assertIsDisplayed()
     }
 
-    @Test fun setupScaffoldLoadingReplacesContent() {
+    @Test fun setupScaffoldRefreshingKeepsContent() {
         rule.setContent {
             SetupScaffold(
                 title = "Pair your SIM",
-                isLoading = true,
-                loadingMessage = "Contacting carrier",
+                isRefreshing = true,
+                onRefresh = {},
             ) { Text("Setup body") }
         }
-        rule.onNodeWithText("Contacting carrier").assertIsDisplayed()
-        rule.onNodeWithText("Setup body").assertDoesNotExist()
+        rule.onNodeWithText("Setup body").assertIsDisplayed()
     }
 
     @Test fun topAppBarOverlayBackAndActions() {

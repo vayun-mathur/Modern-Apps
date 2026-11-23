@@ -69,8 +69,7 @@ private fun EmailVerificationContent(
     AppScaffold(
         title = stringResource(R.string.email_verification),
         onClose = onDone,
-        isLoading = state == VerifyState.LOADING,
-        loadingMessage = stringResource(R.string.verifying_your_email),
+        isRefreshing = state == VerifyState.LOADING,
     ) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).padding(24.dp),

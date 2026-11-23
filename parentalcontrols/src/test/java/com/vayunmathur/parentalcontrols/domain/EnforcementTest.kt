@@ -110,6 +110,32 @@ class EnforcementTest {
     }
 
     @Test
+    fun exemptPackagesAreNeverBlockedEvenWithRuleRows() {
+        // Stale rule rows for the launcher, dialer and Settings must govern nothing:
+        // downtime's allow-list would otherwise block all three, bedtime the launcher.
+        val rules = listOf(
+            AppRestriction("com.android.settings", dailyLimitMinutes = 5),
+            AppRestriction("com.example.launcher", blockedAtBedtime = true),
+            AppRestriction("com.example.dialer", dailyLimitMinutes = 5),
+        )
+        val exempt = setOf("com.android.settings", "com.example.launcher", "com.example.dialer")
+        val scope = launchable + exempt
+        val plan = decideEnforcement(
+            EnforcementInput(
+                launchablePackages = scope,
+                restrictions = rules,
+                bedtimeActive = true,
+                downtimeActive = true,
+                deviceOverBudget = true,
+                reachedPackages = exempt,
+                exemptPackages = exempt,
+            ),
+        )
+        assertEquals(launchable, plan.keys)
+        assertTrue(exempt.none { it in plan })
+    }
+
+    @Test
     fun bonusExtendsBudgetAndSpentTestUsesIt() {
         assertEquals(45, effectiveBudgetMinutes(30, listOf(15)))
         assertEquals(30, effectiveBudgetMinutes(30, emptyList()))

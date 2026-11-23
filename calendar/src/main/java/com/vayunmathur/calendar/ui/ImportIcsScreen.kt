@@ -23,7 +23,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Card
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.FloatingActionButton
@@ -104,6 +103,7 @@ fun ImportIcsScreen(
 
     AppScaffold(
         title = stringResource(R.string.import_events),
+        isRefreshing = events == null,
         onNavigateBack = { backStack.pop() },
         floatingActionButton = {
             if (canImport) {
@@ -142,22 +142,14 @@ fun ImportIcsScreen(
                         }
                     }
                 }) {
-                    if (isImporting) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        IconSave()
-                    }
+                    IconSave()
                 }
             }
         },
     ) { paddingValues ->
         when {
             events == null -> {
-                com.vayunmathur.library.ui.LoadingState(
+                androidx.compose.foundation.layout.Box(
                     Modifier
                         .fillMaxSize()
                         .padding(paddingValues),

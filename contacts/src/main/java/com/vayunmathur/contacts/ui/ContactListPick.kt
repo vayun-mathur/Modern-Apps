@@ -14,7 +14,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.contacts.R
 import com.vayunmathur.contacts.data.Contact
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.CommonSearchBar
 import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
@@ -59,6 +58,7 @@ fun ContactListPick(
     val selectedSet = selectedUris.toSet()
 
     LazyListScaffold(
+        isRefreshing = isLoading,
         topBar = { TopAppBar(title = { Text(stringResource(R.string.app_name)) }) },
         floatingActionButton = {
             if (allowMultiple) {
@@ -86,10 +86,7 @@ fun ContactListPick(
                 item(key = "pick-loading") {
                     androidx.compose.foundation.layout.Box(
                         modifier = Modifier.fillParentMaxSize(),
-                        contentAlignment = androidx.compose.ui.Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
+                    )
                 }
             }
             filtered.isEmpty() -> {

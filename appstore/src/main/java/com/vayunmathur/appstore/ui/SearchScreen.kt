@@ -25,13 +25,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.appstore.data.UnifiedApp
 import com.vayunmathur.appstore.platform.AppStoreViewModel
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.CommonSearchBar
 import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.ui.ErrorState
 import com.vayunmathur.library.ui.FilterChip
 import com.vayunmathur.library.ui.IconSearch
-import com.vayunmathur.library.ui.LinearProgressIndicator
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Text
@@ -56,7 +54,7 @@ fun SearchScreen(
         if (autoFocus) runCatching { focusRequester.requestFocus() }
     }
 
-    AppScaffold(topBar = {}) { padding ->
+    AppScaffold(topBar = {}, isRefreshing = state.isSearching) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             CommonSearchBar(
                 value = state.query,
@@ -78,10 +76,6 @@ fun SearchScreen(
                         label = { Text(stringResource(filter.labelRes())) },
                     )
                 }
-            }
-
-            if (state.isSearching) {
-                LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 8.dp))
             }
 
             // Play's half refused (429, issue #797): say so above the results rather than

@@ -11,7 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.vayunmathur.games.logicgate.Route
 import com.vayunmathur.games.logicgate.platform.LogicViewModel
-import com.vayunmathur.library.ui.CircularProgressIndicator
+import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.util.NavBackStack
 
@@ -23,7 +23,7 @@ fun ComponentPage(backStack: NavBackStack<Route>, viewModel: LogicViewModel, com
     val state = game
     if (state == null || state.sandbox?.id != componentId) {
         Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
+            Text("Loading\u2026")
         }
         return
     }

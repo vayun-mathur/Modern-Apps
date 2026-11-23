@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -45,8 +44,6 @@ internal fun PanoramaOverlay(
     if (isStitching) {
         Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp)
-                Spacer(Modifier.height(8.dp))
                 Text(text = stringResource(R.string.processing_panorama_u2026), color = Color.White, fontSize = 16.sp)
             }
         }

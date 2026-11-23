@@ -105,8 +105,10 @@ fun RestaurantContent(
         )
     }
 
-    AppScaffold(topBar = {}, isLoading = loading) { padding ->
-        if (merchant == null) {
+    AppScaffold(topBar = {}, isRefreshing = loading) { padding ->
+        if (loading) {
+            Box(Modifier.fillMaxSize().padding(padding))
+        } else if (merchant == null) {
             EmptyState(
                 title = stringResource(R.string.restaurant_not_found),
                 modifier = Modifier.fillMaxSize().padding(padding),

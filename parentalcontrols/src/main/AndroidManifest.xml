@@ -314,6 +314,22 @@
             </intent-filter>
         </receiver>
 
+        <!-- Our own update replaced the APK and killed the process: re-arm alarms,
+             usage observers and policy state, or supervision stays off until the next
+             boot or window boundary. Self-protection beyond this (and the boot re-arm
+             above) is not something a normal app can do - Device Admin cannot stop a
+             force-stop and an accessibility service watching Settings would be an
+             abuse vector, so neither is declared here; preventing force-stop or
+             uninstall outright is a platform (MAOS) property of the supervision role's
+             placement, not app code. See parentalcontrols/AGENTS.md. -->
+        <receiver
+            android:name=".platform.PackageReplacedReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
         <!--
           The second half of the availability test. `getSupervisionAppInstallActivityInfo` looks
           for this action so Settings can show the entry *before* supervision has been set up -

@@ -38,7 +38,9 @@ class ScreenTimeScreensTest {
     @Test fun dashboard_loading() {
         rule.setContent { DashboardScreen(ScreenTimeUiState(loading = true), actions) }
         rule.onNodeWithText("Screen Time").assertIsDisplayed()
-        rule.onNodeWithText("Loading apps…").assertIsDisplayed()
+        // Content is composed under the scaffold refresh indicator now: no
+        // standalone loading text, and no premature no-access/empty state.
+        rule.onNodeWithText("Loading apps…").assertDoesNotExist()
     }
 
     @Test fun dashboard_noAccess() {

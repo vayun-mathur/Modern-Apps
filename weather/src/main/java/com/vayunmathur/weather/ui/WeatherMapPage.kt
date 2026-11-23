@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.IconBack
 import com.vayunmathur.library.ui.FilledTonalIconButton
 import com.vayunmathur.library.ui.MaterialTheme
@@ -139,7 +138,7 @@ fun WeatherMapPage(
                 )
             }
             if (state.loading) {
-                CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                Text("Loading\u2026")
             }
         }
 

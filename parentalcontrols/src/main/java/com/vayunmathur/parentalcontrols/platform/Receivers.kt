@@ -145,6 +145,37 @@ class TimeChangedReceiver : BroadcastReceiver() {
 }
 
 /**
+ * Re-establishes enforcement after this app itself is updated.
+ *
+ * An update replaces the APK and kills the process: alarms, usage observers and the
+ * platform's service binding all have to be re-established, and until something
+ * reconciles, supervision is silently off — the same hole [BootReceiver] closes for
+ * reboots. `MY_PACKAGE_REPLACED` is the one lifecycle broadcast an app may receive
+ * about *itself*; there is no equivalent for force-stop or uninstall, and pretending
+ * otherwise is how fake "self-protection" features are built. See the self-protection
+ * audit in `parentalcontrols/AGENTS.md`.
+ */
+class PackageReplacedReceiver : BroadcastReceiver() {
+
+    // Broad catch is deliberate: onReceive must not throw, for the same reason as above.
+    @Suppress("TooGenericExceptionCaught")
+    override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action != Intent.ACTION_MY_PACKAGE_REPLACED) return
+        val app = context.applicationContext
+        val pending = goAsync()
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                Enforcer(app).reconcile()
+            } catch (e: Exception) {
+                Log.error(TAG, "package-replaced reconcile failed", e)
+            } finally {
+                pending.finish()
+            }
+        }
+    }
+}
+
+/**
  * Re-establishes enforcement after a reboot.
  *
  * Alarms and usage observers are both process- and boot-scoped, so without this a restart

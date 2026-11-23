@@ -18,11 +18,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.ListItem
 import com.vayunmathur.library.ui.ListItemDefaults
-import com.vayunmathur.library.ui.LoadingIndicator
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
 import androidx.compose.runtime.Composable
@@ -139,7 +137,7 @@ fun SearchLocationPage(backStack: NavBackStack<Route>, viewModel: WeatherViewMod
             Box(modifier = Modifier.fillMaxWidth().heightIn(min = 80.dp, max = 320.dp)) {
                 when {
                     searching && results.isEmpty() -> {
-                        LoadingIndicator(modifier = Modifier.align(Alignment.Center))
+                        Text("Loading\u2026", modifier = Modifier.align(Alignment.Center))
                     }
                     query.isNotBlank() && results.isEmpty() && !searching -> {
                         Text(
@@ -170,10 +168,7 @@ fun SearchLocationPage(backStack: NavBackStack<Route>, viewModel: WeatherViewMod
                                                 )
                                             }
                                         } else {
-                                            CircularProgressIndicator(
-                                                modifier = Modifier.size(16.dp),
-                                                strokeWidth = 2.dp,
-                                            )
+                                            Text("Loading\u2026")
                                         }
                                     },
                                     modifier = Modifier

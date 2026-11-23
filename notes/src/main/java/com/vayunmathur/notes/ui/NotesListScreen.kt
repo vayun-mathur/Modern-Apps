@@ -31,7 +31,6 @@ import androidx.compose.ui.zIndex
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.CommonSearchBar
 import com.vayunmathur.library.ui.EmptyState
-import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.util.sharedText
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.FloatingActionButton
@@ -169,6 +168,7 @@ fun NotesListScreen(
     }
 
     LazyListScaffold(
+        isRefreshing = !state.hasLoaded,
         topBar = { Column {
             if (isSelectionMode) {
                 TopAppBar(
@@ -237,7 +237,7 @@ fun NotesListScreen(
     ) {
             if (!state.hasLoaded && filtered.isEmpty()) {
                 item(key = "loading") {
-                    LoadingState(Modifier.fillParentMaxSize())
+                    androidx.compose.foundation.layout.Box(Modifier.fillParentMaxSize())
                 }
             }
             if (filtered.isEmpty() && searchQuery.isNotBlank() && state.hasLoaded) {

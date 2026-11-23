@@ -231,6 +231,8 @@ class AnalysisImageSource(
     executor: Executor,
     consumer: AnalysisConsumer,
     private val metadata: AnalysisFrameMetadata = AnalysisFrameMetadata(),
+    /** Executor this source owns (shut down by [close]); null when borrowed. */
+    private val ownedExecutor: java.util.concurrent.ExecutorService? = null,
 ) : AnalysisOutput {
 
     private val reader: ImageReader =
@@ -264,6 +266,7 @@ class AnalysisImageSource(
             Log.error("AnalysisImageSource", "clearing listener threw", e)
         }
         reader.close()
+        ownedExecutor?.shutdown()
     }
 
     companion object {

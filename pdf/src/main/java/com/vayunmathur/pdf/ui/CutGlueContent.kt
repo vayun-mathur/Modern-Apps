@@ -25,7 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.adaptiveGridCells
-import com.vayunmathur.library.ui.CircularProgressIndicator
+import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.DropdownMenu
 import com.vayunmathur.library.ui.DropdownMenuItem
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
@@ -33,7 +33,6 @@ import com.vayunmathur.library.ui.FloatingActionButton
 import com.vayunmathur.library.ui.Icon
 import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.MaterialTheme
-import com.vayunmathur.library.ui.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -220,7 +219,7 @@ private fun ComposePageThumb(
                 .background(if (current == null) MaterialTheme.colorScheme.surfaceVariant else Color.White),
         ) {
             if (current == null || current.width <= 0f) {
-                CircularProgressIndicator(Modifier.align(Alignment.Center))
+                Text("Loading\u2026", modifier = Modifier.align(Alignment.Center))
             } else {
                 Canvas(Modifier.fillMaxSize()) {
                     // drawSafePage only drains its save/saveLayer levels on the normal path, so

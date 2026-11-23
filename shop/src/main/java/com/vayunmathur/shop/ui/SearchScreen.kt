@@ -37,7 +37,6 @@ import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.image.compose.AsyncImage
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Card
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.ui.ErrorState
 import com.vayunmathur.library.ui.IconButton
@@ -202,8 +201,9 @@ private fun ProductResults(
     onRetry: () -> Unit = {},
 ) {
     if (searching) {
+        // No scaffold in this sub-composable: progress text affordance.
         Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
+            Text("Loading\u2026")
         }
         return
     }

@@ -14,7 +14,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import com.vayunmathur.library.ui.Text
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -32,7 +32,6 @@ import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.LazyListScaffold
 import com.vayunmathur.library.ui.SnackbarHost
 import com.vayunmathur.library.ui.SnackbarHostState
-import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.util.sharedText
 import com.vayunmathur.vpn.R
 import com.vayunmathur.vpn.data.VpnConfig
@@ -133,7 +132,7 @@ private fun ConfigRow(
                         modifier = Modifier.sharedText("vpn-endpoint-${cfg.id}"),
                     )
                 }
-                if (isConnecting) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                if (isConnecting) Text("\u2026")
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = onConnect) {

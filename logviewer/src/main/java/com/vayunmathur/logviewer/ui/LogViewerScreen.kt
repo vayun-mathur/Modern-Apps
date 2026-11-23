@@ -39,7 +39,6 @@ import com.vayunmathur.library.ui.IconSave
 import com.vayunmathur.library.ui.IconSearch
 import com.vayunmathur.library.ui.IconShare
 import com.vayunmathur.library.ui.LinearProgressIndicator
-import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.MultiSelectDropdown
 import com.vayunmathur.library.ui.SelectDropdown
@@ -105,6 +104,7 @@ internal fun LogViewerScreen(state: LogViewerUiState, actions: LogViewerActions)
     }
 
     AppScaffold(
+        isRefreshing = state.loading,
         title = state.title,
         scrollBehavior = scrollBehavior,
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -154,7 +154,7 @@ internal fun LogViewerScreen(state: LogViewerUiState, actions: LogViewerActions)
         )
         Box(Modifier.fillMaxSize()) {
             when {
-                state.loading -> LoadingState(Modifier.padding(padding))
+                state.loading -> androidx.compose.foundation.layout.Box(Modifier.padding(padding))
 
                 state.unavailable -> {
                     val messageRes = state.unavailableMessageRes

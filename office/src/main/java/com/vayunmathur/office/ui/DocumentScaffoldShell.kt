@@ -27,7 +27,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.AppScaffold
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.DrawerState
 import com.vayunmathur.library.ui.IconBack
 import com.vayunmathur.library.ui.IconButton
@@ -187,7 +186,8 @@ internal fun SaveAction(
         },
         enabled = chrome.hasUnsavedChanges && !chrome.isSaving,
     ) {
-        if (chrome.isSaving) CircularProgressIndicator(Modifier.size(SavingSpinnerSize)) else IconSave()
+        // Saving is encoded by the button's disabled state (enabled = hasUnsaved && !isSaving).
+        IconSave()
     }
 }
 

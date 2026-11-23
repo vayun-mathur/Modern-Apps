@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -31,7 +32,7 @@ import androidx.compose.ui.window.Dialog
 import com.vayunmathur.library.image.ImageRequest
 import com.vayunmathur.library.image.compose.AsyncImage
 import com.vayunmathur.library.ui.Card
-import com.vayunmathur.library.ui.CircularProgressIndicator
+import com.vayunmathur.library.ui.LinearProgressIndicator
 import com.vayunmathur.library.ui.DropdownMenu
 import com.vayunmathur.library.ui.IconArrowDropDown
 import com.vayunmathur.library.ui.IconCheck
@@ -115,11 +116,11 @@ fun VideoDetails(
             }
             val downloadProgress = state.downloadProgress
             if (downloadProgress != null) {
-                CircularProgressIndicator(
+                LinearProgressIndicator(
                     progress = { downloadProgress },
-                    modifier = Modifier.size(24.dp),
-                    strokeWidth = 2.dp
+                    modifier = Modifier.width(64.dp)
                 )
+                Text("${(downloadProgress * 100).toInt()}%")
                 IconButton(onClick = { actions.cancelDownload() }) {
                     IconClose()
                 }

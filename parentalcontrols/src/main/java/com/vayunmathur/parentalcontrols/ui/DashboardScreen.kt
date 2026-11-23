@@ -103,7 +103,15 @@ fun DashboardScreen(state: SupervisionUiState, actions: DashboardActions) {
                 )
                 SettingsRow(
                     title = stringResource(R.string.dashboard_web_filters),
-                    supportingText = stringResource(R.string.summary_web_filters),
+                    supportingText = stringResource(
+                        // The filter has no enforcement hook yet (see WebContentFilters):
+                        // the row must not claim filtering it does not do.
+                        if (state.enforcementAvailable) {
+                            R.string.web_filters_not_yet_enforced
+                        } else {
+                            R.string.web_filters_supervision_only
+                        },
+                    ),
                     leadingContent = { IconGlobe() },
                     onClick = actions.onOpenWebFilters,
                 )

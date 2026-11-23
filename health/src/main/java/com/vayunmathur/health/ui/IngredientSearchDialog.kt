@@ -20,7 +20,6 @@ import androidx.compose.runtime.setValue
 import com.vayunmathur.health.data.Ingredient
 import com.vayunmathur.library.ui.AlertDialog
 import com.vayunmathur.library.ui.Button
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.ui.HorizontalDivider
 import com.vayunmathur.library.ui.IconSearch
@@ -86,7 +85,7 @@ fun IngredientSearchDialog(
                 Spacer(Modifier.height(8.dp))
 
                 if (isSearching || isFetchingData) {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+                    Text("Loading…", modifier = Modifier.align(Alignment.CenterHorizontally))
                 } else {
                     LazyColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
                         // Until the database is unpacked there is nothing to

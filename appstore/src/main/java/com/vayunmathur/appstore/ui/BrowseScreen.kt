@@ -3,6 +3,7 @@ import com.vayunmathur.appstore.R
 
 import com.vayunmathur.appstore.platform.BrowseUiState
 import com.vayunmathur.appstore.platform.loadBrowse
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -42,9 +43,13 @@ fun BrowseScreen(
         title = state.title,
         onNavigateBack = onBack,
         alignment = AppBarAlignment.Start,
-        isLoading = state.isLoading && state.apps.isEmpty(),
+        isRefreshing = state.isLoading && state.apps.isEmpty(),
     ) { padding ->
         when {
+            state.isLoading && state.apps.isEmpty() -> Box(
+                Modifier.fillMaxSize().padding(padding)
+            )
+
             state.apps.isEmpty() -> EmptyState(
                 title = stringResource(R.string.browse_empty_title),
                 message = stringResource(R.string.browse_empty_message),

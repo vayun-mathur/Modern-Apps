@@ -36,7 +36,6 @@ import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.image.compose.AsyncImage
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Button
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.DetailSection
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
@@ -165,13 +164,13 @@ fun ProductScreen(
     AppScaffold(
         title = product?.title ?: stringResource(R.string.app_name),
         onNavigateBack = onBack,
+        isRefreshing = loading,
     ) { padding ->
         val current = product
         if (current == null) {
             Box(Modifier.fillMaxSize().padding(padding).padding(16.dp), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     if (loading) {
-                        CircularProgressIndicator()
                         Text(stringResource(R.string.product_checking))
                     } else {
                         Text(failure ?: stringResource(R.string.product_unavailable))
@@ -301,8 +300,7 @@ internal fun ProductDetailContent(
                         Text(stringResource(R.string.add_to_cart))
                     }
                     Button(onClick = onBuyNow, enabled = canAdd && !startingCheckout, modifier = Modifier.weight(1f)) {
-                        if (startingCheckout) CircularProgressIndicator(Modifier.size(20.dp))
-                        else Text(stringResource(R.string.buy_now))
+                        Text(stringResource(R.string.buy_now))
                     }
                 }
                 if ((!product.checkoutEligible || !verified && !loading) && MerchantUrls.httpsUrl(product.url) != null) {

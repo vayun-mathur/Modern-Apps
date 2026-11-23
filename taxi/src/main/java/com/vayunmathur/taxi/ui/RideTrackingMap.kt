@@ -16,13 +16,13 @@ import com.vayunmathur.library.map.GestureOptions
 import com.vayunmathur.library.map.MapOptions
 import com.vayunmathur.library.map.VectorMap
 import com.vayunmathur.library.map.rememberCameraState
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.util.ConnectivityMonitor
 import com.vayunmathur.library.ui.IconHome
 import com.vayunmathur.library.ui.IconMyLocation
 import com.vayunmathur.library.ui.IconNavigationArrow
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Surface
+import com.vayunmathur.library.ui.Text
 import com.vayunmathur.taxi.data.ActiveRide
 import com.vayunmathur.taxi.data.DriverLocation
 import com.vayunmathur.taxi.data.RideStopInfo
@@ -44,7 +44,7 @@ internal fun TrackingMap(ride: ActiveRide?, driverLoc: DriverLocation?, modifier
     if (points.isEmpty()) {
         Surface(modifier = modifier, color = MaterialTheme.colorScheme.surfaceContainer) {
             Box(contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
+                Text("Loading\u2026")
             }
         }
         return

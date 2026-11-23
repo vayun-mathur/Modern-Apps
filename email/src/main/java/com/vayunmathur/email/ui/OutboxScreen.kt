@@ -1,5 +1,6 @@
 package com.vayunmathur.email.ui
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -27,7 +28,6 @@ import com.vayunmathur.email.data.OutboxEntry
 import com.vayunmathur.email.platform.EmailViewModel
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.EmptyState
-import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.HorizontalDivider
 import com.vayunmathur.library.ui.IconButton
@@ -51,6 +51,7 @@ fun OutboxScreen(
     AppScaffold(
         title = stringResource(R.string.outbox),
         onNavigateBack = onBack,
+        isRefreshing = !hasLoaded && outbox.isEmpty(),
         actions = {
             if (outbox.isNotEmpty()) {
                 TextButton(onClick = {
@@ -61,7 +62,9 @@ fun OutboxScreen(
         },
     ) { padding ->
         if (!hasLoaded && outbox.isEmpty()) {
-            LoadingState(Modifier.padding(padding).fillMaxSize())
+            // First load: empty placeholder under the scaffold's top indicator,
+            // never the empty state before loaded.
+            Box(Modifier.padding(padding).fillMaxSize())
         } else if (outbox.isEmpty()) {
             EmptyState(
                 title = stringResource(R.string.outbox_is_empty),

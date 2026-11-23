@@ -19,7 +19,6 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.unit.dp
-import com.vayunmathur.library.ui.AppPullToRefreshBox
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
@@ -90,6 +89,8 @@ fun FavoritesScreen(
                 GallerySelectionActions(allFavorite, actions, onAddToAlbum = { showAlbumPicker = true })
             }
         },
+        isRefreshing = state.isRefreshing,
+        onRefresh = { actions.runSync() },
     ) { padding ->
         if (photos.isEmpty()) {
             EmptyState(
@@ -97,12 +98,6 @@ fun FavoritesScreen(
                 modifier = Modifier.fillMaxSize().padding(padding),
             )
         } else {
-            AppPullToRefreshBox(
-                isRefreshing = state.isRefreshing,
-                onRefresh = { actions.runSync() },
-                modifier = Modifier.fillMaxSize(),
-                topClearance = padding.calculateTopPadding(),
-            ) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -143,7 +138,6 @@ fun FavoritesScreen(
                         }
                     }
                 }
-            }
         }
     }
 

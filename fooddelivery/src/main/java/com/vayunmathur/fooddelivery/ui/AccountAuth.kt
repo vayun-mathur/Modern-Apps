@@ -17,7 +17,6 @@ import androidx.compose.ui.unit.dp
 import com.vayunmathur.fooddelivery.R
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.Card
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.IconPerson
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.OutlinedTextField
@@ -77,15 +76,13 @@ internal fun AccountAuthCard(
 
             Spacer(Modifier.height(12.dp))
 
-            if (authLoading) {
-                CircularProgressIndicator()
-            } else {
-                Button(
-                    onClick = onAuthClick,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(if (codeSent) "Verify" else "Send Code")
-                }
+            // Busy is encoded by the disabled button, no spinner icon.
+            Button(
+                onClick = onAuthClick,
+                enabled = !authLoading,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(if (codeSent) "Verify" else "Send Code")
             }
         }
     }

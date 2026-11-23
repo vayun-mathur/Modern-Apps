@@ -11,7 +11,6 @@ import androidx.core.net.toUri
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import com.vayunmathur.library.util.AppMessages
-import com.vayunmathur.library.ui.LoadingIndicator
 import com.vayunmathur.library.ui.IconAlbum
 import com.vayunmathur.library.ui.IconGroup
 import com.vayunmathur.library.ui.IconMap

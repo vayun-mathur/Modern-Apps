@@ -112,10 +112,11 @@ fun OrderTrackingScreen(orderId: Int, onBack: () -> Unit) {
             )
         },
         onNavigateBack = onBack,
-        isLoading = loading,
+        isRefreshing = loading,
     ) { padding ->
         val o = order
         when {
+            loading && o == null -> Box(Modifier.fillMaxSize().padding(padding))
             o == null -> EmptyState(
                 title = stringResource(R.string.order_not_found),
                 modifier = Modifier.fillMaxSize().padding(padding),

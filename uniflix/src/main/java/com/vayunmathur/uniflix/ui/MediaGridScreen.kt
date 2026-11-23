@@ -12,7 +12,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.AppScaffold
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.DesktopMaxWidthContainer
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.uniflix.domain.MediaItem
@@ -29,10 +28,10 @@ fun MediaGridScreen(
     AppScaffold(
         title = title,
         onNavigateBack = onBack,
+        isRefreshing = loading,
     ) { padding ->
         DesktopMaxWidthContainer(Modifier.padding(padding)) {
             if (loading) {
-                CircularProgressIndicator(modifier = Modifier.padding(16.dp))
                 return@DesktopMaxWidthContainer
             }
             if (items.isEmpty()) {

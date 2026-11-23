@@ -41,7 +41,6 @@ import androidx.compose.ui.unit.dp
 import com.vayunmathur.appstore.data.UnifiedApp
 import com.vayunmathur.library.image.compose.AsyncImage
 import com.vayunmathur.library.image.compose.AsyncImageState
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.IconKeyboardArrowDown
 import com.vayunmathur.library.ui.IconKeyboardArrowUp
 import com.vayunmathur.library.ui.MaterialTheme
@@ -80,7 +79,6 @@ internal fun AppDetailHeader(state: AppDetailUiState) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 SourceChip(app.source)
-                if (state.isLoadingDetails) CircularProgressIndicator(Modifier.size(12.dp))
             }
         }
     }

@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
@@ -17,7 +16,6 @@ import androidx.compose.ui.unit.dp
 import com.vayunmathur.fooddelivery.R
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.Card
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.OutlinedButton
 import com.vayunmathur.library.ui.OutlinedTextField
@@ -132,8 +130,8 @@ internal fun AddressFormCard(
                     enabled = !form.saving,
                     modifier = Modifier.weight(1f)
                 ) {
-                    if (form.saving) CircularProgressIndicator(modifier = Modifier.size(20.dp))
-                    else Text(stringResource(UiR.string.save))
+                    // Busy is encoded by the disabled button (enabled = !form.saving), no spinner icon.
+                    Text(stringResource(UiR.string.save))
                 }
             }
         }

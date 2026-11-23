@@ -13,6 +13,7 @@ import com.vayunmathur.parentalcontrols.notifications.LockNotifier
 import com.vayunmathur.parentalcontrols.platform.BedtimeReceiver
 import com.vayunmathur.parentalcontrols.platform.BootReceiver
 import com.vayunmathur.parentalcontrols.platform.LimitReachedReceiver
+import com.vayunmathur.parentalcontrols.platform.PackageReplacedReceiver
 import com.vayunmathur.parentalcontrols.service.SupervisionMessengerService
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -49,6 +50,9 @@ class ReceiversNotifierServiceTest {
         // Wrong action: boot receiver returns before doing any async work.
         BootReceiver().onReceive(ctx, Intent("com.example.WRONG_ACTION"))
         BootReceiver().onReceive(ctx, Intent(Intent.ACTION_VIEW))
+        // Same for the self-update receiver: anything but MY_PACKAGE_REPLACED is dropped.
+        PackageReplacedReceiver().onReceive(ctx, Intent(Intent.ACTION_PACKAGE_REPLACED))
+        PackageReplacedReceiver().onReceive(ctx, Intent(Intent.ACTION_VIEW))
         // A limit callback without a package is dropped.
         LimitReachedReceiver().onReceive(ctx, Intent())
         assertFalse(LimitState(ctx).hasReached("com.example.game"))

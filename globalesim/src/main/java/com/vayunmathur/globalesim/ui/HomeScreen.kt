@@ -31,10 +31,8 @@ import com.vayunmathur.globalesim.network.ProfileDto
 import com.vayunmathur.globalesim.domain.QuoteMath
 import com.vayunmathur.globalesim.domain.buildActivationCode
 import com.vayunmathur.globalesim.platform.EsimUiState
-import com.vayunmathur.library.ui.AppPullToRefreshBox
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Card
-import com.vayunmathur.library.ui.LoadingIndicator
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.OutlinedButton
 import com.vayunmathur.library.ui.Text
@@ -82,12 +80,11 @@ fun HomeScreen(
     )
     AppScaffold(
         title = stringResource(R.string.purchase_title),
+        isRefreshing = state.refreshing || !state.statusLoaded,
+        onRefresh = onRefresh,
     ) { padding ->
-        AppPullToRefreshBox(
-            isRefreshing = state.refreshing,
-            onRefresh = onRefresh,
+        androidx.compose.foundation.layout.Box(
             modifier = Modifier.fillMaxSize(),
-            topClearance = padding.calculateTopPadding(),
         ) {
             Column(
                 Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(padding).padding(16.dp),
@@ -96,7 +93,7 @@ fun HomeScreen(
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp)) {
                         when {
-                            !state.statusLoaded -> LoadingIndicator()
+                            !state.statusLoaded -> Text("Loading…")
                             profile == null && state.pendingCreditCents > 0 -> {
                                 Text(stringResource(R.string.payment_received), style = MaterialTheme.typography.titleMedium)
                                 Text(

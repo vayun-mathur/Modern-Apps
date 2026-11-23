@@ -53,7 +53,6 @@ import com.vayunmathur.library.ui.DateString
 import com.vayunmathur.library.ui.rememberIs24Hour
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.EmptyState
-import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.util.NavBackStack
 import kotlinx.serialization.json.Json
@@ -84,6 +83,7 @@ fun ExerciseDetailsPage(backStack: NavBackStack<Route>, viewModel: HealthViewMod
     val hasLoaded by viewModel.hasLoadedRecords.collectAsState()
 
     AppScaffold(
+        isRefreshing = !hasLoaded,
         title = {
             Text(
                 stringResource(R.string.metric_exercise_duration),
@@ -93,7 +93,7 @@ fun ExerciseDetailsPage(backStack: NavBackStack<Route>, viewModel: HealthViewMod
         onNavigateBack = { backStack.pop() },
     ) { padding ->
         if (!hasLoaded && records.isEmpty()) {
-            LoadingState(Modifier.fillMaxSize().padding(padding))
+            Box(Modifier.fillMaxSize().padding(padding))
         } else if (records.isEmpty()) {
             EmptyState(
                 title = stringResource(R.string.no_workouts),

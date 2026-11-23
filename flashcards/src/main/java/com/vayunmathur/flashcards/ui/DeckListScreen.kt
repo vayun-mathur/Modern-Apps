@@ -45,7 +45,6 @@ import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.IconDragHandle
 import com.vayunmathur.library.ui.IconPlay
 import com.vayunmathur.library.ui.IconStyle
-import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.ListItem
 import com.vayunmathur.library.ui.ReorderableItem
 import com.vayunmathur.library.ui.Surface
@@ -93,13 +92,14 @@ fun DeckListScreen(
     }
 
     AppScaffold(
+        isRefreshing = !state.hasLoaded,
         title = stringResource(R.string.app_name),
         floatingActionButton = {
             FloatingActionButton(onClick = { showAddDialog = true }) { IconAdd() }
         },
     ) { paddingValues ->
         if (!state.hasLoaded && localDecks.isEmpty()) {
-            LoadingState(Modifier.fillMaxSize().padding(paddingValues))
+            androidx.compose.foundation.layout.Box(Modifier.fillMaxSize().padding(paddingValues))
             return@AppScaffold
         }
         if (localDecks.isEmpty()) {

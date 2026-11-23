@@ -178,6 +178,9 @@ class SupervisionViewModel(app: Application) : AndroidViewModel(app) {
      * keeping it would make the app look supervised in the list when it is not.
      */
     private fun editRule(packageName: String, transform: (AppRule) -> AppRule) {
+        // Exempt packages (home, dialer, Settings, ourselves) are never governed, even
+        // if a stale caller asks: no rule row is written for them.
+        if (ExemptPackages.isExempt(getApplication(), packageName)) return
         viewModelScope.launch {
             val existing = rules.rule(packageName) ?: AppRule(packageName)
             val next = transform(existing)
@@ -195,17 +198,19 @@ class SupervisionViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * Launchable apps, excluding ourselves.
+     * Launchable apps the parent may put a rule on, excluding the exempt packages.
      *
      * Supervising the supervision app would let a limit lock the parent out of the controls, so
-     * it is not offered. Queried with `MATCH_ALL` against the launcher intent rather than listing
-     * every installed package, because a package with no launcher entry is not something a child
-     * "uses" and would only make the list unusable.
+     * it is not offered; neither are the home/launcher, the dialer or Settings (see
+     * [ExemptPackages]) — blocking any of them would strand the child or the parent, so the
+     * supervisor flows never offer them. Queried with `MATCH_ALL` against the launcher intent
+     * rather than listing every installed package, because a package with no launcher entry is
+     * not something a child "uses" and would only make the list unusable.
      */
     private suspend fun loadLaunchableApps(): List<Pair<String, String>> =
         withContext(Dispatchers.IO) {
             val pm = getApplication<Application>().packageManager
-            val self = getApplication<Application>().packageName
+            val exempt = ExemptPackages.resolve(getApplication())
             val intent = android.content.Intent(android.content.Intent.ACTION_MAIN)
                 .addCategory(android.content.Intent.CATEGORY_LAUNCHER)
             // ResolveInfoFlags.of is API 33+; on 31-32 the int-flags overload is the same query.
@@ -216,7 +221,7 @@ class SupervisionViewModel(app: Application) : AndroidViewModel(app) {
             }
                 .mapNotNull { it.activityInfo?.applicationInfo }
                 .distinctBy { it.packageName }
-                .filter { it.packageName != self }
+                .filter { it.packageName !in exempt }
                 .map { it.packageName to it.label(pm) }
                 .sortedBy { it.second.lowercase() }
         }

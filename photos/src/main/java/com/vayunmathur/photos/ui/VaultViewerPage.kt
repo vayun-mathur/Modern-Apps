@@ -11,7 +11,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import com.vayunmathur.library.ui.LoadingIndicator
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.util.AppMessages
 import com.vayunmathur.library.util.NavBackStack
@@ -77,8 +76,9 @@ fun VaultViewerPage(
     }
 
     if (decryptedFile == null) {
+        // Viewer context without a scaffold: text affordance, no loading icon.
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            LoadingIndicator()
+            Text("Loading…")
         }
         return
     }

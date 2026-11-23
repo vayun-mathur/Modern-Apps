@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.text.style.TextOverflow
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Button
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Slider
@@ -132,7 +131,7 @@ private fun VideoSurface(videoUrl: String, retryCount: Int, onError: () -> Unit)
                 surfaceType = SURFACE_TYPE_TEXTURE_VIEW,
             )
             if (buffering) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                Text("Loading\u2026", modifier = Modifier.align(Alignment.Center))
             } else {
                 PlayPauseButton(
                     player = player,

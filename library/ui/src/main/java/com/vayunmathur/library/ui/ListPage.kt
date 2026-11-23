@@ -68,7 +68,9 @@ inline fun <T : DatabaseItem, Route : NavKey, reified EditPage : Route> ListPage
     noinline searchString: (T) -> String = { it.toString() },
     noinline bottomBar: @Composable () -> Unit = {},
     noinline fab: (@Composable () -> Unit)? = null,
-    loading: Boolean = false,
+    isRefreshing: Boolean = false,
+    noinline onRefresh: (() -> Unit)? = null,
+    refreshEnabled: Boolean = true,
 ) = ListPageContent(
     backStack = backStack,
     data = data,
@@ -89,7 +91,9 @@ inline fun <T : DatabaseItem, Route : NavKey, reified EditPage : Route> ListPage
     searchString = searchString,
     bottomBar = bottomBar,
     fab = fab,
-    loading = loading,
+    isRefreshing = isRefreshing,
+    onRefresh = onRefresh,
+    refreshEnabled = refreshEnabled,
     isEditPage = { it is EditPage },
 )
 
@@ -123,7 +127,9 @@ internal fun <T : DatabaseItem, Route : NavKey> ListPageContent(
     searchString: (T) -> String = { it.toString() },
     bottomBar: @Composable () -> Unit = {},
     fab: (@Composable () -> Unit)? = null,
-    loading: Boolean = false,
+    isRefreshing: Boolean = false,
+    onRefresh: (() -> Unit)? = null,
+    refreshEnabled: Boolean = true,
 ) {
     var searchQuery by remember { mutableStateOf("") }
     // Built once per data change, not once per keystroke. `searchString` concatenates several
@@ -190,13 +196,12 @@ internal fun <T : DatabaseItem, Route : NavKey> ListPageContent(
             }
         }
     ) { paddingValues ->
-        // An empty list and a list that has not arrived yet are both "no items", and rendering
-        // them the same way means a slow first load reads as an empty vault/library rather than
-        // as work in progress.
-        if (loading && displayed.isEmpty()) {
-            LoadingState(Modifier.fillMaxSize().padding(paddingValues))
-            return@Scaffold
-        }
+        ScaffoldRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = onRefresh,
+            refreshEnabled = refreshEnabled,
+            padding = paddingValues,
+        ) { refreshPad ->
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
@@ -220,6 +225,7 @@ internal fun <T : DatabaseItem, Route : NavKey> ListPageContent(
                     colors = itemColors(item),
                 ) { headlineContent(item) }
             }
+        }
         }
     }
 }

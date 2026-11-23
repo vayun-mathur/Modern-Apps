@@ -1,6 +1,7 @@
 package com.vayunmathur.email.ui
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -14,7 +15,6 @@ import com.vayunmathur.email.R
 import com.vayunmathur.email.platform.EmailViewModel
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.EmptyState
-import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.HorizontalDivider
 import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.IconDelete
@@ -33,9 +33,12 @@ fun DraftsScreen(
     AppScaffold(
         title = stringResource(R.string.drafts),
         onNavigateBack = onBack,
+        isRefreshing = !hasLoaded && drafts.isEmpty(),
     ) { padding ->
         if (!hasLoaded && drafts.isEmpty()) {
-            LoadingState(Modifier.fillMaxSize().padding(padding))
+            // First load: empty placeholder under the scaffold's top indicator,
+            // never the empty state before loaded.
+            Box(Modifier.fillMaxSize().padding(padding))
         } else if (drafts.isEmpty()) {
             EmptyState(
                 title = stringResource(R.string.no_drafts),

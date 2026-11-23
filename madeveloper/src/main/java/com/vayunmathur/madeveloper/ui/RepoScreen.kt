@@ -37,7 +37,6 @@ import com.vayunmathur.library.ui.IconHistory
 import com.vayunmathur.library.ui.IconImage
 import com.vayunmathur.library.ui.IconLink
 import com.vayunmathur.library.ui.ListItem
-import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.SelectDropdown
 import com.vayunmathur.library.ui.Spacing
@@ -80,6 +79,7 @@ fun RepoScreen(
         treeLoading = false
     }
     AppScaffold(
+        isRefreshing = browser == null || treeLoading,
         title = repoName,
         subtitle = repo?.defaultBranch?.takeIf { it.isNotBlank() }?.let { "Default branch $it" },
         onNavigateBack = onBack,
@@ -100,7 +100,7 @@ fun RepoScreen(
             }
             if (browser == null) {
                 if (state.repoError == null) {
-                    item { LoadingState(message = "Loading repository…", modifier = Modifier.fillMaxWidth().height(160.dp)) }
+                    item { Text("Loading repository…", modifier = Modifier.fillMaxWidth().height(160.dp)) }
                 }
             } else {
                 item {
@@ -196,8 +196,8 @@ fun RepoScreen(
                 }
                 if (treeLoading) {
                     item {
-                        LoadingState(
-                            message = "Loading files…",
+                        Text(
+                            "Loading files…",
                             modifier = Modifier.fillMaxWidth().height(120.dp),
                         )
                     }

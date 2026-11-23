@@ -20,7 +20,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.vayunmathur.library.ui.AppPullToRefreshBox
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.Card
@@ -48,27 +47,25 @@ fun OrdersScreen(viewModel: ShopViewModel) {
     val context = LocalContext.current
     AppScaffold(
         title = stringResource(R.string.orders),
+        isRefreshing = viewModel.refreshingTracking,
+        onRefresh = { viewModel.refreshTracking(context) },
     ) { padding ->
-        AppPullToRefreshBox(
-            isRefreshing = viewModel.refreshingTracking,
-            onRefresh = { viewModel.refreshTracking(context) },
-            modifier = Modifier.fillMaxSize().padding(padding),
-            topClearance = 0.dp,
-        ) {
-            val orders = viewModel.orders
-            if (orders.isEmpty()) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        val orders = viewModel.orders
+        if (orders.isEmpty()) {
+            // Guard empty branch on refresh: scaffold indicator shows over empty area.
+            if (!viewModel.refreshingTracking) {
+                Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                     Text(
                         stringResource(R.string.no_orders_yet),
                         style = MaterialTheme.typography.titleMedium,
                     )
                 }
-                return@AppPullToRefreshBox
             }
+        } else {
             LazyColumn(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().padding(padding),
             ) {
                 items(orders, key = { "${it.shopDomain}-${it.checkoutId}-${it.placedAtMs}" }) { order ->
                     OrderRow(order = order, onOpen = { url -> openContinueUrl(context, url) })

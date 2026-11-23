@@ -23,7 +23,6 @@ import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.DesktopMaxWidthContainer
 import com.vayunmathur.library.ui.Checkbox
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.ElevatedCard
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.MaterialTheme
@@ -145,7 +144,6 @@ fun PaymentPage(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 if (loading) {
-                    CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))
                     Text(stringResource(R.string.preparing_checkout))
                 } else {
                     Text(stringResource(R.string.pay_securely))

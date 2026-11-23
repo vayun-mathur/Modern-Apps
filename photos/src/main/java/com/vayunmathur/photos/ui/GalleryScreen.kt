@@ -16,20 +16,18 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.EmptyState
-import com.vayunmathur.library.ui.LoadingIndicator
+import com.vayunmathur.library.ui.AppScaffold
+import com.vayunmathur.library.ui.LinearProgressIndicator
 import com.vayunmathur.library.ui.adaptiveGridCells
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.ListItem
 import com.vayunmathur.library.ui.MaterialTheme
-import com.vayunmathur.library.ui.Scaffold
 import com.vayunmathur.library.ui.SearchBar
 import com.vayunmathur.library.ui.SearchBarDefaults
 import com.vayunmathur.library.ui.Text
@@ -137,11 +135,12 @@ fun GalleryScreen(
         value = withContext(Dispatchers.Default) { groupPhotosByMonth(visiblePhotos, resources) }
     }
 
-    // RAW SCAFFOLD EXCEPTION: top bar is an expandable SearchBar (with in-bar search
-    // results) swapped for a selection TopAppBar, and the body is a pinch-to-zoom photo
-    // grid wrapped in AppPullToRefreshBox. Neither AppScaffold (title/actions only) nor
-    // LazyListScaffold (LazyColumn body) can represent this without changing the UI.
-    Scaffold(
+    // Custom topBar AppScaffold overload: top bar is an expandable SearchBar (with
+    // in-bar search results) swapped for a selection TopAppBar, and the body is a
+    // pinch-to-zoom photo grid. Refresh is driven by the scaffold, not a nested box.
+    AppScaffold(
+        isRefreshing = state.isLoading || state.isRefreshing,
+        onRefresh = { actions.runSync() },
         topBar = {
             Column {
                 if (isSelectionMode) {
@@ -231,13 +230,14 @@ fun GalleryScreen(
                                 val pct = state.ocrCount * 100 / state.ocrTargetCount
                                 ListItem(
                                     content = { Text(stringResource(R.string.of_photos_processed, pct)) },
-                                    supportingContent = { Text(pluralStringResource(R.plurals.photos_indexed_for_text_search, state.ocrTargetCount, state.ocrCount, state.ocrTargetCount)) },
-                                    leadingContent = {
-                                        CircularProgressIndicator(
-                                            progress = { state.ocrCount.toFloat() / state.ocrTargetCount },
-                                            modifier = Modifier.size(40.dp),
-                                            strokeWidth = 4.dp
-                                        )
+                                    supportingContent = {
+                                        Column {
+                                            Text(pluralStringResource(R.plurals.photos_indexed_for_text_search, state.ocrTargetCount, state.ocrCount, state.ocrTargetCount))
+                                            LinearProgressIndicator(
+                                                progress = { state.ocrCount.toFloat() / state.ocrTargetCount },
+                                                modifier = Modifier.fillMaxWidth(),
+                                            )
+                                        }
                                     }
                                 )
                             }
@@ -245,13 +245,14 @@ fun GalleryScreen(
                                 val pct = state.clipCount * 100 / state.clipTargetCount
                                 ListItem(
                                     content = { Text(stringResource(R.string.of_photos_processed, pct)) },
-                                    supportingContent = { Text(pluralStringResource(R.plurals.photos_indexed_for_visual_search, state.clipTargetCount, state.clipCount, state.clipTargetCount)) },
-                                    leadingContent = {
-                                        CircularProgressIndicator(
-                                            progress = { state.clipCount.toFloat() / state.clipTargetCount },
-                                            modifier = Modifier.size(40.dp),
-                                            strokeWidth = 4.dp
-                                        )
+                                    supportingContent = {
+                                        Column {
+                                            Text(pluralStringResource(R.plurals.photos_indexed_for_visual_search, state.clipTargetCount, state.clipCount, state.clipTargetCount))
+                                            LinearProgressIndicator(
+                                                progress = { state.clipCount.toFloat() / state.clipTargetCount },
+                                                modifier = Modifier.fillMaxWidth(),
+                                            )
+                                        }
                                     }
                                 )
                             }
@@ -262,13 +263,6 @@ fun GalleryScreen(
         },
         bottomBar = { if (!isSelectionMode) NavigationBar(Route.Gallery, backStack) }
     ) { paddingValues ->
-        com.vayunmathur.library.ui.AppPullToRefreshBox(
-            isRefreshing = state.isRefreshing,
-            onRefresh = { actions.runSync() },
-            modifier = Modifier.fillMaxSize(),
-            // Below the top search bar: the scaffold's top inset is the exact clearance.
-            topClearance = paddingValues.calculateTopPadding(),
-        ) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -276,15 +270,10 @@ fun GalleryScreen(
                     .pinchToZoomColumns({ columnCount }, { columnCount = it })
             ) {
                 if (state.isLoading) {
-                    // First library emission still in flight: a wait, not an
-                    // empty library (same shape as the vault viewer / secure
-                    // folder binders: full-size box, centred indicator).
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = androidx.compose.ui.Alignment.Center,
-                    ) {
-                        LoadingIndicator()
-                    }
+                    // First library emission still in flight: content stays
+                    // composed under the scaffold's refresh indicator; an
+                    // empty box here, never the premature empty state.
+                    Box(modifier = Modifier.fillMaxSize())
                 } else if (state.photos.isEmpty() && !state.isRefreshing) {
                     EmptyState(
                         title = stringResource(R.string.gallery_empty_title),
@@ -325,7 +314,6 @@ fun GalleryScreen(
                     }
                 }
             }
-        }
     }
 
     if (showAlbumPicker) {

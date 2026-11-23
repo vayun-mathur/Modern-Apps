@@ -381,11 +381,20 @@ class AndroidCamera2Driver(
         metadata: AnalysisFrameMetadata,
     ): AnalysisOutput? =
         runCatching {
+            // Analysis runs OFF the session/capture thread: the consumer
+            // (plane stats / Rust) must never stall preview or capture
+            // callbacks. A dedicated single thread + FrameDropGate gives
+            // latest-only semantics: a slow consumer drops frames instead
+            // of queueing them. The source owns and shuts down this executor.
+            val analysisExecutor = java.util.concurrent.Executors.newSingleThreadExecutor { r ->
+                Thread(r, "Camera2Analysis").apply { isDaemon = true }
+            }
             AnalysisImageSource(
                 size.width, size.height, handler = handler,
-                executor = java.util.concurrent.Executor { command -> handler.post(command) },
+                executor = analysisExecutor,
                 consumer = consumer,
                 metadata = metadata,
+                ownedExecutor = analysisExecutor,
             )
         }.getOrNull()
 

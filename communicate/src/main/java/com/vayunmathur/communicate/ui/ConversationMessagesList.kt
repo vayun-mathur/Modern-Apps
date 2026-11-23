@@ -39,7 +39,7 @@ internal fun MessagesList(padding: PaddingValues, refresh: Int, load: suspend ()
 @Composable
 internal fun MessagesContent(padding: PaddingValues, rows: List<SmsMessage>?) {
     when (rows) {
-        null -> com.vayunmathur.library.ui.LoadingState(Modifier.padding(padding))
+        null -> androidx.compose.foundation.layout.Box(Modifier.padding(padding)) { Text("Loading\u2026") }
         emptyList<SmsMessage>() -> EmptyState(
             title = stringResource(R.string.empty_messages),
             icon = { IconSms() },

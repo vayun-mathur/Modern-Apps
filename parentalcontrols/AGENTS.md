@@ -61,6 +61,30 @@ _Install: ./install parentalcontrols (dev by default)._
 - com/vayunmathur/parentalcontrols/ui/WindowScheduleScreen.kt
 - com/vayunmathur/parentalcontrols/ui/WebContentFiltersScreen.kt
 
+## Self-protection (force-stop / uninstall) — audit
+
+What stops a child from force-stopping or uninstalling this app, honestly:
+
+- **Already provided by the supervision tier (real):** the `SYSTEM_SUPERVISION` role
+  (granted via `config_systemSupervision`, not by this app), `MANAGE_SUPERVISION`-gated
+  activities, Settings-only IPC (`SupervisionCaller`), the parent PIN, and the platform
+  clearing/re-applying policy state around supervision enable/disable. Enforcement is
+  system-mediated; the app never polices itself.
+- **Implemented in-app (the hardening a normal app can actually do):** re-arm on
+  `BOOT_COMPLETED` (`BootReceiver`) and on our own update (`PackageReplacedReceiver` —
+  alarms, usage observers and the platform binding all die with the old process);
+  block/usage state persisted across process death (`ManagedPackages`, `LimitState`).
+- **Deliberately NOT implemented (fake or abusive at this tier):** a legacy
+  `DeviceAdminReceiver` — after admin activation it can hinder *uninstall* only, it
+  cannot prevent force-stop, and presenting it as tamper-proofing would be lying;
+  an accessibility service watching Settings to intercept force-stop/uninstall taps —
+  an abuse vector this app must never ship. Neither is declared in the manifest.
+- **MAOS-only (platform layer, not app code):** preventing force-stop/uninstall of the
+  supervision app outright, pinning `config_systemSupervision` to this package, the
+  `hidden-api-whitelisted-app` entry, and any privileged placement. A normal
+  (non-privileged) app cannot obtain these from inside its own APK; do not simulate
+  them here.
+
 ## Verify (this module only)
 ```
 ./gradlew :parentalcontrols:compileDevKotlin

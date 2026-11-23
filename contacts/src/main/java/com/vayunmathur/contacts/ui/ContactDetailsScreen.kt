@@ -27,7 +27,6 @@ import com.vayunmathur.contacts.platform.ContactViewModel
 import com.vayunmathur.contacts.platform.contactFlow
 import com.vayunmathur.contacts.platform.ContactsActions
 import com.vayunmathur.contacts.platform.PackageUtils
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.DetailLazyColumn
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.IconButton

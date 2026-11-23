@@ -46,7 +46,7 @@ import com.vayunmathur.library.ui.AchievementNotification
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.Card
 import com.vayunmathur.library.ui.CardDefaults
-import com.vayunmathur.library.ui.CircularProgressIndicator
+import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.ConfirmDialog
 import com.vayunmathur.library.ui.DailyReminderSettingsSection
 import com.vayunmathur.library.ui.DetailScaffold
@@ -58,7 +58,6 @@ import com.vayunmathur.library.ui.IconStar
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Surface
-import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.rememberPermissionRequest
 import com.vayunmathur.library.ui.game.DailyChallengeCard
 import com.vayunmathur.library.ui.game.GameTopBarActions
@@ -273,7 +272,7 @@ fun DailyLevelPage(backStack: NavBackStack<Route>, viewModel: UnblockJamViewMode
 
     val pack = dailyPack
     if (pack == null) {
-        Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator() }
+        Box(Modifier.fillMaxSize(), Alignment.Center) { Text("Loading\u2026") }
         return
     }
     LevelScreen(
@@ -362,7 +361,7 @@ fun GamePage(backStack: NavBackStack<Route>, viewModel: UnblockJamViewModel, pac
 
     val startingLevelData = levels?.getOrNull(levelIndex)
     if (levels == null || startingLevelData == null) {
-        Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator() }
+        Box(Modifier.fillMaxSize(), Alignment.Center) { Text("Loading\u2026") }
         return
     }
 

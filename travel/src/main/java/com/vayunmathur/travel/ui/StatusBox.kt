@@ -29,7 +29,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
 
@@ -44,7 +43,7 @@ fun StatusBox(
 ) {
     Box(modifier.fillMaxWidth().heightIn(min = 200.dp), contentAlignment = Alignment.Center) {
         when {
-            loading -> CircularProgressIndicator()
+            loading -> Text("Loading…")
             error != null -> Text(
                 error,
                 color = MaterialTheme.colorScheme.error,

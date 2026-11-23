@@ -277,6 +277,7 @@ fun CheckoutScreen(
     AppScaffold(
         title = stringResource(R.string.checkout),
         onNavigateBack = onBack,
+        isRefreshing = fetchingPrices,
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             CheckoutOrderContent(

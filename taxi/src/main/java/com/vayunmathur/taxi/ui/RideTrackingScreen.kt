@@ -28,7 +28,6 @@ import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.AlertDialog
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Button
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.ExternalIntents
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Surface
@@ -148,8 +147,6 @@ fun RideTrackingScreen(rideId: String) {
                                     modifier = Modifier.fillMaxWidth(),
                                 ) {
                                     if (cancelling) {
-                                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                                        Spacer(Modifier.width(8.dp))
                                         Text(stringResource(R.string.cancelling))
                                     } else {
                                         Text(stringResource(R.string.cancel_ride))
@@ -167,8 +164,6 @@ fun RideTrackingScreen(rideId: String) {
 
                         else ->
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                                Spacer(Modifier.width(12.dp))
                                 Text(stringResource(R.string.tracking_loading))
                             }
                     }

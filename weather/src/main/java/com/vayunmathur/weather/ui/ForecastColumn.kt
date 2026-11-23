@@ -10,9 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
-import com.vayunmathur.library.ui.LoadingIndicator
 import com.vayunmathur.library.ui.MaterialTheme
-import com.vayunmathur.library.ui.AppPullToRefreshBox
 import com.vayunmathur.library.ui.ErrorState
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.friendlyErrorMessage
@@ -64,16 +62,8 @@ internal fun ForecastColumn(
     val selected = state.selected
     val scrollState = rememberScrollState()
 
-    AppPullToRefreshBox(
-        // No pull indicator on first load: the centered LoadingIndicator below
-        // already covers it, and the two spinners stack. Refreshes still show it.
-        isRefreshing = state.refreshing && forecast != null,
-        onRefresh = { actions.refreshAll(force = true) },
-        modifier = Modifier.fillMaxSize(),
-        // Same spot as the first-load LoadingIndicator below (64.dp clears the
-        // floating search bar); the indicator slot itself is always centered.
-        topClearance = 64.dp,
-    ) {
+    // Caller uses a raw Scaffold (no refresh slot), so refresh is shown as progress text here.
+    Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize().verticalScroll(scrollState)) {
             MainSearchBar(
                 paddingValues = paddingValues,
@@ -92,7 +82,7 @@ internal fun ForecastColumn(
                             onRetry = { actions.refreshAll(force = true) },
                         )
                     } else {
-                        LoadingIndicator()
+                        Text("Loading\u2026")
                     }
                 }
                 return@Column

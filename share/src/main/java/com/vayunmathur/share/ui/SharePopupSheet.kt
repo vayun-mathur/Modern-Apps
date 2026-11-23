@@ -23,7 +23,6 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.Card
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.ModalBottomSheet
 import com.vayunmathur.library.ui.Text
@@ -88,7 +87,6 @@ internal fun OutgoingFilesSummary(displayNames: List<String>, count: Int) {
 @Composable
 internal fun ScanningRow() {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        CircularProgressIndicator(modifier = Modifier.padding(end = 12.dp))
         Text(
             stringResource(R.string.share_scanning),
             style = MaterialTheme.typography.bodyMedium,

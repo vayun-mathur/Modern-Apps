@@ -24,7 +24,6 @@ import com.vayunmathur.library.ui.DashboardSection
 import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.ui.ErrorState
 import com.vayunmathur.library.ui.IconDescription
-import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Spacing
 import com.vayunmathur.library.ui.Surface
@@ -46,6 +45,7 @@ fun FileScreen(repoName: String, path: String, branch: String, viewModel: MaDevV
     }
     val fileName = path.substringAfterLast('/')
     AppScaffold(
+        isRefreshing = file == null && error == null,
         title = fileName,
         subtitle = "$repoName · $branch",
         onNavigateBack = onBack,
@@ -71,7 +71,7 @@ fun FileScreen(repoName: String, path: String, branch: String, viewModel: MaDevV
             }
             val loaded = file
             when {
-                loaded == null && error == null -> LoadingState(message = "Loading file…", modifier = Modifier.fillMaxWidth().height(160.dp))
+                loaded == null && error == null -> Text("Loading file…", modifier = Modifier.fillMaxWidth().height(160.dp))
                 loaded == null -> Unit
                 loaded.isBinary -> DashboardSection(
                     title = "Binary file",

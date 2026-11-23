@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -14,7 +13,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.fooddelivery.R
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.HorizontalDivider
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
@@ -39,8 +37,7 @@ internal fun CheckoutTotals(
     if (fetchingPrices) {
         Spacer(Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            CircularProgressIndicator(modifier = Modifier.size(16.dp))
-            Spacer(Modifier.width(8.dp))
+            // Fetching is shown by the checkout scaffold's refresh indicator; text stays here.
             Text(
                 stringResource(R.string.calculating_tax_fees),
                 style = MaterialTheme.typography.bodySmall,

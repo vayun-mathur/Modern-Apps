@@ -16,7 +16,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * Scaffold-aware pull-to-refresh container.
+ * Library-internal pull-to-refresh container. App screens must not use
+ * this directly: the AppScaffold family owns the pull-to-refresh box via
+ * `isRefreshing`/`onRefresh`/`refreshEnabled` (flagged by ScaffoldLoading
+ * lint in app code). Kept for library-internal hosts without a scaffold.
  *
  * A thin fix over [PullToRefreshBox] for screens hosted in [AppScaffold] (or a raw
  * `Scaffold` with a top bar): the indicator slot is a `fillMaxWidth` box with centered

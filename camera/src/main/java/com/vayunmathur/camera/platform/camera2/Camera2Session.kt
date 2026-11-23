@@ -133,7 +133,17 @@ class Camera2Session(
     fun open(cameraId: String, surface: Surface, requestedSize: FrameSize) {
         executor.execute {
             if (stateMachine.state != SessionState.CLOSED) return@execute
-            val supported = StreamSelection.supportedPreviewSizes(snapshot)
+            val allSupported = StreamSelection.supportedPreviewSizes(snapshot)
+            // LIMITED guaranteed combinations cap the preview target at
+            // 1080p alongside JPEG(MAX)+YUV: never select a larger preview
+            // size on such a lens when a capped size exists.
+            val supported = if (StreamSelection.isLimitedOrLower(snapshot)) {
+                allSupported.filter {
+                    it.area.toLong() <= StreamSelection.LIMITED_STREAM_MAX_PIXELS
+                }.ifEmpty { allSupported }
+            } else {
+                allSupported
+            }
             val selected = StreamSelection.selectPreviewSize(requestedSize, supported)
             if (selected == null) {
                 reportError(

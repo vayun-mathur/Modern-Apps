@@ -36,7 +36,6 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.exifinterface.media.ExifInterface
 import com.vayunmathur.library.log.Log
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.translate.R
@@ -209,7 +208,7 @@ fun ImageTranslateScreen(
             }
             else -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+                    Text("Loading\u2026", color = Color.White)
                 }
             }
         }

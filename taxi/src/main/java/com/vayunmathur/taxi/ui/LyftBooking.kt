@@ -33,7 +33,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.vayunmathur.library.ui.AlertDialog
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.RadioButton
 import com.vayunmathur.library.ui.Text
@@ -250,7 +249,7 @@ private fun ProgressDialog(message: String, onDismiss: () -> Unit) {
         title = { Text(message) },
         text = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                Text("Loading\u2026")
             }
         },
         confirmButton = {},

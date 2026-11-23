@@ -20,6 +20,7 @@ import com.vayunmathur.camera.platform.CameraViewModel
 import com.vayunmathur.camera.platform.PhotoAnalyzer
 import com.vayunmathur.camera.platform.addMotionFrame
 import com.vayunmathur.camera.platform.applyExposureCompensation
+import com.vayunmathur.camera.platform.clearCamera2Fallback
 import com.vayunmathur.camera.platform.clearCamera2NightFallback
 import com.vayunmathur.camera.platform.applyImageCaptureFlashMode
 import com.vayunmathur.camera.platform.enableTorch
@@ -260,6 +261,11 @@ internal fun CameraScreenEffects(
         if (useCamera2Preview || useCamera2NightPreview || useCamera2SloMoPreview) {
             lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.sessionBindFailedMutable.value = false
+                // Resume is a fresh bind attempt: clear the one-shot
+                // Camera2 fallback latch too, otherwise a bind that failed
+                // once keeps useCamera2Preview latched off forever and the
+                // user is parked on the manual-retry error across resumes.
+                viewModel.clearCamera2Fallback()
                 viewModel.teardownSession()
                 // Session-active flags the analyzer/UI effects key on;
                 // the Camera2 composables own the actual sessions.

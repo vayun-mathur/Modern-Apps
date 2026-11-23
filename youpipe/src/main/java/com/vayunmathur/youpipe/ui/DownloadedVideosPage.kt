@@ -8,6 +8,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -15,7 +16,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import com.vayunmathur.library.ui.CircularProgressIndicator
+import com.vayunmathur.library.ui.LinearProgressIndicator
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.IconCheck
 import com.vayunmathur.library.ui.IconClose
@@ -146,9 +147,9 @@ fun DownloadedVideosPage(backStack: NavBackStack<Route>, youPipeViewModel: YouPi
                         supportingContent = { Text("${(status.progress * 100).toInt()}%") },
                         trailingContent = {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                CircularProgressIndicator(
+                                LinearProgressIndicator(
                                     progress = { status.progress.toFloat() },
-                                    modifier = Modifier.size(24.dp)
+                                    modifier = Modifier.width(48.dp)
                                 )
                                 if (!isSelectionMode) {
                                     IconButton(onClick = { DownloadManager.cancelDownload(context, videoID) }) {

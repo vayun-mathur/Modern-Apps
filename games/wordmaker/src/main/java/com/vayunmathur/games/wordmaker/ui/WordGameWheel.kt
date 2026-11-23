@@ -37,7 +37,6 @@ import com.vayunmathur.games.wordmaker.ui.components.LetterChooser
 import com.vayunmathur.library.ui.Badge
 import com.vayunmathur.library.ui.BadgedBox
 import com.vayunmathur.library.ui.Button
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.FilledIconButton
 import com.vayunmathur.library.ui.IconHelp
 import com.vayunmathur.library.ui.IconBook
@@ -223,13 +222,7 @@ private fun HintButton(cooldownEnd: Long, onOpenHint: () -> Unit, modifier: Modi
             // second 0.5 alpha on top made it nearly invisible.
             IconHelp(contentDescription = stringResource(R.string.cd_hint))
         }
-        if (!hintEnabled) {
-            CircularProgressIndicator(
-                progress = { 1f - ((cooldownEnd - now).coerceAtLeast(0L) / HINT_COOLDOWN_MS) },
-                modifier = Modifier.size(48.dp).align(Alignment.Center),
-                strokeWidth = 3.dp
-            )
-        }
+        // Cooldown is encoded by the button's disabled state; no spinner overlay.
     }
 }
 

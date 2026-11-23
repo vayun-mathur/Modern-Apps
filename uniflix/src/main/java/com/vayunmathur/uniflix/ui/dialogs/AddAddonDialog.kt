@@ -13,7 +13,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.AlertDialog
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.OutlinedTextField
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
@@ -44,7 +43,7 @@ fun AddAddonDialog(
                 TextButton(onClick = onImportJs, enabled = !adding) {
                     Text("Import .js plugin instead")
                 }
-                if (adding) CircularProgressIndicator()
+                if (adding) Text("Loading\u2026")
             }
         },
         confirmButton = {

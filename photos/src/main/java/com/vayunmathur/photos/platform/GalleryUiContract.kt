@@ -22,8 +22,8 @@ data class GalleryUiState(
     /**
      * True while the first library emission is still in flight. An empty
      * [photos] list is only a genuine empty library when this is false;
-     * while true the screen shows a loading indicator, never the empty
-     * state. Defaults false so previews/tests that hand rows (or a
+     * while true the screen shows the scaffold refresh indicator over
+     * an empty box, never the empty state. Defaults false so previews/tests that hand rows (or a
      * deliberate empty) directly render them as loaded.
      */
     val isLoading: Boolean = false,

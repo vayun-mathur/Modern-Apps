@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import com.vayunmathur.library.util.AppMessages
 import com.vayunmathur.library.ui.AppScaffold
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.IconAdd
 import com.vayunmathur.library.ui.IconButton
@@ -62,6 +61,7 @@ fun ExternalNoteScreen(
     }
 
     AppScaffold(
+        isRefreshing = !loaded,
         title = title.ifBlank { stringResource(R.string.title) },
         onNavigateBack = { backStack.pop() },
         actions = {
@@ -85,9 +85,7 @@ fun ExternalNoteScreen(
                 modifier = Modifier.fillMaxSize().padding(paddingValues),
             )
         } else {
-            Box(Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
+            Box(Modifier.fillMaxSize().padding(paddingValues))
         }
     }
 }

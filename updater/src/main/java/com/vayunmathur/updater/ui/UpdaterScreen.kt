@@ -15,7 +15,6 @@ import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.Card
-import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.DesktopMaxWidthContainer
 import com.vayunmathur.library.ui.ListItem
 import com.vayunmathur.library.ui.MaterialTheme
@@ -73,7 +72,7 @@ fun UpdaterScreen(
                     }
                     Spacer(Modifier.height(12.dp))
                     if (state.checking) {
-                        CircularProgressIndicator()
+                        Text("Loading\u2026")
                     } else {
                         Button(onClick = onCheckNow) {
                             Text(stringResource(R.string.check_now))
