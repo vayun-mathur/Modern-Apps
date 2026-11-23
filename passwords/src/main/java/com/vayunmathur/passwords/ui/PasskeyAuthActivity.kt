@@ -257,11 +257,17 @@ class PasskeyAuthActivity : FragmentActivity() {
             return
         }
 
+        val fallbackRpId = runCatching {
+            val info = request.callingAppInfo ?: return@runCatching null
+            val origin = PasskeyUtils.getPrivilegedOrigin(info, applicationContext)
+            origin?.let { android.net.Uri.parse(it).host }
+        }.getOrNull()
         val response = withContext(Dispatchers.IO) {
             buildGetCredentialResponse(
                 applicationContext,
                 request.beginGetCredentialOptions,
                 repository,
+                fallbackRpId,
             )
         }
 

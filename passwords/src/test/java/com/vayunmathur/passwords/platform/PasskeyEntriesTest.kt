@@ -12,11 +12,14 @@ import com.vayunmathur.passwords.data.PasswordDao
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
+import androidx.credentials.provider.PublicKeyCredentialEntry
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
+import kotlin.test.assertTrue
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -106,6 +109,70 @@ class PasskeyEntriesTest {
             FakePasswordDao(),
         )
         assertEquals(0, nonMatching.credentialEntries.size)
+    }
+
+    @Test fun missingRpIdFallsBackToOriginHost() = runBlocking {
+        // rpId is optional in WebAuthn; with the origin-host fallback the
+        // stored credential for that host is still offered.
+        val response = buildGetCredentialResponse(
+            ctx,
+            listOf(BeginGetPublicKeyCredentialOption(Bundle(), "req-norp", """{"challenge":"Y2g"}""")),
+            FakePasskeyDao(),
+            FakePasswordDao(),
+            fallbackRpId = "example.com",
+        )
+        assertEquals(1, response.credentialEntries.size)
+
+        val noFallback = buildGetCredentialResponse(
+            ctx,
+            listOf(BeginGetPublicKeyCredentialOption(Bundle(), "req-norp2", """{"challenge":"Y2g"}""")),
+            FakePasskeyDao(),
+            FakePasswordDao(),
+        )
+        assertEquals(0, noFallback.credentialEntries.size)
+    }
+
+    @Test fun entryTextIsCappedForParcelSafety() = runBlocking {
+        val longNamed = Passkey(
+            id = 7, rpId = "example.com", userName = "u".repeat(5000),
+            credentialId = "cred-7", syncId = "pk-7",
+        )
+        val dao = object : PasskeyDao() {
+            override fun getAllFlow(): Flow<List<Passkey>> = flowOf(listOf(longNamed))
+            override suspend fun getAll(): List<Passkey> = listOf(longNamed)
+            override suspend fun getByRpId(rpId: String): List<Passkey> = listOf(longNamed)
+            override suspend fun getByCredentialId(credentialId: String): Passkey? = null
+            override suspend fun getBySyncId(syncId: String): Passkey? = null
+            override suspend fun getUpdatedSince(since: Long): List<Passkey> = emptyList()
+            override suspend fun upsertRaw(passkey: Passkey): Long = passkey.id
+            override suspend fun delete(passkey: Passkey): Int = 0
+            override suspend fun deleteBySyncId(syncId: String): Int = 0
+            override suspend fun deleteAll() = Unit
+        }
+        val response = buildGetCredentialResponse(
+            ctx,
+            listOf(BeginGetPublicKeyCredentialOption(Bundle(), "req-long", """{"rpId":"example.com","challenge":"Y2g"}""")),
+            dao,
+            FakePasswordDao(),
+        )
+        assertEquals(1, response.credentialEntries.size)
+        val entry = response.credentialEntries.single() as PublicKeyCredentialEntry
+        assertTrue(entry.username.length <= 128, "username was ${entry.username.length} chars")
+    }
+
+    @Test fun entryRequestCodesCannotCollideAcrossFlows() {
+        // Old scheme: passkey code = id, password code = id + 100000, so
+        // passkey 100002 and password 2 shared a PendingIntent identity
+        // (same target activity, extras ignored by filterEquals).
+        assertNotEquals(
+            entryRequestCode(REQUEST_CODE_TAG_PASSKEY, 100002),
+            entryRequestCode(REQUEST_CODE_TAG_PASSWORD, 2),
+        )
+        assertNotEquals(
+            entryRequestCode(REQUEST_CODE_TAG_UNLOCK, 999999),
+            entryRequestCode(REQUEST_CODE_TAG_PASSKEY, 999999),
+        )
+        assertNotEquals(ACTION_GET_PASSKEY, ACTION_GET_PASSWORD)
     }
 
     @Test fun noOptionsYieldEmptyResponse() = runBlocking {

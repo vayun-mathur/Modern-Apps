@@ -49,11 +49,12 @@ class PasskeyCredentialService : CredentialProviderService() {
 
     private fun buildUnlockResponse(): BeginGetCredentialResponse {
         val intent = Intent(applicationContext, PasskeyAuthActivity::class.java).apply {
+            action = ACTION_UNLOCK
             putExtra(PasskeyAuthActivity.EXTRA_FLOW, PasskeyAuthActivity.FLOW_UNLOCK)
         }
         val pendingIntent = PendingIntent.getActivity(
             applicationContext,
-            REQUEST_CODE_UNLOCK,
+            entryRequestCode(REQUEST_CODE_TAG_UNLOCK, REQUEST_CODE_UNLOCK.toLong()),
             intent,
             PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
@@ -89,12 +90,26 @@ class PasskeyCredentialService : CredentialProviderService() {
             // without blocking is the framework's async contract: the callback
             // is invoked exactly once, from the IO coroutine, when the vault
             // read completes (or with the unlock fallback on failure).
+            // WebAuthn rpId is optional (defaults to the origin host); resolve
+            // it here, where CallingAppInfo is available, so enumeration in
+            // PasskeyEntries can still match when requestJson omits rpId.
+            val fallbackRpId = runCatching {
+                val info = request.callingAppInfo ?: return@runCatching null
+                val origin = PasskeyUtils.getPrivilegedOrigin(info, applicationContext)
+                origin?.let { android.net.Uri.parse(it).host }
+            }.getOrNull()
+            Log.dev(
+                TAG,
+                "onBeginGetCredentialRequest from ${request.callingAppInfo?.packageName}: " +
+                    "${request.beginGetCredentialOptions.size} options, fallbackRpId=$fallbackRpId",
+            )
             val job = serviceScope.launch {
                 try {
                     val response = buildGetCredentialResponse(
                         applicationContext,
                         request.beginGetCredentialOptions,
                         repository,
+                        fallbackRpId,
                     )
                     deliverGet(callback) { response }
                 } catch (expected: CancellationException) {
@@ -153,11 +168,12 @@ class PasskeyCredentialService : CredentialProviderService() {
         try {
             if (request is BeginCreatePublicKeyCredentialRequest) {
                 val intent = Intent(applicationContext, PasskeyAuthActivity::class.java).apply {
+                    action = ACTION_CREATE
                     putExtra(PasskeyAuthActivity.EXTRA_FLOW, PasskeyAuthActivity.FLOW_CREATE)
                 }
                 val pendingIntent = PendingIntent.getActivity(
                     applicationContext,
-                    0,
+                    entryRequestCode(REQUEST_CODE_TAG_CREATE, 0),
                     intent,
                     PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
                 )
