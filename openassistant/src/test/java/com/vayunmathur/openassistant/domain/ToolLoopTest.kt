@@ -85,6 +85,20 @@ class ToolLoopTest {
     }
 
     @Test
+    fun streamEndingWithoutToolSentinelStillCompletes() = runBlocking<Unit> {
+        // The stream just ends: no closing <tool_call|> sentinel ever arrives.
+        // That is a finished answer, not a hang — the loop must resolve with
+        // the prose it has (markup fragment stripped) instead of waiting for
+        // a terminator the provider never sends.
+        val generator = FakeGenerator(listOf("Done.<|tool_call>call:get_notes{"))
+        var executed = 0
+        val outcome = runToolLoop(generator, parse, { executed++; "x" }, render) { true }
+        assertEquals(ToolLoopOutcome.Finished("Done."), outcome)
+        assertEquals(0, executed)
+        assertEquals(1, generator.continuations.size)
+    }
+
+    @Test
     fun generatorFailureIsReported() = runBlocking<Unit> {
         val outcome = runToolLoop(FakeGenerator(emptyList()), parse, { "x" }, render) { true }
         assertIs<ToolLoopOutcome.Failed>(outcome)

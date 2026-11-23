@@ -84,7 +84,7 @@ class InferenceServiceFakeEngineTest {
     }
 
     class FakeEngine(
-        var chatBehavior: (ChatRequest, (String) -> Boolean) -> ChatResult = { _, _ -> ChatResult.Reply("default reply", false) },
+        var chatBehavior: suspend (ChatRequest, (String) -> Boolean) -> ChatResult = { _, _ -> ChatResult.Reply("default reply", false) },
         var extractBehavior: (String, (String) -> Boolean) -> String? = { _, _ -> null },
     ) : MamlChatEngine(File("/nonexistent-model")) {
         var closed = false
@@ -188,6 +188,34 @@ class InferenceServiceFakeEngineTest {
         Thread.sleep(300)
         assertTrue(messageDao.assistantTexts(3L).isEmpty())
         assertTrue(!InferenceService.halt)
+    }
+
+    @Test fun hangingStreamTimesOutToErrorAndLoopSurvives() {
+        val fake = FakeEngine(chatBehavior = { _, _ ->
+            kotlinx.coroutines.delay(60_000)
+            ChatResult.Reply("never arrives", false)
+        })
+        val service = startService(fake)
+        service.standardInferenceTimeoutMillis = 300L
+        service.onStartCommand(standardIntent(21L, "hang"), 0, 1)
+        await("timeout error replaces placeholder") {
+            messageDao.assistantTexts(21L).any { it.contains("timed out", ignoreCase = true) }
+        }
+        assertTrue(messageDao.assistantTexts(21L).none { it == "..." }, "placeholder must not survive a hang")
+        // The job loop must still process the next turn after a timeout.
+        fake.chatBehavior = { _, _ -> ChatResult.Reply("back again", false) }
+        service.onStartCommand(standardIntent(21L, "again"), 0, 2)
+        await("loop survives timeout") { messageDao.assistantTexts(21L).contains("back again") }
+    }
+
+    @Test fun blankReplyResolvesPlaceholderToError() {
+        val fake = FakeEngine(chatBehavior = { _, _ -> ChatResult.Reply("", false) })
+        val service = startService(fake)
+        service.onStartCommand(standardIntent(22L, "blank"), 0, 1)
+        await("empty-reply error replaces placeholder") {
+            messageDao.assistantTexts(22L).any { it.contains("empty reply", ignoreCase = true) }
+        }
+        assertTrue(messageDao.assistantTexts(22L).none { it == "..." })
     }
 
     @Test fun tooLongUpdatesPlaceholderWithError() {

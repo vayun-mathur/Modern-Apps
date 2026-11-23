@@ -87,6 +87,30 @@ class MamlChatEngineFakeModelTest {
         e.close()
     }
 
+    @Test fun toolRoundTripEmitsProgressBeforeFinalText() = runBlocking {
+        var calls = 0
+        val fake = FakeTextModel(script = { continuation, onToken ->
+            calls++
+            if (calls == 1) {
+                "<|tool_call>call:get_memories{}<tool_call|>"
+            } else {
+                onToken("you have no memories"); "you have no memories"
+            }
+        })
+        val e = engine(fake)
+        val shown = mutableListOf<String>()
+        val result = e.chat(ChatRequest("sys", emptyList(), "what do you know?"), tools()) { text ->
+            shown += text; true
+        }
+        assertEquals(ChatResult.Reply("you have no memories", halted = false), result)
+        // First visible feedback is the tool progress line, emitted when the
+        // tool starts — not after its round-trip plus another generation.
+        assertTrue(shown.isNotEmpty())
+        assertEquals(MamlChatEngine.toolProgressLabel("get_memories"), shown.first())
+        assertEquals("you have no memories", shown.last())
+        e.close()
+    }
+
     @Test fun renderUiCallAttachesA2uiFenceToReply() = runBlocking {
         var calls = 0
         val uiJson = """{"components":[{"id":"root","component":"Text","text":"Pick one"}]}"""

@@ -107,6 +107,17 @@ impl Net {
             // `scheduled` path. `None` is clean (nothing pending); `(0, u64::MAX)` is
             // the unbounded marker. See `dirty_union`.
             let mut dirty: Option<(u64, u64)> = None;
+            // The descriptor set currently bound, so an op whose weights fall in
+            // the same window as the previous op's does not rebind it. Before the
+            // weights were windowed (and then blocked, to stay under the Vulkan
+            // per-allocation limit) there was one set, written once and never
+            // rebound; the split made this bind unconditional — ~1,094 binds in a
+            // Gemma decode step, executed on every token's submit, even though
+            // ops read the weights in file order and consecutive ops overwhelmingly
+            // share a window. A set stays bound across dispatches and across
+            // pipeline binds under the one layout every pipeline here shares, so
+            // rebinding the same set is pure overhead on the GPU's front end.
+            let mut bound_segment: Option<usize> = None;
             for (step, op) in self.plan.ops.iter().enumerate() {
                 // `scheduled` barriers go BEFORE the op that needs them: `steps[step]`
                 // says whether anything written since the last barrier conflicts with
@@ -165,14 +176,17 @@ impl Net {
                             Some(&set) => set,
                             None => return Err(format!("step {step} wants segment {segment}")),
                         };
-                        device.cmd_bind_descriptor_sets(
-                            buffer,
-                            vk::PipelineBindPoint::COMPUTE,
-                            self.pipelines.layout(),
-                            0,
-                            &[set],
-                            &[],
-                        );
+                        if bound_segment != Some(segment) {
+                            device.cmd_bind_descriptor_sets(
+                                buffer,
+                                vk::PipelineBindPoint::COMPUTE,
+                                self.pipelines.layout(),
+                                0,
+                                &[set],
+                                &[],
+                            );
+                            bound_segment = Some(segment);
+                        }
                         let push = self.segments.rebase(segment, kind, &push);
                         lap!(1);
                         device.cmd_push_constants(

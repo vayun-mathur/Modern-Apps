@@ -173,6 +173,13 @@ open class MamlChatEngine(private val modelDir: File) : AutoCloseable {
                     Gemma4Handle.parseToolCall(reply)?.let { ParsedToolCall(it.name, it.arguments) }
                 },
                 executeTool = { call ->
+                    // Emit progress the moment a tool starts, not when its
+                    // whole round-trip returns: a web search can sit on
+                    // socket timeouts for most of a minute, and without this
+                    // the first visible feedback waited for the tool result
+                    // plus the next generation round. The next generated
+                    // token overwrites this with the cumulative reply text.
+                    onText(toolProgressLabel(call.name))
                     withContext(Dispatchers.IO) { tools.invoke(call) }.also {
                         Log.status(TAG, "tool ${call.name} -> ${it.take(LOG_CHARS)}")
                     }
@@ -317,6 +324,14 @@ open class MamlChatEngine(private val modelDir: File) : AutoCloseable {
     }
 
     internal companion object {
+        /** Short progress line shown while [toolName] executes, before its result streams back. */
+        internal fun toolProgressLabel(toolName: String): String = when (toolName) {
+            "web_search" -> "Searching the web…"
+            "web_read", "web_read_result" -> "Reading a page…"
+            "get_memories" -> "Checking memory…"
+            else -> "Using a tool…"
+        }
+
         const val TAG = "MamlChatEngine"
         const val CHAT_REPLY_LIMIT = 1024
         const val EXTRACT_REPLY_LIMIT = 1024

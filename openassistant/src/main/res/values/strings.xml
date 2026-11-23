@@ -23,7 +23,9 @@
     <!-- InferenceService: Error returned via ResultReceiver when intent request has waited >45s in queue and is dropped -->
     <string name="error_request_expired">Request expired in queue</string>
     <!-- InferenceService: Error when intent inference exceeds timeout inside runIntentInferenceLoop -->
-    <string name="error_inference_timeout">Inference timed out</string>
+    <string name="error_inference_timeout">Inference timed out. Please try again.</string>
+    <!-- InferenceService: Terminal message replacing the typing placeholder when a chat turn ends with no text -->
+    <string name="error_empty_reply">The assistant returned an empty reply. Please try again.</string>
     <!-- InferenceService: Generic fallback when AI engine throws unexpected exception -->
     <string name="error_ai_engine_failed">AI engine failed</string>
     <!-- InferenceService: Validation failure when LLM output is not valid JSON matching expected schema after retries -->

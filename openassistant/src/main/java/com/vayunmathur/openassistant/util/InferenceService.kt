@@ -93,6 +93,7 @@ class InferenceService : Service() {
         private const val RESULT_ERROR_CODE = -1
         private const val RESULT_OK_CODE = 0
         private const val INTENT_TIMEOUT_MILLIS = 45000L
+        private const val STANDARD_INFERENCE_TIMEOUT_MILLIS = 300_000L
         private const val INTENT_QUEUE_TTL_MILLIS = 45000L
         private const val HISTORY_RECENCY_MILLIS = 1000L
         private const val DB_WRITE_INTERVAL_MILLIS = 100L
@@ -173,6 +174,15 @@ class InferenceService : Service() {
     internal var pendingDaoOverride: PendingToolCallDao? = null
     internal var auditDaoOverride: AuditRecordDao? = null
     internal var nowMillis: () -> Long = { System.currentTimeMillis() }
+
+    /**
+     * Terminal guard for a standard chat turn. The intent path has always had
+     * a 45 s bound; the chat path had none, so a hung generation (or a tool
+     * round-trip that never returns) left the "..." placeholder on screen
+     * forever. Tests shorten this; production keeps a generous bound so a
+     * slow-but-live reply still completes.
+     */
+    internal var standardInferenceTimeoutMillis: Long = STANDARD_INFERENCE_TIMEOUT_MILLIS
     private val tools by lazy { AssistantTools(applicationContext, memoryDao) }
 
     private val repository by lazy { OpenAssistantRepository.get(applicationContext) }
@@ -602,14 +612,29 @@ class InferenceService : Service() {
         val latest = AtomicReference("")
         val writer = launchReplyWriter(conversationId, aiMsgId, latest)
         val result = try {
-            chat.chat(request, tools) { text ->
-                if (halt || job?.isActive == false) {
-                    false
-                } else {
-                    latest.set(splitA2ui(text).visible)
-                    true
+            withTimeout(standardInferenceTimeoutMillis) {
+                chat.chat(request, tools) { text ->
+                    if (halt || job?.isActive == false) {
+                        false
+                    } else {
+                        latest.set(splitA2ui(text).visible)
+                        true
+                    }
                 }
             }
+        } catch (e: TimeoutCancellationException) {
+            // Terminal guard: resolve the "..." placeholder in place with a
+            // friendly error instead of leaving it spinning forever (and
+            // instead of the engine-reset retry, which would just make the
+            // user wait through the same hang a second time).
+            Log.error("InferenceService", "Standard inference timed out", e)
+            withContext(NonCancellable) {
+                store.updateMessage(
+                    aiMsgId,
+                    getString(R.string.error_prefix, getString(R.string.error_inference_timeout)),
+                )
+            }
+            return
         } catch (e: Exception) {
             withContext(NonCancellable) { messageDao.deleteById(aiMsgId) }
             throw e
@@ -632,6 +657,13 @@ class InferenceService : Service() {
                 Log.status("InferenceService", "Standard inference halted successfully.")
             } else if (result.text.isNotBlank()) {
                 store.storeReply(aiMsgId, result.text)
+            } else {
+                // An empty reply is still a terminal state: never leave the
+                // "..." placeholder standing in for an answer that arrived.
+                store.updateMessage(
+                    aiMsgId,
+                    getString(R.string.error_prefix, getString(R.string.error_empty_reply)),
+                )
             }
             is ChatResult.Pending -> {
                 val pending = tools.pendingById(result.pendingId) ?: PendingToolCall(
@@ -668,13 +700,18 @@ class InferenceService : Service() {
     ) = serviceScope.launch {
         var written = ""
         while (isActive) {
-            delay(DB_WRITE_INTERVAL_MILLIS)
+            // Publish before waiting: the first chunk must not sit in the
+            // buffer for a whole tick before the user sees anything. After
+            // that, flushes stay on the 100 ms cadence — tokens accumulate
+            // in [latest] (bounded by the reply, never the whole payload)
+            // and are written in chunks, not one DB write per token.
             flushTitle(conversationId)
             val text = latest.get()
             if (text.isNotBlank() && text != written) {
                 store.updateMessage(aiMsgId, text)
                 written = text
             }
+            delay(DB_WRITE_INTERVAL_MILLIS)
         }
     }
     private suspend fun flushTitle(conversationId: Long) {
