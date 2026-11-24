@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Calendar</string>
+    <string name="wear_empty">No events synced yet. Open Calendar on your phone to sync this watch.</string>
+    <string name="wear_today">Today</string>
+    <string name="wear_upcoming">Upcoming</string>
+    <string name="wear_all_day">All day</string>
+    <string name="wear_request_sync">Sync now</string>
+    <string name="wear_sync_requested">Asked your phone for a fresh copy</string>
+    <string name="wear_no_phone">Phone not reachable — showing the last synced copy</string>
+    <string name="wear_truncated">Showing the first part of your calendar; the rest stays on your phone</string>
+    <string name="wear_back">Back</string>
+</resources>
