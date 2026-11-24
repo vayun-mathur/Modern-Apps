@@ -15,7 +15,8 @@ interface VideoRecordingEngine {
      * Starts recording. Implementations require [request.cameraId] and
      * take ownership of the camera device (any preview session must be
      * torn down first); [request.previewSurface] is where preview frames
-     * go (the engine may supply its own owned surface when null).
+     * go — the recording viewfinder's own surface, supplied by the UI
+     * before the engine starts (null records encoder-only, no preview).
      */
     fun start(request: VideoRecordingRequest, onFinalized: (VideoRecordingOutcome) -> Unit)
 

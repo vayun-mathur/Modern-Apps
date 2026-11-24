@@ -53,15 +53,25 @@ enum class PhotoFormat(@StringRes val labelRes: Int, @StringRes val descriptionR
 }
 
 /** Motion-Photo clip durations (seconds). */
+private const val MOTION_OFF_SECONDS = 0
 private const val MOTION_ONE_SECOND = 1
 private const val MOTION_THREE_SECONDS = 3
 private const val MOTION_FIVE_SECONDS = 5
 
-/** Motion-Photo clip length (issue #712): how far back the ring buffer reaches. */
+/**
+ * The single Motion Photo setting (issue #712): [OFF] or a clip length —
+ * how far back the ring buffer reaches. One value replaces the former
+ * on/off toggle plus separate length picker. [isEnabled] is the capture
+ * gate; [seconds] is the ring-buffer window (unused while [OFF]).
+ */
 enum class MotionPhotoDuration(val seconds: Int) {
+    OFF(MOTION_OFF_SECONDS),
     ONE(MOTION_ONE_SECOND),
     THREE(MOTION_THREE_SECONDS),
     FIVE(MOTION_FIVE_SECONDS),
+    ;
+
+    val isEnabled: Boolean get() = this != OFF
 }
 /**
  * The bind-time recording settings snapshot: video codec, audio input

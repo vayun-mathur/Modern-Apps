@@ -212,14 +212,12 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
     internal val photoFormatMutable = MutableStateFlow(PhotoFormat.JPEG)
     val photoFormat = photoFormatMutable.asStateFlow()
 
-    // Motion-Photo clip length (issue #712). Default 3s ≈ the old ~1.5s-12-frame buffer.
+    // The single Motion Photo setting: OFF or a clip length (issue #712).
+    // Default THREE (on, 3s ≈ the old ~1.5s-12-frame buffer) preserves the
+    // pre-dropdown behaviour: eligible plain stills divert to Motion Photo
+    // with no explicit opt-in.
     internal val motionPhotoDurationMutable = MutableStateFlow(MotionPhotoDuration.THREE)
     val motionPhotoDuration = motionPhotoDurationMutable.asStateFlow()
-
-    // Motion Photo on/off. Default on preserves the pre-toggle behaviour:
-    // eligible plain stills diverted to Motion Photo with no explicit opt-in.
-    internal val motionPhotoEnabledMutable = MutableStateFlow(true)
-    val motionPhotoEnabled = motionPhotoEnabledMutable.asStateFlow()
 
     internal val audioInputDeviceMutable =
         MutableStateFlow(com.vayunmathur.camera.platform.camera2.AudioInputDeviceSelection.AUTO)

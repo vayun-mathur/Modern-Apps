@@ -43,8 +43,13 @@ internal fun CameraPreviewSurface(
     val useCamera2NightPreview = state.useCamera2NightPreview
     val useCamera2SloMoPreview = state.useCamera2SloMoPreview
 
-    if (state.camera2Recording) {
-        // The recording engine owns the camera + its preview texture.
+    if (
+        com.vayunmathur.camera.platform.camera2.RecordingPreviewPolicy
+            .viewfinder(state.camera2Recording) ==
+        com.vayunmathur.camera.platform.camera2.RecordingViewfinder.RECORDING
+    ) {
+        // The recording engine owns the camera; the recording preview's
+        // own TextureView surface is the engine's preview target.
         Camera2RecordingPreview(viewModel = viewModel, modifier = previewModifier)
         return
     }

@@ -109,16 +109,13 @@ class CameraCovC2SettingsTest {
         var noise = true
         var edge = false
         var duration = MotionPhotoDuration.ONE
-        var motionEnabled = true
         rule.setContent {
             CameraPostProcessingSettings(
                 noiseReductionEnabled = noise, edgeSharpeningEnabled = edge,
-                motionPhotoEnabled = motionEnabled,
                 motionPhotoDuration = duration,
                 motionPhotoBlockedByAvif = false,
                 onNoiseReductionChange = { noise = it },
                 onEdgeSharpeningChange = { edge = it },
-                onMotionPhotoEnabledChange = { motionEnabled = it },
                 onMotionDurationChange = { duration = it },
             )
         }
@@ -126,54 +123,52 @@ class CameraCovC2SettingsTest {
         assertEquals(false, noise)
         rule.onAllNodes(isToggleable())[1].performClick()
         assertEquals(true, edge)
-        // Duration dropdown: open and pick a different entry.
+        // Single dropdown: open and pick a different entry.
         rule.onNodeWithText("1 second", substring = true).performClick()
         rule.waitForIdle()
-        val target = MotionPhotoDuration.entries.first { it != duration }
+        val target = MotionPhotoDuration.entries.first { it != duration && it.isEnabled }
         rule.onAllNodes(hasText("${target.seconds}", substring = true))[0].performClick()
         assertNotEquals(MotionPhotoDuration.ONE, duration)
     }
 
-    @Test fun motionPhotoOffHidesLengthAndAvifDisablesToggle() {
-        var enabled = false
+    @Test fun motionPhotoSingleDropdownOffersOffAndLengths() {
+        var duration = MotionPhotoDuration.THREE
         rule.setContent {
             CameraPostProcessingSettings(
                 noiseReductionEnabled = true, edgeSharpeningEnabled = true,
-                motionPhotoEnabled = enabled,
-                motionPhotoDuration = MotionPhotoDuration.THREE,
+                motionPhotoDuration = duration,
                 motionPhotoBlockedByAvif = false,
                 onNoiseReductionChange = {}, onEdgeSharpeningChange = {},
-                onMotionPhotoEnabledChange = { enabled = it },
-                onMotionDurationChange = {},
+                onMotionDurationChange = { duration = it },
             )
         }
-        // Off: the length row is gone.
-        assertTrue(
-            rule.onAllNodesWithText(str(com.vayunmathur.camera.R.string.settings_motion_duration))
-                .fetchSemanticsNodes().isEmpty()
-        )
-        // Third toggle is Motion Photo; turning it on restores the control.
-        rule.onAllNodes(isToggleable())[2].performClick()
-        assertEquals(true, enabled)
+        // One control only: no Motion Photo toggle remains.
+        assertEquals(2, rule.onAllNodes(isToggleable()).fetchSemanticsNodes().size)
+        // The dropdown offers Off alongside the lengths; picking Off lands.
+        rule.onNodeWithText("3 seconds", substring = true).performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText(str(com.vayunmathur.camera.R.string.settings_motion_photo_off))
+            .performClick()
+        assertEquals(MotionPhotoDuration.OFF, duration)
     }
 
-    @Test fun motionPhotoToggleDisabledWithReasonWhenAvifBlocks() {
-        var enabled = true
+    @Test fun motionPhotoDropdownDisabledShowingOffWhenAvifBlocks() {
+        var duration = MotionPhotoDuration.THREE
         rule.setContent {
             CameraPostProcessingSettings(
                 noiseReductionEnabled = true, edgeSharpeningEnabled = true,
-                motionPhotoEnabled = enabled,
-                motionPhotoDuration = MotionPhotoDuration.THREE,
+                motionPhotoDuration = duration,
                 motionPhotoBlockedByAvif = true,
                 onNoiseReductionChange = {}, onEdgeSharpeningChange = {},
-                onMotionPhotoEnabledChange = { enabled = it },
-                onMotionDurationChange = {},
+                onMotionDurationChange = { duration = it },
             )
         }
         rule.onNodeWithText(
             str(com.vayunmathur.camera.R.string.settings_motion_photo_requires_jpeg)
         ).assertIsDisplayed()
-        rule.onAllNodes(isToggleable())[2].assertIsNotEnabled()
-        assertEquals(true, enabled, "AVIF-blocked toggle must not change")
+        // Honest forced Off: the disabled button shows Off, stored value kept.
+        rule.onNodeWithText(str(com.vayunmathur.camera.R.string.settings_motion_photo_off))
+            .assertIsNotEnabled()
+        assertEquals(MotionPhotoDuration.THREE, duration, "AVIF block must not rewrite the stored setting")
     }
 }

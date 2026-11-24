@@ -15,6 +15,7 @@ fun CameraViewModel.switchCameraMode(newMode: CameraMode) {
     // deferred (a mode jump on stop would surprise), so the switch is gated
     // while recording; the UI explains why. Same-mode taps stay harmless.
     if (isRecordingMutable.value && newMode != cameraModeMutable.value) return
+    val previousMode = cameraModeMutable.value
     // A pending shutter timer belongs to the old mode: firing capturePhoto() into the
     // new session would capture unprompted (and with the wrong use cases bound).
     if (newMode != cameraModeMutable.value) {
@@ -40,6 +41,27 @@ fun CameraViewModel.switchCameraMode(newMode: CameraMode) {
         }
     }
     cameraModeMutable.value = newMode
+    // Zoom lock (PANORAMA/PHOTOSPHERE): apply 1x to the still-live
+    // session immediately, so no frame is ever previewed/stitched at
+    // the stored ratio in between the mode tap and the rebind (whose
+    // restoreZoom re-asserts the same). Leaving a locked mode
+    // re-applies the stored ratio — it was never overwritten while
+    // locked, so the user's Photo/other-mode zoom comes back as-is.
+    // With no live session both are no-ops and the next bind applies
+    // the same rule via restoreZoom/registerCamera2Session.
+    when {
+        newMode.isZoomLockedTo1x() ->
+            activeCamera2Session?.setZoomRatio(ZOOM_LOCK_RATIO)
+        previousMode.isZoomLockedTo1x() && newMode != previousMode -> {
+            val session = activeCamera2Session
+            if (session != null) {
+                restoreZoom(
+                    session.characteristics.minZoomRatio,
+                    session.characteristics.maxZoomRatio,
+                )
+            }
+        }
+    }
 }
 
 fun CameraViewModel.flipCamera() {

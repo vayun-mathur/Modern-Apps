@@ -188,7 +188,7 @@ internal fun CameraViewModel.motionPhotoEligible(): Boolean {
     )
     return com.vayunmathur.camera.domain.MotionPhotoEligibility.isEligible(
         com.vayunmathur.camera.domain.MotionPhotoInputs(
-            enabled = motionPhotoEnabledMutable.value,
+            enabled = motionPhotoDurationMutable.value.isEnabled,
             plainPhoto = cameraModeMutable.value == CameraMode.PHOTO && !captureForResult,
             noBake = warmthMutable.value == 0f && shadowsMutable.value == 0f,
             avifPrecludes = avifPrecludes,
@@ -291,7 +291,7 @@ fun CameraViewModel.stopBurst() {
 fun CameraViewModel.addMotionFrame(bitmap: Bitmap, timestampNanos: Long, rotationDegrees: Int) {
     // Motion Photo off: buffer nothing. This call takes ownership of the
     // bitmap, so recycle it rather than leak it.
-    if (!motionPhotoEnabledMutable.value) {
+    if (!motionPhotoDurationMutable.value.isEnabled) {
         bitmap.recycle()
         return
     }

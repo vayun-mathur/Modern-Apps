@@ -47,9 +47,7 @@ private fun CameraViewModel.loadCaptureSettings() {
     ds.getString("camera_photo_format")?.let {
         runCatching { photoFormatMutable.value = PhotoFormat.valueOf(it) }
     }
-    ds.getString("camera_motion_duration")?.let {
-        runCatching { motionPhotoDurationMutable.value = MotionPhotoDuration.valueOf(it) }
-    }
+    loadMotionPhotoSetting()
     // Physical input device (id+type), not an AudioSource type. A stale
     // or malformed stored value parses to no explicit choice, never crashes.
     ds.getString("camera_audio_input_device")?.let {
@@ -76,8 +74,47 @@ private fun CameraViewModel.loadPreferenceToggles() {
     ds.getString("camera_mirror_front")?.let { mirrorFrontMutable.value = it.toBoolean() }
     ds.getString("camera_noise_reduction")?.let { noiseReductionEnabledMutable.value = it.toBoolean() }
     ds.getString("camera_edge_sharpening")?.let { edgeSharpeningEnabledMutable.value = it.toBoolean() }
-    // Absent key keeps the ViewModel default (on), so existing users see no change.
-    ds.getString("camera_motion_photo_enabled")?.let { motionPhotoEnabledMutable.value = it.toBoolean() }
+}
+
+/**
+ * Resolves the single Motion Photo setting from stored values. The current
+ * key wins; otherwise the retired toggle+length pair migrates: toggle off
+ * -> [MotionPhotoDuration.OFF], toggle on (or absent) -> the stored length.
+ * No stored value at all keeps the default (on at 3s), so fresh installs
+ * and pre-setting users see no change. Malformed values fall back the same
+ * way instead of crashing.
+ */
+internal fun migratedMotionPhotoDuration(
+    stored: String?,
+    legacyEnabled: String?,
+    legacyDuration: String?,
+): MotionPhotoDuration {
+    if (stored != null) {
+        return runCatching { MotionPhotoDuration.valueOf(stored) }
+            .getOrDefault(MotionPhotoDuration.THREE)
+    }
+    if (legacyEnabled != null && !legacyEnabled.toBoolean()) return MotionPhotoDuration.OFF
+    if (legacyDuration != null) {
+        return runCatching { MotionPhotoDuration.valueOf(legacyDuration) }
+            .getOrDefault(MotionPhotoDuration.THREE)
+    }
+    return MotionPhotoDuration.THREE
+}
+
+private fun CameraViewModel.loadMotionPhotoSetting() {
+    val stored = ds.getString("camera_motion_photo")
+    val legacyEnabled = ds.getString("camera_motion_photo_enabled")
+    val legacyDuration = ds.getString("camera_motion_duration")
+    motionPhotoDurationMutable.value =
+        migratedMotionPhotoDuration(stored, legacyEnabled, legacyDuration)
+    if (stored == null && (legacyEnabled != null || legacyDuration != null)) {
+        // Persist the migrated value under the single key and retire the pair.
+        val migrated = motionPhotoDurationMutable.value
+        viewModelScope.launch {
+            ds.setString("camera_motion_photo", migrated.name)
+            ds.removeKeys(listOf("camera_motion_photo_enabled", "camera_motion_duration"))
+        }
+    }
 }
 
 fun CameraViewModel.setFlashMode(mode: FlashMode) {
@@ -159,21 +196,17 @@ fun CameraViewModel.setVideoCodec(codec: VideoCodec) {
 }
 
 /**
- * Motion Photo on/off. Off takes plain stills always: no capture diversion
- * and no ring-buffer accumulation, whatever the length/ratio/format. Drops
- * any frames buffered while it was on so a later re-enable cannot attach a
- * clip from before the off period.
+ * The single Motion Photo setting (issue #712): [MotionPhotoDuration.OFF]
+ * or a clip length, persisted under one key. Off takes plain stills always:
+ * no capture diversion and no ring-buffer accumulation, whatever the
+ * ratio/format. Switching to Off drops any frames buffered while it was on
+ * so a later re-enable cannot attach a clip from before the off period.
+ * A length applies to the next capture's ring buffer.
  */
-fun CameraViewModel.setMotionPhotoEnabled(enabled: Boolean) {
-    motionPhotoEnabledMutable.value = enabled
-    if (!enabled) clearMotionFrames()
-    viewModelScope.launch { ds.setString("camera_motion_photo_enabled", enabled.toString()) }
-}
-
-/** Motion-Photo clip length (issue #712); applies to the next capture's ring buffer. */
 fun CameraViewModel.setMotionPhotoDuration(duration: MotionPhotoDuration) {
     motionPhotoDurationMutable.value = duration
-    viewModelScope.launch { ds.setString("camera_motion_duration", duration.name) }
+    if (!duration.isEnabled) clearMotionFrames()
+    viewModelScope.launch { ds.setString("camera_motion_photo", duration.name) }
 }
 
 fun CameraViewModel.setAudioInputDevice(selection: AudioInputDeviceSelection) {

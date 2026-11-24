@@ -18,16 +18,36 @@ fun CameraViewModel.setQrResult(text: String?) {
 }
 
 /**
- * The CameraXViewfinder's built-in pinch-to-zoom already applied [ratio] to the camera, so this
- * only syncs the displayed value (used by the zoom bar). It does NOT call cameraControl again —
- * that would double-apply and could feedback-loop with onZoomRatioChanged.
+ * Syncs an already-applied [ratio] to the displayed value (used by the zoom
+ * bar). Kept for callers that applied zoom themselves; the preview pinch
+ * path goes through [setZoomRatio], which applies to the session itself.
  */
 fun CameraViewModel.onViewfinderZoomRatio(ratio: Float) {
+    // Zoom-locked modes (PANORAMA/PHOTOSPHERE): a pinch that already
+    // reached the camera is forced straight back to 1x, and the stored
+    // ratio is left alone so leaving the mode restores it.
+    if (cameraModeMutable.value.isZoomLockedTo1x()) {
+        activeCamera2Session?.setZoomRatio(ZOOM_LOCK_RATIO)
+        return
+    }
     zoomRatioMutable.value = ratio
     viewModelScope.launch { ds.setString("camera_zoom_ratio", ratio.toString()) }
 }
 
+/** Live device zoom range from the active session's characteristics; 1x-only when no session. */
+fun CameraViewModel.currentZoomRange(): Pair<Float, Float> {
+    val range = activeCamera2Session?.characteristics?.zoomRatioRange
+    return if (range != null) range.lower to range.upper else 1f to 1f
+}
+
 fun CameraViewModel.setZoomRatio(ratio: Float) {
+    // Zoom-locked modes ignore the request entirely (the zoom bar is
+    // hidden there; this is the backstop for any other caller): apply
+    // 1x to the session, never to the stored/persisted ratio.
+    if (cameraModeMutable.value.isZoomLockedTo1x()) {
+        activeCamera2Session?.setZoomRatio(ZOOM_LOCK_RATIO)
+        return
+    }
     val session = activeCamera2Session
     val range = session?.characteristics?.zoomRatioRange
     val clamped = if (range != null) ratio.coerceIn(range.lower, range.upper) else ratio
@@ -43,6 +63,14 @@ fun CameraViewModel.setZoomRatio(ratio: Float) {
  * supported range and re-apply it to the camera. Fixes issue #631 (zoom reset on resume).
  */
 internal fun CameraViewModel.restoreZoom(minZoom: Float, maxZoom: Float) {
+    // Zoom-locked modes (PANORAMA/PHOTOSPHERE) bind at 1x regardless of
+    // the stored ratio. The stored value is deliberately NOT clamped
+    // into zoomRatioMutable here: it belongs to the non-locked modes
+    // and must come back untouched when the user leaves the mode.
+    if (cameraModeMutable.value.isZoomLockedTo1x()) {
+        activeCamera2Session?.setZoomRatio(ZOOM_LOCK_RATIO)
+        return
+    }
     val desired = zoomRatioMutable.value.coerceIn(minZoom, maxZoom)
     zoomRatioMutable.value = desired
     activeCamera2Session?.setZoomRatio(desired)

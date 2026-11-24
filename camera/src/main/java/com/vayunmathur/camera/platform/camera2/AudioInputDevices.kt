@@ -3,6 +3,9 @@ package com.vayunmathur.camera.platform.camera2
 import android.content.Context
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
+import com.vayunmathur.library.log.Log
+import java.net.URLDecoder
+import java.net.URLEncoder
 
 /**
  * A user-chosen physical audio input device (built-in mic, USB mic,
@@ -11,21 +14,49 @@ import android.media.AudioManager
  * this selection only steers which physical device feeds it, through
  * `AudioRecord.setPreferredDevice` (see [PreferredAudioDeviceApplication]).
  *
- * Persisted by device id + type: ids can be reused after a disconnect, so
- * the type is kept alongside as a sanity match. [AUTO] is only the internal
- * "no explicit device chosen yet" sentinel (and the parse result for legacy
- * stored values); it is never a picker row — the picker lists only real
- * devices returned by the platform (see [AudioInputDevicePolicy.options]).
+ * Persisted by port id + type plus the endpoint identity (product name and
+ * address) of its physical group: port ids are runtime-assigned and can be
+ * reused or renumbered after a disconnect/reboot, so a stored pick is
+ * re-resolved against the live enumeration by endpoint identity when its
+ * exact port is gone (see [AudioInputDevicePolicy.resolve]). [AUTO] is only
+ * the internal "no explicit device chosen" sentinel (and the parse result
+ * for legacy stored values); it is never a picker row — the picker lists
+ * only real devices returned by the platform (see
+ * [AudioInputDevicePolicy.options]), and no explicit choice is shown by no
+ * row being selected.
  */
-data class AudioInputDeviceSelection(val deviceId: Int? = null, val deviceType: Int? = null) {
+data class AudioInputDeviceSelection(
+    val deviceId: Int? = null,
+    val deviceType: Int? = null,
+    val productName: String? = null,
+    val address: String = "",
+) {
     val isAuto: Boolean get() = deviceId == null
 
-    /** Storage form: `auto` (no explicit choice) or `<id>:<type>`. */
-    fun encode(): String = if (isAuto) ENCODED_AUTO else "$deviceId:$deviceType"
+    /**
+     * Storage form: `auto` (no explicit choice), `<id>:<type>` (legacy), or
+     * `<id>:<type>:<url-encoded name>:<url-encoded address>`.
+     */
+    fun encode(): String {
+        if (isAuto) return ENCODED_AUTO
+        val name = productName?.trim().orEmpty()
+        val addr = address.trim()
+        return if (name.isEmpty() && addr.isEmpty()) {
+            "$deviceId:$deviceType"
+        } else {
+            "$deviceId:$deviceType:${encodePart(name)}:${encodePart(addr)}"
+        }
+    }
 
     companion object {
         val AUTO = AudioInputDeviceSelection()
         private const val ENCODED_AUTO = "auto"
+
+        private fun encodePart(value: String): String =
+            URLEncoder.encode(value, Charsets.UTF_8.name())
+
+        private fun decodePart(value: String): String =
+            runCatching { URLDecoder.decode(value, Charsets.UTF_8.name()) }.getOrDefault(value)
 
         /**
          * Parses a stored value. Anything that is not a well-formed
@@ -36,10 +67,16 @@ data class AudioInputDeviceSelection(val deviceId: Int? = null, val deviceType: 
         fun parse(stored: String?): AudioInputDeviceSelection {
             if (stored.isNullOrBlank() || stored == ENCODED_AUTO) return AUTO
             val parts = stored.split(":")
-            if (parts.size != 2) return AUTO
+            if (parts.size != 2 && parts.size != 4) return AUTO
             val id = parts[0].toIntOrNull() ?: return AUTO
             val type = parts[1].toIntOrNull() ?: return AUTO
-            return AudioInputDeviceSelection(id, type)
+            if (parts.size == 2) return AudioInputDeviceSelection(id, type)
+            return AudioInputDeviceSelection(
+                id,
+                type,
+                decodePart(parts[2]).takeIf { it.isNotBlank() },
+                decodePart(parts[3]),
+            )
         }
     }
 }
@@ -103,87 +140,197 @@ object AudioInputDevicePolicy {
         group.minWith(compareBy<RawAudioInputDevice> { typePriority(it.type) }.thenBy { it.id })
 
     /**
-     * Physical-device identity, derived only from `AudioDeviceInfo`'s own
-     * accessors. The platform defines one *port* per [AudioDeviceInfo]:
-     * `getId()` is unique per enumerated port entry (runtime-assigned, so
-     * duplicate ports of one endpoint have different ids and an id can be
-     * reused after disconnect), `getType()` is that port's type, while
-     * `getProductName()` (the human-readable endpoint name) and
-     * `getAddress()` (the endpoint address — e.g. a Bluetooth MAC or USB
-     * address, often empty for built-in devices) describe the endpoint
-     * behind the ports. No platform API returns coalesced physical devices
-     * or a stable per-physical handle, so physical identity follows the
-     * endpoint identity those accessors define, strongest first: a
-     * non-empty address identifies the endpoint (ports of one endpoint
-     * share it even when only some report a product name); with no
-     * address, a meaningful product name identifies it (built-in ports);
-     * with neither, the port type keeps genuinely different unnamed
-     * endpoints apart.
+     * Endpoint family for physical grouping. One physical endpoint can be
+     * reported under several port types (a Bluetooth headset as SCO and
+     * BLE, a USB headset as a generic USB device and a USB headset); types
+     * within one family can be ports of the same endpoint, types across
+     * families cannot.
      */
-    private data class PhysicalKey(val name: String, val address: String, val unnamedType: Int?)
+    private enum class EndpointFamily { BLUETOOTH, USB, WIRED, BUILTIN, OTHER }
 
-    private fun physicalKeyOf(device: RawAudioInputDevice): PhysicalKey {
-        val name = device.productName?.trim().orEmpty()
-        val address = device.address.trim()
-        return when {
-            address.isNotEmpty() -> PhysicalKey("", address, null)
-            name.isNotEmpty() -> PhysicalKey(name, "", null)
-            else -> PhysicalKey("", "", device.type)
+    private fun familyOf(type: Int): EndpointFamily = when (type) {
+        AudioDeviceInfo.TYPE_BLUETOOTH_SCO, AudioDeviceInfo.TYPE_BLE_HEADSET -> EndpointFamily.BLUETOOTH
+        AudioDeviceInfo.TYPE_USB_DEVICE, AudioDeviceInfo.TYPE_USB_HEADSET,
+        AudioDeviceInfo.TYPE_USB_ACCESSORY -> EndpointFamily.USB
+        AudioDeviceInfo.TYPE_WIRED_HEADSET, AudioDeviceInfo.TYPE_WIRED_HEADPHONES -> EndpointFamily.WIRED
+        AudioDeviceInfo.TYPE_BUILTIN_MIC -> EndpointFamily.BUILTIN
+        else -> EndpointFamily.OTHER
+    }
+
+    private fun normalizedName(device: RawAudioInputDevice): String =
+        device.productName?.trim().orEmpty()
+
+    /**
+     * Whether [device] can be a port of the physical endpoint [group]
+     * already holds. A non-empty address identifies an endpoint on its own
+     * (ports of one endpoint share it), so conflicting addresses veto a
+     * merge; without a conflict, a shared address merges, and otherwise a
+     * shared non-empty product name merges ports of one endpoint family —
+     * including the common case where only some of an endpoint's ports
+     * carry an address (e.g. a Bluetooth SCO port reports the MAC while
+     * its BLE port reports none). Unnamed, addressless ports can only be
+     * told apart by type, so they merge only with same-type ports that are
+     * equally anonymous.
+     */
+    private fun canMerge(device: RawAudioInputDevice, group: List<RawAudioInputDevice>): Boolean {
+        val deviceAddress = device.address.trim()
+        val groupAddresses = group.map { it.address.trim() }.filter { it.isNotEmpty() }.toSet()
+        if (deviceAddress.isNotEmpty() && groupAddresses.isNotEmpty() && deviceAddress !in groupAddresses) {
+            return false
         }
+        if (deviceAddress.isNotEmpty() && deviceAddress in groupAddresses) return true
+        val deviceName = normalizedName(device)
+        if (deviceName.isNotEmpty()) {
+            return group.any {
+                normalizedName(it) == deviceName && familyOf(it.type) == familyOf(device.type)
+            }
+        }
+        if (deviceAddress.isEmpty()) {
+            return group.any {
+                it.type == device.type && normalizedName(it).isEmpty() && it.address.trim().isEmpty()
+            }
+        }
+        return false
     }
 
     /** Groups raw ports into one list per physical device, in first-seen order. */
     fun groupByPhysicalDevice(
         devices: List<RawAudioInputDevice>,
     ): List<List<RawAudioInputDevice>> {
-        val groups = LinkedHashMap<PhysicalKey, MutableList<RawAudioInputDevice>>()
-        for (device in devices) groups.getOrPut(physicalKeyOf(device)) { mutableListOf() } += device
-        return groups.values.map { it.toList() }
+        val groups = mutableListOf<MutableList<RawAudioInputDevice>>()
+        for (device in devices) {
+            val matching = groups.indices.filter { canMerge(device, groups[it]) }
+            if (matching.isEmpty()) {
+                groups += mutableListOf(device)
+            } else {
+                val target = groups[matching.first()]
+                target += device
+                // A port bridging two groups (e.g. an addressed port whose
+                // name also matches an addressless group) unites them.
+                for (index in matching.drop(1).sortedDescending()) {
+                    target += groups[index]
+                    groups.removeAt(index)
+                }
+            }
+        }
+        return groups.map { it.toList() }
     }
+
+    /** The picker/record selection for one physical group. */
+    fun selectionFor(group: List<RawAudioInputDevice>): AudioInputDeviceSelection {
+        val representative = representativeOf(group)
+        val name = representative.productName?.takeIf { it.isNotBlank() }
+            ?: group.firstOrNull { !it.productName.isNullOrBlank() }?.productName
+        val address = group.firstOrNull { it.address.isNotBlank() }?.address?.trim().orEmpty()
+        return AudioInputDeviceSelection(representative.id, representative.type, name, address)
+    }
+
+    private fun bestName(group: List<RawAudioInputDevice>): String? =
+        group.firstOrNull { !it.productName.isNullOrBlank() }?.productName?.trim()
+
+    private fun groupAddress(group: List<RawAudioInputDevice>): String =
+        group.firstOrNull { it.address.isNotBlank() }?.address?.trim().orEmpty()
 
     /**
      * Picker rows: exactly one per physical device (no synthetic rows).
      * Each row's selection is its group's representative entry (the most
      * specific port type), and its label is the endpoint's product name —
      * never prefixed with an id or a count — falling back to the friendly
-     * type label when no port in the group reports a meaningful name.
+     * type label when no port in the group reports a meaningful name. When
+     * two distinct endpoints share one label, the description carries the
+     * endpoint address so the rows stay distinguishable.
      */
-    fun options(devices: List<RawAudioInputDevice>): List<AudioInputDeviceOption> =
-        groupByPhysicalDevice(devices).map { group ->
+    fun options(devices: List<RawAudioInputDevice>): List<AudioInputDeviceOption> {
+        val groups = groupByPhysicalDevice(devices)
+        val built = groups.map { group ->
             val representative = representativeOf(group)
             val label = labelFor(
                 representative.type,
                 representative.productName?.takeIf { it.isNotBlank() }
                     ?: group.firstOrNull { !it.productName.isNullOrBlank() }?.productName,
             )
-            val type = typeLabel(representative.type)
             AudioInputDeviceOption(
-                selection = AudioInputDeviceSelection(representative.id, representative.type),
+                selection = selectionFor(group),
                 label = label,
-                description = type.takeIf { it != label },
+                description = typeLabel(representative.type).takeIf { it != label },
             )
         }
+        val labelCounts = built.groupingBy { it.label }.eachCount()
+        return built.map { option ->
+            if ((labelCounts[option.label] ?: 0) < 2) return@map option
+            val hint = option.selection.address.takeIf { it.isNotEmpty() }
+                ?: option.selection.deviceId?.let { "device $it" }
+                ?: return@map option
+            option.copy(
+                description = listOfNotNull(option.description, hint).joinToString(" · "),
+            )
+        }
+    }
 
     /**
      * The effective selection given what is currently connected. A chosen
-     * device stays chosen through its physical group: a stored `<id>:<type>`
+     * device stays chosen through its physical group: a stored selection
      * naming any port of the device (e.g. a non-representative duplicate
      * written before grouping) resolves to the group's representative,
-     * rather than demanding that exact port. A device with no live port —
-     * or whose id was reused by a different type — yields [AUTO] (no
-     * explicit choice), and the record-time fallback takes over.
+     * rather than demanding that exact port. When the exact port is gone
+     * (ids are runtime-assigned and churn), the stored endpoint identity
+     * (address, else name within its family, with no conflicting address)
+     * re-resolves to the same physical device under its new port. A device
+     * with no live port yields [AUTO] (no explicit choice), and the
+     * record-time system route takes over.
      */
     fun resolve(
         selection: AudioInputDeviceSelection,
         devices: List<RawAudioInputDevice>,
     ): AudioInputDeviceSelection {
         if (selection.isAuto) return AudioInputDeviceSelection.AUTO
-        val exact = devices.firstOrNull {
-            it.id == selection.deviceId && it.type == selection.deviceType
-        } ?: return AudioInputDeviceSelection.AUTO
-        val group = groupByPhysicalDevice(devices).first { exact in it }
-        val representative = representativeOf(group)
-        return AudioInputDeviceSelection(representative.id, representative.type)
+        val groups = groupByPhysicalDevice(devices)
+        val exactGroup = groups.firstOrNull { group ->
+            group.any { it.id == selection.deviceId && it.type == selection.deviceType }
+        }
+        if (exactGroup != null) return selectionFor(exactGroup)
+        val wantedAddress = selection.address.trim()
+        val wantedName = selection.productName?.trim().orEmpty()
+        if (wantedAddress.isEmpty() && wantedName.isEmpty()) {
+            return AudioInputDeviceSelection.AUTO
+        }
+        val candidates = groups.filter { group ->
+            val address = groupAddress(group)
+            val addressConflict =
+                wantedAddress.isNotEmpty() && address.isNotEmpty() && address != wantedAddress
+            when {
+                addressConflict -> false
+                wantedAddress.isNotEmpty() && address == wantedAddress -> true
+                else -> wantedName.isNotEmpty() && bestName(group) == wantedName &&
+                    group.any { familyOf(it.type) == familyOf(selection.deviceType ?: -1) }
+            }
+        }
+        return candidates.singleOrNull()?.let { selectionFor(it) }
+            ?: AudioInputDeviceSelection.AUTO
+    }
+
+    /**
+     * Whether [routed] (e.g. `AudioRecord.getRoutedDevice()` after recording
+     * starts) is a port of the physical device [selection] names. Used for
+     * an honest readback of whether a pick actually stuck: the setter
+     * accepting a device does not by itself prove the route followed it.
+     */
+    fun isRoutedTo(
+        selection: AudioInputDeviceSelection,
+        devices: List<RawAudioInputDevice>,
+        routed: RawAudioInputDevice,
+    ): Boolean {
+        val resolved = resolve(selection, devices)
+        if (resolved.isAuto) return false
+        val all = if (devices.any { it.id == routed.id && it.type == routed.type }) {
+            devices
+        } else {
+            devices + routed
+        }
+        val routedGroup = groupByPhysicalDevice(all).firstOrNull { group ->
+            group.any { it.id == routed.id && it.type == routed.type }
+        } ?: return false
+        return selectionFor(routedGroup) == resolved
     }
 }
 
@@ -195,15 +342,16 @@ object AudioInputDevicePolicy {
  * [RawAudioInputDevice].
  *
  * Never fails the caller: when there is no explicit choice, or the chosen
- * device has disconnected, the platform's current routed device (supplied
- * via [routedDevice], e.g. `AudioRecord.getRoutedDevice`) is used if one
- * is available, and otherwise no preference is set so the platform routes
- * the new recording itself. A rejected or throwing `setPreferred` is
- * swallowed (returns the resolved selection with
- * [AppliedPreferredDevice.applied] false) so a recording keeps going —
+ * device has disconnected, no preference is set (a null device clears any
+ * preference) so the platform routes the new recording itself — absence of
+ * a pick *is* the system default, never a substituted device. A rejected
+ * or throwing `setPreferred` is swallowed (returns the resolved selection
+ * with [AppliedPreferredDevice.applied] false) so a recording keeps going —
  * including when the chosen device is disconnected mid-recording, where
  * Android reroutes the live `AudioRecord` itself and there is nothing to
- * do here.
+ * do here. Whether the route actually followed an applied preference is
+ * verified separately against the routed device once recording starts
+ * (see [AudioInputDevicePolicy.isRoutedTo]).
  */
 data class AppliedPreferredDevice<T>(
     val selection: AudioInputDeviceSelection,
@@ -220,12 +368,11 @@ object PreferredAudioDeviceApplication {
         setPreferred: (T?) -> Boolean,
         nameOf: (T) -> String? = { null },
         addressOf: (T) -> String = { "" },
-        routedDevice: (() -> T?)? = null,
     ): AppliedPreferredDevice<T> {
         fun rawOf(device: T) = RawAudioInputDevice(idOf(device), typeOf(device), nameOf(device), addressOf(device))
         val raws = devices.map(::rawOf)
-        var resolved = AudioInputDevicePolicy.resolve(selection, raws)
-        var target: T? = if (resolved.isAuto) {
+        val resolved = AudioInputDevicePolicy.resolve(selection, raws)
+        val target: T? = if (resolved.isAuto) {
             null
         } else {
             // Prefer the exact persisted port if it is still live (it is a
@@ -233,21 +380,6 @@ object PreferredAudioDeviceApplication {
             // the group's representative port.
             devices.firstOrNull { idOf(it) == selection.deviceId && typeOf(it) == selection.deviceType }
                 ?: devices.firstOrNull { idOf(it) == resolved.deviceId && typeOf(it) == resolved.deviceType }
-        }
-        if (target == null && routedDevice != null) {
-            val routed = runCatching { routedDevice() }.getOrNull()
-            if (routed != null) {
-                val routedRaw = rawOf(routed)
-                resolved = AudioInputDevicePolicy.resolve(
-                    AudioInputDeviceSelection(routedRaw.id, routedRaw.type),
-                    raws + routedRaw,
-                )
-                target = devices.firstOrNull { idOf(it) == routedRaw.id && typeOf(it) == routedRaw.type }
-                    ?: devices.firstOrNull {
-                        idOf(it) == resolved.deviceId && typeOf(it) == resolved.deviceType
-                    }
-                    ?: routed
-            }
         }
         val applied = runCatching { setPreferred(target) }.getOrDefault(false)
         return AppliedPreferredDevice(resolved, target, applied)
@@ -273,8 +405,22 @@ object AudioInputDevices {
     fun enumerate(context: Context): List<RawAudioInputDevice> =
         enumerateInfos(context).map { it.toRaw() }
 
-    fun options(context: Context): List<AudioInputDeviceOption> =
-        AudioInputDevicePolicy.options(enumerate(context))
+    fun options(context: Context): List<AudioInputDeviceOption> {
+        val raw = enumerate(context)
+        val options = AudioInputDevicePolicy.options(raw)
+        // Dev breadcrumb: the raw ports the platform enumerates vs the one
+        // row per physical device the picker shows, so a wrong list can be
+        // compared against the hardware from logcat alone.
+        Log.dev(
+            "AudioInputDevices",
+            "raw=[${raw.joinToString("; ") {
+                "id=${it.id} type=${it.type} name=${it.productName} address=${it.address}"
+            }}] grouped=[${options.joinToString("; ") {
+                "id=${it.selection.deviceId} type=${it.selection.deviceType} label=${it.label}"
+            }}]",
+        )
+        return options
+    }
 
     /** The currently-effective selection (disconnected choice -> no explicit choice). */
     fun resolve(context: Context, selection: AudioInputDeviceSelection): AudioInputDeviceSelection =

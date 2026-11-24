@@ -14,6 +14,7 @@ import com.vayunmathur.camera.R
 import com.vayunmathur.camera.domain.isFidoDeepLink
 import com.vayunmathur.camera.domain.parseWifiQr
 import com.vayunmathur.camera.platform.CameraMode
+import com.vayunmathur.camera.platform.isZoomLockedTo1x
 import com.vayunmathur.library.ui.IconBlur
 import com.vayunmathur.library.ui.IconContrast
 import com.vayunmathur.library.ui.IconIso
@@ -87,16 +88,26 @@ internal fun CameraSettingsColumn(
         val effectiveSetting = effectiveSettingForMode(activeSetting, cameraMode)
         when (effectiveSetting) {
             null, CameraSetting.ZOOM -> {
-                LensBar(
-                    lenses = availableLenses,
-                    selected = selectedLens,
-                    onSelect = onLensSelected
-                )
-                ZoomBar(
-                    currentZoom = zoomRatio,
-                    zoomLevels = availableZoomLevels,
-                    onZoomSelected = onZoomSelected
-                )
+                // Zoom-locked modes (PANORAMA/PHOTOSPHERE) show NEITHER
+                // bar: the ZoomBar is a control that cannot take effect
+                // at the locked 1x, and the LensBar is hidden too —
+                // picking a physical lens (0.5x UW, 3x tele, …) changes
+                // the native field of view, which is exactly the zoom
+                // change the lock forbids for stitch input. The lens
+                // selection itself is left untouched, so leaving the
+                // mode restores the previous lens + stored zoom.
+                if (!cameraMode.isZoomLockedTo1x()) {
+                    LensBar(
+                        lenses = availableLenses,
+                        selected = selectedLens,
+                        onSelect = onLensSelected
+                    )
+                    ZoomBar(
+                        currentZoom = zoomRatio,
+                        zoomLevels = availableZoomLevels,
+                        onZoomSelected = onZoomSelected
+                    )
+                }
             }
             CameraSetting.BRIGHTNESS -> HorizontalSettingSlider(
                 value = exposureComp,

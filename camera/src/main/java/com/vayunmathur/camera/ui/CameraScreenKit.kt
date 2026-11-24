@@ -5,6 +5,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import com.vayunmathur.camera.platform.CameraMode
+import com.vayunmathur.camera.platform.isZoomLockedTo1x
 
 /** Which settings pane is open below the preview. */
 internal enum class CameraSetting {
@@ -20,7 +21,10 @@ internal enum class CameraSetting {
  *   `CameraControl`, which drives every bound use case — photo stills and
  *   the video Preview+VideoCapture alike (preview and recording), and is
  *   re-applied on every bind by `refreshCapabilities`/`restoreZoom`. So
- *   zoom is offered everywhere the zoom bar already worked.
+ *   zoom is offered everywhere the zoom bar already worked — EXCEPT
+ *   PANORAMA/PHOTOSPHERE, where stitch input must be at 1x: those modes
+ *   lock zoom to 1.0x (see `isZoomLockedTo1x`), so offering a zoom pane
+ *   there would be a control that cannot take effect.
  * - [CameraSetting.BRIGHTNESS] (exposure compensation): likewise a
  *   `CameraControl` call (`setExposureCompensationIndex`), re-applied on
  *   video binds too, so it is live for stills and video. Offered for
@@ -53,7 +57,11 @@ internal fun settingsForMode(mode: CameraMode): List<CameraSetting> {
             add(CameraSetting.ISO)
         }
         if (mode == CameraMode.PORTRAIT) add(CameraSetting.PORTRAIT_BLUR)
-        add(CameraSetting.ZOOM)
+        // Zoom-locked modes (PANORAMA/PHOTOSPHERE) get no ZOOM entry at
+        // all: the magnifier must not be offered for a locked control,
+        // and effectiveSettingForMode then resolves a stale ZOOM pane
+        // to null, which CameraSettingsColumn renders without any bars.
+        if (!mode.isZoomLockedTo1x()) add(CameraSetting.ZOOM)
     }
 }
 

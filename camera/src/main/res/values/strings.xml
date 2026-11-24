@@ -96,8 +96,10 @@
     <string name="settings_motion_photo">Motion photo</string>
     <!-- SettingsPage: summary explaining the motion-photo toggle -->
     <string name="settings_motion_photo_description">Save a short clip with each photo</string>
-    <!-- SettingsPage: reason shown under the disabled motion-photo toggle when AVIF is the effective format -->
+    <!-- SettingsPage: reason shown under the disabled motion-photo dropdown when AVIF is the effective format -->
     <string name="settings_motion_photo_requires_jpeg">Motion Photo needs JPEG</string>
+    <!-- SettingsPage: Off entry of the single motion-photo dropdown -->
+    <string name="settings_motion_photo_off">Off</string>
     <!-- SettingsPage: section header for motion-photo clip-length selection -->
     <string name="settings_motion_duration">Motion photo length</string>
     <!-- Motion-Photo duration: clip length in seconds. %1$d = seconds -->

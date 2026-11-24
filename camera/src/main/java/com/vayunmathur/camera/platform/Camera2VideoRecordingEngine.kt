@@ -94,25 +94,10 @@ class Camera2VideoRecordingEngine(
     private var cameraDevice: CameraDevice? = null
     private var captureSession: CameraCaptureSession? = null
     private var analysisReader: android.media.ImageReader? = null
-    private var ownedPreviewTexture: android.graphics.SurfaceTexture? = null
-    private var ownedPreviewSurface: Surface? = null
     private var outcomeCallback: ((VideoRecordingOutcome) -> Unit)? = null
     private var previousGrid: FloatArray? = null
     private var previousGridWidth = 0
     private var lastAnalysisAtMs = 0L
-
-    /** The engine-owned preview surface (for a TextureView to render), once started. */
-    fun ownedPreviewSurface(): Surface? = ownedPreviewSurface
-
-    /** The engine-owned preview texture a TextureView adopts while recording. */
-    fun ownedPreviewTexture(): android.graphics.SurfaceTexture? = ownedPreviewTexture
-
-    @Volatile private var previewTextureBorrowed = false
-
-    /** Marks the owned preview texture as adopted by a TextureView (it releases it). */
-    fun markPreviewTextureBorrowed() {
-        previewTextureBorrowed = true
-    }
 
     override fun start(request: VideoRecordingRequest, onFinalized: (VideoRecordingOutcome) -> Unit) {
         val cameraId = request.cameraId
@@ -223,22 +208,14 @@ class Camera2VideoRecordingEngine(
         val encoderSurface = core.preparedEncoderSurface() ?: prepareEncoderSurface()
             ?: throw IllegalStateException("encoder input surface unavailable")
         core.startVideoCodec()
-        // Preview surface: the caller's when given, else an engine-owned
-        // SurfaceTexture surface (exposed via ownedPreviewSurface() for a
-        // TextureView to render once the UI migrates off CameraX preview).
-        val effectivePreview = previewSurface ?: run {
-            val texture = android.graphics.SurfaceTexture(PREVIEW_TEXTURE_ID).apply {
-                // Preview never needs encoder resolution: cap at 1080p so
-                // the (encoder + preview + analysis) stream combination
-                // stays within guaranteed HAL limits at UHD tiers.
-                setDefaultBufferSize(
-                    minOf(config.width, PREVIEW_MAX_WIDTH),
-                    minOf(config.height, PREVIEW_MAX_HEIGHT),
-                )
-            }
-            ownedPreviewTexture = texture
-            Surface(texture).also { ownedPreviewSurface = it }
-        }
+        // Preview surface: the caller's — the recording viewfinder's own
+        // TextureView surface, published by the UI before the engine
+        // starts. There is deliberately no engine-owned fallback texture:
+        // a SurfaceTexture created here and adopted by a TextureView via
+        // setSurfaceTexture is not the view's own surface, and that
+        // wiring rendered a black viewfinder for the whole recording.
+        // A null caller surface records encoder-only (no preview target).
+        val effectivePreview = previewSurface
         // Analysis surface: same motion signal as the CameraX path, from an
         // ImageReader feeding the shared estimator through onMotionSample.
         val reader = android.media.ImageReader.newInstance(
@@ -278,16 +255,46 @@ class Camera2VideoRecordingEngine(
             override fun onOpened(device: CameraDevice) {
                 cameraDevice = device
                 try {
-                    val surfaces = listOfNotNull(encoderSurface, effectivePreview, reader.surface)
-                    device.createCaptureSession(surfaces, object : CameraCaptureSession.StateCallback() {
+                    // Configure-time and repeating targets come from the
+                    // same pure composition: encoder + preview (when the
+                    // viewfinder supplied its surface) + analysis, for
+                    // the whole recording — the preview target is never
+                    // dropped or swapped at record start.
+                    val surfacesByRole = buildMap {
+                        put(
+                            com.vayunmathur.camera.platform.camera2.RecordingTargetRole.ENCODER,
+                            encoderSurface,
+                        )
+                        if (effectivePreview != null) {
+                            put(
+                                com.vayunmathur.camera.platform.camera2.RecordingTargetRole.PREVIEW,
+                                effectivePreview,
+                            )
+                        }
+                        put(
+                            com.vayunmathur.camera.platform.camera2.RecordingTargetRole.ANALYSIS,
+                            reader.surface,
+                        )
+                    }
+                    val configureSurfaces =
+                        com.vayunmathur.camera.platform.camera2.RecordingSessionTargets
+                            .configureTargets(
+                                hasPreviewSurface = effectivePreview != null,
+                                hasAnalysisSurface = true,
+                            ).map { surfacesByRole.getValue(it) }
+                    device.createCaptureSession(configureSurfaces, object : CameraCaptureSession.StateCallback() {
                         override fun onConfigured(session: CameraCaptureSession) {
                             captureSession = session
                             core.markSessionStreaming()
                             try {
+                                val repeatingSurfaces =
+                                    com.vayunmathur.camera.platform.camera2.RecordingSessionTargets
+                                        .repeatingTargets(
+                                            hasPreviewSurface = effectivePreview != null,
+                                            hasAnalysisSurface = true,
+                                        ).map { surfacesByRole.getValue(it) }
                                 val request = device.createCaptureRequest(CameraDevice.TEMPLATE_RECORD).apply {
-                                    addTarget(encoderSurface)
-                                    addTarget(effectivePreview)
-                                    addTarget(reader.surface)
+                                    repeatingSurfaces.forEach { addTarget(it) }
                                     set(
                                         CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE,
                                         android.util.Range(config.captureFps, config.captureFps)
@@ -357,26 +364,15 @@ class Camera2VideoRecordingEngine(
 
     private fun releaseAll() {
         try { analysisReader?.close() } catch (_: Exception) {}
-        // A borrowed texture/surface pair is owned by the adopting
-        // TextureView, which releases it on detach; releasing here too
-        // would race the view still rendering the last frame.
-        if (!previewTextureBorrowed) {
-            try { ownedPreviewSurface?.release() } catch (_: Exception) {}
-            try { ownedPreviewTexture?.release() } catch (_: Exception) {}
-        }
-        previewTextureBorrowed = false
+        // The preview surface is owned by the recording viewfinder's
+        // TextureView (via its bridge), never released here.
         analysisReader = null
-        ownedPreviewSurface = null
-        ownedPreviewTexture = null
         previousGrid = null
         core.release()
         try { cameraThread?.quitSafely() } catch (_: Exception) {}
     }
 
     companion object {
-        private const val PREVIEW_TEXTURE_ID = 1
-        private const val PREVIEW_MAX_WIDTH = 1920
-        private const val PREVIEW_MAX_HEIGHT = 1080
         private const val ANALYSIS_WIDTH = 640
         private const val ANALYSIS_HEIGHT = 480
         private const val ANALYSIS_MAX_IMAGES = 3

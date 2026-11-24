@@ -95,6 +95,26 @@ internal fun SettingsButtonRow(
     onSelect: (CameraSetting?) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Offer only settings the capture path honours in this mode (see
+    // settingsForMode): elsewhere they'd silently move a preview effect
+    // that the capture path drops. Video gets brightness (exposure
+    // compensation) and zoom, both CameraControl-driven. Zoom-locked
+    // modes (PANORAMA/PHOTOSPHERE) offer nothing at all — in particular
+    // no ZOOM magnifier for the locked 1x — so the row itself is hidden
+    // rather than rendering an empty pill.
+    val settings: List<Pair<CameraSetting, @Composable (Modifier, Color) -> Unit>> =
+        settingsForMode(cameraMode).map { setting ->
+            setting to when (setting) {
+                CameraSetting.BRIGHTNESS -> { m: Modifier, c: Color -> IconSunny(m, c) }
+                CameraSetting.SHADOWS -> { m: Modifier, c: Color -> IconContrast(m, c) }
+                CameraSetting.WARMTH -> { m: Modifier, c: Color -> IconLightbulb(m, c) }
+                CameraSetting.EXPOSURE_TIME -> { m: Modifier, c: Color -> IconTimer(m, c) }
+                CameraSetting.ISO -> { m: Modifier, c: Color -> IconIso(m, c) }
+                CameraSetting.PORTRAIT_BLUR -> { m: Modifier, c: Color -> IconBlur(m, c) }
+                CameraSetting.ZOOM -> { m: Modifier, c: Color -> IconZoomIn(m, c) }
+            }
+        }
+    if (settings.isEmpty()) return
     Row(
         modifier = modifier
             .background(Color(0x99000000), androidx.compose.foundation.shape.RoundedCornerShape(24.dp))
@@ -103,22 +123,6 @@ internal fun SettingsButtonRow(
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Offer only settings the capture path honours in this mode (see
-        // settingsForMode): elsewhere they'd silently move a preview effect
-        // that the capture path drops. Video gets brightness (exposure
-        // compensation) and zoom, both CameraControl-driven.
-        val settings: List<Pair<CameraSetting, @Composable (Modifier, Color) -> Unit>> =
-            settingsForMode(cameraMode).map { setting ->
-                setting to when (setting) {
-                    CameraSetting.BRIGHTNESS -> { m: Modifier, c: Color -> IconSunny(m, c) }
-                    CameraSetting.SHADOWS -> { m: Modifier, c: Color -> IconContrast(m, c) }
-                    CameraSetting.WARMTH -> { m: Modifier, c: Color -> IconLightbulb(m, c) }
-                    CameraSetting.EXPOSURE_TIME -> { m: Modifier, c: Color -> IconTimer(m, c) }
-                    CameraSetting.ISO -> { m: Modifier, c: Color -> IconIso(m, c) }
-                    CameraSetting.PORTRAIT_BLUR -> { m: Modifier, c: Color -> IconBlur(m, c) }
-                    CameraSetting.ZOOM -> { m: Modifier, c: Color -> IconZoomIn(m, c) }
-                }
-            }
         settings.forEach { (setting, icon) ->
             val isActive = activeSetting == setting
             Box(

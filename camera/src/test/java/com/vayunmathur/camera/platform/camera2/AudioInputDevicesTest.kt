@@ -69,7 +69,10 @@ class AudioInputDevicesTest {
         val usbHeadset = RawAudioInputDevice(21, AudioDeviceInfo.TYPE_USB_HEADSET, "USB Mic Pro", "card=1;device=0")
         val usbOptions = AudioInputDevicePolicy.options(listOf(usbGeneric, usbHeadset))
         assertEquals(1, usbOptions.size)
-        assertEquals(AudioInputDeviceSelection(21, AudioDeviceInfo.TYPE_USB_HEADSET), usbOptions[0].selection)
+        assertEquals(
+            AudioInputDeviceSelection(21, AudioDeviceInfo.TYPE_USB_HEADSET, "USB Mic Pro", "card=1;device=0"),
+            usbOptions[0].selection,
+        )
         assertEquals("USB Mic Pro", usbOptions[0].label)
         assertEquals("USB headset", usbOptions[0].description)
 
@@ -79,7 +82,27 @@ class AudioInputDevicesTest {
         val ble = RawAudioInputDevice(31, AudioDeviceInfo.TYPE_BLE_HEADSET, "Buds", "AA:BB:CC:DD:EE:FF")
         val btOptions = AudioInputDevicePolicy.options(listOf(sco, ble))
         assertEquals(1, btOptions.size)
-        assertEquals(AudioInputDeviceSelection(31, AudioDeviceInfo.TYPE_BLE_HEADSET), btOptions[0].selection)
+        assertEquals(
+            AudioInputDeviceSelection(31, AudioDeviceInfo.TYPE_BLE_HEADSET, "Buds", "AA:BB:CC:DD:EE:FF"),
+            btOptions[0].selection,
+        )
+    }
+
+    @Test fun portsOfOneDeviceMergeWhenOnlySomeCarryAnAddress() {
+        // Known trap: one physical endpoint, the SCO port reports the MAC
+        // while its BLE port reports no address (and vice versa for USB).
+        // Grouping on address alone splits these into duplicate rows.
+        val sco = RawAudioInputDevice(30, AudioDeviceInfo.TYPE_BLUETOOTH_SCO, "Buds", "AA:BB:CC:DD:EE:FF")
+        val bleNoAddress = RawAudioInputDevice(31, AudioDeviceInfo.TYPE_BLE_HEADSET, "Buds", "")
+        assertEquals(1, AudioInputDevicePolicy.options(listOf(sco, bleNoAddress)).size)
+        val usbAddressed = RawAudioInputDevice(40, AudioDeviceInfo.TYPE_USB_DEVICE, "Desk Mic", "card=1;device=0")
+        val usbHeadsetNoAddress = RawAudioInputDevice(41, AudioDeviceInfo.TYPE_USB_HEADSET, "Desk Mic", "")
+        val usbOptions = AudioInputDevicePolicy.options(listOf(usbAddressed, usbHeadsetNoAddress))
+        assertEquals(1, usbOptions.size)
+        assertEquals("card=1;device=0", usbOptions[0].selection.address)
+        // Same name in different endpoint families is not one device.
+        val builtinNamed = RawAudioInputDevice(50, AudioDeviceInfo.TYPE_BUILTIN_MIC, "Desk Mic", "")
+        assertEquals(2, AudioInputDevicePolicy.options(listOf(builtinNamed, usbHeadsetNoAddress)).size)
     }
 
     @Test fun sameNameDevicesAtDistinctAddressesStaySeparateRows() {
@@ -115,7 +138,7 @@ class AudioInputDevicesTest {
         // Stored before grouping, naming the non-representative generic port.
         val stored = AudioInputDeviceSelection(usbGeneric.id, usbGeneric.type)
         assertEquals(
-            AudioInputDeviceSelection(usbHeadset.id, usbHeadset.type),
+            AudioInputDeviceSelection(usbHeadset.id, usbHeadset.type, "USB Mic Pro", "card=1;device=0"),
             AudioInputDevicePolicy.resolve(stored, devices),
         )
         // At record start the group resolves back to a live port of the same
@@ -130,13 +153,18 @@ class AudioInputDevicesTest {
             nameOf = { it.productName },
             addressOf = { it.address },
         )
-        assertEquals(AudioInputDeviceSelection(usbHeadset.id, usbHeadset.type), result.selection)
+        assertEquals(
+            AudioInputDeviceSelection(usbHeadset.id, usbHeadset.type, "USB Mic Pro", "card=1;device=0"),
+            result.selection,
+        )
         assertEquals(usbGeneric, result.device)
         assertEquals(listOf<RawAudioInputDevice?>(usbGeneric), calls)
         assertTrue(result.applied)
     }
 
-    @Test fun disconnectedChoiceFallsBackToTheRoutedDeviceAtRecordTime() {
+    @Test fun disconnectedChoiceLeavesNoPreferenceSoTheSystemRoutes() {
+        // Absence of a pick is the system default: a gone device must not be
+        // silently replaced by pinning whatever happens to be routed.
         val calls = mutableListOf<RawAudioInputDevice?>()
         val result = PreferredAudioDeviceApplication.apply(
             selection = AudioInputDeviceSelection(usb.id, usb.type),
@@ -144,12 +172,37 @@ class AudioInputDevicesTest {
             idOf = { it.id },
             typeOf = { it.type },
             setPreferred = { device -> calls += device; true },
-            routedDevice = { builtin },
         )
-        // Still a real device: the platform's current routed input.
-        assertEquals(AudioInputDeviceSelection(builtin.id, builtin.type), result.selection)
-        assertEquals(builtin, result.device)
-        assertEquals(listOf<RawAudioInputDevice?>(builtin), calls)
+        assertEquals(AudioInputDeviceSelection.AUTO, result.selection)
+        assertNull(result.device)
+        assertEquals(listOf<RawAudioInputDevice?>(null), calls)
+    }
+
+    @Test fun storedPickReResolvesByIdentityWhenPortIdsChurn() {
+        // Persisted with the endpoint identity but a stale port id (ids are
+        // runtime-assigned): the same physical device under a new id wins.
+        val stored = AudioInputDeviceSelection(99, AudioDeviceInfo.TYPE_BLE_HEADSET, "Buds", "AA:BB:CC:DD:EE:FF")
+        val renumbered = RawAudioInputDevice(7, AudioDeviceInfo.TYPE_BLE_HEADSET, "Buds", "AA:BB:CC:DD:EE:FF")
+        val resolved = AudioInputDevicePolicy.resolve(stored, listOf(builtin, renumbered))
+        assertEquals(7, resolved.deviceId)
+        assertEquals(AudioDeviceInfo.TYPE_BLE_HEADSET, resolved.deviceType)
+        // A different endpoint reusing the name at another address does not match.
+        val other = RawAudioInputDevice(8, AudioDeviceInfo.TYPE_BLE_HEADSET, "Buds", "AA:BB:CC:DD:EE:01")
+        assertEquals(
+            AudioInputDeviceSelection.AUTO,
+            AudioInputDevicePolicy.resolve(stored, listOf(builtin, other)),
+        )
+    }
+
+    @Test fun routedReadbackVerifiesThePickStuck() {
+        val sco = RawAudioInputDevice(30, AudioDeviceInfo.TYPE_BLUETOOTH_SCO, "Buds", "AA:BB:CC:DD:EE:FF")
+        val ble = RawAudioInputDevice(31, AudioDeviceInfo.TYPE_BLE_HEADSET, "Buds", "AA:BB:CC:DD:EE:FF")
+        val devices = listOf(builtin, sco, ble)
+        val picked = AudioInputDevicePolicy.options(devices).first { it.label == "Buds" }.selection
+        // Routed to a sibling port of the picked endpoint: stuck.
+        assertTrue(AudioInputDevicePolicy.isRoutedTo(picked, devices, sco))
+        // Routed to the built-in mic instead: the pick did not stick.
+        assertFalse(AudioInputDevicePolicy.isRoutedTo(picked, devices, builtin))
     }
 
     @Test fun selectedDeviceIsAppliedThroughTheSeam() {
@@ -164,7 +217,7 @@ class AudioInputDevicesTest {
         assertEquals(listOf<RawAudioInputDevice?>(usb), calls)
         assertEquals(usb, result.device)
         assertTrue(result.applied)
-        assertEquals(AudioInputDeviceSelection(usb.id, usb.type), result.selection)
+        assertEquals(AudioInputDeviceSelection(usb.id, usb.type, "USB Mic Pro"), result.selection)
     }
 
     @Test fun noExplicitChoiceClearsThePreferredDevice() {
@@ -231,6 +284,11 @@ class AudioInputDevicesTest {
     @Test fun persistedSelectionRoundTripsAndStaleValuesFallBackToAuto() {
         val chosen = AudioInputDeviceSelection(7, AudioDeviceInfo.TYPE_BLUETOOTH_SCO)
         assertEquals(chosen, AudioInputDeviceSelection.parse(chosen.encode()))
+        // Endpoint identity (name + address) survives the storage round-trip.
+        val identified = AudioInputDeviceSelection(
+            7, AudioDeviceInfo.TYPE_BLE_HEADSET, "Buds: Pro", "AA:BB:CC:DD:EE:FF",
+        )
+        assertEquals(identified, AudioInputDeviceSelection.parse(identified.encode()))
         assertEquals(AudioInputDeviceSelection.AUTO, AudioInputDeviceSelection.parse("auto"))
         assertEquals(AudioInputDeviceSelection.AUTO, AudioInputDeviceSelection.parse(null))
         // Stale values from the retired AudioSource-type setting.

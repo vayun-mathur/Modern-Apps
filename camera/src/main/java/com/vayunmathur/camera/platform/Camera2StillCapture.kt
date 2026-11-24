@@ -47,6 +47,13 @@ import kotlinx.coroutines.withContext
 internal fun CameraViewModel.registerCamera2Session(session: Camera2Session?) {
     activeCamera2Session = session
     if (session != null) {
+        // Zoom-locked modes (PANORAMA/PHOTOSPHERE) bind at 1x in the
+        // session itself — the strongest guarantee, applied before the
+        // capability refresh below re-asserts it — regardless of the
+        // stored zoom ratio from Photo/other modes (which is kept).
+        if (cameraModeMutable.value.isZoomLockedTo1x()) {
+            session.setZoomRatio(ZOOM_LOCK_RATIO)
+        }
         // A live session is the honest moment to publish whether its
         // analysis stream is carrying the mode's sink (QR scanner,
         // PhotoAnalyzer, ...); teardown clears the flag, so without this

@@ -8,6 +8,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import com.vayunmathur.camera.platform.CameraViewModel
+import com.vayunmathur.camera.platform.effectiveZoomRatioForMode
 
 /**
  * Collects every [CameraViewModel] flow that [CameraScreenState] reads
@@ -115,7 +116,13 @@ internal fun rememberCameraScreenState(viewModel: CameraViewModel): CameraScreen
             timerCountdown = timerCountdown,
             qrResult = qrResult,
             aspectRatio = aspectRatio,
-            zoomRatio = zoomRatio,
+            // Zoom-locked modes (PANORAMA/PHOTOSPHERE) expose 1x to every
+            // consumer of state.zoomRatio — above all the preview
+            // session's LaunchedEffect, which re-applies this value to
+            // the session on bind and on any zoom change — regardless of
+            // the stored ratio. The stored flow itself is untouched, so
+            // leaving the mode restores the user's previous zoom.
+            zoomRatio = effectiveZoomRatioForMode(cameraMode, zoomRatio),
             mirrorFront = mirrorFront,
             timerDuration = timerDuration,
             isCapturing = isCapturing,

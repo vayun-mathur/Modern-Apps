@@ -15,6 +15,7 @@ import com.vayunmathur.camera.platform.camera2.EncoderSurfaceHandoff
 import com.vayunmathur.camera.platform.camera2.MuxerStartPolicy
 import com.vayunmathur.camera.platform.camera2.RecordingSessionOwnership
 import com.vayunmathur.camera.platform.camera2.SharedRecordingCoreLifecycle
+import com.vayunmathur.camera.platform.camera2.toRaw
 import com.vayunmathur.library.log.Log
 import java.io.File
 import java.nio.ByteBuffer
@@ -328,9 +329,6 @@ class Camera2RecordingCore(
             setPreferred = { device -> record.setPreferredDevice(device) },
             nameOf = { it.productName?.toString() },
             addressOf = { it.address },
-            // No explicit/disc. choice: the platform's current routed input
-            // for this record (a real device), if it is already known.
-            routedDevice = { runCatching { record.routedDevice }.getOrNull() },
         )
         if (!applied.selection.isAuto && !applied.applied) {
             Log.status(
@@ -339,6 +337,30 @@ class Camera2RecordingCore(
             )
         }
         record.startRecording()
+        // Honest readback: the setter accepting a device does not prove the
+        // route followed it, so compare the now-routed input against the
+        // physical device that was picked (dev breadcrumb + a status line
+        // when an explicit pick did not stick; recording continues either way).
+        val routed = runCatching { record.routedDevice }.getOrNull()
+        Log.dev(
+            "Camera2Recorder",
+            "audio route: wanted=${applied.selection} applied=${applied.applied} " +
+                "routed=${routed?.let { "id=${it.id} type=${it.type} name=${it.productName} address=${it.address}" }}",
+        )
+        if (!applied.selection.isAuto && routed != null) {
+            val stuck = com.vayunmathur.camera.platform.camera2.AudioInputDevicePolicy.isRoutedTo(
+                applied.selection,
+                runCatching { audioInputDevices() }.getOrDefault(emptyList())
+                    .map { it.toRaw() },
+                routed.toRaw(),
+            )
+            if (!stuck) {
+                Log.status(
+                    "Camera2Recorder",
+                    "Preferred audio input did not route; recording on the system-routed input",
+                )
+            }
+        }
         audioThread = Thread({
             val chunk = ByteArray(AUDIO_CHUNK_BYTES)
             var presentationUs = 0L

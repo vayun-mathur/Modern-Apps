@@ -31,7 +31,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.camera.R
 import com.vayunmathur.camera.platform.CameraViewModel
-import com.vayunmathur.camera.platform.MotionPhotoDuration
 import com.vayunmathur.camera.platform.requestedStillFormat
 import com.vayunmathur.camera.data.SafDocuments
 import com.vayunmathur.camera.data.SaveTarget
@@ -41,10 +40,8 @@ import com.vayunmathur.camera.data.setEdgeSharpeningEnabled
 import com.vayunmathur.camera.data.setLocationEnabled
 import com.vayunmathur.camera.data.setMirrorFront
 import com.vayunmathur.camera.data.setMotionPhotoDuration
-import com.vayunmathur.camera.data.setMotionPhotoEnabled
 import com.vayunmathur.camera.data.setNoiseReductionEnabled
 import com.vayunmathur.camera.data.setSaveTreeUri
-import com.vayunmathur.camera.data.setAspectRatio
 import com.vayunmathur.camera.data.setPhotoFormat
 import com.vayunmathur.camera.data.setVideoCodec
 import com.vayunmathur.camera.data.updateLocation
@@ -59,7 +56,6 @@ import com.vayunmathur.library.util.NavKey
 @Composable
 fun <T : NavKey> SettingsPage(backStack: NavBackStack<T>, viewModel: CameraViewModel) {
     val locationEnabled by viewModel.locationEnabled.collectAsState()
-    val aspectRatio by viewModel.aspectRatio.collectAsState()
     val videoCodec by viewModel.videoCodec.collectAsState()
     val photoFormat by viewModel.photoFormat.collectAsState()
     val audioInputDevice by viewModel.audioInputDevice.collectAsState()
@@ -67,7 +63,6 @@ fun <T : NavKey> SettingsPage(backStack: NavBackStack<T>, viewModel: CameraViewM
     val noiseReductionEnabled by viewModel.noiseReductionEnabled.collectAsState()
     val edgeSharpeningEnabled by viewModel.edgeSharpeningEnabled.collectAsState()
     val motionPhotoDuration by viewModel.motionPhotoDuration.collectAsState()
-    val motionPhotoEnabled by viewModel.motionPhotoEnabled.collectAsState()
     val saveTarget by viewModel.saveTarget.collectAsState()
     val context = LocalContext.current
     // Physical input devices, refreshed when devices connect/disconnect.
@@ -184,11 +179,6 @@ fun <T : NavKey> SettingsPage(backStack: NavBackStack<T>, viewModel: CameraViewM
                 )
             }
 
-            CameraAspectRatioSettings(
-                aspectRatio = aspectRatio,
-                onAspectRatioChange = { viewModel.setAspectRatio(it); noteIfDeferred() },
-            )
-
             CameraPhotoFormatSettings(
                 photoFormat = photoFormat,
                 onPhotoFormatChange = { viewModel.setPhotoFormat(it); noteIfDeferred() },
@@ -197,7 +187,6 @@ fun <T : NavKey> SettingsPage(backStack: NavBackStack<T>, viewModel: CameraViewM
             CameraPostProcessingSettings(
                 noiseReductionEnabled = noiseReductionEnabled,
                 edgeSharpeningEnabled = edgeSharpeningEnabled,
-                motionPhotoEnabled = motionPhotoEnabled,
                 motionPhotoDuration = motionPhotoDuration,
                 // Effective AVIF only (native encoder present): a JPEG-fallback
                 // AVIF selection leaves Motion Photo available, as at capture.
@@ -205,7 +194,6 @@ fun <T : NavKey> SettingsPage(backStack: NavBackStack<T>, viewModel: CameraViewM
                     .avifPrecludesMotionPhoto(viewModel.requestedStillFormat(), com.vayunmathur.camera.platform.StitchNative.isAvailable),
                 onNoiseReductionChange = { viewModel.setNoiseReductionEnabled(it) },
                 onEdgeSharpeningChange = { viewModel.setEdgeSharpeningEnabled(it) },
-                onMotionPhotoEnabledChange = { viewModel.setMotionPhotoEnabled(it) },
                 onMotionDurationChange = { viewModel.setMotionPhotoDuration(it) },
             )
 

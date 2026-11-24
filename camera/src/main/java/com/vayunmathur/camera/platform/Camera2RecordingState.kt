@@ -23,8 +23,27 @@ internal class Camera2RecordingState {
     /** True while a Camera2 recording owns the camera (UI shows its preview). */
     val recordingActive = MutableStateFlow(false)
 
-    /** The recording engine's preview texture, published once it starts. */
-    val previewTexture = MutableStateFlow<android.graphics.SurfaceTexture?>(null)
+    /**
+     * The recording preview viewfinder's own surface, registered by the
+     * recording TextureView when its surface is created (and cleared on
+     * destroy). The recording engine targets exactly this surface, so
+     * the frames the session writes are the frames the on-screen view
+     * renders — there is no engine-owned texture for the UI to adopt.
+     */
+    var previewSurface: android.view.Surface? = null
+
+    /** Buffer size the recording preview texture is pinned to, set at record start. */
+    var previewStreamSize: com.vayunmathur.camera.platform.camera2.FrameSize? = null
+
+    /** Camera id / audio choice of a start waiting for the preview surface. */
+    var pendingCameraId: String? = null
+    var pendingAudioEnabled: Boolean = true
+
+    /** True between the record press and the engine actually starting. */
+    var startPending: Boolean = false
+
+    /** True once a pending start has been launched (starts at most once). */
+    var startLaunched: Boolean = false
 
     /** Live Camera2 slo-mo recording core; null when idle. */
     var sloMoCore: Camera2RecordingCore? = null

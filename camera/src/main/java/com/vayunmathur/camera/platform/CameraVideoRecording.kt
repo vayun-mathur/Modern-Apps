@@ -212,23 +212,81 @@ internal fun CameraViewModel.startRecording() {
 
     // The engine owns the camera device: the preview session (Camera2 or
     // any transitional binding) must release it first. Flipping the
-    // recording flag switches the viewfinder to the engine's preview;
-    // a short settle lets the preview session close before the open.
+    // recording flag switches the viewfinder to the recording preview;
+    // that preview's TextureView publishes its own surface, and only
+    // then does the engine open the camera against it (see
+    // registerRecordingPreviewSurface) — the session's preview target
+    // and the on-screen view are the same surface by construction.
+    camera2RecordingState.pendingCameraId = cameraId
+    camera2RecordingState.pendingAudioEnabled = audioEnabled
+    camera2RecordingState.previewStreamSize =
+        com.vayunmathur.camera.platform.camera2.FrameSize(
+            minOf(tier.width, RECORDING_PREVIEW_MAX_WIDTH),
+            minOf(tier.height, RECORDING_PREVIEW_MAX_HEIGHT),
+        )
+    camera2RecordingState.startPending = true
+    camera2RecordingState.startLaunched = false
     camera2RecordingMutable.value = true
     teardownSession()
+}
+
+/** Recording preview buffer cap (the encoder, not the viewfinder, owns full tier resolution). */
+private const val RECORDING_PREVIEW_MAX_WIDTH = 1920
+private const val RECORDING_PREVIEW_MAX_HEIGHT = 1080
+
+/**
+ * Registers the recording preview viewfinder's own surface (null when
+ * that view's surface is destroyed). A live surface completes a
+ * pending record start; a destroyed surface only unregisters — it
+ * never stops or restarts a recording already under way.
+ */
+internal fun CameraViewModel.registerRecordingPreviewSurface(surface: android.view.Surface?) {
+    camera2RecordingState.previewSurface = surface
+    if (surface == null) return
+    val state = camera2RecordingState
+    if (
+        !com.vayunmathur.camera.platform.camera2.RecordingPreviewPolicy.shouldStartEngine(
+            startPending = state.startPending,
+            alreadyLaunched = state.startLaunched,
+            previewSurfaceAvailable = true,
+        )
+    ) {
+        return
+    }
+    val engine = state.engine ?: return
+    val cacheFile = state.outputFile ?: return
+    val cameraId = state.pendingCameraId ?: return
+    state.startLaunched = true
+    // A short settle lets the previous preview session finish closing
+    // before the engine opens the camera device itself.
     viewModelScope.launch {
         delay(RECORDING_SETTLE_MS)
-        if (!camera2RecordingMutable.value) return@launch // stopped during settle
+        if (!camera2RecordingMutable.value) { // stopped during settle
+            state.startLaunched = false
+            return@launch
+        }
         try {
-            engine.start(VideoRecordingRequest(cacheFile, cameraId = cameraId, audioEnabled = audioEnabled)) { outcome ->
+            engine.start(
+                VideoRecordingRequest(
+                    cacheFile,
+                    cameraId = cameraId,
+                    previewSurface = surface,
+                    audioEnabled = state.pendingAudioEnabled,
+                )
+            ) { outcome ->
                 onCamera2RecordingFinalized(outcome)
             }
-            camera2RecordingState.previewTexture.value = engine.ownedPreviewTexture()
+            state.startPending = false
             isRecordingMutable.value = true
             startRecordingTimer()
         } catch (e: Exception) {
             Log.error("Camera2Recorder", "Camera2 recording failed to start", e)
-            camera2RecordingState.engine = null
+            state.engine = null
+            state.startPending = false
+            state.startLaunched = false
+            state.previewSurface = null
+            state.previewStreamSize = null
+            state.pendingCameraId = null
             camera2RecordingMutable.value = false
             cacheFile.delete()
             com.vayunmathur.library.util.AppMessages.show(
@@ -259,6 +317,21 @@ fun CameraViewModel.stopCamera2Recording() {
         camera2RecordingMutable.value = false
         return
     }
+    if (camera2RecordingState.startPending) {
+        // Record pressed and stopped again before the preview surface
+        // arrived / the settle elapsed: the engine never opened the
+        // camera, so there is nothing to drain or finalize — just
+        // cancel the pending start and restore the preview state.
+        camera2RecordingState.startPending = false
+        camera2RecordingState.engine = null
+        camera2RecordingState.outputFile?.delete()
+        camera2RecordingState.outputFile = null
+        camera2RecordingState.previewSurface = null
+        camera2RecordingState.previewStreamSize = null
+        camera2RecordingState.pendingCameraId = null
+        camera2RecordingMutable.value = false
+        return
+    }
     // engine.stop() joins its drain threads; run it off the main thread.
     // The outcome callback (save/error + preview restore) fires from there.
     viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
@@ -274,7 +347,11 @@ private fun CameraViewModel.onCamera2RecordingFinalized(outcome: VideoRecordingO
     val timestamp = camera2RecordingState.timestamp ?: ""
     camera2RecordingState.engine = null
     camera2RecordingState.outputFile = null
-    camera2RecordingState.previewTexture.value = null
+    camera2RecordingState.previewSurface = null
+    camera2RecordingState.previewStreamSize = null
+    camera2RecordingState.pendingCameraId = null
+    camera2RecordingState.startPending = false
+    camera2RecordingState.startLaunched = false
     camera2RecordingMutable.value = false
     if (outcome.error != null) {
         Log.error("Camera2Recorder", "Recording failed; discarding ${cacheFile.name}", outcome.error)
@@ -400,6 +477,12 @@ fun CameraViewModel.captureVideoSnapshot() {
 
 fun CameraViewModel.startPanorama() {
     if (panoramaEngine.isSweeping.value || panoramaEngine.isStitching.value || isCapturingMutable.value) return
+    // Stitch input must be 1x: re-assert the lock on the session whose
+    // analysis stream feeds PanoramaEngine.offerFrame, so no zoomed
+    // frame can slip into the sweep even if a zoom change raced the
+    // mode entry. (Mode entry already applied 1x; this is the capture-
+    // time backstop.)
+    activeCamera2Session?.setZoomRatio(ZOOM_LOCK_RATIO)
     panoramaEngine.startSweep()
 }
 
@@ -407,6 +490,8 @@ fun CameraViewModel.stopPanorama() = finishPanoramaSweep()
 
 fun CameraViewModel.startPhotosphere() {
     if (panoramaEngine.isSweeping.value || panoramaEngine.isStitching.value || isCapturingMutable.value) return
+    // Same 1x stitch-input lock as startPanorama (see there).
+    activeCamera2Session?.setZoomRatio(ZOOM_LOCK_RATIO)
     panoramaEngine.startSweep(fullSphere = true)
 }
 

@@ -28,25 +28,23 @@ import com.vayunmathur.library.ui.Text
 
 /**
  * Post-processing settings rows owned by [SettingsPage]: the noise-reduction and
- * edge-sharpening toggles (issue #662) plus the Motion Photo on/off toggle and
- * clip-length picker (issue #712). Stateless: the caller passes values plus
+ * edge-sharpening toggles (issue #662) plus the single Motion Photo dropdown
+ * (Off or a clip length, issue #712). Stateless: the caller passes values plus
  * change callbacks.
  *
  * [motionPhotoBlockedByAvif] is an effective AVIF selection: a Motion Photo is
- * a JPEG with an MP4 trailer, so the toggle renders disabled with that reason
- * (its stored value is kept) and captures stay plain stills. The clip-length
- * picker only shows while Motion Photo is on.
+ * a JPEG with an MP4 trailer, so the dropdown renders disabled showing the
+ * forced Off state with that reason (its stored value is kept) and captures
+ * stay plain stills.
  */
 @Composable
 fun CameraPostProcessingSettings(
     noiseReductionEnabled: Boolean,
     edgeSharpeningEnabled: Boolean,
-    motionPhotoEnabled: Boolean,
     motionPhotoDuration: MotionPhotoDuration,
     motionPhotoBlockedByAvif: Boolean,
     onNoiseReductionChange: (Boolean) -> Unit,
     onEdgeSharpeningChange: (Boolean) -> Unit,
-    onMotionPhotoEnabledChange: (Boolean) -> Unit,
     onMotionDurationChange: (MotionPhotoDuration) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -68,24 +66,16 @@ fun CameraPostProcessingSettings(
         }
 
         SettingsSection(title = stringResource(R.string.settings_motion_photo)) {
-            SettingsSwitchRow(
-                title = stringResource(R.string.settings_motion_photo_description),
-                supportingText = if (motionPhotoBlockedByAvif) {
-                    stringResource(R.string.settings_motion_photo_requires_jpeg)
-                } else {
-                    null
-                },
-                checked = motionPhotoEnabled,
-                enabled = !motionPhotoBlockedByAvif,
-                onCheckedChange = onMotionPhotoEnabledChange,
-            )
-        }
-
-        if (motionPhotoEnabled) {
-        SettingsSection(title = stringResource(R.string.settings_motion_duration)) {
             // Built from [OutlinedButton] + [DropdownMenu] like the codec/audio pickers
             // in SettingsPage, rather than the library's `ExposedDropdownMenu` wrapper,
             // which currently recurses into itself.
+            // AVIF forces Off honestly: the button shows Off while blocked
+            // (the stored choice is kept and returns when JPEG is selected).
+            val displayed = if (motionPhotoBlockedByAvif) {
+                MotionPhotoDuration.OFF
+            } else {
+                motionPhotoDuration
+            }
             var motionExpanded by remember { mutableStateOf(false) }
             Box(
                 modifier = Modifier
@@ -94,10 +84,11 @@ fun CameraPostProcessingSettings(
             ) {
                 OutlinedButton(
                     onClick = { motionExpanded = true },
+                    enabled = !motionPhotoBlockedByAvif,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        motionDurationLabel(motionPhotoDuration.seconds),
+                        motionSettingLabel(displayed),
                         modifier = Modifier.weight(1f),
                         textAlign = TextAlign.Start,
                         maxLines = 1,
@@ -111,25 +102,34 @@ fun CameraPostProcessingSettings(
                 ) {
                     MotionPhotoDuration.entries.forEach { duration ->
                         SelectableDropdownMenuItem(
-                            selected = duration == motionPhotoDuration,
+                            selected = duration == displayed,
                             onClick = {
                                 onMotionDurationChange(duration)
                                 motionExpanded = false
                             },
                             text = {
-                                Text(motionDurationLabel(duration.seconds))
+                                Text(motionSettingLabel(duration))
                             },
                             selectedLeadingIcon = { IconCheck() },
                         )
                     }
                 }
             }
-        }
+            if (motionPhotoBlockedByAvif) {
+                Text(
+                    stringResource(R.string.settings_motion_photo_requires_jpeg),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                )
+            }
         }
     }
 }
 
-/** Localized label for a Motion-Photo clip length ("1 second" / "3 seconds"). */
+/** Localized label for one Motion Photo setting ("Off" / "1 second" / "3 seconds"). */
 @Composable
-private fun motionDurationLabel(seconds: Int): String =
-    pluralStringResource(R.plurals.motion_duration, seconds, seconds)
+private fun motionSettingLabel(setting: MotionPhotoDuration): String =
+    if (setting.isEnabled) {
+        pluralStringResource(R.plurals.motion_duration, setting.seconds, setting.seconds)
+    } else {
+        stringResource(R.string.settings_motion_photo_off)
+    }

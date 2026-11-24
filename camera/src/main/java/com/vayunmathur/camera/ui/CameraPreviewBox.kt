@@ -41,6 +41,7 @@ import com.vayunmathur.camera.platform.setQrResult
 import com.vayunmathur.camera.data.setShadows
 import com.vayunmathur.camera.data.setWarmth
 import com.vayunmathur.camera.platform.selectLens
+import com.vayunmathur.camera.platform.currentZoomRange
 import com.vayunmathur.camera.platform.setZoomRatio
 import com.vayunmathur.camera.platform.toggleNightModeOverride
 import com.vayunmathur.camera.R
@@ -163,13 +164,17 @@ internal fun BoxWithConstraintsScope.CameraPreviewBox(
                 }
             }
         )
-            // Tap-to-focus (gesture, metering, indicator) is owned by
-            // TapToFocus.kt; fractions route to the Camera2 session's
-            // metering transform (CameraViewModel.tapToFocusAt).
+            // Preview gestures (pinch-zoom, tap-to-focus, long-press lock)
+            // are owned by the single handler in TapToFocus.kt; fractions
+            // route to the Camera2 session's metering transform
+            // (CameraViewModel.tapToFocusAt), zoom to setZoomRatio.
             .then(
-                Modifier.tapToFocus(
+                Modifier.previewGestures(
                     state = tapToFocusState,
                     mirrorPreview = state.mirrorPreview,
+                    currentZoom = { viewModel.zoomRatio.value },
+                    zoomRange = { viewModel.currentZoomRange() },
+                    onZoom = { viewModel.setZoomRatio(it) },
                     onFocus = { x, y -> viewModel.startFocusAndMeteringAt(x, y) },
                     onLockFocus = { x, y -> viewModel.lockFocusAndMeteringAt(x, y) },
                     onFallback = { viewModel.fallbackToDefaultMetering() },

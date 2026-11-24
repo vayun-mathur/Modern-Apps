@@ -191,12 +191,10 @@ class CameraPanesComposeTest {
         rule.setContent {
             CameraPostProcessingSettings(
                 noiseReductionEnabled = true, edgeSharpeningEnabled = false,
-                motionPhotoEnabled = true,
                 motionPhotoDuration = MotionPhotoDuration.THREE,
                 motionPhotoBlockedByAvif = false,
                 onNoiseReductionChange = { noise = it },
                 onEdgeSharpeningChange = {},
-                onMotionPhotoEnabledChange = {},
                 onMotionDurationChange = {},
             )
         }
