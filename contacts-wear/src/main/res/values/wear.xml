@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Capability the phone looks for (WearContactsProtocol.CAPABILITY). -->
+    <string-array name="android_wear_capabilities">
+        <item>contacts_wear_companion</item>
+    </string-array>
+</resources>

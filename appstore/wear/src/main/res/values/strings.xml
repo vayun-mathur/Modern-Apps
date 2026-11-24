@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">App Store</string>
+    <string name="wear_empty">Nothing here yet. Send an app from the App Store on your phone.</string>
+    <string name="wear_install">Install</string>
+    <string name="wear_retry_install">Try install again</string>
+    <string name="wear_state_listed">On your phone — not sent yet</string>
+    <string name="wear_state_receiving">Receiving…</string>
+    <string name="wear_state_rejected">Download did not check out — send it again</string>
+    <string name="wear_state_ready">Downloaded — tap Install, then confirm</string>
+    <string name="wear_state_installing">Waiting for your confirmation…</string>
+    <string name="wear_state_installed">Installed</string>
+    <string name="wear_state_failed">Install failed — you can try again</string>
+    <string name="wear_downloaded_section">Downloaded on this watch</string>
+</resources>

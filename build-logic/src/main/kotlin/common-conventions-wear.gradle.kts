@@ -64,7 +64,8 @@ configure<com.android.build.api.dsl.ApplicationExtension> {
         compose = true
     }
 
-    namespace = "com.vayunmathur${path.replace(":", ".")}"
+    // Hyphens are not valid in a Java package: `:contacts-wear` -> `com.vayunmathur.contacts.wear`.
+    namespace = "com.vayunmathur${path.replace(":", ".").replace("-", ".")}"
     compileSdk {
         // Platform 37.1+ for the current Compose train (BOM 2026.09.00).
         version = release(37) {

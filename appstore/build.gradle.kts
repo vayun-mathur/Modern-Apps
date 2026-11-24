@@ -149,6 +149,10 @@ dependencies {
     // HttpURLConnection-based PlayHttpClient/AnonymousAuthRepository/PlayDownloader – no okhttp
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.auroraoss.gplayapi)
+    // Phone side of the Wear OS sync (sync/WearSyncManager): capability
+    // discovery, catalog publish and APK streaming to :appstore:wear, which
+    // shares this app's applicationId and signing certificate.
+    implementation(libs.play.services.wearable)
 
     // --- Accrescent app source -------------------------------------------------------
     // gRPC (appstore-api.accrescent.app) over grpc-okhttp, with protobuf-lite messages and

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Wear OS form factor. Declaring the watch hardware makes this build
+         installable on Wear OS; the touchscreen is not required there. -->
+    <uses-feature
+        android:name="android.hardware.type.watch"
+        android:required="true" />
+    <uses-feature
+        android:name="android.hardware.touchscreen"
+        android:required="false" />
+
+    <!-- PackageInstaller asks the wearer to confirm every install; this
+         permission is the phone-API equivalent gate for requesting one. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <application
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher"
+        android:supportsRtl="true"
+        android:theme="@android:style/Theme.Material.NoActionBar">
+
+        <!-- Paired with the phone app, not a standalone watch app. -->
+        <meta-data
+            android:name="com.google.android.wearable.standalone"
+            android:value="false" />
+
+        <activity
+            android:name=".ui.WearMainActivity"
+            android:exported="true"
+            android:taskAffinity="">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Receives catalog/data updates, APK offers and APK channels from
+             the phone, including while the UI is not running. -->
+        <service
+            android:name=".service.WearDataListenerService"
+            android:exported="true">
+            <!-- Filtered listeners (not BIND_LISTENER): only this app's own
+                 /appstore/ paths wake the service. -->
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" />
+                <data android:host="*" android:pathPrefix="/appstore/" android:scheme="wear" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
+                <data android:host="*" android:pathPrefix="/appstore/" android:scheme="wear" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.CHANNEL_EVENT" />
+                <data android:host="*" android:pathPrefix="/appstore/" android:scheme="wear" />
+            </intent-filter>
+        </service>
+
+        <receiver
+            android:name=".platform.InstallResultReceiver"
+            android:exported="false" />
+    </application>
+</manifest>

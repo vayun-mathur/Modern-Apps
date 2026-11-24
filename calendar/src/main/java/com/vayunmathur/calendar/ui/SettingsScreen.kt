@@ -66,6 +66,7 @@ fun SettingsScreen(viewModel: CalendarViewModel, backStack: NavBackStack<Route>)
     val visibility by viewModel.calendarVisibility.collectAsStateWithLifecycle()
     val currentLayout by viewModel.currentLayout.collectAsStateWithLifecycle()
     val currentTheme by viewModel.themeMode.collectAsStateWithLifecycle()
+    val wearState by viewModel.wearSyncState.collectAsStateWithLifecycle()
 
     // Kept in the binder rather than the screen: rememberLauncherForActivityResult needs an
     // ActivityResultRegistryOwner, which a @Preview has no way to supply.
@@ -91,6 +92,9 @@ fun SettingsScreen(viewModel: CalendarViewModel, backStack: NavBackStack<Route>)
             calendarVisibility = visibility,
             layout = currentLayout,
             themeMode = currentTheme,
+            wearCompanionPresent = wearState.companionPresent,
+            wearLastSyncMillis = wearState.lastPublishedAtMillis,
+            wearLastSyncEventCount = wearState.lastPublishedEventCount,
         ),
         actions = object : SettingsActions by viewModel {
             override fun closeSettings() {
@@ -311,6 +315,28 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions) {
                         HorizontalDivider()
                     }
                 }
+                item {
+                    val wearSupporting = when {
+                        !state.wearCompanionPresent ->
+                            stringResource(R.string.wear_watch_not_found)
+                        state.wearLastSyncMillis != null ->
+                            stringResource(
+                                R.string.wear_watch_synced,
+                                state.wearLastSyncEventCount,
+                            )
+                        else -> stringResource(R.string.wear_watch_connected)
+                    }
+                    ListItem(
+                        content = { Text(stringResource(R.string.wear_watch)) },
+                        supportingContent = { Text(wearSupporting) },
+                        modifier = Modifier.clickable { actions.syncWearNow() },
+                        trailingContent = {
+                            IconArrowDropDown()
+                        },
+                    )
+                    HorizontalDivider()
+                }
+
                 item {
                     Spacer(modifier = Modifier.height(64.dp))
                 }

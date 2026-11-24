@@ -226,6 +226,12 @@
     <!-- Import ICS dialog: import events from .ics file -->
     <!-- Dropdown option to create new calendar for import. + indicates add new -->
     <string name="create_new_calendar">+ Create new calendar</string>
+    <!-- Settings: wear companion row; tap publishes a fresh snapshot -->
+    <string name="wear_watch">Watch</string>
+    <string name="wear_watch_not_found">No watch with the Calendar companion found</string>
+    <string name="wear_watch_connected">Watch found — tap to sync now</string>
+    <!-- %1$d = events in the last published snapshot -->
+    <string name="wear_watch_synced">Watch synced · %1$d events — tap to sync again</string>
     <!-- Settings: row to open file picker for .ics import -->
     <string name="import_ics_file">Import .ics file</string>
     <!-- Settings: row to choose a destination file for .ics export -->

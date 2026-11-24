@@ -39,7 +39,9 @@ import com.vayunmathur.appstore.data.priority
 import com.vayunmathur.appstore.data.searchCandidate
 import com.vayunmathur.appstore.data.security.ApkCertificates
 import com.vayunmathur.appstore.data.security.VerificationResult
+import com.vayunmathur.appstore.domain.PhoneWearState
 import com.vayunmathur.appstore.domain.SearchRanking
+import com.vayunmathur.appstore.sync.WearSyncManager
 import com.vayunmathur.library.util.AppMessages
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -78,6 +80,9 @@ class AppStoreViewModel(
     internal val settings = SettingsRepository(context, viewModelScope)
     internal val installer =
         InstallCoordinator(context, db, play, accrescent, viewModelScope) { ownSigningCertificates }
+
+    /** Phone side of the Wear OS sync; degrades to "no watch" when unavailable. */
+    internal val wearSync = WearSyncManager(context, viewModelScope)
 
     /** Third-party APKs are off by default: the periodic check may also download and install updates unattended. */
     val autoInstallUpdates: StateFlow<Boolean> = settings.autoInstallUpdates
@@ -327,12 +332,30 @@ class AppStoreViewModel(
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, SearchUiState())
 
+    /** Wear-sync snapshot for the detail screen, kept as one flow for the combine below. */
+    private data class WearUi(
+        val connected: Boolean,
+        val states: Map<String, PhoneWearState>,
+        val messages: Map<String, String>,
+    )
+
+    private val wearUi: StateFlow<WearUi> = combine(
+        wearSync.watchConnected,
+        wearSync.states,
+        wearSync.messages,
+    ) { connected, states, messages -> WearUi(connected, states, messages) }
+        .stateIn(
+            viewModelScope, SharingStarted.Eagerly,
+            WearUi(false, emptyMap(), emptyMap()),
+        )
+
     val detail: StateFlow<AppDetailUiState> = combine(
         detailAppFlow,
         isLoadingDetailsFlow,
         chrome,
         installer.verification,
-    ) { app, loading, rows, verification ->
+        wearUi,
+    ) { app, loading, rows, verification, wear ->
         val pkg = app?.packageName
         AppDetailUiState(
             app = app,
@@ -341,6 +364,10 @@ class AppStoreViewModel(
             stage = rows.stages[pkg],
             installedIcon = rows.icons[pkg],
             isLoadingDetails = loading,
+            watchConnected = wear.connected,
+            wearState = pkg?.let { wear.states[it] } ?: PhoneWearState.NOT_DOWNLOADED,
+            wearIneligibleReason = app?.let { wearSync.eligibility(it) },
+            wearMessage = pkg?.let { wear.messages[it] },
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, AppDetailUiState())
 
@@ -415,6 +442,16 @@ class AppStoreViewModel(
     // --- Lifecycle -------------------------------------------------------------------
 
     init {
+        // Wear sync is best-effort: no watch (or no wear store on it) simply
+        // leaves watchConnected false and the detail screen says so.
+        wearSync.start()
+        viewModelScope.launch {
+            sections.collect { homeSections ->
+                wearSync.syncCatalog(
+                    homeSections.flatMap { it.apps }.distinctBy { it.packageName },
+                )
+            }
+        }
         viewModelScope.launch {
             // Crash-orphaned APKs first: a dead install attempt's staged files are
             // garbage, and the 24h age gate keeps this from racing anything
@@ -606,6 +643,11 @@ class AppStoreViewModel(
     override fun openInBrowser(url: String) = openInBrowserImpl(url)
 
     override fun shareApp(app: UnifiedApp) = shareAppImpl(app)
+
+    override fun sendToWatch(app: UnifiedApp) = wearSync.sendToWatch(app)
+
+    override fun requestWatchInstall(packageName: String) =
+        wearSync.requestInstall(packageName)
 
     // --- Updates ----------------------------------------------------------------------
     // Bodies live in AppStoreUpdateOps.kt; these overrides keep interface conformance.

@@ -132,6 +132,18 @@
     <string name="action_install">Install</string>
     <string name="action_update">Update</string>
     <string name="action_dismiss">Dismiss</string>
+    <!-- Wear OS sync (detail screen). Installs are never silent: the watch
+         always asks its wearer to confirm. -->
+    <string name="wear_title">On your watch</string>
+    <string name="wear_no_watch">No watch with the Wear OS App Store is connected. Install it on a watch once, then apps can be sent from here.</string>
+    <string name="wear_send">Send to watch</string>
+    <string name="wear_sending">Sending to watch…</string>
+    <string name="wear_on_watch">On the watch — open the App Store there to install it.</string>
+    <string name="wear_install_requested">Install requested — tap Install on the watch and confirm there.</string>
+    <string name="wear_installed">Installed on the watch.</string>
+    <string name="wear_request_install">Ask watch to install</string>
+    <string name="wear_not_sent">Not sent to the watch yet.</string>
+    <string name="wear_failed">Watch sync failed: %1$s</string>
     <string name="action_read_more">Read more</string>
     <string name="action_show_less">Show less</string>
     <string name="stage_preparing">Preparing…</string>

@@ -107,6 +107,21 @@ class MainActivity : MaActivity() {
             )
         ) {
             val viewModel: ContactViewModel = viewModel()
+            // Wear companion: publish the (capped, chunked) snapshot whenever the
+            // book changes; a no-watch phone simply records NO_WATCH.
+            val wearSync = remember {
+                com.vayunmathur.contacts.sync.WearContactsSync(
+                    applicationContext,
+                    kotlinx.coroutines.CoroutineScope(
+                        kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO,
+                    ),
+                )
+            }
+            LaunchedEffect(wearSync) { wearSync.start() }
+            val allContacts by viewModel.allContactsForExport.collectAsStateWithLifecycle()
+            LaunchedEffect(wearSync, allContacts) {
+                if (allContacts.isNotEmpty()) wearSync.publish(allContacts)
+            }
             MainContent(viewModel, intent, onFinishPick = { finishPick(it) })
         }
     }

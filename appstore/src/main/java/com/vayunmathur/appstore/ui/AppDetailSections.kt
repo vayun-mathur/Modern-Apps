@@ -113,6 +113,71 @@ internal fun AppInstallActions(
 }
 
 /**
+ * The watch half of this listing: whether a watch is there, whether this app
+ * can be sent, and where the last send got to. Installs are never silent —
+ * every state here says the confirmation happens on the watch.
+ */
+@Composable
+internal fun AppWearSection(
+    state: AppDetailUiState,
+    actions: AppDetailActions,
+) {
+    val app = state.app ?: return
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(
+                stringResource(R.string.wear_title),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+            when {
+                !state.watchConnected -> Text(
+                    stringResource(R.string.wear_no_watch),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                state.wearIneligibleReason != null -> Text(
+                    state.wearIneligibleReason,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                else -> {
+                    Text(
+                        when (state.wearState) {
+                            com.vayunmathur.appstore.domain.PhoneWearState.SENDING ->
+                                stringResource(R.string.wear_sending)
+                            com.vayunmathur.appstore.domain.PhoneWearState.ON_WATCH ->
+                                stringResource(R.string.wear_on_watch)
+                            com.vayunmathur.appstore.domain.PhoneWearState.INSTALL_REQUESTED ->
+                                stringResource(R.string.wear_install_requested)
+                            com.vayunmathur.appstore.domain.PhoneWearState.INSTALLED ->
+                                stringResource(R.string.wear_installed)
+                            com.vayunmathur.appstore.domain.PhoneWearState.FAILED ->
+                                stringResource(
+                                    R.string.wear_failed,
+                                    state.wearMessage ?: "",
+                                )
+                            else -> stringResource(R.string.wear_not_sent)
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    when (state.wearState) {
+                        com.vayunmathur.appstore.domain.PhoneWearState.ON_WATCH ->
+                            FilledTonalButton(
+                                onClick = { actions.requestWatchInstall(app.packageName) },
+                            ) { Text(stringResource(R.string.wear_request_install)) }
+                        com.vayunmathur.appstore.domain.PhoneWearState.SENDING -> Unit
+                        else -> FilledTonalButton(
+                            onClick = { actions.sendToWatch(app) },
+                        ) { Text(stringResource(R.string.wear_send)) }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
  * What can be checked about this app's download, and what the last install proved.
  *
  * Neutral by design: the card describes the source's own practices and this app's checks,

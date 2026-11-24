@@ -52,6 +52,12 @@ data class SettingsUiState(
     val calendarVisibility: Map<Long, Boolean> = emptyMap(),
     val layout: CalendarViewModel.CalendarLayout = CalendarViewModel.CalendarLayout.FullWeek,
     val themeMode: CalendarViewModel.ThemeMode = CalendarViewModel.ThemeMode.System,
+    /** True when a watch advertising the calendar companion capability is reachable. */
+    val wearCompanionPresent: Boolean = false,
+    /** When the phone last published a wear snapshot, epoch millis; null when never. */
+    val wearLastSyncMillis: Long? = null,
+    /** Events in the last published wear snapshot. */
+    val wearLastSyncEventCount: Int = 0,
 )
 
 /**
@@ -116,6 +122,9 @@ interface SettingsActions {
 
     /** Same, restricted to one calendar. Read-only calendars are exportable too. */
     fun exportCalendarIcs(calendarId: Long) {}
+
+    /** Publish a fresh calendar snapshot to the wear companion now. */
+    fun syncWearNow() {}
 
     /** No-op settings actions used by previews, which render the screen without behaviour. */
     companion object {

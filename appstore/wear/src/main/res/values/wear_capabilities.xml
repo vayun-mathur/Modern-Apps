@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Capability the phone's CapabilityClient looks for: advertising it is
+     what makes the phone offer "Send to watch" at all. Must match
+     WearSyncProtocol.CAPABILITY in domain/WearSyncProtocol.kt. -->
+<resources>
+    <string-array name="android_wear_capabilities">
+        <item>appstore_wear_store</item>
+    </string-array>
+</resources>

@@ -138,6 +138,10 @@
     <string name="action_message">Message</string>
     <!-- Quick action chip: video call contact. Noun/Verb. -->
     <string name="action_video">Video</string>
+    <!-- Settings section header for the Wear OS watch companion -->
+    <string name="wear_watch">Wear OS Watch</string>
+    <!-- Settings button: publish contacts snapshot to the watch now -->
+    <string name="sync_to_watch_now">Sync to watch now</string>
     <!-- Settings section header for calendar sync of birthdays -->
     <string name="calendar_sync">Calendar Sync</string>
     <!-- Settings row: toggle to show contact birthdays in calendar app -->

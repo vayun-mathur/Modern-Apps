@@ -186,7 +186,7 @@ class CalendarComposeScreensTest {
         rule.onNodeWithText("Export .ics file").performClick()
         assertEquals(1, actions.exp)
         // Calendars sit below the fold in the lazy list: swipe until they compose, then select one.
-        repeat(4) {
+        repeat(8) {
             if (rule.onAllNodesWithText("PersonalCal").fetchSemanticsNodes().isEmpty()) {
                 rule.onNode(hasScrollAction()).performTouchInput { swipeUp() }
                 rule.waitForIdle()

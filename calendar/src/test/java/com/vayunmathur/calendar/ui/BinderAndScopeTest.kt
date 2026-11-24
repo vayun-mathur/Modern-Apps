@@ -148,7 +148,7 @@ class BinderAndScopeTest {
         assertEquals(Route.Settings.HolidayCalendars, stack.backStack.last())
         stack.pop()
         // Selecting a calendar reveals top-bar actions; rename goes through the binder.
-        repeat(4) {
+        repeat(8) {
             if (rule.onAllNodesWithText("PersonalCal").fetchSemanticsNodes().isEmpty()) {
                 rule.onNode(hasScrollAction()).performTouchInput { swipeUp() }
                 rule.waitForIdle()
@@ -167,7 +167,7 @@ class BinderAndScopeTest {
         rule.setContent { SettingsScreen(vm, stack) }
         rule.waitForIdle()
         // Swipe the lazy list down so calendar rows compose, then select one.
-        repeat(4) {
+        repeat(8) {
             if (rule.onAllNodesWithText("PersonalCal").fetchSemanticsNodes().isEmpty()) {
                 rule.onNode(hasScrollAction()).performTouchInput { swipeUp() }
                 rule.waitForIdle()

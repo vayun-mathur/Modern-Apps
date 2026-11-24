@@ -105,6 +105,15 @@ data class AppDetailUiState(
     val installedIcon: Drawable? = null,
     /** True while richer details are being fetched over the network. */
     val isLoadingDetails: Boolean = false,
+    /** True when a watch running the Wear OS App Store is connected. */
+    val watchConnected: Boolean = false,
+    /** This app's sync state on the watch; NOT_DOWNLOADED when unknown/absent. */
+    val wearState: com.vayunmathur.appstore.domain.PhoneWearState =
+        com.vayunmathur.appstore.domain.PhoneWearState.NOT_DOWNLOADED,
+    /** Why this app cannot be sent to the watch, or null when it can. */
+    val wearIneligibleReason: String? = null,
+    /** Plain-language detail for the last wear send/install result, where any. */
+    val wearMessage: String? = null,
 ) {
     val isInstalled: Boolean get() = installedInfo != null
 
@@ -206,6 +215,10 @@ interface AppDetailActions : AppActions {
     fun openInBrowser(url: String) {}
     fun shareApp(app: UnifiedApp) {}
     fun dismissInstallFailure(packageName: String) {}
+    /** Stream this app's APK to the connected watch (user confirms install there). */
+    fun sendToWatch(app: UnifiedApp) {}
+    /** Ask the watch to surface its Install action; the tap still happens on the watch. */
+    fun requestWatchInstall(packageName: String) {}
 
     /** Provides a no-op AppDetailActions for previews and defaults. */
     companion object {

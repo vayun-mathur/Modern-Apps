@@ -45,6 +45,14 @@ class CalendarViewModel(application: Application) :
     private val _events = MutableStateFlow<List<Event>>(emptyList())
     val events: StateFlow<List<Event>> = _events.asStateFlow()
 
+    /** Wear companion presence + last-sync truth, owned by the sync singleton. */
+    val wearSyncState = com.vayunmathur.calendar.sync.WearCalendarSync.get(application).state
+
+    /** Manual wear sync from Settings. */
+    override fun syncWearNow() {
+        com.vayunmathur.calendar.sync.WearCalendarSync.get(getApplication()).syncNow()
+    }
+
     private val _calendars = MutableStateFlow<List<Calendar>>(emptyList())
     val calendars: StateFlow<List<Calendar>> = _calendars.asStateFlow()
 
@@ -287,6 +295,12 @@ class CalendarViewModel(application: Application) :
     }
 
     init {
+        val wearSync = com.vayunmathur.calendar.sync.WearCalendarSync.get(application)
+        wearSync.start()
+        // Calendar changes republish the wear snapshot (coalesced in the sync).
+        viewModelScope.launch {
+            events.collect { wearSync.onCalendarChanged() }
+        }
         loadData()
         viewModelScope.launch {
             dataStore.stringFlow("default_calendar_layout").collect { saved ->

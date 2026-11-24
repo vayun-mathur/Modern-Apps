@@ -71,6 +71,7 @@ fun AppDetailScreen(
         ) {
             AppDetailHeader(state)
             AppInstallActions(state, actions, onUninstall = { showUninstallConfirm = true })
+            AppWearSection(state, actions)
             if (app.screenshots.isNotEmpty()) {
                 AppScreenshotStrip(app.screenshots, app.name, onOpen = onOpenScreenshot)
             }

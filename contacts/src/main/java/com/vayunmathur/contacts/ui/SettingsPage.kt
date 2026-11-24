@@ -238,6 +238,36 @@ fun SettingsPage(viewModel: ContactViewModel, backStack: NavBackStack<Route>) {
             item {
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
+                    text = stringResource(R.string.wear_watch),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                val wearSync = remember {
+                    com.vayunmathur.contacts.sync.WearContactsSync(
+                        context.applicationContext, coroutineScope,
+                    )
+                }
+                androidx.compose.runtime.LaunchedEffect(wearSync) { wearSync.start() }
+                val wearPresence by wearSync.presence.collectAsStateWithLifecycle()
+                val wearState by wearSync.watchState.collectAsStateWithLifecycle()
+                ListItem(
+                    content = { Text(com.vayunmathur.contacts.domain.WearPresencePolicy.statusText(wearPresence, wearState)) },
+                    supportingContent = {
+                        Text("Up to 1,000 contacts (favourites first) are kept on the watch for offline use.")
+                    },
+                    trailingContent = {
+                        Button(onClick = { wearSync.publish(allContactsForExport) }) {
+                            Text(stringResource(R.string.sync_to_watch_now))
+                        }
+                    }
+                )
+                HorizontalDivider()
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
                     text = stringResource(R.string.visible_accounts),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
