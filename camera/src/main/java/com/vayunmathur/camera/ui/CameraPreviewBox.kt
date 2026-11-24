@@ -227,6 +227,7 @@ internal fun BoxWithConstraintsScope.CameraPreviewBox(
         zoomRatio = state.zoomRatio,
         availableZoomLevels = state.availableZoomLevels,
         onZoomSelected = { viewModel.setZoomRatio(it) },
+        zoomRange = viewModel.currentZoomRange(),
         exposureComp = state.exposureComp,
         onExposureComp = { viewModel.setExposureCompensation(it) },
         shadows = state.shadows,

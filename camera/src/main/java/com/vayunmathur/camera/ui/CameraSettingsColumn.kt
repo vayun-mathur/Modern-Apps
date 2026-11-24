@@ -30,6 +30,9 @@ internal fun CameraSettingsColumn(
     zoomRatio: Float,
     availableZoomLevels: List<Pair<String, Float>>,
     onZoomSelected: (Float) -> Unit,
+    zoomRange: Pair<Float, Float> =
+        (availableZoomLevels.minOfOrNull { it.second } ?: 1f) to
+            (availableZoomLevels.maxOfOrNull { it.second } ?: 1f),
     exposureComp: Float,
     onExposureComp: (Float) -> Unit,
     shadows: Float,
@@ -105,7 +108,8 @@ internal fun CameraSettingsColumn(
                     ZoomBar(
                         currentZoom = zoomRatio,
                         zoomLevels = availableZoomLevels,
-                        onZoomSelected = onZoomSelected
+                        onZoomSelected = onZoomSelected,
+                        zoomRange = zoomRange
                     )
                 }
             }

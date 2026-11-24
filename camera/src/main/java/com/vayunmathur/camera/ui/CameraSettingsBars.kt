@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -26,7 +25,6 @@ import androidx.compose.ui.unit.sp
 import com.vayunmathur.camera.R
 import com.vayunmathur.camera.platform.CameraMode
 import com.vayunmathur.camera.platform.CameraViewModel
-import com.vayunmathur.camera.platform.formatZoomLabel
 import com.vayunmathur.library.ui.IconBlur
 import com.vayunmathur.library.ui.IconContrast
 import com.vayunmathur.library.ui.IconIso
@@ -134,53 +132,6 @@ internal fun SettingsButtonRow(
                 contentAlignment = Alignment.Center
             ) {
                 icon(Modifier.size(20.dp), if (isActive) Color.White else Color(0xFFBBBBBB))
-            }
-        }
-    }
-}
-
-@Composable
-internal fun ZoomBar(
-    currentZoom: Float,
-    zoomLevels: List<Pair<String, Float>>,
-    onZoomSelected: (Float) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    // Insert the live zoom ratio between the two fixed levels it falls between,
-    // unless it already matches one of the listed options.
-    val displayLevels = remember(zoomLevels, currentZoom) {
-        if (zoomLevels.any { kotlin.math.abs(it.second - currentZoom) < 0.05f }) {
-            zoomLevels
-        } else {
-            val entry = formatZoomLabel(currentZoom) to currentZoom
-            val insertAt = zoomLevels.indexOfFirst { it.second > currentZoom }
-            if (insertAt < 0) zoomLevels + entry
-            else zoomLevels.toMutableList().apply { add(insertAt, entry) }
-        }
-    }
-    Row(
-        modifier = modifier
-            .background(Color(0x99000000), androidx.compose.foundation.shape.RoundedCornerShape(24.dp))
-            .padding(horizontal = 6.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        displayLevels.forEach { (label, ratio) ->
-            val isSelected = kotlin.math.abs(currentZoom - ratio) < 0.05f
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .selectedPill(isSelected, CircleShape)
-                    .clip(CircleShape)
-                    .clickable { onZoomSelected(ratio) },
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    label,
-                    color = if (isSelected) Color.White else Color(0xFFBBBBBB),
-                    fontSize = 13.sp,
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                )
             }
         }
     }
