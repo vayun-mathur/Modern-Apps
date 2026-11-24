@@ -71,6 +71,7 @@ internal fun ZoomBar(
     // Latest values for the long-lived gesture handler below.
     val currentOnZoomSelected by rememberUpdatedState(onZoomSelected)
     val currentZoomRange by rememberUpdatedState(zoomRange)
+    val currentZoomState by rememberUpdatedState(currentZoom)
     var chipBounds by remember { mutableStateOf<List<ZoomChipBounds>>(emptyList()) }
     val currentChipBounds by rememberUpdatedState(chipBounds)
     Row(
@@ -78,8 +79,10 @@ internal fun ZoomBar(
             .background(Color(0x99000000), androidx.compose.foundation.shape.RoundedCornerShape(24.dp))
             // One gesture handler for the whole bar (the PreviewGestureRouter
             // lesson: two competing detectors race). Past the touch slop a
-            // horizontal drag is a continuous scrub — position across the
-            // bar maps log-scale across the device zoom range and is applied
+            // horizontal drag is a continuous RELATIVE scrub — the ratio
+            // anchored at drag start is scaled log-scale by the drag delta
+            // (never by the finger's absolute position, so touch-down alone
+            // emits nothing and a small move never jumps) and is applied
             // live through onZoomSelected (CameraViewModel.setZoomRatio, so
             // clamping and the panorama/photosphere zoom lock compose
             // exactly as for pinch); a release without scrubbing selects
@@ -92,7 +95,7 @@ internal fun ZoomBar(
                     val down = awaitFirstDown(requireUnconsumed = false)
                     val (minZoom, maxZoom) = currentZoomRange
                     router.updateZoomRange(minZoom, maxZoom)
-                    router.dragStart(down.position.x, size.width.toFloat())
+                    router.dragStart(down.position.x, size.width.toFloat(), currentZoomState)
                     try {
                         while (true) {
                             val event = awaitPointerEvent()

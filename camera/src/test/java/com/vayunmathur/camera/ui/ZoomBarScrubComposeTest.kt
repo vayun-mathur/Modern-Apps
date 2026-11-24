@@ -20,10 +20,12 @@ import org.junit.Rule
 import org.junit.runner.RunWith
 
 /**
- * ZoomBar scrub: a horizontal drag across the bar emits continuous zoom
- * through the same callback the chips use (CameraViewModel.setZoomRatio
- * in production, so clamping and the zoom lock compose); a tap still
- * selects the chip; locked modes render no bar to scrub.
+ * ZoomBar scrub: a horizontal drag emits continuous RELATIVE zoom (the
+ * ratio anchored at drag start, scaled by the drag delta — never the
+ * finger's absolute position) through the same callback the chips use
+ * (CameraViewModel.setZoomRatio in production, so clamping and the
+ * zoom lock compose); a tap still selects the chip; locked modes
+ * render no bar to scrub.
  */
 @RunWith(AndroidJUnit4::class)
 class ZoomBarScrubComposeTest {
@@ -80,6 +82,32 @@ class ZoomBarScrubComposeTest {
         assertTrue(emitted.isNotEmpty(), "leftward scrub must emit")
         assertTrue(emitted.all { it in 0.5f..5f }, "emissions in range: $emitted")
         assertTrue(emitted.last() < 5f, "dragging left must zoom out: $emitted")
+    }
+
+    @Test fun smallDragFromFarRightAtOneXDoesNotJumpTowardMax() {
+        // Regression for the absolute-position scrub: at 1x, landing on
+        // the far (5x) end of the bar and moving a little emitted ~5x.
+        // A relative scrub anchors at 1x, so a short drag stays near 1x.
+        val emitted = mutableListOf<Float>()
+        rule.setContent {
+            ZoomBar(
+                currentZoom = 1f,
+                zoomLevels = levels,
+                onZoomSelected = { emitted.add(it) },
+                zoomRange = 0.5f to 5f,
+            )
+        }
+        rule.onRoot().performTouchInput {
+            down(Offset(width - 4f, center.y))
+            moveBy(Offset(48f, 0f))
+            up()
+        }
+        rule.waitForIdle()
+        assertTrue(emitted.isNotEmpty(), "past-slop drag must emit a scrub: $emitted")
+        assertTrue(
+            emitted.all { it in 0.9f..2f },
+            "small drag from 1x must stay near 1x wherever it lands, got $emitted",
+        )
     }
 
     @Test fun tapStillSelectsChip() {

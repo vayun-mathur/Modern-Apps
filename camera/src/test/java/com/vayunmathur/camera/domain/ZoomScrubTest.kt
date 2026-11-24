@@ -6,7 +6,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/** Log-scale position->ratio mapping and scrub routing for the ZoomBar. */
+/** Log-scale drag-delta->ratio mapping and relative scrub routing for the ZoomBar. */
 class ZoomScrubTest {
 
     @Test
@@ -65,11 +65,14 @@ class ZoomScrubTest {
     }
 
     @Test
-    fun dragDeltaTraversesWholeRangeOverOneBarWidth() {
-        // One full width from the minimum reaches the maximum.
-        assertEquals(8f, zoomRatioForDragDelta(0.5f, 200f, 200f, 0.5f, 8f), 0.001f)
-        // Half a width from 1x (quarter-way in log space) reaches 3/4-way: 4x.
-        assertEquals(4f, zoomRatioForDragDelta(1f, 100f, 200f, 0.5f, 8f), 0.001f)
+    fun dragDeltaTraversesWholeRangeOverTwoBarWidths() {
+        // Sensitivity: full log range over ZOOM_SCRUB_FULL_RANGE_WIDTHS (2)
+        // bar widths. Two full widths from the minimum reaches the maximum.
+        assertEquals(8f, zoomRatioForDragDelta(0.5f, 400f, 200f, 0.5f, 8f), 0.001f)
+        // One width multiplies by sqrt(max/min) = 4: 0.5x -> 2x.
+        assertEquals(2f, zoomRatioForDragDelta(0.5f, 200f, 200f, 0.5f, 8f), 0.001f)
+        // Half a width from 1x multiplies by 16^0.25 = 2.
+        assertEquals(2f, zoomRatioForDragDelta(1f, 100f, 200f, 0.5f, 8f), 0.001f)
         // Overshoot clamps; a degenerate width leaves the clamped start.
         assertEquals(8f, zoomRatioForDragDelta(1f, 10_000f, 200f, 0.5f, 8f), 0.001f)
         assertEquals(0.5f, zoomRatioForDragDelta(1f, -10_000f, 200f, 0.5f, 8f), 0.001f)
@@ -81,7 +84,7 @@ class ZoomScrubTest {
         val emitted = mutableListOf<Float>()
         val router = ZoomScrubRouter(onZoom = { emitted.add(it) })
         router.updateZoomRange(0.5f, 8f)
-        router.dragStart(100f, 200f)
+        router.dragStart(100f, 200f, currentRatio = 1f)
         router.dragTo(105f, touchSlopPx = 10f)
         assertTrue(emitted.isEmpty(), "movement within slop must not zoom")
         assertFalse(router.isScrubbing)
@@ -89,9 +92,71 @@ class ZoomScrubTest {
         router.dragTo(200f, touchSlopPx = 10f)
         assertTrue(router.isScrubbing)
         assertEquals(2, emitted.size)
-        // 150/200 -> fraction .75, 200/200 -> max, both in range and rising.
-        assertTrue(emitted[0] in 0.5f..8f && emitted[1] == 8f && emitted[0] < emitted[1])
+        // Relative from the 1x anchor: dx=50 -> 16^(50/400) = 1.414x,
+        // dx=100 -> 16^(100/400) = 2x. Position on the bar is irrelevant.
+        assertEquals(1.4142f, emitted[0], 0.001f)
+        assertEquals(2f, emitted[1], 0.001f)
         assertTrue(router.dragEnd(), "a scrubbed gesture must not read as a tap")
+    }
+
+    @Test
+    fun routerTouchdownAnywhereEmitsNothingUntilMovement() {
+        // Touch-down (and sub-slop movement) at the left edge, middle and
+        // right edge of the bar must all emit nothing: position is not zoom.
+        for (downX in listOf(0f, 100f, 200f)) {
+            val emitted = mutableListOf<Float>()
+            val router = ZoomScrubRouter(onZoom = { emitted.add(it) })
+            router.updateZoomRange(0.5f, 8f)
+            router.dragStart(downX, 200f, currentRatio = 1f)
+            assertTrue(emitted.isEmpty(), "touch-down at $downX must not zoom")
+            router.dragTo(downX + 5f, touchSlopPx = 10f)
+            assertTrue(emitted.isEmpty(), "sub-slop move at $downX must not zoom")
+            assertFalse(router.dragEnd(), "no scrub past slop means tap at $downX")
+        }
+    }
+
+    @Test
+    fun routerEqualDeltasFromDifferentStartsProduceEqualMultiplicativeChanges() {
+        fun scrub(downX: Float, startRatio: Float, dx: Float): Float {
+            val emitted = mutableListOf<Float>()
+            val router = ZoomScrubRouter(onZoom = { emitted.add(it) })
+            router.updateZoomRange(0.5f, 8f)
+            router.dragStart(downX, 200f, currentRatio = startRatio)
+            router.dragTo(downX + dx, touchSlopPx = 1f)
+            return emitted.single()
+        }
+        // Same delta + same anchor, different touchdown: identical result.
+        assertEquals(scrub(10f, 1f, 40f), scrub(150f, 1f, 40f), 0.0001f)
+        // Same delta, different anchors: equal multiplicative change.
+        val from1x = scrub(20f, 1f, 40f)
+        val from2x = scrub(180f, 2f, 40f)
+        assertEquals(from1x / 1f, from2x / 2f, 0.001f)
+    }
+
+    @Test
+    fun routerSmallDragFromOneXNeverJumpsTowardMax() {
+        // Finger lands at the far (positional-max) end of the bar at 1x and
+        // moves a little: the old absolute mapping emitted ~max; the
+        // relative scrub must stay near 1x. dx=20/200 -> 16^(20/400) = 1.15x.
+        val emitted = mutableListOf<Float>()
+        val router = ZoomScrubRouter(onZoom = { emitted.add(it) })
+        router.updateZoomRange(0.5f, 8f)
+        router.dragStart(195f, 200f, currentRatio = 1f)
+        router.dragTo(215f, touchSlopPx = 1f)
+        assertEquals(1, emitted.size)
+        assertEquals(1.1487f, emitted[0], 0.001f)
+        assertTrue(emitted[0] < 1.3f, "small drag must stay near anchor, got $emitted")
+    }
+
+    @Test
+    fun routerLongDragHitsClamp() {
+        val emitted = mutableListOf<Float>()
+        val router = ZoomScrubRouter(onZoom = { emitted.add(it) })
+        router.updateZoomRange(0.5f, 8f)
+        router.dragStart(100f, 200f, currentRatio = 2f)
+        router.dragTo(100f + 10_000f, touchSlopPx = 1f)
+        router.dragTo(100f - 10_000f, touchSlopPx = 1f)
+        assertEquals(listOf(8f, 0.5f), emitted)
     }
 
     @Test
@@ -99,33 +164,36 @@ class ZoomScrubTest {
         val emitted = mutableListOf<Float>()
         val router = ZoomScrubRouter(onZoom = { emitted.add(it) })
         router.updateZoomRange(0.5f, 8f)
-        router.dragStart(100f, 200f)
+        router.dragStart(100f, 200f, currentRatio = 1f)
         router.dragTo(102f, touchSlopPx = 10f)
         assertFalse(router.dragEnd(), "a plain press-release is a tap")
         assertTrue(emitted.isEmpty())
 
-        router.dragStart(100f, 200f)
+        router.dragStart(100f, 200f, currentRatio = 1f)
         router.dragTo(190f, touchSlopPx = 10f)
         router.dragCancel()
         assertFalse(router.isScrubbing)
         // The pre-cancel live emission stands (it was applied live), but
         // the cancel itself adds nothing and leaves the router reusable.
         assertEquals(1, emitted.size)
-        router.dragStart(100f, 200f)
+        router.dragStart(100f, 200f, currentRatio = 1f)
         assertFalse(router.dragEnd())
     }
 
     @Test
-    fun routerFreezesWidthCapturedAtDragStart() {
+    fun routerFreezesWidthAndAnchorCapturedAtDragStart() {
         val emitted = mutableListOf<Float>()
         val router = ZoomScrubRouter(onZoom = { emitted.add(it) })
         router.updateZoomRange(1f, 4f)
-        router.dragStart(50f, 100f)
-        // Same x always yields the same ratio within one gesture, even
-        // though the live-chip insertion would widen the real bar.
+        router.dragStart(50f, 100f, currentRatio = 2f)
+        // Same delta always yields the same ratio within one gesture, even
+        // though the live-chip insertion would widen the real bar and the
+        // live ratio has since moved: dx=50 -> 2x * 4^(50/200) = 2.83x.
         router.dragTo(100f, touchSlopPx = 1f)
         router.dragTo(100f, touchSlopPx = 1f)
-        assertEquals(listOf(4f, 4f), emitted)
+        assertEquals(2, emitted.size)
+        assertEquals(2.8284f, emitted[0], 0.001f)
+        assertEquals(emitted[0], emitted[1], 0.0001f)
     }
 
     @Test
@@ -133,7 +201,7 @@ class ZoomScrubTest {
         val emitted = mutableListOf<Float>()
         val router = ZoomScrubRouter(onZoom = { emitted.add(it) })
         router.updateZoomRange(Float.NaN, -1f)
-        router.dragStart(0f, 100f)
+        router.dragStart(0f, 100f, currentRatio = 1f)
         router.dragTo(100f, touchSlopPx = 1f)
         assertEquals(listOf(1f), emitted)
     }
