@@ -22,4 +22,9 @@ dependencies {
     implementation(project(":library:room"))
     implementation(project(":library:ink"))
     implementation(project(":library:image"))
+    // Phone side of the Wear OS sync (sync/WearNotesSync): snapshot publish
+    // and watch-originated ops to :notes-wear, which shares this app's
+    // applicationId and signing certificate.
+    implementation(project(":library:wearlink"))
+    implementation(libs.kotlinx.coroutines.android)
 }

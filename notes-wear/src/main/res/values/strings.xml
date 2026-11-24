@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Notes</string>
+    <string name="wear_empty">No notes synced yet. Open Notes on your phone to sync this watch.</string>
+    <string name="wear_new_note">New note</string>
+    <string name="wear_request_sync">Sync now</string>
+    <string name="wear_sync_requested">Asked your phone for a fresh copy</string>
+    <string name="wear_no_phone">Phone not reachable — showing the last synced copy</string>
+    <string name="wear_truncated">Showing your most recent notes; the rest stays on your phone</string>
+    <string name="wear_body_truncated">… (full text on your phone)</string>
+    <string name="wear_read_only_rich">Contains drawings or images from your phone — view only here. You can still delete it.</string>
+    <string name="wear_edit">Edit</string>
+    <string name="wear_delete">Delete</string>
+    <string name="wear_save">Save</string>
+    <string name="wear_back">Back</string>
+    <string name="wear_title_hint">Title (tap the mic to dictate)</string>
+    <string name="wear_body_hint">Note text (tap the mic to dictate)</string>
+    <string name="wear_pending">Waiting for your phone to confirm %1$d change(s)</string>
+    <string name="wear_deleted_note">Deleted on this watch — waiting for your phone</string>
+</resources>

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- WearLink is RFCOMM-over-bonded-Bluetooth only: no discovery scan and
+         no BLE advertising, so BLUETOOTH_SCAN / BLUETOOTH_ADVERTISE are
+         deliberately NOT declared (declaring them would ask the user for
+         permissions the transport never exercises) and no location permission
+         or neverForLocation workaround is needed. Connecting to / accepting
+         on a bonded device needs BLUETOOTH_CONNECT on API 31+. -->
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <!-- Pre-API-31 equivalents, capped so they are not requested on 31+. -->
+    <uses-permission
+        android:name="android.permission.BLUETOOTH"
+        android:maxSdkVersion="30" />
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_ADMIN"
+        android:maxSdkVersion="30" />
+</manifest>

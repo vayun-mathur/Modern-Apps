@@ -32,6 +32,10 @@ class MainActivity : MaActivity() {
     private var ready by mutableStateOf(false)
 
     override fun onCreateBeforeContent() {
+        com.vayunmathur.library.wearlink.WearLinkPermissions.requestIfNeeded(this)
+        // Wear companion sync lives and dies with this process (WearLink has
+        // no system wakeup); it publishes once the repository is ready below.
+        com.vayunmathur.notes.sync.WearNotesSync.get(this)
         lifecycleScope.launch(Dispatchers.IO) {
             notesRepository = NotesRepository.get(applicationContext)
             val legacyNotes = notesRepository.readAndClearLegacyNotes()
@@ -53,6 +57,7 @@ class MainActivity : MaActivity() {
             notesRepository.purgeExpiredTombstones()
             withContext(Dispatchers.Main) {
                 handleIntent(intent)
+                com.vayunmathur.notes.sync.WearNotesSync.get(applicationContext).start()
                 ready = true
             }
         }
