@@ -217,7 +217,8 @@ class AudioInputDevicesTest {
         assertEquals(listOf<RawAudioInputDevice?>(usb), calls)
         assertEquals(usb, result.device)
         assertTrue(result.applied)
-        assertEquals(AudioInputDeviceSelection(usb.id, usb.type, "USB Mic Pro"), result.selection)
+        // This fake seam passes no endpoint identity, so none is resolved.
+        assertEquals(AudioInputDeviceSelection(usb.id, usb.type), result.selection)
     }
 
     @Test fun noExplicitChoiceClearsThePreferredDevice() {
