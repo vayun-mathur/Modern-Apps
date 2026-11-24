@@ -9,24 +9,23 @@ import kotlinx.serialization.json.Json
 /**
  * Phone <-> watch sync protocol for the Wear OS App Store.
  *
- * SINGLE SOURCE OF TRUTH, DELIBERATELY DUPLICATED: the Wearable Data Layer only
- * connects apps that share a package name and signing certificate, but Gradle
- * cannot let one application module depend on another, so the wear module
+ * SINGLE SOURCE OF TRUTH, DELIBERATELY DUPLICATED: Gradle cannot let one
+ * application module depend on another, so the wear module
  * (`:appstore:wear`, applicationId `com.vayunmathur.appstore`) carries a
  * byte-identical copy of this file under `com.vayunmathur.appstore.wear.domain`.
  * Change both copies together; each side's unit tests pin the same golden JSON
  * so a one-sided edit fails loudly on the side that was not updated.
  *
- * Transport split:
- * - Capability advertisement (res string-array `android_wear_capabilities` on
- *   the watch) tells the phone the wear store is present at all.
- * - DataClient carries the small, durable state: [CATALOG_PATH] phone -> watch
- *   and [WATCH_STATE_PATH] watch -> phone. DataItems survive disconnects and
- *   reconcile the two sides when they meet again.
- * - MessageClient carries ephemeral commands/results ([OFFER_PATH],
+ * Transport (WearLink, :library:wearlink — RFCOMM, no Play services):
+ * - Presence is a completed handshake for [CAPABILITY] (the appId).
+ * - Data items carry the small state documents: [CATALOG_PATH] phone ->
+ *   watch and [WATCH_STATE_PATH] watch -> phone. Delivery needs a live
+ *   session; each side persists what it receives and republishes on
+ *   reconnect, reconciling the two sides when they meet again.
+ * - Messages carry ephemeral commands/results ([OFFER_PATH],
  *   [INSTALL_RESULT_PATH], [REQUEST_STATE_PATH]).
- * - ChannelClient ([apkChannelPath]) streams the APK itself: DataClient assets
- *   are size-capped and base64-inflated in transit, a channel is a raw stream.
+ * - A stream ([apkChannelPath]) carries the APK itself, verified against
+ *   the preceding offer's size+SHA-256 before PackageInstaller sees it.
  *
  * Install honesty: nothing here can install silently. The watch verifies the
  * stream against [ApkOffer.sha256], then a person on the watch taps Install
@@ -34,41 +33,41 @@ import kotlinx.serialization.json.Json
  * there is no state that claims an install the OS has not confirmed.
  */
 object WearSyncProtocol {
-    /** Capability the wear store advertises; the phone looks for it on connected nodes. */
+    /** WearLink appId the phone requires in the peer handshake. */
     const val CAPABILITY = "appstore_wear_store"
 
-    /** DataClient path (phone -> watch): the [WearCatalog] JSON snapshot. */
+    /** Data-item path (phone -> watch): the [WearCatalog] JSON snapshot. */
     const val CATALOG_PATH = "/appstore/catalog"
 
-    /** DataClient path (watch -> phone): the [WatchState] JSON snapshot. */
+    /** Data-item path (watch -> phone): the [WatchState] JSON snapshot. */
     const val WATCH_STATE_PATH = "/appstore/watch-state"
 
-    /** MessageClient path (phone -> watch): an [ApkOffer] precedes every channel. */
+    /** Message path (phone -> watch): an [ApkOffer] precedes every stream. */
     const val OFFER_PATH = "/appstore/apk-offer"
 
-    /** MessageClient path (watch -> phone): an [InstallResult] after the OS answers. */
+    /** Message path (watch -> phone): an [InstallResult] after the OS answers. */
     const val INSTALL_RESULT_PATH = "/appstore/install-result"
 
-    /** MessageClient path (phone -> watch): ask the watch to republish [WATCH_STATE_PATH]. */
+    /** Message path (phone -> watch): ask the watch to republish [WATCH_STATE_PATH]. */
     const val REQUEST_STATE_PATH = "/appstore/request-state"
 
     /**
-     * MessageClient path (phone -> watch): ask the watch to surface its Install
+     * Message path (phone -> watch): ask the watch to surface its Install
      * action for the package named in the payload. This only *asks* — a person
      * on the watch still taps Install and confirms the system prompt.
      */
     const val REQUEST_INSTALL_PATH = "/appstore/request-install"
 
-    /** ChannelClient path prefix (phone -> watch); the package name is the last segment. */
+    /** Stream path prefix (phone -> watch); the package name is the last segment. */
     const val APK_CHANNEL_PREFIX = "/appstore/apk/"
 
     /** Largest single APK this slice will stream (a watch has little storage to spare). */
     const val MAX_APK_BYTES = 200L * 1024 * 1024
 
-    /** Channel path streaming [packageName]'s APK. */
+    /** Stream path streaming [packageName]'s APK. */
     fun apkChannelPath(packageName: String): String = APK_CHANNEL_PREFIX + packageName
 
-    /** The package a channel path streams, or null when [path] is not an APK channel. */
+    /** The package a stream path streams, or null when [path] is not an APK stream. */
     fun packageFromChannelPath(path: String): String? =
         path.takeIf { it.startsWith(APK_CHANNEL_PREFIX) }
             ?.removePrefix(APK_CHANNEL_PREFIX)
@@ -93,7 +92,7 @@ data class WearCatalogApp(
 data class WearCatalog(val apps: List<WearCatalogApp> = emptyList())
 
 /**
- * Metadata announced over MessageClient immediately before an APK channel opens.
+ * Metadata announced by message immediately before an APK stream opens.
  * The watch refuses bytes that do not match [sizeBytes]/[sha256] — the channel
  * itself carries no metadata, so this offer is the integrity contract.
  */

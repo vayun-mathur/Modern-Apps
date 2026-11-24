@@ -142,6 +142,7 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(project(":library:image"))
     implementation(project(":library:tv"))
+    implementation(project(":library:wearlink"))
     // APK source-stamp verification. The stamp is a second signing identity that
     // survives Play App Signing re-signing, so it can be pinned per package where the
     // APK signing key (held by Google) cannot be.
@@ -152,7 +153,6 @@ dependencies {
     // Phone side of the Wear OS sync (sync/WearSyncManager): capability
     // discovery, catalog publish and APK streaming to :appstore:wear, which
     // shares this app's applicationId and signing certificate.
-    implementation(libs.play.services.wearable)
 
     // --- Accrescent app source -------------------------------------------------------
     // gRPC (appstore-api.accrescent.app) over grpc-okhttp, with protobuf-lite messages and

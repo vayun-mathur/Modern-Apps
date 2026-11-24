@@ -26,7 +26,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        store = WearContactsStore(applicationContext)
+        com.vayunmathur.library.wearlink.WearLinkPermissions.requestIfNeeded(this)
+        store = com.vayunmathur.contacts.wear.sync.WearLinkBridge.store(applicationContext)
+        com.vayunmathur.contacts.wear.sync.WearLinkBridge.get(applicationContext)
         capabilities = WearDeviceCapabilitiesProbe.probeHandlers(this)
         setContent {
             val snapshot by store.snapshot.collectAsState()

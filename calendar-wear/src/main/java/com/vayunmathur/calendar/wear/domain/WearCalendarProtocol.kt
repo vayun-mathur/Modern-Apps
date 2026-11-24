@@ -6,37 +6,35 @@ import kotlinx.serialization.json.Json
 /**
  * Phone <-> watch sync protocol for the Wear OS Calendar companion.
  *
- * SINGLE SOURCE OF TRUTH, DELIBERATELY DUPLICATED: the Wearable Data Layer only
- * connects apps that share a package name and signing certificate, but Gradle
- * cannot let one application module depend on another, so the wear module
+ * SINGLE SOURCE OF TRUTH, DELIBERATELY DUPLICATED: Gradle cannot let one
+ * application module depend on another, so the wear module
  * (`:calendar:wear`, applicationId `com.vayunmathur.calendar`) carries a copy
  * of this file under `com.vayunmathur.calendar.wear.domain`. Change both
  * copies together; each side's unit tests pin the same golden JSON so a
  * one-sided edit fails loudly on the side that was not updated.
  *
- * Transport split:
- * - Capability advertisement (res string-array `android_wear_capabilities` on
- *   the watch) tells the phone the wear companion is present at all.
- * - DataClient carries the durable snapshot: [SNAPSHOT_PATH] phone -> watch
- *   and [WATCH_STATE_PATH] watch -> phone. DataItems survive disconnects and
- *   reconcile the two sides when they meet again.
- * - MessageClient carries one ephemeral command, [REQUEST_SYNC_PATH]
+ * Transport (WearLink, :library:wearlink — RFCOMM, no Play services):
+ * - Presence is a completed handshake for [CAPABILITY] (the appId).
+ * - Data items carry the snapshot: [SNAPSHOT_PATH] phone -> watch
+ *   and [WATCH_STATE_PATH] watch -> phone. Delivery needs a live session;
+ *   each side persists what it receives and republishes on reconnect.
+ * - Messages carry one ephemeral command, [REQUEST_SYNC_PATH]
  *   watch -> phone: the watch asks for a fresh snapshot. That is the only
  *   watch-originated write. There is no event editing or RSVP: the phone's
  *   calendar model has no attendee/self-status for its local calendars, so
  *   inventing an RSVP write would fake a change the provider never made.
  */
 object WearCalendarProtocol {
-    /** Capability the wear companion advertises; the phone looks for it on connected nodes. */
+    /** WearLink appId the phone requires in the peer handshake. */
     const val CAPABILITY = "calendar_wear_companion"
 
-    /** DataClient path (phone -> watch): the [WearCalendarSnapshot] JSON. */
+    /** Data-item path (phone -> watch): the [WearCalendarSnapshot] JSON. */
     const val SNAPSHOT_PATH = "/calendar/snapshot"
 
-    /** DataClient path (watch -> phone): the [WearWatchState] JSON. */
+    /** Data-item path (watch -> phone): the [WearWatchState] JSON. */
     const val WATCH_STATE_PATH = "/calendar/watch-state"
 
-    /** MessageClient path (watch -> phone): ask the phone to publish a fresh snapshot. */
+    /** Message path (watch -> phone): ask the phone to publish a fresh snapshot. */
     const val REQUEST_SYNC_PATH = "/calendar/request-sync"
 
     /** Days ahead of the window start included in a snapshot. */
@@ -46,9 +44,9 @@ object WearCalendarProtocol {
     const val MAX_EVENTS = 200
 
     /**
-     * Largest snapshot JSON, in UTF-8 bytes. DataClient caps a DataItem at
-     * 100 KB; staying under it keeps the snapshot on DataClient (durable,
-     * reconciled on reconnect) instead of needing a channel.
+     * Largest snapshot JSON, in UTF-8 bytes. Deliberately kept near the old
+     * 100 KB DataItem ceiling: a bounded snapshot is what the watch can
+     * store/render, and WearLink chunks it transparently either way.
      */
     const val MAX_JSON_BYTES = 90_000
 

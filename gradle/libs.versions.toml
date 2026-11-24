@@ -50,9 +50,6 @@ material3AdaptiveNavigationSuite = "1.5.0-beta01"
 # (all 1.12.1 in that BOM) with no consumer using a 1.13-only API (direct consumers:
 # :library:tv, :library:map, :library:image, :photos use layout/lazy APIs present in 1.12.1).
 wearComposeMaterial = "1.7.0-alpha05"
-# Wearable Data Layer (phone <-> watch). Both stores share a package name and
-# signing certificate, which is what lets this API connect them at all.
-playServicesWearable = "19.0.0"
 # TV Material: Material Design for a ten-foot UI, where Material 3's focus handling does not reach.
 tv = "1.1.0"
 
@@ -203,7 +200,6 @@ kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutine
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinxDatetime" }
-play-services-wearable = { module = "com.google.android.gms:play-services-wearable", version.ref = "playServicesWearable" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinxCoroutines" }
 kotlin-test = { group = "org.jetbrains.kotlin", name = "kotlin-test", version.ref = "kotlin" }
 kotlin-test-junit = { group = "org.jetbrains.kotlin", name = "kotlin-test-junit", version.ref = "kotlin" }

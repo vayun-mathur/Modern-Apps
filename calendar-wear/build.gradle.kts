@@ -24,8 +24,8 @@ android {
 dependencies {
     // Watch side of the Wear OS sync (see domain/WearCalendarProtocol.kt, the
     // copy of the phone protocol it must stay in step with).
-    implementation(libs.play.services.wearable)
     implementation(libs.kotlinx.coroutines.android)
+    implementation(project(":library:wearlink"))
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlin.test.junit)
 }

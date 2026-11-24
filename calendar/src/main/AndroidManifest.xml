@@ -139,15 +139,7 @@
                 android:resource="@xml/calendar_month_widget_info" />
         </receiver>
 
-        <!-- Watch-originated sync requests while the UI is not running. -->
-        <service
-            android:name=".service.WearCalendarListenerService"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" />
-                <data android:scheme="wear" android:host="*" android:pathPrefix="/calendar/request-sync" />
-            </intent-filter>
-        </service>
+        <!-- WearLink delivery is app-lifecycle-bound; no system listener service. -->
         <receiver
             android:name=".platform.ReminderReceiver"
             android:enabled="true"

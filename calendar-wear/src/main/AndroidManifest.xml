@@ -35,15 +35,6 @@
             </intent-filter>
         </activity>
 
-        <!-- Receives snapshot updates from the phone, including while the
-             UI is not running. -->
-        <service
-            android:name=".service.WearCalendarListenerService"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
-                <data android:scheme="wear" android:host="*" android:pathPrefix="/calendar/snapshot" />
-            </intent-filter>
-        </service>
+        <!-- WearLink delivery is app-lifecycle-bound; no system listener service. -->
     </application>
 </manifest>

@@ -5,7 +5,7 @@
 
 - Gradle: :contacts-wear / dir: contacts-wear/
 - applicationId: `com.vayunmathur.contacts` — MUST stay equal to `:contacts`;
-  Wearable Data Layer requires same package + same signing on phone and watch.
+  WearLink's handshake requires same signing on phone and watch (same package kept).
 - Package: `com.vayunmathur.contacts.wear` (domain/data/sync/ui/platform)
 - Protocol: `domain/WearContactsProtocol.kt` is a deliberate copy of the phone
   file in `contacts/domain/`; change both together (golden-JSON tests pin it).

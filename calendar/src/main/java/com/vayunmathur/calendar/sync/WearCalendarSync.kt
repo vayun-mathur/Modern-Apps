@@ -1,26 +1,19 @@
 package com.vayunmathur.calendar.sync
 
 import android.content.Context
-import com.google.android.gms.tasks.Task
-import com.google.android.gms.wearable.CapabilityClient
-import com.google.android.gms.wearable.CapabilityInfo
-import com.google.android.gms.wearable.DataClient
-import com.google.android.gms.wearable.DataEvent
-import com.google.android.gms.wearable.DataEventBuffer
-import com.google.android.gms.wearable.DataMapItem
-import com.google.android.gms.wearable.PutDataMapRequest
-import com.google.android.gms.wearable.Wearable
 import com.vayunmathur.calendar.data.Calendar
 import com.vayunmathur.calendar.data.Event
 import com.vayunmathur.calendar.data.Instance
 import com.vayunmathur.calendar.domain.WearCalendarEvent
 import com.vayunmathur.calendar.domain.WearCalendarProtocol
+import com.vayunmathur.calendar.domain.WearCalendarSnapshot
 import com.vayunmathur.calendar.domain.WearWatchState
 import com.vayunmathur.calendar.domain.buildWearSnapshot
 import com.vayunmathur.calendar.domain.wearCompanionPresent
 import com.vayunmathur.library.log.Log
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
+import com.vayunmathur.library.wearlink.WearLinkListener
+import com.vayunmathur.library.wearlink.WearLinkNode
+import com.vayunmathur.library.wearlink.WearLinkState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -31,7 +24,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
@@ -39,13 +31,6 @@ import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.encodeToString
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
-import kotlin.time.Instant
-
-/** Await a Play services [Task] without taking a coroutines-play-services dependency. */
-private suspend fun <T> Task<T>.awaitTask(): T = suspendCancellableCoroutine { cont ->
-    addOnSuccessListener { cont.resume(it) }
-    addOnFailureListener { cont.resumeWithException(it) }
-}
 
 /** Phone-side wear status the Settings screen shows; absence is a normal state, never an error. */
 data class WearSyncState(
@@ -58,30 +43,24 @@ data class WearSyncState(
 )
 
 /**
- * Phone side of the wear sync: capability discovery, snapshot publish, and
- * watch-state intake.
+ * Phone side of the wear sync over WearLink (RFCOMM, :library:wearlink):
+ * presence is a completed handshake, the snapshot is a data item, and the
+ * watch's request-sync is a message handled here while this process lives.
  *
- * Every Wearable call is wrapped so "no Play services / no watch / watch
- * without the companion" is a normal state ([WearSyncState.companionPresent]
- * = false), never a crash. The Data Layer only connects the two calendars
- * because they share the package name `com.vayunmathur.calendar` and a
- * signing certificate — dev builds both use the debug key, release builds
- * both use the same release key.
+ * "No Bluetooth permission / no watch / watch without the companion" is a
+ * normal state ([WearSyncState.companionPresent] = false), never a crash.
+ * There is no Play-services listener service any more: a sync request
+ * arriving while the phone app is dead waits until it next runs.
  */
-class WearCalendarSync private constructor(context: Context) :
-    CapabilityClient.OnCapabilityChangedListener,
-    DataClient.OnDataChangedListener {
+class WearCalendarSync private constructor(context: Context) {
 
-    /** Holds singleton access. */
     companion object {
         private const val TAG = "WearCalendarSync"
-        private const val KEY_JSON = "json"
-        private const val KEY_SENT_AT = "sent_at"
 
         @Volatile
         private var instance: WearCalendarSync? = null
 
-        /** The process-wide sync (ViewModel and listener service must agree on one). */
+        /** The process-wide sync (ViewModel must agree on one). */
         fun get(context: Context): WearCalendarSync = instance ?: synchronized(this) {
             instance ?: WearCalendarSync(context.applicationContext).also { instance = it }
         }
@@ -91,45 +70,45 @@ class WearCalendarSync private constructor(context: Context) :
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private val _state = MutableStateFlow(WearSyncState())
-
-    /** Current wear presence + last-sync truth for the UI. */
     val state: StateFlow<WearSyncState> = _state.asStateFlow()
+
+    private val listener = object : WearLinkListener {
+        override fun onData(path: String, body: ByteArray) {
+            if (path != WearCalendarProtocol.WATCH_STATE_PATH) return
+            val watchState = runCatching {
+                WearCalendarProtocol.json.decodeFromString<WearWatchState>(body.decodeToString())
+            }.getOrNull() ?: return
+            _state.update {
+                it.copy(
+                    lastWatchAppliedAtMillis = watchState.appliedGeneratedAtMillis
+                        .takeIf { applied -> applied > 0L },
+                )
+            }
+        }
+
+        override fun onMessage(path: String, body: ByteArray) {
+            if (path != WearCalendarProtocol.REQUEST_SYNC_PATH) return
+            scope.launch { publishSnapshot() }
+        }
+    }
+
+    private val node = WearLinkNode(appContext, WearCalendarProtocol.CAPABILITY, listener)
 
     private var started = false
     private var pendingPublish: Job? = null
 
-    /** Begin capability/data listening; no-op when already started or unavailable. */
     fun start() {
         if (started) return
         started = true
-        runCatching {
-            Wearable.getCapabilityClient(appContext)
-                .addListener(this, WearCalendarProtocol.CAPABILITY)
-            Wearable.getDataClient(appContext).addListener(this)
-        }.onFailure { Log.status(TAG, "Wearable listeners unavailable: ${it.message}") }
-        scope.launch { refreshCapability() }
-    }
-
-    override fun onCapabilityChanged(capabilityInfo: CapabilityInfo) {
-        updatePresence(capabilityInfo.nodes.map { it.id })
-    }
-
-    override fun onDataChanged(dataEvents: DataEventBuffer) {
-        for (event in dataEvents) {
-            if (event.type != DataEvent.TYPE_CHANGED) continue
-            val item = event.dataItem
-            if (item.uri.path != WearCalendarProtocol.WATCH_STATE_PATH) continue
-            val raw = runCatching {
-                DataMapItem.fromDataItem(item).dataMap.getString(KEY_JSON)
-            }.getOrNull() ?: continue
-            val watchState = runCatching {
-                WearCalendarProtocol.json.decodeFromString<WearWatchState>(raw)
-            }.getOrNull() ?: continue
-            _state.update {
-                it.copy(lastWatchAppliedAtMillis = watchState.appliedGeneratedAtMillis
-                    .takeIf { applied -> applied > 0L })
+        scope.launch {
+            node.state.collect { linkState ->
+                val present = linkState is WearLinkState.Connected
+                val wasPresent = _state.value.companionPresent
+                _state.update { it.copy(companionPresent = wearCompanionPresent(if (present) listOf("peer") else emptyList())) }
+                if (present && !wasPresent) syncNow()
             }
         }
+        node.start()
     }
 
     /** Calendar data changed: republish shortly, coalescing bursts (imports, bulk edits). */
@@ -147,41 +126,26 @@ class WearCalendarSync private constructor(context: Context) :
         scope.launch { publishSnapshot() }
     }
 
-    /** Build the bounded snapshot from the provider and publish it on DataClient. */
+    /** Build the bounded snapshot from the provider and publish it as a data item. */
     suspend fun publishSnapshot() {
         val snapshot = withContext(Dispatchers.IO) { buildSnapshot() } ?: return
-        runCatching {
-            val request = PutDataMapRequest.create(WearCalendarProtocol.SNAPSHOT_PATH).apply {
-                dataMap.putString(KEY_JSON, WearCalendarProtocol.json.encodeToString(snapshot))
-                dataMap.putLong(KEY_SENT_AT, snapshot.generatedAtMillis)
-            }.asPutDataRequest().setUrgent()
-            Wearable.getDataClient(appContext).putDataItem(request).awaitTask()
+        val sent = node.putData(
+            WearCalendarProtocol.SNAPSHOT_PATH,
+            WearCalendarProtocol.json.encodeToString(snapshot).encodeToByteArray(),
+        )
+        if (sent) {
             _state.update {
                 it.copy(
                     lastPublishedAtMillis = snapshot.generatedAtMillis,
                     lastPublishedEventCount = snapshot.events.size,
                 )
             }
-        }.onFailure { Log.status(TAG, "publish snapshot failed: ${it.message}") }
+        } else {
+            Log.status(TAG, "publish snapshot not delivered (no live WearLink session)")
+        }
     }
 
-    private suspend fun refreshCapability() {
-        runCatching {
-            val info = Wearable.getCapabilityClient(appContext)
-                .getCapability(WearCalendarProtocol.CAPABILITY, CapabilityClient.FILTER_REACHABLE)
-                .awaitTask()
-            updatePresence(info.nodes.map { it.id })
-        }.onFailure { Log.status(TAG, "capability lookup unavailable: ${it.message}") }
-    }
-
-    private fun updatePresence(nodeIds: List<String>) {
-        val present = wearCompanionPresent(nodeIds)
-        val wasPresent = _state.value.companionPresent
-        _state.update { it.copy(companionPresent = present) }
-        if (present && !wasPresent) syncNow()
-    }
-
-    private fun buildSnapshot(): com.vayunmathur.calendar.domain.WearCalendarSnapshot? =
+    private fun buildSnapshot(): WearCalendarSnapshot? =
         runCatching {
             val now = Clock.System.now()
             val zone = TimeZone.currentSystemDefault()

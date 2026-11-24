@@ -36,7 +36,9 @@ class WearMainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        com.vayunmathur.library.wearlink.WearLinkPermissions.requestIfNeeded(this)
         val store = WearStore.get(this)
+        com.vayunmathur.appstore.wear.sync.WearLinkBridge.get(this)
         store.publishWatchState()
         setContent {
             MaterialTheme {

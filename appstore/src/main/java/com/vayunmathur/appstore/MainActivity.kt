@@ -52,6 +52,7 @@ class MainActivity : MaActivity() {
     override fun onCreateBeforeContent() {
         // STANDARD includes GTS R1-R4 (needed for Play Store -> play.google.com / android.clients.google.com)
         // + ISRG X1/X2 (F-Droid) + DigiCert G2/G3 (GitHub). Covers all appstore hosts without full system ~140 roots.
+        com.vayunmathur.library.wearlink.WearLinkPermissions.requestIfNeeded(this)
         NetworkClient.init(this, TrustBundle.STANDARD)
         UpdateCheckWorker.schedule(this)
         // Listing artwork (iconUrl) loads over HTTP(S) through the shared image

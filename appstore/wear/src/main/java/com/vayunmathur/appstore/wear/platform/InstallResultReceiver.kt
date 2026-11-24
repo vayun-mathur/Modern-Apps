@@ -5,13 +5,10 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInstaller
 import android.os.Build
-import com.google.android.gms.wearable.Wearable
 import com.vayunmathur.appstore.wear.data.WearStore
 import com.vayunmathur.appstore.wear.domain.InstallResult
 import com.vayunmathur.appstore.wear.domain.WatchAppEvent
-import com.vayunmathur.appstore.wear.domain.WearSyncProtocol
 import com.vayunmathur.library.log.Log
-import kotlinx.serialization.encodeToString
 
 /**
  * Receives the PackageInstaller verdict for watch installs.
@@ -76,16 +73,6 @@ class InstallResultReceiver : BroadcastReceiver() {
     }
 
     private fun report(context: Context, result: InstallResult) {
-        runCatching {
-            Wearable.getNodeClient(context).connectedNodes.addOnSuccessListener { nodes ->
-                for (node in nodes) {
-                    Wearable.getMessageClient(context).sendMessage(
-                        node.id,
-                        WearSyncProtocol.INSTALL_RESULT_PATH,
-                        WearSyncProtocol.json.encodeToString(result).encodeToByteArray(),
-                    )
-                }
-            }
-        }.onFailure { Log.status(TAG, "report result failed: ${it.message}") }
+        com.vayunmathur.appstore.wear.sync.WearLinkBridge.reportResult(context, result)
     }
 }

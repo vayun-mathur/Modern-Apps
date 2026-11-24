@@ -4,11 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
-import com.google.android.gms.tasks.Task
-import com.google.android.gms.wearable.Wearable
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
-import kotlinx.coroutines.suspendCancellableCoroutine
+import com.vayunmathur.contacts.wear.sync.WearLinkBridge
 
 /** What this watch hardware/software can actually do, probed honestly at runtime. */
 data class WearDeviceCapabilities(
@@ -22,10 +18,6 @@ data class WearDeviceCapabilities(
     val canCallOnWatch: Boolean get() = hasTelephony && hasDialer
 }
 
-private suspend fun <T> Task<T>.awaitTask(): T = suspendCancellableCoroutine { cont ->
-    addOnSuccessListener { cont.resume(it) }
-    addOnFailureListener { cont.resumeWithException(it) }
-}
 
 object WearDeviceCapabilitiesProbe {
 
@@ -40,12 +32,10 @@ object WearDeviceCapabilitiesProbe {
         )
     }
 
-    /** Full probe including whether a phone node is currently reachable. */
+    /** Full probe including whether a WearLink phone session is currently live. */
     suspend fun probe(context: Context): WearDeviceCapabilities {
         val base = probeHandlers(context)
-        val reachable = runCatching {
-            Wearable.getNodeClient(context).connectedNodes.awaitTask().isNotEmpty()
-        }.getOrDefault(false)
+        val reachable = runCatching { WearLinkBridge.isConnected(context) }.getOrDefault(false)
         return base.copy(phoneReachable = reachable)
     }
 

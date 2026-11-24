@@ -22,7 +22,7 @@ android {
 dependencies {
     // VCF export/import now uses java.io BufferedReader/Writer – no okio needed
     implementation(libs.libphonenumber)
+    implementation(project(":library:wearlink"))
     implementation(libs.androidx.work.runtime.ktx)
     // Wear OS companion (:contacts-wear, same applicationId + signing): Data Layer sync.
-    implementation(libs.play.services.wearable)
 }

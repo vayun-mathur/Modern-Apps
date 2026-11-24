@@ -42,6 +42,7 @@ class MainActivity : MaActivity() {
     private val pendingDate = mutableStateOf<LocalDate?>(null)
 
     override fun onCreateBeforeContent() {
+        com.vayunmathur.library.wearlink.WearLinkPermissions.requestIfNeeded(this)
         updateWidgetPreviews(CalendarGlanceWidgetReceiver::class)
         handleIntent(intent)
     }

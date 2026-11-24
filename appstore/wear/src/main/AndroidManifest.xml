@@ -38,26 +38,9 @@
             </intent-filter>
         </activity>
 
-        <!-- Receives catalog/data updates, APK offers and APK channels from
-             the phone, including while the UI is not running. -->
-        <service
-            android:name=".service.WearDataListenerService"
-            android:exported="true">
-            <!-- Filtered listeners (not BIND_LISTENER): only this app's own
-                 /appstore/ paths wake the service. -->
-            <intent-filter>
-                <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" />
-                <data android:host="*" android:pathPrefix="/appstore/" android:scheme="wear" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
-                <data android:host="*" android:pathPrefix="/appstore/" android:scheme="wear" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="com.google.android.gms.wearable.CHANNEL_EVENT" />
-                <data android:host="*" android:pathPrefix="/appstore/" android:scheme="wear" />
-            </intent-filter>
-        </service>
+        <!-- WearLink (RFCOMM) delivery is bound to the app process: the
+             node starts with the activity above. No system listener service
+             (that was a Play-services mechanism) wakes a dead process. -->
 
         <receiver
             android:name=".platform.InstallResultReceiver"

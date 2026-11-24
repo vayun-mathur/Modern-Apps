@@ -86,6 +86,7 @@ class MainActivity : MaActivity() {
     }
 
     override fun onCreateBeforeContent() {
+        com.vayunmathur.library.wearlink.WearLinkPermissions.requestIfNeeded(this)
         handleIntent(intent)
     }
 

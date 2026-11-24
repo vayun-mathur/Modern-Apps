@@ -28,8 +28,8 @@ android {
 }
 
 dependencies {
-    implementation(libs.play.services.wearable)
     implementation(libs.kotlinx.coroutines.android)
+    implementation(project(":library:wearlink"))
     implementation(libs.androidx.navigation3.runtime)
     implementation(libs.androidx.navigation3.ui)
     testImplementation(libs.kotlin.test)

@@ -1,40 +1,28 @@
 package com.vayunmathur.contacts.sync
 
 import android.content.Context
-import com.google.android.gms.tasks.Task
-import com.google.android.gms.wearable.CapabilityClient
-import com.google.android.gms.wearable.CapabilityInfo
-import com.google.android.gms.wearable.DataClient
-import com.google.android.gms.wearable.DataEvent
-import com.google.android.gms.wearable.DataEventBuffer
-import com.google.android.gms.wearable.DataMapItem
-import com.google.android.gms.wearable.PutDataMapRequest
-import com.google.android.gms.wearable.Wearable
+import android.content.Intent
+import android.net.Uri
 import com.vayunmathur.contacts.data.Contact
 import com.vayunmathur.contacts.domain.WearContactsManifest
 import com.vayunmathur.contacts.domain.WearContactsProtocol
+import com.vayunmathur.contacts.domain.WearHandoffRequest
 import com.vayunmathur.contacts.domain.WearPresence
 import com.vayunmathur.contacts.domain.WearPresencePolicy
 import com.vayunmathur.contacts.domain.WearSnapshotBuilder
 import com.vayunmathur.contacts.domain.WearWatchState
 import com.vayunmathur.contacts.domain.WearContact
 import com.vayunmathur.library.log.Log
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
+import com.vayunmathur.library.wearlink.WearLinkListener
+import com.vayunmathur.library.wearlink.WearLinkNode
+import com.vayunmathur.library.wearlink.WearLinkState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.serialization.encodeToString
-
-/** Await a Play services [Task] without a coroutines-play-services dependency. */
-private suspend fun <T> Task<T>.awaitTask(): T = suspendCancellableCoroutine { cont ->
-    addOnSuccessListener { cont.resume(it) }
-    addOnFailureListener { cont.resumeWithException(it) }
-}
 
 /** Maps the provider model onto the watch row: names/phones/emails only, no photos. */
 fun Contact.toWearContact(): WearContact = WearContact(
@@ -47,7 +35,7 @@ fun Contact.toWearContact(): WearContact = WearContact(
     isFavorite = isFavorite,
 )
 
-/** Loads the full book (provider + SIM) for a republish, e.g. from the listener service. */
+/** Loads the full book (provider + SIM) for a republish, e.g. after a watch request. */
 fun loadWearContacts(context: Context): List<WearContact> {
     val device = runCatching { Contact.getAllContacts(context) }.getOrDefault(emptyList())
     val sim = runCatching {
@@ -58,81 +46,74 @@ fun loadWearContacts(context: Context): List<WearContact> {
 }
 
 /**
- * Phone side of the contacts wear sync: capability discovery, chunked snapshot
- * publish, and the watch-state status the Settings screen shows.
+ * Phone side of the contacts wear sync over WearLink (RFCOMM,
+ * :library:wearlink): presence is a completed handshake, the snapshot is a
+ * chunked data item (generation/manifest discipline retained in the payload
+ * protocol), watch state is a data item, and request/handoff are messages
+ * handled here while this process lives.
  *
- * Every Wearable call is wrapped so that "no Play services / no watch / watch
- * without Contacts" is a normal state ([WearPresence.NO_WATCH]), never a crash.
- * The Data Layer only connects the two apps because they share the package name
- * `com.vayunmathur.contacts` and a signing certificate — dev builds on both
- * sides use the debug key, release builds on both sides use the same release key.
+ * "No Bluetooth permission / no watch / watch without Contacts" is a normal
+ * state ([WearPresence.NO_WATCH]), never a crash. There is no Play-services
+ * listener service any more: watch-originated requests arriving while the
+ * phone app is dead wait until it next runs and reconnects.
  */
 class WearContactsSync(
     private val context: Context,
     private val scope: CoroutineScope,
-) : CapabilityClient.OnCapabilityChangedListener, DataClient.OnDataChangedListener {
-
+) {
     companion object {
         private const val TAG = "WearContactsSync"
-        private const val KEY_JSON = "json"
-        private const val KEY_SENT_AT = "sent_at"
     }
 
     private val _presence = MutableStateFlow(WearPresence.NO_WATCH)
-
-    /** Whether a contacts-capable watch is reachable / synced. */
     val presence: StateFlow<WearPresence> = _presence.asStateFlow()
 
     private val _watchState = MutableStateFlow<WearWatchState?>(null)
-
-    /** Last state the watch published, or null when it never has. */
     val watchState: StateFlow<WearWatchState?> = _watchState.asStateFlow()
 
     private val _lastManifest = MutableStateFlow<WearContactsManifest?>(null)
-
-    /** The manifest most recently published by this phone, for the status line. */
     val lastManifest: StateFlow<WearContactsManifest?> = _lastManifest.asStateFlow()
 
     @Volatile
-    private var watchNodeCount = 0
+    private var watchConnected = false
+
+    private val listener = object : WearLinkListener {
+        override fun onData(path: String, body: ByteArray) {
+            if (path != WearContactsProtocol.WATCH_STATE_PATH) return
+            _watchState.value = runCatching {
+                WearContactsProtocol.json.decodeFromString<WearWatchState>(body.decodeToString())
+            }.getOrNull() ?: return
+            refreshPresence()
+        }
+
+        override fun onMessage(path: String, body: ByteArray) {
+            when (path) {
+                WearContactsProtocol.REQUEST_SNAPSHOT_PATH -> republish()
+                WearContactsProtocol.HANDOFF_PATH -> handleHandoff(body)
+            }
+        }
+    }
+
+    private val node = WearLinkNode(context, WearContactsProtocol.CAPABILITY, listener)
 
     private var started = false
 
-    /** Begin capability + watch-state listening; no-op when already started/unavailable. */
     fun start() {
         if (started) return
         started = true
-        runCatching {
-            Wearable.getCapabilityClient(context)
-                .addListener(this, WearContactsProtocol.CAPABILITY)
-            Wearable.getDataClient(context).addListener(this)
-        }.onFailure { Log.status(TAG, "Wearable listeners unavailable: ${it.message}") }
-        scope.launch { refreshCapability() }
-    }
-
-    override fun onCapabilityChanged(capabilityInfo: CapabilityInfo) {
-        updateNodes(capabilityInfo.nodes.size)
-    }
-
-    override fun onDataChanged(dataEvents: DataEventBuffer) {
-        for (event in dataEvents) {
-            if (event.type != DataEvent.TYPE_CHANGED) continue
-            val item = event.dataItem
-            if (item.uri.path != WearContactsProtocol.WATCH_STATE_PATH) continue
-            val json = runCatching {
-                DataMapItem.fromDataItem(item).dataMap.getString(KEY_JSON)
-            }.getOrNull() ?: continue
-            _watchState.value = runCatching {
-                WearContactsProtocol.json.decodeFromString<WearWatchState>(json)
-            }.getOrNull() ?: continue
-            refreshPresence()
+        scope.launch {
+            node.state.collect { linkState ->
+                watchConnected = linkState is WearLinkState.Connected
+                refreshPresence()
+            }
         }
+        node.start()
     }
 
     /** Publish the current address book as a capped, chunked snapshot. */
     fun publish(contacts: List<Contact>) = publishWearContacts(contacts.map { it.toWearContact() })
 
-    /** Publish already-mapped watch rows (the listener service's republish path). */
+    /** Publish already-mapped watch rows (the watch-request republish path). */
     fun publishWearContacts(rows: List<WearContact>) {
         val selected = WearSnapshotBuilder.select(rows)
         val generation = System.currentTimeMillis()
@@ -146,79 +127,55 @@ class WearContactsSync(
         )
         _lastManifest.value = manifest
         scope.launch(Dispatchers.IO) {
-            runCatching {
-                val dataClient = Wearable.getDataClient(context)
-                // Chunks first, manifest last: the watch only applies a snapshot
-                // once the manifest announcing its chunk count has arrived.
-                for (chunk in chunks) {
-                    val request = PutDataMapRequest
-                        .create(WearContactsProtocol.chunkPath(chunk.index))
-                        .apply {
-                            dataMap.putString(
-                                KEY_JSON,
-                                WearContactsProtocol.json.encodeToString(chunk),
-                            )
-                            dataMap.putLong(KEY_SENT_AT, generation)
-                        }
-                        .asPutDataRequest().setUrgent()
-                    dataClient.putDataItem(request).awaitTask()
-                }
-                val manifestRequest = PutDataMapRequest
-                    .create(WearContactsProtocol.MANIFEST_PATH)
-                    .apply {
-                        dataMap.putString(
-                            KEY_JSON,
-                            WearContactsProtocol.json.encodeToString(manifest),
-                        )
-                        dataMap.putLong(KEY_SENT_AT, generation)
-                    }
-                    .asPutDataRequest().setUrgent()
-                dataClient.putDataItem(manifestRequest).awaitTask()
-                // Drop stale chunk items past the new count so an older, larger
-                // generation cannot leak contacts into a later reassembly.
-                deleteStaleChunks(dataClient, chunks.size)
-            }.onFailure { Log.status(TAG, "snapshot publish failed: ${it.message}") }
-        }
-    }
-
-    private suspend fun deleteStaleChunks(dataClient: DataClient, newCount: Int) {
-        runCatching {
-            val items = dataClient.dataItems.awaitTask()
-            try {
-                for (item in items) {
-                    val index = item.uri.path?.let {
-                        WearContactsProtocol.chunkIndexFromPath(it)
-                    } ?: continue
-                    if (index >= newCount) {
-                        dataClient.deleteDataItems(item.uri).awaitTask()
-                    }
-                }
-            } finally {
-                items.release()
+            // Chunks first, manifest last — sent as one data item for the
+            // manifest and one per chunk path, preserving the watch-side
+            // reassembler's "apply only when the manifest's count is
+            // complete" rule over WearLink's generation-checked documents.
+            var allSent = true
+            for (chunk in chunks) {
+                val sent = node.putData(
+                    WearContactsProtocol.chunkPath(chunk.index),
+                    WearContactsProtocol.json.encodeToString(chunk).encodeToByteArray(),
+                )
+                allSent = allSent && sent
+            }
+            val manifestSent = node.putData(
+                WearContactsProtocol.MANIFEST_PATH,
+                WearContactsProtocol.json.encodeToString(manifest).encodeToByteArray(),
+            )
+            if (!allSent || !manifestSent) {
+                Log.status(TAG, "snapshot publish not fully delivered (no live WearLink session)")
             }
         }
     }
 
-    private suspend fun refreshCapability() {
-        runCatching {
-            val capability = Wearable.getCapabilityClient(context)
-                .getCapability(WearContactsProtocol.CAPABILITY, CapabilityClient.FILTER_REACHABLE)
-                .awaitTask()
-            updateNodes(capability.nodes.size)
-        }.onFailure {
-            watchNodeCount = 0
-            refreshPresence()
-            Log.status(TAG, "capability check unavailable: ${it.message}")
+    private fun republish() {
+        scope.launch(Dispatchers.IO) {
+            runCatching { publishWearContacts(loadWearContacts(context)) }
+                .onFailure { Log.status(TAG, "republish failed: ${it.message}") }
         }
     }
 
-    private fun updateNodes(count: Int) {
-        watchNodeCount = count
-        refreshPresence()
+    private fun handleHandoff(data: ByteArray) {
+        val request = runCatching {
+            WearContactsProtocol.json.decodeFromString<WearHandoffRequest>(data.decodeToString())
+        }.getOrNull() ?: return
+        val intent = when (request.kind) {
+            WearHandoffRequest.KIND_CALL ->
+                Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", request.value, null))
+            WearHandoffRequest.KIND_MESSAGE ->
+                Intent(Intent.ACTION_SENDTO, Uri.fromParts("smsto", request.value, null))
+            else -> return
+        }
+        runCatching {
+            context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        }.onFailure { Log.status(TAG, "handoff failed: ${it.message}") }
     }
 
     private fun refreshPresence() {
-        _presence.value = WearPresencePolicy.presence(watchNodeCount, _watchState.value)
+        _presence.value = WearPresencePolicy.presence(
+            if (watchConnected) 1 else 0, _watchState.value,
+        )
     }
 
     /** One-line status for the Settings screen, from the same policy the tests pin. */

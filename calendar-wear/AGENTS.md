@@ -8,11 +8,11 @@
 - Entry file: ui/WearMainActivity.kt
 
 ## Why this module exists (read before changing identity)
-Wear OS companion of the phone Calendar (`:calendar`). The Wearable Data
-Layer only connects apps sharing a **package name and signing certificate**,
-so this module deliberately uses `applicationId = "com.vayunmathur.calendar"`
-(the phone app's) with the shared dev/release signing from the convention
-plugins. Changing either breaks phone<->watch sync silently. Bootstrap is a
+Wear OS companion of the phone Calendar (`:calendar`). This module
+deliberately uses `applicationId = "com.vayunmathur.calendar"` (the phone
+app's) with the shared dev/release signing from the convention plugins:
+WearLink's handshake token requires the same signing certificate on both
+sides, so changing either breaks phone<->watch sync. Bootstrap is a
 one-time ADB sideload of this APK onto the watch.
 
 ## Protocol
@@ -20,8 +20,9 @@ one-time ADB sideload of this APK onto the watch.
 depend on another app module). Change both copies together; each side's
 `WearCalendarProtocolTest` pins the same golden JSON.
 
-- Snapshot + watch-state sync: DataClient (`/calendar/snapshot`, `/calendar/watch-state`)
-- Sync request: MessageClient (`/calendar/request-sync`), watch -> phone only
+- Snapshot + watch-state sync: WearLink data items (`/calendar/snapshot`, `/calendar/watch-state`)
+- Sync request: WearLink message (`/calendar/request-sync`), watch -> phone only
+- Transport: :library:wearlink (RFCOMM, no Play services); app-lifecycle-bound
 
 ## What the watch can and cannot do
 Read-only. It renders today's agenda, upcoming events and event detail from

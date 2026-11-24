@@ -8,11 +8,11 @@
 - Entry file: ui/WearMainActivity.kt
 
 ## Why this module exists (read before changing identity)
-Wear OS companion of the phone App Store (`:appstore`). The Wearable Data
-Layer only connects apps sharing a **package name and signing certificate**,
-so this module deliberately uses `applicationId = "com.vayunmathur.appstore"`
-(the phone app's) with the shared dev/release signing from the convention
-plugins. Changing either breaks phone<->watch sync silently. Bootstrap is a
+Wear OS companion of the phone App Store (`:appstore`). This module
+deliberately uses `applicationId = "com.vayunmathur.appstore"` (the phone
+app's) with the shared dev/release signing from the convention plugins:
+WearLink's handshake token requires the same signing certificate on both
+sides, so changing either breaks phone<->watch sync. Bootstrap is a
 one-time ADB sideload of this APK onto the watch.
 
 ## Protocol
@@ -20,10 +20,12 @@ one-time ADB sideload of this APK onto the watch.
 (Gradle cannot depend on another app module). Change both copies together;
 each side's `WearSyncProtocolTest` pins the same golden JSON.
 
-- Catalog + watch-state sync: DataClient (`/appstore/catalog`, `/appstore/watch-state`)
-- Offers / install requests / results: MessageClient
-- APK bytes: ChannelClient (`/appstore/apk/<package>`), verified size+SHA-256
+- Catalog + watch-state sync: WearLink data items (`/appstore/catalog`, `/appstore/watch-state`)
+- Offers / install requests / results: WearLink messages
+- APK bytes: WearLink stream (`/appstore/apk/<package>`), verified size+SHA-256
   against the preceding offer before PackageInstaller ever sees them
+- Transport: :library:wearlink (RFCOMM, no Play services); delivery is
+  app-lifecycle-bound — no system listener wakes a dead process
 
 ## Install honesty
 A normal Wear OS app **cannot silently install**. Verified APKs wait in

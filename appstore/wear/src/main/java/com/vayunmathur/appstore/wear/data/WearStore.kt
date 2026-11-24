@@ -1,8 +1,6 @@
 package com.vayunmathur.appstore.wear.data
 
 import android.content.Context
-import com.google.android.gms.wearable.PutDataMapRequest
-import com.google.android.gms.wearable.Wearable
 import com.vayunmathur.appstore.wear.domain.ApkOffer
 import com.vayunmathur.appstore.wear.domain.WatchAppEntry
 import com.vayunmathur.appstore.wear.domain.WatchAppMachine
@@ -12,6 +10,7 @@ import com.vayunmathur.appstore.wear.domain.WatchState
 import com.vayunmathur.appstore.wear.domain.WearCatalog
 import com.vayunmathur.appstore.wear.domain.WearCatalogApp
 import com.vayunmathur.appstore.wear.domain.WearSyncProtocol
+import com.vayunmathur.appstore.wear.sync.WearLinkBridge
 import com.vayunmathur.library.log.Log
 import java.io.File
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,8 +41,6 @@ class WearStore private constructor(private val context: Context) {
     /** Holds singleton access. */
     companion object {
         private const val TAG = "WearStore"
-        private const val KEY_JSON = "json"
-        private const val KEY_SENT_AT = "sent_at"
 
         @Volatile
         private var instance: WearStore? = null
@@ -118,7 +115,7 @@ class WearStore private constructor(private val context: Context) {
             ?.sorted()
             ?: emptyList()
 
-    /** Replace the catalog snapshot (DataClient push from the phone). */
+    /** Replace the catalog snapshot (WearLink data item from the phone). */
     fun setCatalog(catalog: WearCatalog) {
         _catalog.value = catalog
         runCatching { catalogFile.writeText(WearSyncProtocol.json.encodeToString(catalog)) }
@@ -156,13 +153,10 @@ class WearStore private constructor(private val context: Context) {
         _requested.update { it + packageName }
     }
 
-    /**
-     * Publish this watch's truth to the phone ([WearSyncProtocol.WATCH_STATE_PATH])
-     * so the phone's per-app sync view can reconcile.
-     */
-    fun publishWatchState() {
+    /** This watch's truth, for the phone's per-app sync reconciliation. */
+    fun watchState(): WatchState {
         val packages = (_catalog.value.apps.map { it.packageName } + downloadedPackages()).distinct()
-        val state = WatchState(
+        return WatchState(
             packages.map { pkg ->
                 WatchAppEntry(
                     packageName = pkg,
@@ -173,13 +167,14 @@ class WearStore private constructor(private val context: Context) {
                 )
             },
         )
-        runCatching {
-            val request = PutDataMapRequest.create(WearSyncProtocol.WATCH_STATE_PATH).apply {
-                dataMap.putString(KEY_JSON, WearSyncProtocol.json.encodeToString(state))
-                dataMap.putLong(KEY_SENT_AT, System.currentTimeMillis())
-            }.asPutDataRequest().setUrgent()
-            Wearable.getDataClient(context).putDataItem(request)
-        }.onFailure { Log.status(TAG, "publish watch state failed: ${it.message}") }
+    }
+
+    /**
+     * Publish [watchState] to the phone ([WearSyncProtocol.WATCH_STATE_PATH])
+     * over WearLink; a no-op delivery-wise when no session is live.
+     */
+    fun publishWatchState() {
+        WearLinkBridge.publishWatchState(context)
     }
 
     private fun downloadedVersionOf(packageName: String): Long =

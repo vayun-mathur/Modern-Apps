@@ -6,8 +6,7 @@ import kotlinx.serialization.json.Json
 /**
  * Phone <-> watch contacts protocol.
  *
- * SINGLE SOURCE OF TRUTH, DELIBERATELY DUPLICATED: the Wearable Data Layer only
- * connects apps sharing package name + signing certificate, but Gradle cannot let
+ * SINGLE SOURCE OF TRUTH, DELIBERATELY DUPLICATED: Gradle cannot let
  * one application module depend on another, so `:contacts-wear`
  * (applicationId `com.vayunmathur.contacts`, same debug/release signing as the
  * phone app) carries a byte-identical copy under
@@ -19,27 +18,28 @@ import kotlinx.serialization.json.Json
  * contacts (favourites first, then A-Z), at most 3 phones + 3 emails each, with
  * every field truncated. The manifest says how many contacts exist vs how many
  * were sent, so the watch can show "1,000 of 4,213 contacts" instead of
- * pretending the rest do not exist. Each chunk is one DataItem whose JSON stays
- * well under the Data Layer's 100 KB per-item ceiling; chunks arrive in any
- * order and are only applied once the manifest's chunk count is complete.
+ * pretending the rest do not exist. Each chunk is one WearLink data item
+ * (transport-chunked again underneath by :library:wearlink); chunks arrive
+ * in any order and are only applied once the manifest's chunk count is
+ * complete.
  */
 object WearContactsProtocol {
-    /** Capability the wear app advertises (res `android_wear_capabilities`). */
+    /** WearLink appId the phone requires in the peer handshake. */
     const val CAPABILITY = "contacts_wear_companion"
 
-    /** DataClient manifest path for the current snapshot generation. */
+    /** Data-item manifest path for the current snapshot generation. */
     const val MANIFEST_PATH = "/contacts/snapshot/manifest"
 
-    /** DataClient prefix for chunk paths: [chunkPath] appends the chunk index. */
+    /** Data-item prefix for chunk paths: [chunkPath] appends the chunk index. */
     const val CHUNK_PREFIX = "/contacts/snapshot/chunk/"
 
-    /** DataClient path (watch -> phone): the watch's received-state snapshot. */
+    /** Data-item path (watch -> phone): the watch's received-state snapshot. */
     const val WATCH_STATE_PATH = "/contacts/watch-state"
 
-    /** MessageClient path (watch -> phone): republish the snapshot. */
+    /** Message path (watch -> phone): republish the snapshot. */
     const val REQUEST_SNAPSHOT_PATH = "/contacts/request-snapshot"
 
-    /** MessageClient path (watch -> phone): start this call/message on the phone. */
+    /** Message path (watch -> phone): start this call/message on the phone. */
     const val HANDOFF_PATH = "/contacts/handoff"
 
     /** Hard cap on contacts ever sent to the watch. */
@@ -54,7 +54,7 @@ object WearContactsProtocol {
     const val MAX_PHONE_CHARS = 40
     const val MAX_EMAIL_CHARS = 80
 
-    /** Target ceiling for one chunk's JSON bytes (DataItem limit is 100 KB). */
+    /** Target ceiling for one chunk's JSON bytes (kept near the old 100 KB item cap). */
     const val MAX_CHUNK_BYTES = 50_000
 
     /** Chunk path for chunk [index] of the current generation. */
@@ -81,7 +81,7 @@ data class WearContact(
     val isFavorite: Boolean = false,
 )
 
-/** One DataItem's payload: chunk [index] of generation [generation]. */
+/** One data item's payload: chunk [index] of generation [generation]. */
 @Serializable
 data class WearContactsChunk(
     val generation: Long,
@@ -89,7 +89,7 @@ data class WearContactsChunk(
     val contacts: List<WearContact> = emptyList(),
 )
 
-/** The manifest DataItem: what a complete snapshot looks like. */
+/** The manifest data item: what a complete snapshot looks like. */
 @Serializable
 data class WearContactsManifest(
     val generation: Long,
@@ -293,7 +293,7 @@ object WearActionPolicy {
 
 /** Phone-side presence of the watch companion, as the phone UI reports it. */
 enum class WearPresence {
-    /** No reachable node advertises the wear capability (or no Data Layer). */
+    /** No reachable node advertises the wear capability (or no WearLink session). */
     NO_WATCH,
 
     /** A watch advertises the capability but has not published state yet. */
