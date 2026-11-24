@@ -20,4 +20,8 @@ dependencies {
     implementation(project(":library:widgets"))
     implementRoom(libs)
     implementation(project(":library:room"))
+    // Phone side of the Wear OS sync (sync/WearClockSync): snapshot publish to
+    // :clock:wear, which shares this app's applicationId and signing.
+    implementation(project(":library:wearlink"))
+    implementation(libs.kotlinx.coroutines.android)
 }

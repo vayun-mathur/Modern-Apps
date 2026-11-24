@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Clock</string>
+    <string name="wear_world_clock">World clock</string>
+    <string name="wear_alarms">Alarms</string>
+    <string name="wear_timers">Timers</string>
+    <string name="wear_stopwatch">Stopwatch</string>
+    <string name="wear_back">Back</string>
+    <string name="wear_world_empty">No world clocks synced yet. Open Clock on your phone to sync this watch.</string>
+    <string name="wear_alarms_empty">No alarms synced yet. Open Clock on your phone to sync this watch.</string>
+    <string name="wear_alarm_gone">This alarm is no longer in the synced list.</string>
+    <string name="wear_armed">Armed on watch</string>
+    <string name="wear_armed_inexact">Armed (inexact)</string>
+    <string name="wear_armed_detail">Armed on this watch — it will ring here.</string>
+    <string name="wear_armed_inexact_detail">Armed on this watch without exact-alarm access — it will ring here, possibly a little late.</string>
+    <string name="wear_display_only">Display only</string>
+    <string name="wear_not_armed_detail">Display only — not armed on this watch yet, so it will not ring here.</string>
+    <string name="wear_arm_failed_detail">Display only — this watch could not arm it, so it will not ring here.</string>
+    <string name="wear_alarm_off">Off on phone</string>
+    <string name="wear_next_ring">Next ring: %1$s</string>
+    <string name="wear_rearm">Arm on watch</string>
+    <string name="wear_exact_settings">Exact alarm access</string>
+    <string name="wear_request_sync">Sync now</string>
+    <string name="wear_timer_presets">Start a timer</string>
+    <string name="wear_timer_schedule_failed">Could not schedule that timer on this watch — it is not running.</string>
+    <string name="wear_timer_finished">Finished</string>
+    <string name="wear_paused">Paused</string>
+    <string name="wear_pause">Tap to pause</string>
+    <string name="wear_resume">Tap to resume</string>
+    <string name="wear_delete">Delete</string>
+    <string name="wear_start">Start</string>
+    <string name="wear_lap">Lap</string>
+    <string name="wear_reset">Reset</string>
+    <string name="wear_ringing_alarm">Alarm</string>
+    <string name="wear_ringing_timer">Timer finished</string>
+    <string name="wear_snooze">Snooze %1$d min</string>
+    <string name="wear_dismiss">Dismiss</string>
+</resources>

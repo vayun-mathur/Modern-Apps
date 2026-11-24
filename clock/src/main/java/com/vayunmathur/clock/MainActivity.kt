@@ -32,6 +32,11 @@ class MainActivity : MaActivity() {
         createNotificationChannels(this)
         ds = DataStoreUtils.getInstance(this)
         initialRoute = clockViewModel.handleIncomingIntent(intent)
+        // Wear OS companion sync over WearLink (no Play services). Delivery
+        // is app-lifecycle-bound: starting here (re)publishes the alarm /
+        // world-clock snapshot whenever a watch session connects.
+        com.vayunmathur.library.wearlink.WearLinkPermissions.requestIfNeeded(this)
+        com.vayunmathur.clock.sync.WearClockSync.get(this).start()
     }
 
     @Composable
