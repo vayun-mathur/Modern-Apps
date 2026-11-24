@@ -102,6 +102,8 @@ fun LocationsPage(
         )
     }
 
+    val wearState by viewModel.wearSyncState.collectAsState()
+    val wearStatusText = if (wearState.companionPresent) "Watch: connected" + (wearState.lastPublishedAtMillis?.let { " · synced" } ?: "") else "Watch: not connected — showing phone weather only"
     LocationsScreen(
         state = LocationsUiState(
             hasLoaded = savedLocations != null,
@@ -114,6 +116,7 @@ fun LocationsPage(
         onClose = onClose,
         onSearchLocation = { backStack.add(Route.SearchLocation) },
         onUseDeviceLocation = onAddCurrentLocation,
+        wearStatusText = wearStatusText,
     )
 }
 

@@ -92,6 +92,7 @@ dependencies {
     implementation(project(":library:widgets"))
     implementation(libs.androidx.datastore.preferences)
     implementation(project(":library:map"))
+    implementation(project(":library:wearlink"))
     implementRoom(libs)
     implementation(project(":library:room"))
 

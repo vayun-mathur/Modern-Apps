@@ -55,6 +55,8 @@ class WeatherViewModel(
     },
 ) : AndroidViewModel(application), WeatherActions {
 
+    val wearSyncState = com.vayunmathur.weather.sync.WearWeatherSync.get(application).state
+    fun syncWearNow() = com.vayunmathur.weather.sync.WearWeatherSync.get(getApplication()).syncNow()
     val savedLocations: StateFlow<List<SavedLocation>?> = repository.locations
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
@@ -95,6 +97,7 @@ class WeatherViewModel(
 
     init {
         WeatherRefreshWorker.scheduleHourlyRefresh(application)
+        com.vayunmathur.weather.sync.WearWeatherSync.get(application).start()
     }
 
     fun ensureForecast(location: SavedLocation, force: Boolean = false) {
@@ -197,6 +200,7 @@ class WeatherViewModel(
                     ))
                 }
                 runCatching { WeatherGlanceWidget().updateAll(getApplication<Application>()) }
+                com.vayunmathur.weather.sync.WearWeatherSync.get(getApplication<Application>()).onForecastRefreshed()
             }
             .onFailure { e ->
                 _forecasts.update { current ->

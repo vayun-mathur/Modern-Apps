@@ -22,6 +22,7 @@ class MainActivity : MaActivity() {
     }
 
     override fun onCreateBeforeContent() {
+        com.vayunmathur.library.wearlink.WearLinkPermissions.requestIfNeeded(this)
         // FIRST_PARTY covers api.maproj.org (self-hosted weather bundle
         // fallback and tiles proxy) and static.maproj.org (static weather
         // tiles, R2 custom domain on the same Cloudflare roots); place

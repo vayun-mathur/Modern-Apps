@@ -79,6 +79,7 @@ fun LocationsScreen(
     onClose: () -> Unit = {},
     onSearchLocation: () -> Unit = {},
     onUseDeviceLocation: () -> Unit = {},
+    wearStatusText: String? = null,
 ) {
     var longPressedLocation: SavedLocation? by remember { mutableStateOf(null) }
     val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden, enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded))
@@ -154,6 +155,7 @@ fun LocationsScreen(
             }
         },
     ) {
+        if (wearStatusText != null) { item { Text(wearStatusText, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(horizontal = 4.dp)) } }
         val showDeviceLocationCard = localData.none { it.location.isCurrent }
         if (showDeviceLocationCard) {
             item {

@@ -44,6 +44,7 @@ class WeatherRefreshWorker(
                     Log.status(TAG, "Failed to refresh weather for ${location.name}: ${e.message}")
                 }
             }
+            com.vayunmathur.weather.sync.WearWeatherSync.get(context).onForecastRefreshed()
             WeatherGlanceWidget().updateAll(context)
             WeatherBlobGlanceWidget().updateAll(context)
             Result.success()

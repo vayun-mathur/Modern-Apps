@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+<string name="app_name">Weather</string>
+<string name="wear_empty">No weather synced yet. Open Weather on your phone to sync this watch.</string>
+<string name="wear_locations">Locations</string>
+<string name="wear_hourly">Next hours</string>
+<string name="wear_daily">Outlook</string>
+<string name="wear_request_sync">Sync now</string>
+<string name="wear_sync_requested">Asked your phone for fresh weather</string>
+<string name="wear_no_phone">Phone not reachable — showing last synced weather</string>
+<string name="wear_truncated">Showing primary locations only</string>
+<string name="wear_back">Back</string>
+</resources>
