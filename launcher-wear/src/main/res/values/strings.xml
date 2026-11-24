@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Launcher</string>
+    <string name="wear_favorites">Favorites</string>
+    <string name="wear_recent">Recent</string>
+    <string name="wear_our_apps">Our apps</string>
+    <string name="wear_all_apps">All apps</string>
+    <string name="wear_settings">Settings</string>
+    <string name="wear_search_apps">Search apps</string>
+    <string name="wear_no_apps">No launchable apps found on this watch yet.</string>
+    <string name="wear_no_matches">No matches</string>
+    <string name="wear_no_favorites">No phone favorites synced yet. Open Launcher on your phone to sync.</string>
+    <string name="wear_missing_favorite">Not installed on this watch: %1$s</string>
+    <string name="wear_request_sync">Sync favorites</string>
+    <string name="wear_sync_requested">Asked your phone for favorites</string>
+    <string name="wear_no_phone">Phone not reachable — showing the last synced favorites</string>
+    <string name="wear_settings_unavailable">No system settings screen is available on this watch.</string>
+    <string name="wear_not_home_note">This is an app, not the watch home screen — stock Wear OS keeps home for the system launcher.</string>
+    <string name="wear_back">Back</string>
+</resources>

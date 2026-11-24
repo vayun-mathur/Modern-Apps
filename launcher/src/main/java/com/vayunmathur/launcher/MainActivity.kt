@@ -85,6 +85,9 @@ class MainActivity : MaActivity(), ActivityBridge {
     override fun onCreateBeforeContent() {
         tvMode = isTvMode()
         viewModel.bridge = this
+        // Wear favorites sync (phone hotseat -> watch launcher). No-op state
+        // when there is no watch: absence is normal, never an error.
+        if (!tvMode) com.vayunmathur.launcher.sync.WearLauncherSync.get(this).start()
     }
 
     @Composable
@@ -122,6 +125,9 @@ class MainActivity : MaActivity(), ActivityBridge {
         // Cheap enough to redo every time we come back: an app may have been installed or
         // uninstalled while we were away without us being alive to hear the callback.
         viewModel.reconcileNowImpl()
+        // Republish the hotseat snapshot: layout edits since the last resume
+        // are exactly what the watch favorites row should reflect.
+        com.vayunmathur.launcher.sync.WearLauncherSync.get(this).syncNow()
     }
 
     override fun onStop() {

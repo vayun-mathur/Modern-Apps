@@ -28,6 +28,8 @@ android {
 dependencies {
     implementRoom(libs)
     implementation(project(":library:room"))
+    // Phone side of the watch-launcher favorites sync (see domain/WearLauncherProtocol.kt).
+    implementation(project(":library:wearlink"))
     implementation(libs.androidx.datastore.preferences)
     // Declared rather than relied on transitively: a launcher is mostly motion, so `Animatable`,
     // `animateBounds` and the animation specs are load-bearing here rather than incidental.

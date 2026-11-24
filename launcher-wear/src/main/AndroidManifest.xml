@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Watch hardware: this build only installs on Wear OS. -->
+    <uses-feature
+        android:name="android.hardware.type.watch"
+        android:required="true" />
+    <uses-feature
+        android:name="android.hardware.touchscreen"
+        android:required="false" />
+
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <!-- Package visibility for the app drawer (Android 11+). -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
+
+    <application
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher"
+        android:supportsRtl="true"
+        android:theme="@android:style/Theme.Material.NoActionBar">
+
+        <!-- Paired with the phone launcher, not a standalone watch app. -->
+        <meta-data
+            android:name="com.google.android.wearable.standalone"
+            android:value="false" />
+
+        <!--
+          Deliberately MAIN + LAUNCHER only, with NO CATEGORY_HOME:
+          on stock Wear OS the home/watch-face + system-launcher role is
+          held by the privileged system launcher and there is no public
+          HOME-intent election or ROLE_HOME grant for third-party apps
+          (unlike phone/TV). Claiming HOME here would be a false promise.
+          This activity is the launcher-style app users open (and can pin
+          in the system launcher); on MAOS a privileged build could grant
+          a real HOME role as an OS-side follow-up. See AGENTS.md.
+        -->
+        <activity
+            android:name=".ui.WearMainActivity"
+            android:exported="true"
+            android:taskAffinity="">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
