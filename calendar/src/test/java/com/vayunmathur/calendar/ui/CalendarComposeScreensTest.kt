@@ -6,6 +6,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.test.performClick
@@ -186,12 +188,8 @@ class CalendarComposeScreensTest {
         rule.onNodeWithText("Export .ics file").performClick()
         assertEquals(1, actions.exp)
         // Calendars sit below the fold in the lazy list: swipe until they compose, then select one.
-        repeat(8) {
-            if (rule.onAllNodesWithText("PersonalCal").fetchSemanticsNodes().isEmpty()) {
-                rule.onNode(hasScrollAction()).performTouchInput { swipeUp() }
-                rule.waitForIdle()
-            }
-        }
+        rule.onNode(hasScrollAction()).performScrollToNode(hasText("PersonalCal"))
+        rule.waitForIdle()
         rule.onNodeWithText("PersonalCal").assertIsDisplayed()
         rule.onNodeWithText("WorkCal").assertIsDisplayed()
         rule.onNodeWithText("PersonalCal").performClick()

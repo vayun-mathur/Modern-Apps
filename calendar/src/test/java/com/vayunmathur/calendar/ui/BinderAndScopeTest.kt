@@ -12,6 +12,8 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.test.performTextReplacement
@@ -148,12 +150,8 @@ class BinderAndScopeTest {
         assertEquals(Route.Settings.HolidayCalendars, stack.backStack.last())
         stack.pop()
         // Selecting a calendar reveals top-bar actions; rename goes through the binder.
-        repeat(8) {
-            if (rule.onAllNodesWithText("PersonalCal").fetchSemanticsNodes().isEmpty()) {
-                rule.onNode(hasScrollAction()).performTouchInput { swipeUp() }
-                rule.waitForIdle()
-            }
-        }
+        rule.onNode(hasScrollAction()).performScrollToNode(hasText("PersonalCal"))
+        rule.waitForIdle()
         rule.onNodeWithText("PersonalCal").performClick()
         rule.waitForIdle()
         rule.onNodeWithContentDescription("Edit").performClick()
@@ -167,12 +165,8 @@ class BinderAndScopeTest {
         rule.setContent { SettingsScreen(vm, stack) }
         rule.waitForIdle()
         // Swipe the lazy list down so calendar rows compose, then select one.
-        repeat(8) {
-            if (rule.onAllNodesWithText("PersonalCal").fetchSemanticsNodes().isEmpty()) {
-                rule.onNode(hasScrollAction()).performTouchInput { swipeUp() }
-                rule.waitForIdle()
-            }
-        }
+        rule.onNode(hasScrollAction()).performScrollToNode(hasText("PersonalCal"))
+        rule.waitForIdle()
         if (rule.onAllNodesWithText("PersonalCal").fetchSemanticsNodes().isNotEmpty()) {
             rule.onNodeWithText("PersonalCal").performClick()
             rule.waitForIdle()
