@@ -8,6 +8,7 @@ Monorepo: ~100 Gradle modules + Rust workspace. Do scoped work only.
 3. Expand only with one-line justification. Never root-recurse.
 4. Don't read `CONTRIBUTING.md` whole (26KB). Pull a section only on demand.
 5. Prefer 1 targeted read over 10 searches.
+6. **Keep `AGENTS.md` current (mandatory).** If your change adds, removes, renames, or alters anything a module's `AGENTS.md` documents — entry files, key files, architecture/data-flow, features, gotchas, verification commands, module purpose — update that module's `AGENTS.md` (and this root file, when the change is repo-wide: conventions, shared-module ownership, app index) **in the same change**. Facts that stopped being true (removed deps, renamed files, dead behavior) must be corrected or deleted, not left standing. A change that makes an `AGENTS.md` claim false is incomplete. Conversely, don't churn `AGENTS.md` prose for changes it doesn't document.
 
 ### How to pick scope
 | Task | Scope |
