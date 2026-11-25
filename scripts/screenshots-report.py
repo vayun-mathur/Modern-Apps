@@ -143,6 +143,9 @@ def main():
     host_header = os.environ.get("SCREENSHOTS_HOST", "")
     def req(method, url, data=None, ctype=None):
         r = urllib.request.Request(url, data=data, method=method)
+        # Cloudflare rejects the default Python-urllib user agent (403);
+        # identify as the screenshots producer instead.
+        r.add_header("User-Agent", "screenshots-report/1.0")
         if host_header:
             r.add_header("Host", host_header)
         if ctype:
