@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Music</string>
+    <string name="wear_empty">Nothing synced yet. Open Music on your phone to sync this watch.</string>
+    <string name="wear_no_phone">Phone not reachable — showing pages you already visited</string>
+    <string name="wear_load_more">Load more</string>
+    <string name="wear_play">Play</string>
+    <string name="wear_pause">Pause</string>
+    <string name="wear_next">Next</string>
+    <string name="wear_previous">Previous</string>
+    <string name="wear_shuffle">Shuffle</string>
+    <string name="wear_repeat">Repeat</string>
+    <string name="wear_queue">Queue</string>
+    <string name="wear_search">Search your library</string>
+    <string name="wear_now_playing">Now playing on your phone</string>
+</resources>

@@ -21,9 +21,11 @@ class MainActivity : MaActivity() {
 
     override fun onCreateBeforeContent() {
         pendingDeepLink = DeepLinks.parse(intent)
-        com.vayunmathur.library.wearlink.WearLinkPermissions.requestIfNeeded(this)
         // Wear companion sync lives and dies with this process (WearLink has
         // no system wakeup); the watch reads its cached snapshot offline.
+        // No permission request here: launch must not ask for any permission
+        // at startup, so WearLink simply reports PermissionMissing until
+        // BLUETOOTH_CONNECT is granted through system settings.
         com.vayunmathur.communicate.data.WearCommunicateSync.get(this).start()
     }
 

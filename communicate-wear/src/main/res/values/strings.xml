@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Communicate</string>
+    <string name="wear_empty">No conversations synced yet. Open Communicate on your phone to sync this watch.</string>
+    <string name="wear_calls">Calls</string>
+    <string name="wear_voicemail">Voicemail</string>
+    <string name="wear_request_sync">Sync now</string>
+    <string name="wear_sync_requested">Asked your phone for a fresh copy</string>
+    <string name="wear_no_phone">Phone not reachable — showing the last synced copy</string>
+    <string name="wear_pending">Waiting for your phone to confirm %1$d action(s)</string>
+    <string name="wear_truncated">Showing the most recent items; the rest stays on your phone</string>
+    <string name="wear_back">Back</string>
+    <string name="wear_reply">Reply</string>
+    <string name="wear_mark_read">Mark read</string>
+    <string name="wear_load_older">Load older messages</string>
+    <string name="wear_content_excluded">Content not shown here — disappearing messages stay on your phone</string>
+    <string name="wear_body_truncated">… (full text on your phone)</string>
+    <string name="wear_media_on_phone">View on your phone</string>
+    <string name="wear_reply_hint">Reply (tap the mic to dictate)</string>
+    <string name="wear_send">Send</string>
+    <string name="wear_unread">%1$d unread</string>
+    <string name="wear_listen_on_phone">Listen on your phone</string>
+    <string name="wear_call_on_phone">Call back from your phone</string>
+    <string name="wear_incoming_call">Incoming call</string>
+    <string name="wear_decline">Decline</string>
+    <string name="wear_answer_on_phone">Answer on your phone — answering here is not offered</string>
+    <string name="wear_new_message">New message</string>
+    <string name="wear_phone_only">Phone-only features</string>
+    <string name="wear_phone_only_body">Dialler, accounts and sign-in, calling setup, voicemail playback, photos and videos, and full settings stay on your phone.</string>
+</resources>
