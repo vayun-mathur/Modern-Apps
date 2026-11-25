@@ -39,6 +39,28 @@ fun WearAlarmsScreen(store: WearClockStore, onBack: () -> Unit, onOpenAlarm: (Lo
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val nowMillis = remember(persisted) { System.currentTimeMillis() }
+    WearAlarmsContent(
+        persisted = persisted,
+        nowMillis = nowMillis,
+        onRequestSync = { scope.launch { WearLinkBridge.requestSync(context) } },
+        onBack = onBack,
+        onOpenAlarm = onOpenAlarm,
+    )
+}
+
+/**
+ * Stateless alarms body behind [WearAlarmsScreen]: snapshot and instant are
+ * parameters, so Compose previews (src/screenshotTest) render literal fixtures
+ * at a fixed time with no store or phone.
+ */
+@Composable
+internal fun WearAlarmsContent(
+    persisted: com.vayunmathur.clock.wear.data.WearClockPersisted,
+    nowMillis: Long,
+    onRequestSync: () -> Unit,
+    onBack: () -> Unit,
+    onOpenAlarm: (Long) -> Unit,
+) {
     ScalingLazyColumn {
         item {
             Text(
@@ -70,7 +92,7 @@ fun WearAlarmsScreen(store: WearClockStore, onBack: () -> Unit, onOpenAlarm: (Lo
         }
         item {
             Chip(
-                onClick = { scope.launch { WearLinkBridge.requestSync(context) } },
+                onClick = onRequestSync,
                 label = { Text(stringResource(R.string.wear_request_sync), maxLines = 1) },
                 colors = ChipDefaults.secondaryChipColors(),
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),

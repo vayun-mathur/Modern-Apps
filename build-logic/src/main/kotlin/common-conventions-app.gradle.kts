@@ -649,13 +649,19 @@ providers.environmentVariable("SOURCE_DATE_EPOCH").orNull?.let {
 
 // Shared deterministic test-await helper: AGP's variant API adds the
 // shared Kotlin dir to every variant's unit-test component (the AGP 9
-// replacement for Android/Kotlin source-set wiring).
+// replacement for Android/Kotlin source-set wiring). Unit tests only: the
+// screenshotTest host component (Compose preview renders) shares the hostTests
+// map but not the unit-test classpath (no compose-ui-test-junit4, no
+// Robolectric), so adding the helper there breaks every preview-metadata
+// module's `compile*ScreenshotTestKotlin`.
 extensions.configure<com.android.build.api.variant.ApplicationAndroidComponentsExtension> {
     onVariants { variant ->
-        variant.hostTests.values.forEach { hostTest ->
-            hostTest.sources.kotlin?.addStaticSourceDirectory(
-                rootDir.resolve("build-logic/shared-test/java").absolutePath,
-            )
+        variant.hostTests.forEach { (name, hostTest) ->
+            if (name == "unitTest") {
+                hostTest.sources.kotlin?.addStaticSourceDirectory(
+                    rootDir.resolve("build-logic/shared-test/java").absolutePath,
+                )
+            }
         }
     }
 }

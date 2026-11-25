@@ -24,6 +24,26 @@ fun SavedScreen(
     onBack: () -> Unit,
 ) {
     val saved by viewModel.bookmarked.collectAsState()
+    SavedContent(
+        saved = saved,
+        onOpenArticle = onOpenArticle,
+        onToggleBookmark = viewModel::toggleBookmark,
+        onBack = onBack,
+    )
+}
+
+/**
+ * Stateless saved-articles body behind [SavedScreen]: every value is a parameter,
+ * so Compose previews (src/screenshotTest) render the real screen from literal
+ * fixtures with no ViewModel or database.
+ */
+@Composable
+internal fun SavedContent(
+    saved: List<com.vayunmathur.news.data.CachedArticle>,
+    onOpenArticle: (String) -> Unit,
+    onToggleBookmark: (com.vayunmathur.news.data.CachedArticle) -> Unit,
+    onBack: () -> Unit,
+) {
     AppScaffold(
         title = stringResource(R.string.saved_title),
         onNavigateBack = onBack,
@@ -40,7 +60,7 @@ fun SavedScreen(
                     ArticleRow(
                         article = article,
                         onClick = { onOpenArticle(article.url) },
-                        onToggleBookmark = { viewModel.toggleBookmark(article) },
+                        onToggleBookmark = { onToggleBookmark(article) },
                     )
                 }
             }

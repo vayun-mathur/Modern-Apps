@@ -1,10 +1,13 @@
 plugins {
     id("common-conventions-app")
-    // No metadata convention. The viewfinder is the screen, and Layoutlib cannot open a
-    // camera, so there is nothing a Compose preview could capture — with no SurfaceRequest
-    // the preview falls back to a black Box. The listing images are hand-captured and
-    // committed under metadata_data/photos/camera/phone/, which the release build
-    // picks up into graphics/phone-screenshots.
+    // Listing images are hybrid. The viewfinder is the screen, and Layoutlib cannot
+    // open a camera, so the phone images are hand-captured on a real device and
+    // committed under metadata_data/photos/camera/phone/ (the release build picks
+    // them up into graphics/phone-screenshots). The wide *controls* layout is real
+    // preview-renderable UI, so src/screenshotTest captures it at expanded width
+    // into the large-tablet bucket; the collect task only replaces buckets a run
+    // rendered, so the hand-captured phone bucket survives `:camera:metadata`.
+    id("common-conventions-preview-metadata")
 }
 
 launcherIcon {

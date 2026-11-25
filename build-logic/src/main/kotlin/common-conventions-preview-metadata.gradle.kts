@@ -82,11 +82,19 @@ val previewSourcesDir = File(projectDir, "src/screenshotTest")
 // task just depended on; `reference/` accumulates across runs (and across plugin versions,
 // whose filename hashes differ), so it is only a fallback. Reading reference first would
 // publish stale duplicates alongside the fresh renders.
-val referenceDir = File(projectDir, "src/screenshotTestDev/reference")
+// The screenshot plugin names its source set, reference dir and output tree after the
+// module's test build type (`dev` for apps via common-conventions-app, `debug` — the
+// AGP default — for wear modules via common-conventions-wear). Read it here, after the
+// module's convention plugin has run, instead of hardcoding `dev`, so the same script
+// collects renders for both families.
+val screenshotVariant = the<ApplicationExtension>().testBuildType
+val screenshotVariantCap = screenshotVariant.replaceFirstChar { it.uppercase() }
+
+val referenceDir = File(projectDir, "src/screenshotTest$screenshotVariantCap/reference")
 // Lazily derived from the build directory provider: no .get() at
 // configuration time, so merely configuring the project creates no tasks.
 val renderedDir = layout.buildDirectory.map {
-    it.asFile.resolve("outputs/screenshotTest-results/preview/dev/rendered")
+    it.asFile.resolve("outputs/screenshotTest-results/preview/$screenshotVariant/rendered")
 }
 
 /**
@@ -107,6 +115,9 @@ abstract class CollectPreviewScreenshots : DefaultTask() {
     @get:Internal abstract val buckets: ListProperty<String>
 
     @get:Internal abstract val label: Property<String>
+
+    /** Bucket for previews that declare no `group` (wear modules default to `wear/`). */
+    @get:Internal abstract val defaultBucket: Property<String>
 
     @TaskAction
     fun run() {
@@ -137,20 +148,24 @@ abstract class CollectPreviewScreenshots : DefaultTask() {
         val groups = readPreviewGroups(previewSources.get(), label.get())
 
         val dest = destination.get()
-        dest.deleteRecursively()
         val valid = buckets.get().toSet()
-        images.groupBy { png -> groups[functionNameOf(png)] ?: "phone" }.forEach { (bucket, bucketImages) ->
+        images.groupBy { png -> groups[functionNameOf(png)] ?: defaultBucket.get() }.forEach { (bucket, bucketImages) ->
             require(bucket in valid) {
                 "Unknown screenshot bucket \"$bucket\" for ${label.get()} — expected one of ${valid.sorted().joinToString(", ")}"
             }
             val bucketDir = File(dest, bucket)
+            // Only the buckets this run rendered are replaced. A bucket with no
+            // previews this run (e.g. `camera`'s hand-captured `phone/` shots, which
+            // no preview can reproduce) is left untouched instead of being wiped
+            // along with the destination.
+            bucketDir.deleteRecursively()
             bucketDir.mkdirs()
             bucketImages.sortedBy { it.name }.forEachIndexed { index, png ->
                 png.copyTo(File(bucketDir, "${index + 1}.png"), overwrite = true)
             }
         }
         logger.lifecycle("Metadata screenshots: ${images.size} image(s) -> $dest")
-        images.forEach { f -> logger.lifecycle("  ${groups[functionNameOf(f)] ?: "phone"}/${f.name}") }
+        images.forEach { f -> logger.lifecycle("  ${groups[functionNameOf(f)] ?: defaultBucket.get()}/${f.name}") }
     }
 
     /** Rendered filenames look like `Preview1Keypad_1-keypad_<hash>_0.png` — the leading segment is the function name. */
@@ -208,6 +223,9 @@ tasks.register<CollectPreviewScreenshots>("metadata") {
     destination.set(screenshotsOut)
     previewSources.set(previewSourcesDir)
     buckets.set(screenshotBuckets)
+    // Wear modules file their captures under their own module key's `wear/` bucket
+    // (metadata_data/photos/<wear-module-key>/wear/), never the phone app's folder.
+    defaultBucket.set(if (path.contains("wear")) "wear" else "phone")
     label.set(path)
     // Cheap, and the whole point is to refresh the images on demand.
     outputs.upToDateWhen { false }

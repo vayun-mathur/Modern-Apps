@@ -8,7 +8,7 @@ _Install: ./install news_
 - Entry files: MainActivity.kt, Route.kt, Navigation.kt
 - Deps: :library:network, :library:room, :library:image
 - Metadata: metadata_data/news.md (present)
-- Rust: no / screenshotTest: no
+- Rust: no / screenshotTest: yes (phone + large-tablet)
 
 ## Overview
 **Purpose:** News reader. Primary feed is our server's `GET /news.json`

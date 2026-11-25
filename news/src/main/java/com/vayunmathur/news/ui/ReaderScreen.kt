@@ -50,6 +50,36 @@ fun ReaderScreen(viewModel: NewsViewModel, url: String, onBack: () -> Unit) {
     val textSp by viewModel.readerTextSp.collectAsState()
     val serif by viewModel.readerSerif.collectAsState()
     LaunchedEffect(url) { viewModel.openArticle(url) }
+    ReaderContent(
+        body = body,
+        error = error,
+        bookmarked = bookmarked,
+        textSp = textSp,
+        serif = serif,
+        onToggleBookmark = viewModel::toggleReaderBookmark,
+        onTextSp = viewModel::setReaderTextSp,
+        onSerif = viewModel::setReaderSerif,
+        onBack = onBack,
+    )
+}
+
+/**
+ * Stateless reader body behind [ReaderScreen]: every value is a parameter, so
+ * Compose previews (src/screenshotTest) render the real screen from a literal
+ * [com.vayunmathur.news.domain.ExtractedArticle] fixture.
+ */
+@Composable
+internal fun ReaderContent(
+    body: com.vayunmathur.news.domain.ExtractedArticle?,
+    error: Boolean,
+    bookmarked: Boolean,
+    textSp: Int,
+    serif: Boolean,
+    onToggleBookmark: () -> Unit,
+    onTextSp: (Int) -> Unit,
+    onSerif: (Boolean) -> Unit,
+    onBack: () -> Unit,
+) {
     AppScaffold(
         // No generic "Article" title: the article's own headline is in
         // the content, so the bar carries only back navigation (the
@@ -75,8 +105,8 @@ fun ReaderScreen(viewModel: NewsViewModel, url: String, onBack: () -> Unit) {
             }
             ReaderActionRow(
                 bookmarked = bookmarked, textSp = textSp, serif = serif,
-                onToggleBookmark = viewModel::toggleReaderBookmark,
-                onTextSp = viewModel::setReaderTextSp, onSerif = viewModel::setReaderSerif,
+                onToggleBookmark = onToggleBookmark,
+                onTextSp = onTextSp, onSerif = onSerif,
             )
             when {
                 error -> Text(stringResource(R.string.reader_loading_failed))

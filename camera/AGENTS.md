@@ -9,7 +9,7 @@ _Install: ./install camera (dev by default)._
 - Entry files: MainActivity.kt (no Route.kt — `Route` is inline, single-screen app)
 - Deps: :library:ml
 - Metadata: metadata_data/camera.md (present)
-- Rust: yes / screenshotTest: hand-committed
+- Rust: yes / screenshotTest: hybrid (phone hand-captured; wide controls preview-rendered)
 
 ## Overview
 **Purpose:** The most featureful open-source camera app — usable as the system camera and from the lockscreen. 100% offline.

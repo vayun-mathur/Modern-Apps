@@ -34,6 +34,15 @@ fun WearHomeScreen(onOpen: (WearRoute) -> Unit) {
             delay(1_000)
         }
     }
+    WearHomeContent(nowMillis = nowMillis, onOpen = onOpen)
+}
+
+/**
+ * Stateless home body behind [WearHomeScreen]: the instant is a parameter, so
+ * Compose previews (src/screenshotTest) render a fixed, reproducible time.
+ */
+@Composable
+internal fun WearHomeContent(nowMillis: Long, onOpen: (WearRoute) -> Unit) {
     val local = remember(nowMillis) {
         Instant.fromEpochMilliseconds(nowMillis)
             .toLocalDateTime(TimeZone.currentSystemDefault())

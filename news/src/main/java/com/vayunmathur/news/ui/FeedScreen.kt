@@ -25,9 +25,11 @@ import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.IconSettings
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.news.R
+import com.vayunmathur.news.data.CachedArticle
 import com.vayunmathur.news.domain.FeedSort
 import com.vayunmathur.news.domain.NewsCategory
 import com.vayunmathur.news.domain.SourceCatalog
+import com.vayunmathur.news.domain.Story
 import com.vayunmathur.news.platform.NewsViewModel
 
 /**
@@ -55,6 +57,52 @@ fun FeedScreen(
     val localLocation by viewModel.localLocation.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val searchStories by viewModel.searchStories.collectAsState()
+    FeedContent(
+        stories = stories,
+        searchStories = searchStories,
+        cachedByUrl = cachedByUrl,
+        isRefreshing = isRefreshing,
+        refreshFailed = refreshFailed,
+        categoryFilter = categoryFilter,
+        feedSort = feedSort,
+        localLocation = localLocation,
+        searchQuery = searchQuery,
+        onSearchQueryChange = viewModel::setSearchQuery,
+        onRefresh = viewModel::refresh,
+        onFeedSortChange = viewModel::setFeedSort,
+        onCategoryFilterChange = viewModel::setCategoryFilter,
+        onToggleBookmark = viewModel::toggleBookmark,
+        onOpenSaved = onOpenSaved,
+        onOpenStory = onOpenStory,
+        onOpenSettings = onOpenSettings,
+    )
+}
+
+/**
+ * Stateless feed body behind [FeedScreen]: every value is a parameter, so Compose
+ * previews (src/screenshotTest) render the real screen from literal fixtures with
+ * no ViewModel, database or network.
+ */
+@Composable
+internal fun FeedContent(
+    stories: List<Story>,
+    searchStories: List<Story>,
+    cachedByUrl: Map<String, CachedArticle>,
+    isRefreshing: Boolean,
+    refreshFailed: Boolean,
+    categoryFilter: NewsCategory?,
+    feedSort: FeedSort,
+    localLocation: String?,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    onRefresh: () -> Unit,
+    onFeedSortChange: (FeedSort) -> Unit,
+    onCategoryFilterChange: (NewsCategory?) -> Unit,
+    onToggleBookmark: (CachedArticle) -> Unit,
+    onOpenSaved: () -> Unit,
+    onOpenStory: (String) -> Unit,
+    onOpenSettings: () -> Unit,
+) {
     val searching = searchQuery.isNotBlank()
     val shownStories = if (searching) searchStories else stories
     AppScaffold(
@@ -64,11 +112,11 @@ fun FeedScreen(
         title = "",
         search = ScaffoldSearch(
             query = searchQuery,
-            onQueryChange = viewModel::setSearchQuery,
+            onQueryChange = onSearchQueryChange,
             placeholder = stringResource(R.string.feed_search_placeholder),
         ),
         isRefreshing = isRefreshing,
-        onRefresh = viewModel::refresh,
+        onRefresh = onRefresh,
         actions = {
             IconButton(onClick = onOpenSaved) { IconBookmark() }
             IconButton(onClick = onOpenSettings) { IconSettings() }
@@ -81,14 +129,14 @@ fun FeedScreen(
                 item {
                     FilterChip(
                         selected = feedSort == FeedSort.TOP,
-                        onClick = { viewModel.setFeedSort(FeedSort.TOP) },
+                        onClick = { onFeedSortChange(FeedSort.TOP) },
                         label = { Text(stringResource(R.string.feed_sort_top)) },
                     )
                 }
                 item {
                     FilterChip(
                         selected = feedSort == FeedSort.LATEST,
-                        onClick = { viewModel.setFeedSort(FeedSort.LATEST) },
+                        onClick = { onFeedSortChange(FeedSort.LATEST) },
                         label = { Text(stringResource(R.string.feed_sort_latest)) },
                         modifier = Modifier.padding(start = 8.dp),
                     )
@@ -102,7 +150,7 @@ fun FeedScreen(
                 item {
                     FilterChip(
                         selected = categoryFilter == null,
-                        onClick = { viewModel.setCategoryFilter(null) },
+                        onClick = { onCategoryFilterChange(null) },
                         label = { Text(stringResource(R.string.feed_all_categories)) },
                     )
                 }
@@ -118,7 +166,7 @@ fun FeedScreen(
                     }
                     FilterChip(
                         selected = categoryFilter == category,
-                        onClick = { viewModel.setCategoryFilter(category) },
+                        onClick = { onCategoryFilterChange(category) },
                         label = { Text(label) },
                         modifier = Modifier.padding(start = 8.dp),
                     )
@@ -153,7 +201,7 @@ fun FeedScreen(
                             bookmarked = representativeCached?.bookmarked == true,
                             onClick = { onOpenStory(story.id) },
                             onToggleBookmark = {
-                                if (representativeCached != null) viewModel.toggleBookmark(representativeCached)
+                                if (representativeCached != null) onToggleBookmark(representativeCached)
                             },
                         )
                     }
@@ -167,7 +215,7 @@ fun FeedScreen(
                             bookmarked = representativeCached?.bookmarked == true,
                             onClick = { onOpenStory(story.id) },
                             onToggleBookmark = {
-                                if (representativeCached != null) viewModel.toggleBookmark(representativeCached)
+                                if (representativeCached != null) onToggleBookmark(representativeCached)
                             },
                         )
                     }

@@ -131,6 +131,14 @@ configure<com.android.build.api.dsl.ApplicationExtension> {
             initWith(getByName("release"))
             isMinifyEnabled = false
             isShrinkResources = false
+            // Debuggable parity with common-conventions-app's `dev`: the Compose
+            // screenshot-test plugin (com.android.compose.screenshot, applied by
+            // common-conventions-preview-metadata) only registers its render tasks
+            // for a debuggable variant. Wear's test build type stays `debug` (the
+            // AGP default, debuggable already), so today's screenshot tasks are the
+            // `*DebugScreenshotTest` ones; this keeps `dev` equally capable if the
+            // test build type ever moves to it, and `dev` never ships.
+            isDebuggable = true
             matchingFallbacks += listOf("release")
         }
     }

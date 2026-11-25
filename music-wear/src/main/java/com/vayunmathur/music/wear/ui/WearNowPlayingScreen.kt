@@ -24,6 +24,20 @@ import com.vayunmathur.music.wear.domain.WearOpKind
 @Composable
 fun WearNowPlayingScreen(store: WearMusicStore, onRoute: (WearRoute) -> Unit) {
     val playback by store.playback.collectAsState()
+    WearNowPlayingContent(playback = playback, onOp = store::enqueueOp, onRoute = onRoute)
+}
+
+/**
+ * Stateless now-playing body behind [WearNowPlayingScreen]: playback state and the
+ * op sink are parameters, so Compose previews (src/screenshotTest) render a literal
+ * fixture with no store or phone.
+ */
+@Composable
+internal fun WearNowPlayingContent(
+    playback: com.vayunmathur.music.wear.domain.WearPlaybackState,
+    onOp: (WearMusicOp) -> Unit,
+    onRoute: (WearRoute) -> Unit,
+) {
     ScalingLazyColumn(state = rememberScalingLazyListState()) {
         item { WearTitle(stringResource(R.string.wear_now_playing)) }
         item {
@@ -58,7 +72,7 @@ fun WearNowPlayingScreen(store: WearMusicStore, onRoute: (WearRoute) -> Unit) {
             Chip(
                 label = { Text(stringResource(R.string.wear_seek_back), maxLines = 1) },
                 onClick = {
-                    store.enqueueOp(WearMusicOp(WearOpKind.SEEK, positionMs = (playback.positionMs - 30_000L).coerceAtLeast(0L)))
+                    onOp(WearMusicOp(WearOpKind.SEEK, positionMs = (playback.positionMs - 30_000L).coerceAtLeast(0L)))
                 },
                 colors = ChipDefaults.secondaryChipColors(),
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
@@ -68,7 +82,7 @@ fun WearNowPlayingScreen(store: WearMusicStore, onRoute: (WearRoute) -> Unit) {
             Chip(
                 label = { Text(stringResource(R.string.wear_seek_forward), maxLines = 1) },
                 onClick = {
-                    store.enqueueOp(WearMusicOp(WearOpKind.SEEK, positionMs = playback.positionMs + 30_000L))
+                    onOp(WearMusicOp(WearOpKind.SEEK, positionMs = playback.positionMs + 30_000L))
                 },
                 colors = ChipDefaults.secondaryChipColors(),
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
@@ -77,7 +91,7 @@ fun WearNowPlayingScreen(store: WearMusicStore, onRoute: (WearRoute) -> Unit) {
         item {
             Chip(
                 label = { Text(stringResource(R.string.wear_previous), maxLines = 1) },
-                onClick = { store.enqueueOp(WearMusicOp(WearOpKind.SKIP_PREVIOUS)) },
+                onClick = { onOp(WearMusicOp(WearOpKind.SKIP_PREVIOUS)) },
                 colors = ChipDefaults.secondaryChipColors(),
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
             )
@@ -90,7 +104,7 @@ fun WearNowPlayingScreen(store: WearMusicStore, onRoute: (WearRoute) -> Unit) {
                         maxLines = 1,
                     )
                 },
-                onClick = { store.enqueueOp(WearMusicOp(WearOpKind.TOGGLE_PLAY_PAUSE)) },
+                onClick = { onOp(WearMusicOp(WearOpKind.TOGGLE_PLAY_PAUSE)) },
                 colors = ChipDefaults.primaryChipColors(),
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
             )
@@ -98,7 +112,7 @@ fun WearNowPlayingScreen(store: WearMusicStore, onRoute: (WearRoute) -> Unit) {
         item {
             Chip(
                 label = { Text(stringResource(R.string.wear_next), maxLines = 1) },
-                onClick = { store.enqueueOp(WearMusicOp(WearOpKind.SKIP_NEXT)) },
+                onClick = { onOp(WearMusicOp(WearOpKind.SKIP_NEXT)) },
                 colors = ChipDefaults.secondaryChipColors(),
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
             )
@@ -111,7 +125,7 @@ fun WearNowPlayingScreen(store: WearMusicStore, onRoute: (WearRoute) -> Unit) {
                         maxLines = 1,
                     )
                 },
-                onClick = { store.enqueueOp(WearMusicOp(WearOpKind.TOGGLE_SHUFFLE)) },
+                onClick = { onOp(WearMusicOp(WearOpKind.TOGGLE_SHUFFLE)) },
                 colors = ChipDefaults.secondaryChipColors(),
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
             )
@@ -119,7 +133,7 @@ fun WearNowPlayingScreen(store: WearMusicStore, onRoute: (WearRoute) -> Unit) {
         item {
             Chip(
                 label = { Text(stringResource(R.string.wear_repeat), maxLines = 1) },
-                onClick = { store.enqueueOp(WearMusicOp(WearOpKind.CYCLE_REPEAT)) },
+                onClick = { onOp(WearMusicOp(WearOpKind.CYCLE_REPEAT)) },
                 colors = ChipDefaults.secondaryChipColors(),
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
             )

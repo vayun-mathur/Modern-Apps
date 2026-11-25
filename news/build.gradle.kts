@@ -1,5 +1,8 @@
 plugins {
     id("common-conventions-app")
+    // Listing screenshots come from Compose previews (src/screenshotTest), not from an
+    // instrumented test on a device. Same `:news:metadata` task name either way.
+    id("common-conventions-preview-metadata")
     alias(libs.plugins.ksp)
 }
 

@@ -20,7 +20,17 @@ import com.vayunmathur.weather.wear.data.WearWeatherStore
 import com.vayunmathur.weather.wear.domain.wearConditionLabel
 import com.vayunmathur.weather.wear.domain.wearTemp
 @Composable fun WearLocationsScreen(store:WearWeatherStore, onOpen:(Long)->Unit){
- val s by store.snapshot.collectAsState(); val st=rememberScalingLazyListState()
+ val s by store.snapshot.collectAsState()
+ WearLocationsContent(snapshot=s, onOpen=onOpen)
+}
+
+/**
+ * Stateless locations body behind [WearLocationsScreen]: the snapshot is a
+ * parameter, so Compose previews (src/screenshotTest) render a literal fixture
+ * with no store or phone.
+ */
+@Composable internal fun WearLocationsContent(snapshot:com.vayunmathur.weather.wear.domain.WearWeatherSnapshot, onOpen:(Long)->Unit){
+ val s=snapshot; val st=rememberScalingLazyListState()
  ScalingLazyColumn(state=st){
   item{ Text(stringResource(R.string.app_name),style=MaterialTheme.typography.title3,textAlign=TextAlign.Center,modifier=Modifier.fillMaxWidth().padding(horizontal=12.dp)) }
   if(s.locations.isEmpty()){ item{ Text(stringResource(R.string.wear_empty),style=MaterialTheme.typography.body2,textAlign=TextAlign.Center,modifier=Modifier.fillMaxWidth().padding(horizontal=12.dp)) } }

@@ -49,7 +49,7 @@ fun WearSearchScreen(store: WearMusicStore, onRoute: (WearRoute) -> Unit) {
         if (query.length < 2) {
             item { WearNote(stringResource(R.string.wear_search)) }
         } else {
-            wearTrackItems(store, page, pages[page], playback, onRoute)
+            wearTrackItems(store::enqueueOp, page, pages[page], playback, onRoute)
         }
         wearBackItem { onRoute(WearRoute.Home) }
     }

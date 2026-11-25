@@ -1,5 +1,9 @@
 plugins {
     id("common-conventions-wear")
+    // Listing screenshots come from Compose previews (src/screenshotTest), not from an
+    // instrumented test on a device. Renders land in this module's own
+    // metadata_data/photos/<wear-module-key>/wear/ bucket.
+    id("common-conventions-preview-metadata")
 }
 
 launcherIcon {

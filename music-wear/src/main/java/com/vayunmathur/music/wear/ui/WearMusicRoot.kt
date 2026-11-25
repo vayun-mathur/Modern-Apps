@@ -69,7 +69,28 @@ fun WearHomeScreen(store: WearMusicStore, onRoute: (WearRoute) -> Unit) {
     WearPageLoader(store, page)
     val pages by store.pages.collectAsState()
     val playback by store.playback.collectAsState()
-    val snapshot = pages[page]
+    WearHomeContent(
+        page = page,
+        snapshot = pages[page],
+        playback = playback,
+        onEnqueueOp = store::enqueueOp,
+        onRoute = onRoute,
+    )
+}
+
+/**
+ * Stateless home body behind [WearHomeScreen]: page snapshot and playback state are
+ * parameters, so Compose previews (src/screenshotTest) render literal fixtures with
+ * no store or phone.
+ */
+@Composable
+internal fun WearHomeContent(
+    page: WearPageId,
+    snapshot: WearPageSnapshot?,
+    playback: WearPlaybackState,
+    onEnqueueOp: (WearMusicOp) -> Unit,
+    onRoute: (WearRoute) -> Unit,
+) {
     // Hoisted: ScalingLazyColumn's scope lambda is not a @Composable context.
     val appName = stringResource(R.string.app_name)
     val nowPlayingLabel = stringResource(R.string.wear_now_playing)
@@ -88,7 +109,7 @@ fun WearHomeScreen(store: WearMusicStore, onRoute: (WearRoute) -> Unit) {
         wearNavItem(searchLabel, WearRoute.Search, onRoute)
         wearNavItem(settingsLabel, WearRoute.Settings, onRoute)
         item { WearTitle(songsLabel) }
-        wearTrackItems(store, page, snapshot, playback, onRoute)
+        wearTrackItems(onEnqueueOp, page, snapshot, playback, onRoute)
     }
 }
 
@@ -158,7 +179,7 @@ internal fun ScalingLazyListScope.wearBackItem(onBack: () -> Unit) {
  * note (never a blank list); an empty one is the synced-empty note.
  */
 internal fun ScalingLazyListScope.wearTrackItems(
-    store: WearMusicStore,
+    onEnqueueOp: (WearMusicOp) -> Unit,
     page: WearPageId,
     snapshot: WearPageSnapshot?,
     playback: WearPlaybackState,
@@ -178,7 +199,7 @@ internal fun ScalingLazyListScope.wearTrackItems(
             label = { Text((if (track.id == playback.trackId) "▶ " else "") + track.title, maxLines = 1) },
             secondaryLabel = { Text(track.artist, maxLines = 1) },
             onClick = {
-                store.enqueueOp(
+                onEnqueueOp(
                     WearMusicOp(
                         WearOpKind.PLAY_TRACKS,
                         trackIds = snapshot.tracks.map { it.id },

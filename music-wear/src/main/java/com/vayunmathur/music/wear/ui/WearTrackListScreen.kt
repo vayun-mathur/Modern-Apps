@@ -22,7 +22,7 @@ fun WearTrackListScreen(
     val playback by store.playback.collectAsState()
     ScalingLazyColumn(state = rememberScalingLazyListState()) {
         item { WearTitle(title) }
-        wearTrackItems(store, page, pages[page], playback, onRoute)
+        wearTrackItems(store::enqueueOp, page, pages[page], playback, onRoute)
         wearBackItem(onBack)
     }
 }
