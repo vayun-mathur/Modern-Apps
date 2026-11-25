@@ -35,6 +35,29 @@ import com.vayunmathur.news.platform.NewsViewModel
 @Composable
 fun LocalLocationScreen(viewModel: NewsViewModel, onBack: () -> Unit) {
     val current by viewModel.localLocation.collectAsState()
+    LocalLocationContent(
+        current = current,
+        onSelect = { location ->
+            viewModel.setLocalLocation(location)
+            onBack()
+        },
+        onBack = onBack,
+    )
+}
+
+/**
+ * Stateless location-picker body behind [LocalLocationScreen]: the current
+ * preference and the pick callback are parameters, so Compose previews
+ * (src/screenshotTest) render the real screen from literal fixtures with no
+ * ViewModel or DataStore. The search query stays local UI state here — the
+ * *selection* is the callback, never held state in a parent.
+ */
+@Composable
+internal fun LocalLocationContent(
+    current: String?,
+    onSelect: (String?) -> Unit,
+    onBack: () -> Unit,
+) {
     var query by remember { mutableStateOf("") }
     val trimmed = query.trim()
     val filtered = remember(trimmed) {
@@ -73,8 +96,7 @@ fun LocalLocationScreen(viewModel: NewsViewModel, onBack: () -> Unit) {
                         headlineContent = { Text(stringResource(R.string.local_location_current, current!!)) },
                         supportingContent = { Text(stringResource(R.string.local_location_clear)) },
                         modifier = Modifier.clickable {
-                            viewModel.setLocalLocation(null)
-                            onBack()
+onSelect(null)
                         },
                     )
                 }
@@ -86,8 +108,7 @@ fun LocalLocationScreen(viewModel: NewsViewModel, onBack: () -> Unit) {
                             Text(stringResource(R.string.local_location_use_typed, trimmed))
                         },
                         modifier = Modifier.clickable {
-                            viewModel.setLocalLocation(trimmed)
-                            onBack()
+onSelect(trimmed)
                         },
                     )
                 }
@@ -102,8 +123,7 @@ fun LocalLocationScreen(viewModel: NewsViewModel, onBack: () -> Unit) {
                     ListItem(
                         headlineContent = { Text(region) },
                         modifier = Modifier.clickable {
-                            viewModel.setLocalLocation(region)
-                            onBack()
+onSelect(region)
                         },
                     )
                 }

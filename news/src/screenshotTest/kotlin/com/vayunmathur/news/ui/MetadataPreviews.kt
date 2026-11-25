@@ -8,7 +8,6 @@ import com.vayunmathur.news.data.CachedArticle
 import com.vayunmathur.news.domain.ArticleBlock
 import com.vayunmathur.news.domain.ExtractedArticle
 import com.vayunmathur.news.domain.FeedArticle
-import com.vayunmathur.news.domain.FeedSort
 import com.vayunmathur.news.domain.Story
 
 /** Phone-shaped, roughly 1080x2340 at xxhdpi — comfortably above the F-Droid minimum. */
@@ -24,6 +23,11 @@ private const val EXPANDED = "spec:width=1280dp,height=800dp,dpi=240"
  * `./gradlew :news:metadata` renders these and copies the PNGs into per-bucket
  * `metadata_data/photos/news/<bucket>/` dirs (`phone/` and `large-tablet/`), where the
  * release build picks them up. News has no wear companion, so there is no `wear/` bucket.
+ *
+ * Route coverage: every `Route` leaf has a capture here, named
+ * `<number>-<route-key>` (`6-story`, `7-settings`, `8-local-location`, …);
+ * `RouteScreenshotCoverageTest` reflects over `Route` and fails when one is
+ * missing. See `docs/screenshot-coverage.md`.
  *
  * The rules that keep these honest (same as every other module's MetadataPreviews):
  *  - Order comes from the function names (`Preview1…`, `Preview2…`), per bucket.
@@ -71,6 +75,27 @@ class MetadataPreviews {
     fun Preview5ReaderExpanded() {
         PreviewTheme { ReaderFixture() }
     }
+
+    @PreviewTest
+    @Preview(name = "6-story", device = PHONE, group = "phone", showSystemUi = true)
+    @Composable
+    fun Preview6Story() {
+        PreviewTheme { StoryFixture() }
+    }
+
+    @PreviewTest
+    @Preview(name = "7-settings", device = PHONE, group = "phone", showSystemUi = true)
+    @Composable
+    fun Preview7Settings() {
+        PreviewTheme { SettingsFixture() }
+    }
+
+    @PreviewTest
+    @Preview(name = "8-local-location", device = PHONE, group = "phone", showSystemUi = true)
+    @Composable
+    fun Preview8LocalLocation() {
+        PreviewTheme { LocalLocationFixture() }
+    }
 }
 
 @Composable
@@ -112,12 +137,10 @@ private fun FeedFixture() {
         isRefreshing = false,
         refreshFailed = false,
         categoryFilter = null,
-        feedSort = FeedSort.TOP,
         localLocation = null,
         searchQuery = "",
         onSearchQueryChange = {},
         onRefresh = {},
-        onFeedSortChange = {},
         onCategoryFilterChange = {},
         onToggleBookmark = {},
         onOpenSaved = {},
@@ -147,6 +170,42 @@ private fun ReaderFixture() {
         onToggleBookmark = {},
         onTextSp = {},
         onSerif = {},
+        onBack = {},
+    )
+}
+
+@Composable
+private fun StoryFixture() {
+    val first = fixtureStories.first()
+    val second = fixtureStory("s1b", "npr", "Riverfront plan wins final approval in late vote", first.oneLiner)
+    val story = Story(
+        id = first.id,
+        representative = first.representative,
+        articles = listOf(first.representative, second.representative),
+    )
+    StoryContent(
+        story = story,
+        cachedByUrl = fixtureCached,
+        onOpenArticle = {},
+        onToggleBookmark = {},
+        onBack = {},
+    )
+}
+
+@Composable
+private fun SettingsFixture() {
+    SettingsContent(
+        localLocation = "Leeds, United Kingdom",
+        onBack = {},
+        onOpenLocalLocation = {},
+    )
+}
+
+@Composable
+private fun LocalLocationFixture() {
+    LocalLocationContent(
+        current = "Leeds, United Kingdom",
+        onSelect = {},
         onBack = {},
     )
 }

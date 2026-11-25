@@ -32,6 +32,24 @@ fun SettingsScreen(
     onOpenLocalLocation: () -> Unit,
 ) {
     val localLocation by viewModel.localLocation.collectAsState()
+    SettingsContent(
+        localLocation = localLocation,
+        onBack = onBack,
+        onOpenLocalLocation = onOpenLocalLocation,
+    )
+}
+
+/**
+ * Stateless settings body behind [SettingsScreen]: every value is a
+ * parameter, so Compose previews (src/screenshotTest) render the real
+ * screen from literal fixtures with no ViewModel or DataStore.
+ */
+@Composable
+internal fun SettingsContent(
+    localLocation: String?,
+    onBack: () -> Unit,
+    onOpenLocalLocation: () -> Unit,
+) {
     AppScaffold(
         title = stringResource(R.string.settings_title),
         onNavigateBack = onBack,
