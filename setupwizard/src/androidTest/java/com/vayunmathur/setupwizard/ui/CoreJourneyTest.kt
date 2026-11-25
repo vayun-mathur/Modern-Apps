@@ -33,7 +33,13 @@ class CoreJourneyTest {
         val targetContext = instrumentation.targetContext
         val packageName = targetContext.packageName
         grantAll(instrumentation.uiAutomation, targetContext.packageManager, packageName)
-        launch(packageName, device, targetContext)
+        // Entry as in FullE2eTest: SETUP_WIZARD intent + setup marked incomplete.
+        try { instrumentation.uiAutomation.executeShellCommand("settings put secure user_setup_complete 0").close() } catch (e: Exception) {}
+        val entry = Intent(Intent.ACTION_MAIN).addCategory("android.intent.category.SETUP_WIZARD")
+            .addCategory(Intent.CATEGORY_DEFAULT).setPackage(packageName)
+            .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK)
+        targetContext.startActivity(entry)
+        assertGateAbsent(device)
         waitText(device, "Welcome to Modern Apps OS")
         clickText(device, "Next")
         waitAny(device, "Connect to Wi-Fi", "Location services", "Let’s set up your device in a few steps.")

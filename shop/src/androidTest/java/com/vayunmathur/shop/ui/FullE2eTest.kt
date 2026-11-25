@@ -57,9 +57,13 @@ class FullE2eTest {
             "permission gate is showing; grants did not clear it",
             device.wait(Until.findObject(By.text(PERMISSION_GATE_TITLE)), GATE_TIMEOUT_MS),
         )
+        // Clean state shows the profile form; if the core-journey test ran
+        // first in this instrumentation run and saved a profile, Search is
+        // the correct first screen instead (tests share on-device state).
         assertNotNull(
             "profile setup form never appeared; the app may have crashed on launch",
-            device.wait(Until.findObject(By.text(PROFILE_SETUP_HEADING)), CONTENT_TIMEOUT_MS),
+            device.wait(Until.findObject(By.text(PROFILE_SETUP_HEADING)), CONTENT_TIMEOUT_MS)
+                ?: device.findObject(By.text("Search products")),
         )
         // Still alive in front: the process did not crash after painting content.
         assertEquals(packageName, device.currentPackageName)
