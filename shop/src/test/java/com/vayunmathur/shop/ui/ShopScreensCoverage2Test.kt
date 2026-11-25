@@ -1,7 +1,5 @@
 package com.vayunmathur.shop.ui
 
-// FIXTURE RELATIVE-TIME EXCEPTION: timestamps are seeded relative to the wall clock the code under test reads internally, so the fresh/expired/relative-time branch under test keeps its meaning; a fixed past instant would silently change that branch.
-
 import android.content.Context
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule

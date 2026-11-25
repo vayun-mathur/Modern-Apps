@@ -64,7 +64,6 @@ fun SearchScreen(
     onProductClick: (variantId: String, platformId: String, shopDomain: String) -> Unit,
 ) {
     val context = LocalContext.current
-    LaunchedEffect(Unit) { viewModel.loadCatalog(context) }
     var showLinkPrompt by rememberSaveable { mutableStateOf(LinkDefaults.shouldPrompt(context)) }
     SearchContent(
         query = viewModel.query,
@@ -76,7 +75,6 @@ fun SearchScreen(
         searchError = viewModel.searchError,
         searchedQuery = viewModel.searchedQuery,
         onRetry = viewModel::search,
-        offlineSince = if (viewModel.resultsFromCatalog) viewModel.catalogGeneratedAt else null,
         scopeName = viewModel.scopeName,
         onClearScope = viewModel::clearScope,
         focusRequest = viewModel.focusSearchRequest,
@@ -110,7 +108,6 @@ internal fun SearchContent(
     searchError: String? = null,
     searchedQuery: String? = null,
     onRetry: () -> Unit = onSearch,
-    offlineSince: String? = null,
 ) {
     val focusManager = LocalFocusManager.current
     val focusRequester = remember { FocusRequester() }
@@ -132,13 +129,6 @@ internal fun SearchContent(
         ),
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
-            offlineSince?.let { since ->
-                Text(
-                    "Offline catalog \u00b7 prices as of $since \u00b7 confirmed at checkout",
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                )
-            }
             linkPrompt?.let { LinkPromptCard(it) }
             scopeName?.let { name ->
                 InputChip(

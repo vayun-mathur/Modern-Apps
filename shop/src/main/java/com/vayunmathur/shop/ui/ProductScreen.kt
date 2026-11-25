@@ -76,7 +76,7 @@ fun ProductScreen(
     val refreshFailedMessage = stringResource(R.string.product_refresh_failed)
     val addedToCartMessage = stringResource(R.string.added_to_cart)
     var product by remember(variantId, platformId, shopDomain) {
-        mutableStateOf((viewModel.results + viewModel.linkedProducts + listOfNotNull(viewModel.catalogProduct(variantId))).firstOrNull { candidate ->
+        mutableStateOf((viewModel.results + viewModel.linkedProducts).firstOrNull { candidate ->
             candidate.platformId == platformId && candidate.variants.any {
                 it.id == variantId && (candidate.shopDomain == shopDomain || it.shopDomain == shopDomain)
             }

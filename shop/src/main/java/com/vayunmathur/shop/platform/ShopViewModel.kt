@@ -32,11 +32,7 @@ import com.vayunmathur.shop.domain.OrderTrackingUpdates
 import com.vayunmathur.shop.domain.ProfileCheckout
 import com.vayunmathur.shop.network.ShopBackend
 import com.vayunmathur.shop.network.ShopBackendException
-import com.vayunmathur.shop.network.CatalogStore
-import com.vayunmathur.shop.data.ShopCatalog
-import com.vayunmathur.shop.data.ShopCatalogFile
 import com.vayunmathur.shop.network.ShopHttpBackend
-import com.vayunmathur.shop.network.toModel
 import kotlinx.coroutines.launch
 
 private const val MAX_QUANTITY = 99
@@ -65,17 +61,6 @@ class ShopViewModel(
     var embeddedCheckout by mutableStateOf<EmbeddedCheckoutRequest?>(null)
         private set
     var results by mutableStateOf<List<UcpProduct>>(emptyList())
-        private set
-    /** True when [results] came from the offline R2 catalog, not the live API. */
-    var resultsFromCatalog by mutableStateOf(false)
-        private set
-    /** `generated_at` of the catalog in use, for the freshness label. */
-    var catalogGeneratedAt by mutableStateOf<String?>(null)
-        private set
-    /** Set at checkout when live merchant prices differ from cart snapshot prices. */
-    var checkoutPriceNote by mutableStateOf<String?>(null)
-        private set
-    var catalog: ShopCatalogFile? = null
         private set
     var searching by mutableStateOf(false)
         private set
@@ -174,9 +159,6 @@ class ShopViewModel(
                 nativeCheckout.forget(platformId, shop)
                 submitFromProfile(platformId, shop, lines, sink)
                 val state = nativeCheckout.snapshot.firstOrNull { it.platformId == platformId && it.shopDomain == shop }
-                checkoutPriceNote = state?.checkout?.totals?.subtotal?.let {
-                    ShopCatalog.priceRevalidationNote(lines, it)
-                }
                 val url = (state?.checkout?.continueUrl?.let(MerchantUrls::httpsUrl)) ?: state?.handoffUrl
                 if (url != null && openEmbeddedCheckout(platformId, shop, url, dark)) {
                     onReady()
@@ -302,24 +284,6 @@ class ShopViewModel(
         }
     }
 
-    /** Download/refresh the R2 catalog once; failures keep any cached copy. */
-    fun loadCatalog(context: Context) {
-        if (catalog != null) return
-        catalog = CatalogStore.cached(context)
-        catalog?.let { catalogGeneratedAt = it.generatedAt }
-        viewModelScope.launch {
-            AppInit.awaitReady()
-            CatalogStore.refresh(context)?.let {
-                catalog = it
-                catalogGeneratedAt = it.generatedAt
-            }
-        }
-    }
-
-    /** Offline product copy for detail fallback; live detail still verifies before cart actions. */
-    fun catalogProduct(variantId: String): UcpProduct? =
-        catalog?.let { ShopCatalog.productByVariant(it, variantId) }?.toModel()
-
     fun search() {
         val q = query.trim()
         if (q.isEmpty() || searching) return
@@ -332,18 +296,8 @@ class ShopViewModel(
             try {
                 AppInit.awaitReady()
                 backend.search(q, shop, limit = SEARCH_LIMIT).fold(
-                    onSuccess = { results = it; resultsFromCatalog = false },
-                    onFailure = { error ->
-                        val offline = catalog?.let { ShopCatalog.search(it, q, shop, SEARCH_LIMIT) }
-                            ?.map { it.toModel() }
-                        if (!offline.isNullOrEmpty()) {
-                            results = offline
-                            resultsFromCatalog = true
-                            searchError = null
-                        } else {
-                            searchError = error.toBackendMessage()
-                        }
-                    },
+                    onSuccess = { results = it },
+                    onFailure = { searchError = it.toBackendMessage() },
                 )
             } finally {
                 searching = false

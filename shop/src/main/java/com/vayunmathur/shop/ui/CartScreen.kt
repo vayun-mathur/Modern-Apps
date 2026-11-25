@@ -61,10 +61,7 @@ fun CartScreen(
             onCheckoutStore = { platformId, shop ->
                 viewModel.checkoutStore(
                     platformId, shop, context, dark,
-                    onReady = {
-                        viewModel.checkoutPriceNote?.let(messenger::show)
-                        onPayInApp(platformId, shop)
-                    },
+                    onReady = { onPayInApp(platformId, shop) },
                     onError = messenger::show,
                 )
             },
