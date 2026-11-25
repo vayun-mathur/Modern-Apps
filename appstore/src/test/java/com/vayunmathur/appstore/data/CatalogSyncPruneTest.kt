@@ -86,6 +86,35 @@ class CatalogSyncPruneTest {
     }
 
     @Test
+    fun `sync migrates rows keyed by the legacy origin repo urls to the static urls`() = runTest {
+        // State written by a build that addressed the repos at maproj.org:
+        // repo records plus cached rows (their APK/icon URLs hang off the
+        // old base too). The switch must not double-add or keep stale rows.
+        for ((legacy, source) in listOf(
+            DefaultRepos.LEGACY_MODERN_APPS_ORIGIN_URL to AppSource.MODERN_APPS,
+            DefaultRepos.LEGACY_PROPRIETARY_ORIGIN_URL to AppSource.PROPRIETARY,
+        )) {
+            db.repoDao().upsert(RepoEntity(url = legacy, name = "Old $source"))
+            db.cachedAppDao().upsert(
+                UnifiedApp(
+                    packageName = "com.example.${source.name.lowercase()}",
+                    source = source,
+                    name = "Old $source app",
+                    repoUrl = legacy,
+                    apkUrl = "$legacy/com.example.apk",
+                ).toEntity(),
+            )
+        }
+
+        catalog.sync(emptySet())
+
+        val repos = db.repoDao().all()
+        assertEquals(DefaultRepos.ALL.mapTo(mutableSetOf()) { it.url }, repos.mapTo(mutableSetOf()) { it.url })
+        assertTrue(db.cachedAppDao().all().isEmpty(), "rows keyed by legacy repo URLs survived")
+        scope.cancel()
+    }
+
+    @Test
     fun `sync with every source enabled reports each in progress order`() = runTest {
         val steps = mutableListOf<SyncStep>()
         val report = catalog.sync(AppSource.entries.toSet()) { steps += it }

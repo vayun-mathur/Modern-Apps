@@ -123,8 +123,20 @@ class AppModelsTest {
     }
 
     @Test
-    fun `only fdroid advertises a reproducibility feed`() {
-        assertTrue(DefaultRepos.FDROID.supportsReproducibilityFeed)
+    fun `own repos are served from the static bucket, legacy origins kept for migration`() {
+        assertEquals("https://static.maproj.org/fdroid/repo", DefaultRepos.MODERN_APPS.url)
+        assertEquals("https://static.maproj.org/proprietary/repo", DefaultRepos.PROPRIETARY.url)
+        // The pre-static addresses stay named so stored state keyed by them
+        // can be pruned; neither is a current repo any more.
+        assertEquals("https://maproj.org/fdroid/repo", DefaultRepos.LEGACY_MODERN_APPS_ORIGIN_URL)
+        assertEquals("https://maproj.org/proprietary/repo", DefaultRepos.LEGACY_PROPRIETARY_ORIGIN_URL)
+        val urls = DefaultRepos.ALL.mapTo(mutableSetOf()) { it.url }
+        assertTrue(DefaultRepos.LEGACY_MODERN_APPS_ORIGIN_URL !in urls)
+        assertTrue(DefaultRepos.LEGACY_PROPRIETARY_ORIGIN_URL !in urls)
+    }
+
+    @Test
+    fun `only fdroid advertises a reproducibility feed`() {        assertTrue(DefaultRepos.FDROID.supportsReproducibilityFeed)
         assertFalse(DefaultRepos.MODERN_APPS.supportsReproducibilityFeed)
         assertFalse(DefaultRepos.PROPRIETARY.supportsReproducibilityFeed)
         assertFalse(DefaultRepos.IZZY.supportsReproducibilityFeed)

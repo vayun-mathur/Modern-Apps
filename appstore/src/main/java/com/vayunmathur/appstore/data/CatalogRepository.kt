@@ -305,6 +305,19 @@ class CatalogRepository(
         // The retired GitHub provider never inserted a RepoEntity, so pruning rows cannot
         // discover its pseudo-key. This cleanup is cheap, idempotent, and safe to retain.
         db.cachedAppDao().deleteByRepo(DefaultRepos.LEGACY_MODERN_APPS_REPO_KEY)
+
+        // Repo-URL migration: rows are keyed by repo URL, so anything cached
+        // under the pre-static origin addresses (including the absolute APK /
+        // icon URLs inside cached rows) must go before the next sync imports
+        // the same repos under their static addresses — otherwise the store
+        // would double-add the repos and keep serving stale origin URLs.
+        // The generic prune above already drops their RepoEntity rows; these
+        // deletes make the intent explicit and cover rows whose RepoEntity
+        // was already pruned by an earlier build.
+        db.cachedAppDao().deleteByRepo(DefaultRepos.LEGACY_MODERN_APPS_ORIGIN_URL)
+        db.cachedAppDao().deleteByRepo(DefaultRepos.LEGACY_PROPRIETARY_ORIGIN_URL)
+        db.repoDao().deleteByUrl(DefaultRepos.LEGACY_MODERN_APPS_ORIGIN_URL)
+        db.repoDao().deleteByUrl(DefaultRepos.LEGACY_PROPRIETARY_ORIGIN_URL)
     }
 
     private companion object {

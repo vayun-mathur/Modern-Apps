@@ -254,7 +254,7 @@ object DefaultRepos {
     )
 
     val MODERN_APPS = RepoDescriptor(
-        url = "https://maproj.org/fdroid/repo",
+        url = "https://static.maproj.org/fdroid/repo",
         displayName = "Modern Apps",
         pinnedFingerprint =
             "176fcb2525573e5be8e1cb3a496dd97b137e81ca5b887a1d32cb894b4e5717b4",
@@ -263,7 +263,7 @@ object DefaultRepos {
     )
 
     val PROPRIETARY = RepoDescriptor(
-        url = "https://maproj.org/proprietary/repo",
+        url = "https://static.maproj.org/proprietary/repo",
         displayName = "Proprietary",
         pinnedFingerprint =
             "176fcb2525573e5be8e1cb3a496dd97b137e81ca5b887a1d32cb894b4e5717b4",
@@ -284,6 +284,20 @@ object DefaultRepos {
 
     /** Cache key written by the retired GitHub releases provider. */
     const val LEGACY_MODERN_APPS_REPO_KEY = "https://github.com/vayun-mathur/Modern-Apps"
+
+    /**
+     * Origin repo URLs used before the repos' canonical home moved to the
+     * static R2 bucket. The server keeps serving identical signed bytes at
+     * these addresses for external F-Droid clients; this store keys its
+     * repo records and cached rows by URL, so rows written under an old
+     * address are pruned and re-imported under the new one (see
+     * [CatalogRepository.ensureDefaultRepos]). The signed indexes still
+     * name the legacy address as the repo address — this client pins the
+     * signing fingerprint and does not key trust on that field, so the
+     * same signed index validates from the new location.
+     */
+    const val LEGACY_MODERN_APPS_ORIGIN_URL = "https://maproj.org/fdroid/repo"
+    const val LEGACY_PROPRIETARY_ORIGIN_URL = "https://maproj.org/proprietary/repo"
 }
 
 /** The Modern-Apps monorepo's project page. */
