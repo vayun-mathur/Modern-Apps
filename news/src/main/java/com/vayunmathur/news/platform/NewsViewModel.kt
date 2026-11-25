@@ -28,13 +28,14 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /**
- * Feed = stories. Grouping ([StoryGrouping], server assignment wins)
- * is computed in-memory over the Room article cache per emission —
- * no schema change for grouping itself (the two server story columns
- * are the only v2 addition). A null category filter is "All"; a story
- * matches a category when ANY member does. [FeedRanking] ranks
- * stories (Top folds cross-source breadth into recency; Latest is by
- * latest update). Search hits surface their whole story.
+ * Feed = stories. Grouping ([StoryGrouping]) is purely mechanical —
+ * exact server `storyId` key only, no client-side grouping — computed
+ * in-memory over the Room article cache per emission (the two server
+ * story columns are the only v2 addition). A null category filter is
+ * "All"; a story matches a category when ANY member does.
+ * [FeedRanking] only *orders* stories (Top folds cross-source
+ * breadth — counted over actual server membership — into recency;
+ * Latest is by latest update). Search hits surface their whole story.
  */
 
 /** UI state and actions for feed, reader and saved screens. */
@@ -65,7 +66,7 @@ class NewsViewModel(
         .map { all -> StoryGrouping.group(all.map { it.toFeedArticle() }) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    /** Extra sources per feed-row URL, from story clustering (see [FeedRanking]). */
+    /** Extra sources per feed-row URL, from actual server story membership only. */
     val clusterCounts: StateFlow<Map<String, Int>> = allStories
         .map { stories -> stories.associate { it.representative.url to (it.sourceCount - 1).coerceAtLeast(0) } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
@@ -114,7 +115,7 @@ class NewsViewModel(
         }
     }
 
-    /** Feed stories: full-corpus grouping, category = any-member, ranked. */
+    /** Feed stories: mechanical grouping, category = any-member, ranked (order only). */
     val stories: StateFlow<List<Story>> = combine(
         allStories, _categoryFilter, feedSort, localLocation,
     ) { grouped, category, sort, location ->

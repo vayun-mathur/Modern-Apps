@@ -4,7 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/** Top-stories ranking: decay, diversity cap, cluster collapse, Latest. */
+/** Top-stories ranking: decay, diversity cap, mechanical story order, Latest. */
 class FeedRankingTest {
 
     private val now = 1_700_000_000_000L
@@ -17,7 +17,8 @@ class FeedRankingTest {
         published: Long,
         image: String? = null,
         keywords: List<String> = emptyList(),
-    ) = FeedArticle(url, source, title, published, image, keywords)
+        serverStoryId: String? = null,
+    ) = FeedArticle(url, source, title, published, image, keywords, serverStoryId = serverStoryId)
 
     @Test fun decayOrdersFreshBeforeDayOldBeforeThreeDaysOld() {
         val ranked = FeedRanking.rank(
@@ -60,7 +61,7 @@ class FeedRankingTest {
         assertEquals(30, solo.size)
     }
 
-    @Test fun exactAndNearDuplicateTitlesCollapseToEarliest() {
+    @Test fun identicalHeadlinesWithoutStoryIdDoNotCollapse() {
         val ranked = FeedRanking.rank(
             listOf(
                 article("bbc", "https://e/b1", title = "Storm hits coast as winds rise", published = hoursAgo(2.0)),
@@ -70,15 +71,28 @@ class FeedRankingTest {
             ),
             FeedSort.TOP, now,
         )
-        assertEquals(2, ranked.size, "three tellings of the storm story must collapse to one row")
-        val storm = ranked.first { it.article.title.contains("Storm") }
-        assertEquals("https://e/g1", storm.article.url, "representative is the earliest telling")
-        assertEquals(2, storm.alsoFromSources)
-        // Latest keeps the same collapse.
+        assertEquals(4, ranked.size, "no storyId = no grouping, however similar the headlines")
+        assertTrue(ranked.all { it.alsoFromSources == 0 })
+    }
+
+    @Test fun sharedStoryIdCollapsesToEarliestRepresentative() {
+        val ranked = FeedRanking.rank(
+            listOf(
+                article("bbc", "https://e/b1", title = "Storm hits coast as winds rise", published = hoursAgo(2.0), serverStoryId = "s1"),
+                article("g1", "https://e/g1", title = "Different wording entirely", published = hoursAgo(5.0), serverStoryId = "s1"),
+                article("dw", "https://e/d1", title = "Winds rise as storm hits coast", published = hoursAgo(1.0), serverStoryId = "s1"),
+                article("npr", "https://e/n1", title = "Markets rally on jobs data", published = hoursAgo(1.0)),
+            ),
+            FeedSort.TOP, now,
+        )
+        assertEquals(2, ranked.size, "only the server-grouped articles collapse to one row")
+        val storm = ranked.first { it.alsoFromSources == 2 }
+        assertEquals("https://e/g1", storm.article.url, "representative is the earliest member")
+        // Latest keeps the same mechanical membership.
         val latest = FeedRanking.rank(
             listOf(
-                article("bbc", "https://e/b1", title = "Same headline", published = hoursAgo(2.0)),
-                article("g1", "https://e/g1", title = "Same headline", published = hoursAgo(5.0)),
+                article("bbc", "https://e/b1", title = "Same headline", published = hoursAgo(2.0), serverStoryId = "s1"),
+                article("g1", "https://e/g1", title = "Same headline", published = hoursAgo(5.0), serverStoryId = "s1"),
             ),
             FeedSort.LATEST, now,
         )

@@ -16,10 +16,12 @@ data class FeedArticle(
     val language: String? = null,
     /**
      * Server story assignment (`story_id` in news.json): same value for
-     * every article the server grouped into one story. Server grouping
-     * (built server-side with full-text signals) wins over client
-     * clustering — see [StoryGrouping]. Null for the fallback crawl.
-     * Persisted in Room (CachedArticle.storyId) so it survives caching.
+     * every article the server grouped into one story. This is the
+     * *only* grouping key — the client makes no grouping decisions
+     * (see [StoryGrouping]). Null/blank (always the case for the
+     * fallback sitemap/RSS crawl) means the article is its own
+     * singleton story. Persisted in Room (CachedArticle.storyId) so
+     * it survives caching.
      */
     val serverStoryId: String? = null,
     /**

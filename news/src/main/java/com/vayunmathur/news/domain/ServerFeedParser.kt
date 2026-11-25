@@ -36,13 +36,14 @@ import kotlinx.serialization.json.jsonObject
  *   [SourceCatalog] (see [NewsCategory]), and the feed/search filters
  *   apply that mapping to the article's `sourceId`. Unresolved ids have
  *   no category and match the feed's "All" filter only.
- * - Story grouping (server-side, full-text signals): `story_id`
- *   (same for all articles of one story; server assignment wins over
- *   client clustering), `story_one_liner` (generated one-line summary
- *   — the only server text the client may display; extracted article
- *   text is NEVER served), and optional `story_title`. All optional:
- *   articles without them are client-clustered (fallback crawl path
- *   produces no story fields at all). Alias keys `story_oneliner` /
+ * - Story grouping (server-side only; the client never groups):
+ *   `story_id` (same for all articles of one story — the client's
+ *   sole grouping key, used exactly), `story_one_liner` (generated
+ *   one-line summary — the only server text the client may display;
+ *   extracted article text is NEVER served), and optional
+ *   `story_title`. All optional: articles without a `story_id`
+ *   (the fallback crawl path produces no story fields at all) each
+ *   render as a single-article story. Alias keys `story_oneliner` /
  *   `story_summary` are also accepted for the one-liner until the
  *   server schema freezes.
  *

@@ -9,10 +9,15 @@ enum class FeedSort(val label: String) {
     LATEST("Latest"),
 }
 
-/** One ranked representative plus how many near-duplicate sources it collapsed. */
+/** One ranked representative plus how many other sources its server story carries. */
 data class RankedArticle(
     val article: FeedArticle,
-    /** Extra sources carrying the same story (0 = carried by one source only). */
+    /**
+     * Extra distinct sources in the same server-grouped story
+     * (0 = singleton or single-source story). Derived only from
+     * actual server `storyId` membership — never from headline
+     * similarity (there is no client-side grouping).
+     */
     val alsoFromSources: Int = 0,
 )
 
@@ -24,27 +29,26 @@ data class RankedArticle(
  *
  * ## Top stories formula (no popularity data exists, so on-device signals only)
  *
- * Score (per article, before clustering):
+ * Score (per article, see [score]):
  * ```
  * ageHours = max(0, (now - publishedAtMillis) / 3_600_000)   // future stamps clamp to 0
  * score    = 100 * 0.5^(ageHours / 18)                       // 18 h half-life
  *          + 5 if imageUrl != null
  *          + 2 if keywords is non-empty
  * ```
- * So a fresh story scores ~100–107, a story 18 h old ~50, 36 h old ~25,
+ * So a fresh article scores ~100–107, one 18 h old ~50, 36 h old ~25,
  * 3 days old ~6 — day-old sinks but does not vanish. An unknown
  * timestamp (`publishedAtMillis <= 0`) scores 0 and sinks to the end.
- * Ties break on newer `publishedAtMillis`, then URL, so the order is
- * total and deterministic.
  *
- * ## Story clustering (collapse before ranking)
+ * ## Stories (group before ranking — mechanically, by server id only)
  *
- * Clustering is [StoryGrouping] (see its KDoc for the algorithm,
- * inverted-index candidate generation, merge rules, thresholds and
- * time windows). Each story keeps one representative: earliest
- * `publishedAtMillis` (wire copy originates once), tie-broken by
- * fuller metadata (image, then more keywords, then URL); the
- * representative reports `distinct sources - 1` as
+ * Stories come from [StoryGrouping]: articles sharing the exact
+ * server `storyId` form one story; every article without one is a
+ * singleton. Ranking only *orders* those stories — it never merges,
+ * splits, or otherwise influences membership. Each story keeps one
+ * representative: earliest `publishedAtMillis`, tie-broken by fuller
+ * metadata (image, then more keywords, then URL); the representative
+ * reports `distinct sources - 1` (actual server membership only) as
  * [RankedArticle.alsoFromSources].
  *
  * ## Top stories for stories ([rankStories] / [storyScore])
@@ -56,8 +60,9 @@ data class RankedArticle(
  *          + crossSourceBonus                     // see below, capped 30
  * crossSourceBonus = 0 if 1 source else min(30, 10 * log2(sourceCount))
  * ```
- * Cross-source breadth is an honest prominence signal (independent
- * outlets choosing to cover an event), folded in *alongside*
+ * Cross-source breadth (counted only over actual server-story
+ * membership) is an honest prominence signal (independent outlets
+ * the server grouped into one story), folded in *alongside*
  * recency: 2 sources +10, 4 sources +20, 8+ +30. It breaks ties
  * between same-age stories and lifts a widely-covered day-old story
  * (50+20) above a single-source half-day story (~71 vs ~75 — close),
@@ -77,8 +82,8 @@ data class RankedArticle(
  * the first screen always spans at least 7 sources when that many
  * have fresh stories.
  *
- * Latest is a plain newest-first sort with the same clustering
- * collapse (a duplicated wire story is one row in either order).
+ * Latest is a plain newest-first sort of the same mechanical
+ * stories (one row per server story / singleton, in either order).
  */
 object FeedRanking {
 
@@ -87,8 +92,6 @@ object FeedRanking {
     const val KEYWORD_BONUS = 2.0
     const val FIRST_PAGE_SIZE = 20
     const val FIRST_PAGE_PER_SOURCE = 3
-    const val NEAR_DUPLICATE_JACCARD = 0.85
-    const val MIN_TOKENS_FOR_NEAR_DUPLICATE = 4
     /** Cap on the cross-source bonus in [storyScore]. */
     const val MAX_CROSS_SOURCE_BONUS = 30.0
 
@@ -145,19 +148,6 @@ object FeedRanking {
         if (article.imageUrl != null) score += IMAGE_BONUS
         if (article.keywords.isNotEmpty()) score += KEYWORD_BONUS
         return score
-    }
-
-    /** Normalised comparison form of a headline (see KDoc). */
-    fun normaliseTitle(title: String): String {
-        var text = title.trim().lowercase()
-        // Strip a leading "source:" / "source -" wire prefix, if it is short.
-        val separators = listOf(text.indexOf(": "), text.indexOf(" - ")).filter { it >= 0 }
-        val prefixEnd = separators.minOrNull() ?: -1
-        if (prefixEnd in 1..24) {
-            val skip = if (text.startsWith(": ", prefixEnd)) 2 else 3
-            text = text.substring(prefixEnd + skip).trim()
-        }
-        return text.replace(Regex("[^\\p{L}\\p{N}]+"), " ").trim().replace(Regex("\\s+"), " ")
     }
 
     private fun diversifyStories(stories: List<Story>, nowMillis: Long): List<Story> {

@@ -4,7 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
-/** Server story fields: parsed when present, absent = client clustering. */
+/** Server story fields: parsed when present, absent = singleton story (no client grouping). */
 class StoryServerFeedTest {
     @Test fun parsesStoryFieldsAndIgnoresExtractedText() {
         val json = """
@@ -21,8 +21,10 @@ class StoryServerFeedTest {
         assertEquals("A summary.", parsed[0].storyOneLiner)
         assertEquals("Canonical", parsed[0].serverStoryTitle)
         assertNull(parsed[1].serverStoryId)
-        // No field on FeedArticle can carry extracted text; grouping uses story_id.
+        // No field on FeedArticle can carry extracted text; grouping uses story_id only.
         val stories = StoryGrouping.group(parsed)
+        assertEquals(2, stories.size, "the article without story_id stays a singleton")
         assertEquals("srv:abc", stories.first { it.serverStoryId == "abc" }.id)
+        assertEquals(1, stories.first { it.serverStoryId == null }.articles.size)
     }
 }
