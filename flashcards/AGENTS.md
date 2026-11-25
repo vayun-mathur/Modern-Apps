@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `flashcards/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install flashcards (dev by default)._
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :flashcards / dir: flashcards/
 - Package roots present: ui, data
 - Entry files: MainActivity.kt (no Route.kt — decks/notes/review/stats flow)
@@ -16,7 +15,7 @@ _Install: ./install flashcards (dev by default)._
 **Key features:** Note-type editor + templating (`TemplateEngine`, `HtmlConvert`), card generation, review sessions with grading, FSRS optimizer, stats/charts, TTS speaker, media store; reminders via `ReviewReminderWorker`.
 **Entry points:** `MainActivity.kt` → `ui/DeckListPage.kt` → `util/FlashcardsViewModel.kt` → `data/FlashcardsRepository.kt` → `util/Scheduler.kt` → `ui/ReviewPage.kt`.
 **Gotchas:**
-- `util/` is NOT a closed package root — pending migration; don't add more files there
+- `util/` is NOT a closed package root — don't add more files there
 - Scheduling correctness (FSRS) is the product — scheduler changes need review-log-driven tests, not just UI checks
 - APKG import/export must stay compatible with Anki's format — test round-trips, not just one direction
 
@@ -33,7 +32,7 @@ _Install: ./install flashcards (dev by default)._
 - com/vayunmathur/flashcards/data/CardTemplate.kt
 - com/vayunmathur/flashcards/data/Deck.kt
 - com/vayunmathur/flashcards/data/ReviewLog.kt
-### util/ — ViewModel, scheduler, import/export (pending migration to closed roots)
+### util/ — ViewModel, scheduler, import/export
 - com/vayunmathur/flashcards/util/FlashcardsViewModel.kt
 - com/vayunmathur/flashcards/util/FlashcardsViewModelHelper.kt
 - com/vayunmathur/flashcards/util/FlashcardsUiContract.kt

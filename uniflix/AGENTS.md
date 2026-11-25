@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `uniflix/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install uniflix (dev by default)._
-<!-- last-reviewed: 2026-10-23 -->
 - Gradle: :uniflix / dir: uniflix/
 - Package roots present: ui, data, domain, platform
 - Entry files: MainActivity.kt, Route.kt, Navigation.kt
@@ -26,7 +25,7 @@ Watch/Detail link to the addon manager.
 **Gotchas:**
 - Manifest `resources` accepts Stremio string-or-object forms; only `stream` for movie/series validates
 - URL addons enforce HTTPS except loopback/private (dev); remote `http://` is rejected as `InsecureUrl`
-- `UniflixDatabase` v1→v2 migration adds `AddonEntity`; v2→v3 adds `kind`/`jsSource`; default addon id lives in DataStore, ordering in Room priority
+- `UniflixDatabase` is v3, with `Migration(1,2)` adding `AddonEntity` and `Migration(2,3)` adding `kind`/`jsSource`; default addon id lives in DataStore, ordering in Room priority
 - Private `personal/uniflix_strem/` keeps the native Strem provider + hardcoded TMDB key — never copy those into `uniflix/`
 
 ## Key files

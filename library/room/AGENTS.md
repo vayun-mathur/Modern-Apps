@@ -2,11 +2,10 @@
 
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `library/room/` + allowed shared modules. Do not root-scan.
 
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :library:room / dir: library/room/
 - Package roots present: (pure-Kotlin Room3 + SQLCipher wiring — single package)
 - Entry files: RoomRepository.kt (no MainActivity/Route — library)
-- Deps: :library (permission-free; SqlCipherDbCodec implements base's DbBackupCodec, #884)
+- Deps: :library (permission-free; SqlCipherDbCodec implements base's DbBackupCodec)
 - Metadata: metadata_data/library-room.md (absent — libraries have none by design)
 - Rust: no / screenshotTest: no
 

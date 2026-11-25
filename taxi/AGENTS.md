@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `taxi/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install taxi (dev by default)._
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :taxi / dir: taxi/
 - Package roots present: ui, data, platform, network, intents, provider, notifications
 - Entry files: MainActivity.kt, Route.kt, Navigation.kt
@@ -20,7 +19,7 @@ _Install: ./install taxi (dev by default)._
 **Architecture / data-flow:** `ui/RideScreen` inputs → `provider/` quotes → results → booking → `notifications/` live tracking; `network/uber/` + `network/lyft/` own provider APIs/auth/parsers; `ipc/` directions + ride-handoff contracts bridge maps/assistant.
 **Entry points + reading order:** `Route` → `MainActivity.kt` → `Navigation.kt` → `ui/RideScreen.kt` → `provider/QuoteRepository.kt` → `provider/RideProvider.kt` → `network/lyft/LyftProvider.kt` / `network/uber/UberProvider.kt`.
 **Gotchas:**
-- `ipc/` is NOT a closed package root — pending migration; don't add more files there
+- `ipc/` is NOT a closed package root — don't add more files there
 - Unofficial-provider APIs are brittle — isolate Uber/Lyft failures from each other and from the quote UI
 - Screenshot tests are off for this module (`screenshotTest: no`) — verify ride flows on device
 

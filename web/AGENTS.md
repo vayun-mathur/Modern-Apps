@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `web/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install web (dev by default)._
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :web / dir: web/
 - Package roots present: ui, data, domain, platform
 - Entry files: MainActivity.kt, Route.kt, Navigation.kt

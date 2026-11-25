@@ -14,7 +14,7 @@
 - Rust: no (PQC via core's JVM actual)
 
 ## Overview
-**Purpose:** Phase 2b desktop Notes JVM shell on the shared core: syncs the
+**Purpose:** Desktop Notes JVM shell on the shared core: syncs the
 `notes:<vaultId>` + `todos:<vaultId>` relay channels once via `SyncDriver`
 and prints counts. Windows renders todos inside the Notes UI
 (`TodoView.todosAsNotes` projection, writes back via `updateTodoFromNote`).
@@ -32,7 +32,7 @@ and prints counts. Windows renders todos inside the Notes UI
 **Invariants (from the shared core, preserved here):** failed pull = abort,
 never empty; tombstone-only delete; reorder is not an edit
 (`position` stripped from merge hashes); `notes`/`createdAt` persist verbatim
-on todos (Phase 1 drift fix).
+on todos.
 
 ## Verify (this module only)
 Do NOT run Gradle (per task scope). When enabled:

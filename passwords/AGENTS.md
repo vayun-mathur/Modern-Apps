@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `passwords/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install passwords (dev by default)._
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :passwords / dir: passwords/
 - Package roots present: ui, data, domain, platform, sync
 - Entry files: MainActivity.kt, Route.kt, Navigation.kt

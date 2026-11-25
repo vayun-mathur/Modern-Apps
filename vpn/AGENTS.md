@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `vpn/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install vpn (dev by default)._
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :vpn / dir: vpn/
 - Package roots present: ui, data, platform, service
 - Entry files: MainActivity.kt, Route.kt, Navigation.kt
@@ -20,7 +19,7 @@ _Install: ./install vpn (dev by default)._
 **Architecture / data-flow:** `ui/` config list/detail + logging → `platform/VpnViewModel` → `data/VpnRepository` over Room (`VpnConfig`, connection-log entities); tunnel control goes ViewModel → `service/VpnTunnelService` → Rust core via `util/VpnNative` JNI bridge; `service/ConnectionTracker` feeds the log.
 **Entry points + reading order:** `Route` → `MainActivity.kt` → `Navigation.kt` → `ui/ConfigListPage.kt` → `platform/VpnViewModel.kt` → `service/VpnTunnelService.kt` → `util/VpnNative.kt`.
 **Gotchas:**
-- `util/` is NOT a closed package root — pending migration; don't add more files there
+- `util/` is NOT a closed package root — don't add more files there
 - Tunnel state lives in the service + Rust core — UI reflects, never drives; reconnect races come from driving twice
 - VPN permission + always-on/blocking modes are system-mediated; test grant/revoke, not just in-app toggles
 
@@ -45,7 +44,7 @@ _Install: ./install vpn (dev by default)._
 - com/vayunmathur/vpn/service/SniParser.kt
 - com/vayunmathur/vpn/service/DnsCache.kt
 - com/vayunmathur/vpn/service/AppResolver.kt
-### util/ — Rust bridge (pending migration to closed roots)
+### util/ — Rust bridge
 - com/vayunmathur/vpn/util/VpnNative.kt — JNI bridge into the WireGuard core
 ### ui/ + ui/components/ — configs, bypass, logging
 - com/vayunmathur/vpn/ui/VpnTabs.kt

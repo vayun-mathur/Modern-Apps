@@ -2,7 +2,6 @@
 
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `library/ml/` + allowed shared modules. Do not root-scan.
 
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :library:ml / dir: library/ml/
 - Package roots present: (on-device inference runtimes — one package + Rust/native bridges)
 - Entry files: per-model `*Handle` (no MainActivity/Route — library)

@@ -2,7 +2,6 @@
 
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `library/media/` + allowed shared modules. Do not root-scan.
 
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :library:media / dir: library/media/
 - Package roots present: (audio codecs — one package, pure Kotlin/Java)
 - Entry files: OpusTranscoder.kt (no MainActivity/Route — library)

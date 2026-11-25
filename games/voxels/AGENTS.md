@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `games/voxels/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install games/voxels (dev by default)._
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :games:voxels / dir: games/voxels/
 - Package roots present: ui, data, platform, network
 - Entry files: MainActivity.kt + platform/MenuActivity.kt (menu/world select) + Route.kt (menu: Route.Worlds / CreateWorld; game: Route.Game(worldId) + Inventory/Furnace/Chest/Stonecutter/Trade/Settings overlays)

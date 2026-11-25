@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `logviewer/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install logviewer (dev by default)._
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :logviewer / dir: logviewer/
 - Package roots present: ui, data, domain, platform, intents, provider
 - Entry files: ui/LogViewerScreen.kt + intents/LogcatActivity.kt + intents/ErrorReportActivity.kt (no MainActivity/Route — viewer surfaces, not a nav app)

@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `updater/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install updater (dev by default)._
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :updater / dir: updater/
 - Package roots present: ui, domain, platform, service, notifications
 - Entry files: MainActivity.kt, Route.kt, Navigation.kt

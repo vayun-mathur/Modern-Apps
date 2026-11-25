@@ -2,11 +2,10 @@
 
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `library/network/` + allowed shared modules. Do not root-scan.
 
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :library:network / dir: library/network/
 - Package roots present: network (+ `util` for the connectivity monitor/banner)
 - Entry files: NetworkClient.kt + TrustBundle.kt (no MainActivity/Route — library)
-- Deps: (none — no project dependencies by design, #884)
+- Deps: (none — no project dependencies by design)
 - Remote images: network apps build their own `Fetcher` from `NetworkClient`
   and hand it to `ImageLoader.Builder.remote()` in `:library:image`; the HTTP
   transport lives in the app, never in a library-to-library edge
@@ -32,7 +31,7 @@ Relay host: `api.maproj.org`, covered by the `FIRST_PARTY` bundle pins (Cloudfla
 - com/vayunmathur/library/network/Urls.kt
 - com/vayunmathur/library/network/WebSocketClient.kt
 - com/vayunmathur/library/util/ConnectivityMonitor.kt
-- com/vayunmathur/library/util/ConnectivityCompose.kt — `OfflineAware` banner (#884)
+- com/vayunmathur/library/util/ConnectivityCompose.kt — `OfflineAware` banner
 
 ## Verify (this module only)
 ```

@@ -2,7 +2,6 @@
 
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `desktop/passwords/` + allowed shared modules. Do not root-scan.
 
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :desktop:passwords / dir: desktop/passwords/
 - Package roots present: com.vayunmathur.desktop.passwords (plain Kotlin, no Compose)
 - Entry files: Main.kt, PasswordSync.kt, PasswordVault.kt, KdbxCompat.kt

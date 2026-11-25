@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `networklocation/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install networklocation (dev by default)._
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :networklocation / dir: networklocation/
 - Package roots present: provider
 - Entry files: MainActivity.kt (database-setup UI) + provider/LocationProviderImpl.kt (system provider entry)
@@ -16,7 +15,7 @@ _Install: ./install networklocation (dev by default)._
 **Key features:** `provider/LocationProviderImpl` serves system fixes from `OfflineBeaconStore` (timed-LRU wifi/cell caches) over `NetworkLocationService`; `GeocodeService` resolves offline; `MainActivity` manages offline-DB state (`OfflineDatabases`).
 **Entry points:** `provider/LocationProviderImpl.kt` → `provider/OfflineBeaconStore.kt` → `NetworkLocationService.kt` → `NetworkLocationNative.kt` (Rust solver).
 **Gotchas:**
-- `cache/`, `cell/`, `wifi/` are NOT closed package roots — pending migration; don't add more files there
+- `cache/`, `cell/`, `wifi/` are NOT closed package roots — don't add more files there
 - System-provider registration is signature/role-gated — sideloaded builds won't serve fixes
 - Beacon privacy is the product — never log or upload identifiers/positions
 
@@ -38,7 +37,7 @@ _Install: ./install networklocation (dev by default)._
 - com/vayunmathur/networklocation/OfflineDatabaseSection.kt
 - com/vayunmathur/networklocation/PositioningData.kt
 - com/vayunmathur/networklocation/BeaconKeys.kt
-### cache/ + cell/ + wifi/ — beacon pipeline (pending migration to closed roots)
+### cache/ + cell/ + wifi/ — beacon pipeline
 - com/vayunmathur/networklocation/cache/BeaconCache.kt
 - com/vayunmathur/networklocation/cache/TimedLruCache.kt
 - com/vayunmathur/networklocation/cell/NearbyCells.kt

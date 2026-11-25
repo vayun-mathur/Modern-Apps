@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `games/kart/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install games/kart (dev by default)._
-<!-- last-reviewed: 2026-11-21 -->
 - Gradle: :games:kart / dir: games/kart/
 - Package roots present: data, domain, platform, ui
 - Entry files: MainActivity.kt, Route.kt, Navigation.kt

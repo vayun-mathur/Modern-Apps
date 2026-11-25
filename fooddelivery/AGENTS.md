@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `fooddelivery/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install fooddelivery (dev by default)._
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :fooddelivery / dir: fooddelivery/
 - Package roots present: ui, data, platform, intents, notifications
 - Entry files: MainActivity.kt + FoodDeliveryApplication.kt + platform/AppInit.kt (no Route.kt — home/restaurant/cart/checkout/orders flow)
@@ -20,7 +19,7 @@ _Install: ./install fooddelivery (dev by default)._
 **Architecture / data-flow:** `ui/` flow screens → `platform/AppInit`-wired state (`data/CartStore`) → `api/BitesApi` backend; tracking runs in `notifications/OrderTrackingService` independent of the UI process.
 **Entry points + reading order:** `FoodDeliveryApplication.kt` → `platform/AppInit.kt` → `MainActivity.kt` → `ui/HomeScreen.kt` → `ui/RestaurantScreen.kt` → `ui/CartScreen.kt` → `ui/CheckoutScreen.kt` → `api/BitesApi.kt`.
 **Gotchas:**
-- `api/` and `ipc/` are NOT closed package roots — pending migration; don't add more files there
+- `api/` and `ipc/` are NOT closed package roots — don't add more files there
 - Payment data goes straight to Stripe tokenization — card numbers must never hit app state or logs
 - Tracking must survive the app being killed; keep it in the service, not the ViewModel
 
@@ -29,7 +28,7 @@ _Install: ./install fooddelivery (dev by default)._
 - com/vayunmathur/fooddelivery/FoodDeliveryApplication.kt
 - com/vayunmathur/fooddelivery/MainActivity.kt
 - com/vayunmathur/fooddelivery/platform/AppInit.kt
-### api/ — backend client (pending migration to closed roots)
+### api/ — backend client
 - com/vayunmathur/fooddelivery/api/BitesApi.kt
 ### data/ — cart, addresses, models
 - com/vayunmathur/fooddelivery/data/CartStore.kt

@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `games/wordmaker/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install games/wordmaker (dev by default)._
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :games:wordmaker / dir: games/wordmaker/
 - Package roots present: ui, data, domain, platform
 - Entry files: MainActivity.kt, Route.kt, Navigation.kt

@@ -2,7 +2,6 @@
 
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `cast/protocol/` + allowed shared modules. Do not root-scan.
 
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :cast:protocol / dir: cast/protocol/
 - Package roots present: (pure-Kotlin protocol library — single package, no Android roots)
 - Entry files: HandshakeMessages.kt + Pairing.kt (no MainActivity/Route — library)

@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `travel/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install travel (dev by default)._
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :travel / dir: travel/
 - Package roots present: ui, data, network
 - Entry files: MainActivity.kt (no Route.kt — search/results/booking/manage flow with pages)
@@ -23,7 +22,7 @@ _Install: ./install travel (dev by default)._
 **Architecture / data-flow:** `ui/` search/results/booking pages → `util/TravelViewModel` (+ `TravelUiContract`/`TravelUiState`, per-area `Travel*Ops`) → `domain/` grouping + `data/TravelRepository` over Room + `network/TravelApi`/`StaysApi`; booked trips stay readable from Room when offline.
 **Entry points + reading order:** `MainActivity.kt` → `ui/HomePage.kt` → `ui/FlightSearchForm.kt` → `util/TravelViewModel.kt` → `util/TravelSearchOps.kt` → `network/TravelApi.kt`.
 **Gotchas:**
-- `util/` is NOT a closed package root — pending migration; don't add more files there
+- `util/` is NOT a closed package root — don't add more files there
 - Booking is money-moving — price/availability must be re-confirmed server-side before payment, never trusted from cached offers
 - Offline readability is a feature (stored trips), offline booking is not — gate write paths on connectivity
 - Payment: `POST /trips/:id/checkout` returns a payment-intent `clientSecret` + `publishableKey` (the provider's processor account, per environment); present it with `platform/StripeCheckout.kt`, then `POST /trips/:id/confirm` books it. Never book before the sheet reports Completed
@@ -53,7 +52,7 @@ _Install: ./install travel (dev by default)._
 - com/vayunmathur/travel/network/PlaceDto.kt
 - com/vayunmathur/travel/network/StaysApi.kt
 - com/vayunmathur/travel/network/StaysDto.kt
-### util/ — ViewModel + booking ops (pending migration to closed roots)
+### util/ — ViewModel + booking ops
 - com/vayunmathur/travel/util/TravelViewModel.kt
 - com/vayunmathur/travel/util/TravelUiContract.kt
 - com/vayunmathur/travel/util/TravelUiState.kt

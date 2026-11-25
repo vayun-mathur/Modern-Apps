@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `music/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install music (dev by default)._
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :music / dir: music/
 - Package roots present: ui, data, platform, intents, service
 - Entry files: MainActivity.kt, Route.kt, Navigation.kt

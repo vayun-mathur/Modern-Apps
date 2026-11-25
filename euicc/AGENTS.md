@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `euicc/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install euicc (dev by default)._
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :euicc / dir: euicc/
 - Package roots present: ui, data, platform, service, telephony
 - Entry files: Route.kt, Navigation.kt + platform/LuiActivity.kt (LPA UI entry; no MainActivity)

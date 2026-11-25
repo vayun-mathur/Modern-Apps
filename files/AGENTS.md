@@ -3,10 +3,9 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `files/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install files (dev by default)._
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :files / dir: files/
 - Package roots present: ui, data, platform
-- Entry files: MainActivity.kt, Route.kt, Navigation.kt (FilesApplication.kt was deleted by the shared-boilerplate migration — do NOT re-add)
+- Entry files: MainActivity.kt, Route.kt, Navigation.kt (no `FilesApplication` class)
 - Deps: :library:image
 - Metadata: metadata_data/files.md (present)
 - Rust: no / screenshotTest: yes

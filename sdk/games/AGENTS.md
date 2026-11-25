@@ -2,7 +2,6 @@
 
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `sdk/games/` + allowed shared modules. Do not root-scan.
 
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :sdk:games / dir: sdk/games/
 - Package roots present: (public games SDK — one package)
 - Entry files: GameHubClient.kt + GameHubContract.kt (no MainActivity/Route — SDK)

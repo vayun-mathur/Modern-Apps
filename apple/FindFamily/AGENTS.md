@@ -1,7 +1,6 @@
 # AGENTS.md — apple/FindFamily (FindFamily for iOS)
 
-SwiftUI iPhone app, bundle `cc.findfamily.app.1`, team `M42H545N93`, iOS 18+. Imported with history from
-`vayun-mathur/Find-Family-iOS`. Android counterpart: `findfamily/` (same relay protocol, same PQC formats).
+SwiftUI iPhone app, bundle `cc.findfamily.app.1`, team `M42H545N93`, iOS 18+. Android counterpart: `findfamily/` (same relay protocol, same PQC formats).
 
 ## Layout
 - `Package.swift`: SwiftPM library target `FindFamily` rooted at `FindFamilyiOS/` (xtool requires a library product).

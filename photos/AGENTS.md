@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `photos/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install photos (dev by default)._
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :photos / dir: photos/
 - Package roots present: ui, data, domain, platform, service, widget
 - Entry files: MainActivity.kt (no Route.kt — `Route` + `Navigation` are inline)

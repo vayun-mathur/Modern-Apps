@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `things/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install things (dev by default)._
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :things / dir: things/
 - Package roots present: ui, platform
 - Entry files: MainActivity.kt, Route.kt, Navigation.kt
@@ -12,7 +11,7 @@ _Install: ./install things (dev by default)._
 - Rust: no / screenshotTest: yes
 
 ## Overview
-**Purpose:** BLE hyd ration tracker — pairs a smart water bottle, totals sips against a daily goal. No account, no cloud; readings stay on the phone. (Scale BLE files are legacy/experimental alongside.)
+**Purpose:** BLE hyd ration tracker — pairs a smart water bottle, totals sips against a daily goal. No account, no cloud; readings stay on the phone. (Scale BLE files sit alongside the bottle flow.)
 **Key features:** Scan/pair/disconnect, live per-sip history, goal progress; Health Connect bridge helper; permissions-gated onboarding.
 **Entry points:** `Route` → `MainActivity.kt` → `Navigation.kt` → `ui/HomePage.kt` → `platform/DeviceController.kt` → `platform/BleManager.kt`.
 **Gotchas:** BLE behavior is device- and radio-state-dependent — test scan/pair/drop/reconnect on hardware, not the emulator.

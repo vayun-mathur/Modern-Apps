@@ -3,10 +3,9 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `camera/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install camera (dev by default)._
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :camera / dir: camera/
 - Package roots present: ui, domain, platform
-- Entry files: MainActivity.kt (no Route.kt — `Route` is inline, single-screen app)
+- Entry files: MainActivity.kt, Route.kt (`Route.Camera` / `Route.Settings`)
 - Deps: :library:ml
 - Metadata: metadata_data/camera.md (present)
 - Rust: yes / screenshotTest: hybrid (phone hand-captured; wide controls preview-rendered)
@@ -14,27 +13,30 @@ _Install: ./install camera (dev by default)._
 ## Overview
 **Purpose:** The most featureful open-source camera app — usable as the system camera and from the lockscreen. 100% offline.
 **Key features:**
-- Photo + video capture (CameraX, works regardless of Camera2 extension support) with per-mode sessions: single, portrait, night, slo-mo, video
+- Photo + video capture on a direct Camera2 implementation (`platform/camera2/` driver, sessions, extension and high-speed sessions) with per-mode sessions: single, portrait, night, slo-mo, video
 - Panorama stitching + night-burst alignment in the native Rust `camera_stitch` engine
 - Portrait mode with on-device segmentation (MediaPipe selfie + MODNet matting on a Vulkan compute runtime, `.maml` assets)
 - QR/barcode scanning (zxing) and optional GPS geotagging written into EXIF
-**Architecture / data-flow:** Single-screen `ui/CameraScreen` + `util/CameraViewModel` over per-mode `util/` session objects; `domain/` holds pure lens-selection logic, `platform/` capability queries; heavy work (stitch, night align, bokeh) goes through Rust JNI (`StitchNative`) and lands in MediaStore via `MediaStoreSaver`. `onCreateBeforeContent` only honors the `ACTION_IMAGE_CAPTURE` capture-for-result intent; `Content()` sits behind a camera+mic permission gate.
-**Entry points + reading order:** `MainActivity.kt` (`Route.Camera`/`Settings` inline) → `ui/CameraScreen.kt` → `util/CameraViewModel.kt` → `util/CameraSessions.kt` → `util/PanoramaEngine.kt` / `NightCaptureEngine.kt`.
+**Architecture / data-flow:** Single-screen `ui/CameraScreen` + `platform/CameraViewModel` over per-mode `platform/` session objects on the `platform/camera2/` driver; `domain/` holds pure lens-selection logic, `platform/` capability queries; heavy work (stitch, night align, bokeh) goes through Rust JNI (`platform/StitchNative`) and lands in MediaStore via `data/MediaStoreSaver`. `onCreateBeforeContent` only honors the `ACTION_IMAGE_CAPTURE` capture-for-result intent; `Content()` sits behind a camera+mic permission gate.
+**Entry points + reading order:** `MainActivity.kt` → `Route.kt` (`Route.Camera`/`Settings`) → `ui/CameraScreen.kt` → `platform/CameraViewModel.kt` → `platform/CameraSessions.kt` → `platform/PanoramaEngine.kt` / `NightCaptureEngine.kt`.
 **Gotchas:**
-- `util/` is NOT a closed package root — the `util/`→closed-roots migration is pending; new platform/engine code still lands there, don't add more
+- Capture code lives in `platform/` (the Camera2 driver in `platform/camera2/`); there is no `util/` root in this module
 - Screenshots are hand-captured (no metadata convention plugin — Layoutlib can't open a camera); committed listing images live under `metadata_data/photos/camera/phone/`
 - Volume keys act as the shutter, gated on the camera route being foreground; Esc/space covers desktop keyboards
 - `.maml` model assets ship uncompressed (`noCompress`) — never compress them
 
 ## Key files
-### Root — entry (Route inline, no Route.kt)
+### Root — entry + navigation
 - com/vayunmathur/camera/MainActivity.kt
+- com/vayunmathur/camera/Route.kt
 ### domain/ — pure lens-selection logic
 - com/vayunmathur/camera/domain/LensModel.kt
 - com/vayunmathur/camera/domain/LensSelectionLogic.kt
 - com/vayunmathur/camera/domain/ArgbToI420Converter.kt — bulk ARGB→YUV 4:2:0 for the Motion Photo clip
 - com/vayunmathur/camera/domain/MotionSaveQueue.kt — bound on Motion Photos still saving after the shutter
 - com/vayunmathur/camera/domain/StillCaptureModePolicy.kt — ZSL vs MINIMIZE_LATENCY choice
+- com/vayunmathur/camera/domain/PanoXmp.kt
+- com/vayunmathur/camera/domain/MotionPhotoWriter.kt
 ### platform/ — capability queries
 - com/vayunmathur/camera/platform/CameraCapabilities.kt
 - com/vayunmathur/camera/platform/LensSelector.kt
@@ -61,42 +63,44 @@ _Install: ./install camera (dev by default)._
 - com/vayunmathur/camera/ui/LensBar.kt
 - com/vayunmathur/camera/ui/SettingsPage.kt
 - com/vayunmathur/camera/ui/CameraPostProcessingSettings.kt
-### util/ — ViewModel, sessions, engines, persistence (migration pending)
-- com/vayunmathur/camera/util/CameraViewModel.kt
-- com/vayunmathur/camera/util/CameraViewModelActions.kt
-- com/vayunmathur/camera/util/CameraViewModelTypes.kt
-- com/vayunmathur/camera/util/CameraStartup.kt
-- com/vayunmathur/camera/util/CameraSessions.kt
-- com/vayunmathur/camera/util/CameraPhotoSessions.kt
-- com/vayunmathur/camera/util/CameraPhotoSessionSetup.kt
-- com/vayunmathur/camera/util/CameraPhotoSessionShared.kt
-- com/vayunmathur/camera/util/CameraPortraitSession.kt
-- com/vayunmathur/camera/util/CameraSingleCapture.kt
-- com/vayunmathur/camera/util/CameraPhotoCapture.kt
-- com/vayunmathur/camera/util/CameraCaptureProcessing.kt
-- com/vayunmathur/camera/util/CameraVideoSession.kt
-- com/vayunmathur/camera/util/CameraVideoRecording.kt
-- com/vayunmathur/camera/util/CameraSloMoSession.kt
-- com/vayunmathur/camera/util/CameraManualControls.kt
-- com/vayunmathur/camera/util/CameraControls.kt
-- com/vayunmathur/camera/util/CameraNightMode.kt
-- com/vayunmathur/camera/util/CameraNightCapture.kt
-- com/vayunmathur/camera/util/NightCaptureEngine.kt
-- com/vayunmathur/camera/util/PanoramaEngine.kt
-- com/vayunmathur/camera/util/GpuStitcher.kt
-- com/vayunmathur/camera/util/StitchNative.kt — JNI bridge into `camera_stitch`
-- com/vayunmathur/camera/util/PanoXmp.kt
-- com/vayunmathur/camera/util/PortraitBokeh.kt
-- com/vayunmathur/camera/util/BokehAnalyzer.kt
-- com/vayunmathur/camera/util/PhotoAnalyzer.kt
-- com/vayunmathur/camera/util/MotionPhotoEncoder.kt
-- com/vayunmathur/camera/util/MotionPhotoWriter.kt
-- com/vayunmathur/camera/util/VideoProcessor.kt
-- com/vayunmathur/camera/util/CodecSupport.kt
-- com/vayunmathur/camera/util/MediaStoreSaver.kt
-- com/vayunmathur/camera/util/CameraSettings.kt
-- com/vayunmathur/camera/util/CameraSaveLocation.kt
-- com/vayunmathur/camera/util/CameraSaveRouting.kt
+### platform/ — ViewModel, sessions, engines
+- com/vayunmathur/camera/platform/CameraViewModel.kt
+- com/vayunmathur/camera/platform/CameraViewModelActions.kt
+- com/vayunmathur/camera/platform/CameraViewModelTypes.kt
+- com/vayunmathur/camera/platform/CameraStartup.kt
+- com/vayunmathur/camera/platform/CameraSessions.kt
+- com/vayunmathur/camera/platform/CameraSingleCapture.kt
+- com/vayunmathur/camera/platform/CameraPhotoCapture.kt
+- com/vayunmathur/camera/platform/CameraCaptureProcessing.kt
+- com/vayunmathur/camera/platform/CameraVideoRecording.kt
+- com/vayunmathur/camera/platform/Camera2VideoRecordingEngine.kt
+- com/vayunmathur/camera/platform/Camera2SloMoGlue.kt
+- com/vayunmathur/camera/platform/CameraManualControls.kt
+- com/vayunmathur/camera/platform/CameraControls.kt
+- com/vayunmathur/camera/platform/CameraNightMode.kt
+- com/vayunmathur/camera/platform/CameraNightCapture.kt
+- com/vayunmathur/camera/platform/NightCaptureEngine.kt
+- com/vayunmathur/camera/platform/PanoramaEngine.kt
+- com/vayunmathur/camera/platform/GpuStitcher.kt
+- com/vayunmathur/camera/platform/StitchNative.kt — JNI bridge into `camera_stitch`
+- com/vayunmathur/camera/platform/PortraitBokeh.kt
+- com/vayunmathur/camera/platform/BokehAnalyzer.kt
+- com/vayunmathur/camera/platform/PhotoAnalyzer.kt
+- com/vayunmathur/camera/platform/MotionPhotoEncoder.kt
+- com/vayunmathur/camera/platform/VideoProcessor.kt
+- com/vayunmathur/camera/platform/CodecSupport.kt
+### platform/camera2/ — Camera2 driver
+- com/vayunmathur/camera/platform/camera2/Camera2Driver.kt
+- com/vayunmathur/camera/platform/camera2/Camera2Session.kt
+- com/vayunmathur/camera/platform/camera2/Camera2ExtensionSession.kt
+- com/vayunmathur/camera/platform/camera2/Camera2HighSpeedSession.kt
+- com/vayunmathur/camera/platform/camera2/StillCapture.kt
+- com/vayunmathur/camera/platform/camera2/StreamSelection.kt
+### data/ — settings + saving
+- com/vayunmathur/camera/data/MediaStoreSaver.kt
+- com/vayunmathur/camera/data/CameraSettings.kt
+- com/vayunmathur/camera/data/CameraSaveLocation.kt
+- com/vayunmathur/camera/data/CameraSaveRouting.kt
 
 ## Verify (this module only)
 ```

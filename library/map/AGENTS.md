@@ -2,11 +2,10 @@
 
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `library/map/` + allowed shared modules. Do not root-scan.
 
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :library:map / dir: library/map/
 - Package roots present: (vector-map renderer — one package + Rust core)
 - Entry files: VectorMap.kt + MapScope.kt (no MainActivity/Route — library)
-- Deps: (none — no project dependencies by design, #884)
+- Deps: (none — no project dependencies by design)
 - Network: tile range fetches reach the host app's `NetworkClient` over JNI
   (`NativeHttpBridge`, resolved at runtime from the app classpath — every map
   host already depends on `:library:network` directly); the live

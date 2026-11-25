@@ -2,7 +2,6 @@
 
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `sdk/cast/` + allowed shared modules. Do not root-scan.
 
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :sdk:cast / dir: sdk/cast/
 - Package roots present: (public cast SDK — one package)
 - Entry files: CastClient.kt + CastContract.kt (no MainActivity/Route — SDK)

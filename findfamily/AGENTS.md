@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `findfamily/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install findfamily (dev by default)._
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :findfamily / dir: findfamily/
 - Package roots present: ui, data, domain, platform, intents, service
 - Entry files: MainActivity.kt (no Route.kt — `Route` + `Navigation` are inline)
@@ -46,8 +45,8 @@ WebSocket relay host: `wss://api.maproj.org/api/ws` (Cloudflare FIRST_PARTY pins
 ### domain/ — pairing auth, no-show policy, sender movement policy (pure logic)
 - com/vayunmathur/findfamily/domain/PairAuth.kt
 - com/vayunmathur/findfamily/domain/NoShowPolicy.kt
-- com/vayunmathur/findfamily/domain/MovementDetector.kt — sender moving/still state machine (acceleration + fix speed + displacement, #895)
-- com/vayunmathur/findfamily/domain/ForcedFixPolicy.kt — when a "still" sender forces a one-off fix (#895)
+- com/vayunmathur/findfamily/domain/MovementDetector.kt — sender moving/still state machine (acceleration + fix speed + displacement)
+- com/vayunmathur/findfamily/domain/ForcedFixPolicy.kt — when a "still" sender forces a one-off fix
 ### intents/ — assistant IPC
 - com/vayunmathur/findfamily/intents/GetIntent.kt
 - com/vayunmathur/findfamily/intents/CreateLinkIntent.kt
@@ -58,7 +57,7 @@ WebSocket relay host: `wss://api.maproj.org/api/ws` (Cloudflare FIRST_PARTY pins
 - com/vayunmathur/findfamily/platform/FinalLocationReporter.kt
 - com/vayunmathur/findfamily/platform/NoShowCheckScheduler.kt
 - com/vayunmathur/findfamily/platform/PoweredOffBeacon.kt
-- com/vayunmathur/findfamily/platform/LocationKeepAlive.kt — sender keep-alive: single fix intake, low-power/passive requests, forced fix (#895)
+- com/vayunmathur/findfamily/platform/LocationKeepAlive.kt — sender keep-alive: single fix intake, low-power/passive requests, forced fix
 ### service/ — Quick Settings tile
 - com/vayunmathur/findfamily/service/SharingTileService.kt
 ### tracker/ — BLE tracker protocol + powered-off finding
@@ -108,7 +107,7 @@ WebSocket relay host: `wss://api.maproj.org/api/ws` (Cloudflare FIRST_PARTY pins
 - com/vayunmathur/findfamily/ui/dialogs/KeyMismatchDialog.kt
 - com/vayunmathur/findfamily/ui/dialogs/OutdatedPeerDialog.kt
 - com/vayunmathur/findfamily/ui/dialogs/SecurityCodeDialog.kt
-### util/ — ViewModel, tracking service, networking (migration pending)
+### util/ — ViewModel, tracking service, networking
 - com/vayunmathur/findfamily/util/FindFamilyViewModel.kt
 - com/vayunmathur/findfamily/util/FindFamilyUiContract.kt
 - com/vayunmathur/findfamily/util/MapPageState.kt

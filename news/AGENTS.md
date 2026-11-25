@@ -31,9 +31,10 @@ source names, sitemap keywords, downloaded bodies (`domain/NewsSearch`).
   tolerant HTML DOM (`domain/HtmlDom`); reader with text size, serif/sans
   (extracted-text only — no original-page WebView or open-in-browser)
 
-## Source verification (2026-11-23, via the dev box's proxied network)
-Verified = sitemap/RSS fetched 200 and parsed + one article's raw HTML
-contained the full body (paragraph text measured, tail checked):
+## Source verification
+A source counts as verified when its sitemap/RSS fetches 200 and parses
+and one article's raw HTML contains the full body (paragraph text
+measured, tail checked):
 - BBC `bbc.com/sitemaps/https-sitemap-com-news-1.xml` — full (no paywall)
 - The Guardian `theguardian.com/sitemaps/news.xml` — sitemap verified;
   article pages returned 403 to the datacentre verification IP (no
@@ -45,7 +46,7 @@ contained the full body (paragraph text measured, tail checked):
   despite meter markers; badged as metered
 - NPR (RSS), DW (RSS), Ars Technica (RSS), The Verge (RSS),
   Hacker News (RSS) — full article HTML verified on linked articles
-Excluded after verification (body absent from raw HTML or fetch blocked):
+Excluded sources (body absent from raw HTML or fetch blocked):
 Reuters (401), AP (403), NYT (bot wall + server-side paywall), WSJ/WaPo
 (403), Axios (JS-only shell, no body in HTML), France 24 (403),
 Japan Times (sitemap URL serves HTML, not XML).

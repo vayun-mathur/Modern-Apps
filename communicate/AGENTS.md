@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `communicate/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install communicate (dev by default)._
-<!-- last-reviewed: 2026-11-21 -->
 - Gradle: :communicate / dir: communicate/
 - Package roots present: ui, data, domain, intents, service, telephony, notifications
 - Entry files: MainActivity.kt, Route.kt, Navigation.kt

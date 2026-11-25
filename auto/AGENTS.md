@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `auto/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install auto (dev by default)._
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :auto / dir: auto/
 - Package roots present: ui, platform, network, service, notifications, telephony
 - Entry files: MainActivity.kt, Route.kt, Navigation.kt
@@ -35,7 +34,7 @@ _Install: ./install auto (dev by default)._
 - com/vayunmathur/auto/network/UsbConnector.kt
 - com/vayunmathur/auto/network/WifiDirectConnector.kt
 ### platform/ — host, cards, channels, pairing, receivers
-- com/vayunmathur/auto/platform/HostSession.kt — successor to the old `CarAppHost` (one hosted car-app session)
+- com/vayunmathur/auto/platform/HostSession.kt — one hosted car-app session
 - com/vayunmathur/auto/platform/HostManager.kt — multi-app host fan-in
 - com/vayunmathur/auto/service/CarAppHostSession.kt — session-scoped host owner
 - com/vayunmathur/auto/platform/AutoViewModel.kt

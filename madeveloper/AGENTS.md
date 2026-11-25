@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `madeveloper/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install madeveloper (dev by default)._
-<!-- last-reviewed: 2026-11-16 -->
 - Gradle: :madeveloper / dir: madeveloper/
 - Package roots present: ui, data, domain, platform
 - Entry files: MainActivity.kt, Route.kt, Navigation.kt

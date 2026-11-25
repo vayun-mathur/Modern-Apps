@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `backup/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install backup (dev by default)._
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :backup / dir: backup/
 - Package roots present: ui, data, domain, platform, service
 - Entry files: MainActivity.kt, Route.kt, Navigation.kt

@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `games/chess/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install games/chess (dev by default)._
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :games:chess / dir: games/chess/
 - Package roots present: data
 - Entry files: MainActivity.kt, Route.kt (screens live at module root, not ui/)
@@ -16,8 +15,8 @@ _Install: ./install games/chess (dev by default)._
 **Game shape:** Root-level screens (`ChessGameScreens`, `ChessPuzzleScreens`, `ChessLearnScreens`) → `util/*ViewModel` → `data/` models/lessons/puzzles; achievements → `:sdk:games` → hub.
 **Entry points:** `Route` → `MainActivity.kt` → `ChessGameScreens.kt` → `util/ChessViewModel.kt` → `data/ChessModel.kt` → `util/MaiaEngine.kt`.
 **Gotchas:**
-- `util/` is NOT a closed package root — pending migration; don't add more files there
-- Screens at module root (not `ui/`) is this game's historical layout — follow it here, don't "fix" it
+- `util/` is NOT a closed package root — don't add more files there
+- Screens are at module root (not `ui/`) — follow this layout here, don't "fix" it
 
 ## Key files
 ### Root — entry + screens (flat layout, no ui/)
@@ -30,7 +29,7 @@ _Install: ./install games/chess (dev by default)._
 - com/vayunmathur/games/chess/data/ChessModel.kt
 - com/vayunmathur/games/chess/data/Learn.kt
 - com/vayunmathur/games/chess/data/Puzzle.kt
-### util/ — ViewModels + Maia AI (pending migration to closed roots)
+### util/ — ViewModels + Maia AI
 - com/vayunmathur/games/chess/util/ChessViewModel.kt
 - com/vayunmathur/games/chess/util/LearnViewModel.kt
 - com/vayunmathur/games/chess/util/PuzzleViewModel.kt

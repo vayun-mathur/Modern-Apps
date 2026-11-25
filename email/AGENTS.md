@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `email/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install email (dev by default)._
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :email / dir: email/
 - Package roots present: ui, data, platform, network, intents, widget
 - Entry files: MainActivity.kt, Route.kt, Navigation.kt
@@ -85,7 +84,7 @@ _Install: ./install email (dev by default)._
 ### ui/ — list, thread, composer, account flows
 - com/vayunmathur/email/ui/MainContent.kt
 - com/vayunmathur/email/ui/MessageListScreen.kt
-- com/vayunmathur/email/ui/MessageThreadScreen.kt — thread pane: strip + one open message, no outer scroller (#900)
+- com/vayunmathur/email/ui/MessageThreadScreen.kt — thread pane: strip + one open message, no outer scroller
 - com/vayunmathur/email/ui/ThreadMessageStrip.kt
 - com/vayunmathur/email/ui/MessageItem.kt — header / self-scrolling body / footer
 - com/vayunmathur/email/ui/MessageFooter.kt

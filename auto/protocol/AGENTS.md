@@ -2,7 +2,6 @@
 
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `auto/protocol/` + allowed shared modules. Do not root-scan.
 
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :auto:protocol / dir: auto/protocol/
 - Package roots present: (pure-Kotlin protocol library — single package, no Android roots)
 - Entry files: GalConnection.kt + GalControlSession.kt (no MainActivity/Route — library)

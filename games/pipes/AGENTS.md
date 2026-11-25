@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `games/pipes/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install games/pipes (dev by default)._
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :games:pipes / dir: games/pipes/
 - Package roots present: ui, data, domain, platform
 - Entry files: MainActivity.kt, Route.kt, Navigation.kt

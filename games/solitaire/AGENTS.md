@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `games/solitaire/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install games/solitaire (dev by default)._
-<!-- last-reviewed: 2026-11-12 -->
 - Gradle: :games:solitaire / dir: games/solitaire/
 - Package roots present: ui, data, domain, platform
 - Entry files: MainActivity.kt, Route.kt, Navigation.kt
@@ -80,10 +79,10 @@ _Install: ./install games/solitaire (dev by default)._
 Every new game deals a seed from `src/main/assets/solvable_deals.bin`: one sorted
 table per mode × option (8 Klondike draw/pass configs, Spider 1/2/4 suits,
 FreeCell, Pyramid relaxed/single-pass), keyed by the stats variant
-(`KLONDIKE__DRAW_THREE_HARD`, ...). Each seed was solved to a full win offline
+(`KLONDIKE__DRAW_THREE_HARD`, ...). Each seed is proven to a full win offline
 by `domain/DealProofs` (the mode's solver, climbing the pass-limit ladder:
 a win with fewer passes is a win with more). Seeds deal through
-`createShuffledDeck(seed)` / `createSpiderDeck(suits, seed)` exactly as before,
+`createShuffledDeck(seed)` / `createSpiderDeck(suits, seed)`,
 so a seed deals the same board everywhere; the state keeps it (`seed`), and
 `restartDeal()` replays it.
 
@@ -101,7 +100,7 @@ Optional: `-PsolitaireSeedGenTarget=10000` (seeds per config),
 `-PsolitaireSeedGenGroups=klondike-draw1,klondike-draw3,pyramid,freecell,spider1,spider2,spider4`
 (subset; merge by hand), `-PsolitaireSeedGenHeap=40g` (test JVM heap).
 `analysis/soldeal/solvable_deals_report.txt` has per-config solvable rates
-(last run: Klondike draw-1 86% unlimited .. 19% one pass, draw-3 79% .. 2.6%,
+(Klondike draw-1 86% unlimited .. 19% one pass, draw-3 79% .. 2.6%,
 FreeCell 99.9%, Pyramid 83% relaxed / 12.8% single pass, Spider 84/83/71% for
 1/2/4 suits; proven within budget).
 Output is deterministic for a given solver and budget (any thread count).

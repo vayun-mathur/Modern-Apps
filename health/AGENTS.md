@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `health/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install health (dev by default)._
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :health / dir: health/
 - Package roots present: ui, data, domain, platform, service, notifications
 - Entry files: MainActivity.kt (no Route.kt — Today-dashboard + record pages flow)
@@ -20,7 +19,7 @@ _Install: ./install health (dev by default)._
 **Architecture / data-flow:** `ui/` Today + record pages → `platform/MedicalViewModel` (+ per-area `Medical*Ops`) → `data/HealthRepository` over Room (`Record`, `MedicationSchedule`, `MedicalRecords`) synced with Health Connect; `domain/` holds pure FHIR (Observations, Medication, Immunization, Allergy/Condition) + `DoseSchedule`; reminders flow `DoseScheduler` → receivers → `DoseReminderActivity` + `service/DoseSoundService`.
 **Entry points + reading order:** `MainActivity.kt` → `ui/TodayPage.kt` → `platform/MedicalViewModel.kt` → `data/HealthRepository.kt` → `domain/FhirRecords.kt` → `platform/DoseScheduler.kt`.
 **Gotchas:**
-- `util/` is NOT a closed package root — the `util/`→closed-roots migration is pending; don't add more files there
+- `util/` is NOT a closed package root — don't add more files there
 - Medical data is dual-homed (Room + Health Connect) — writes must update both or they diverge
 - Dose reminders need the boot path re-armed like clock alarms; sound runs through a foreground service
 
@@ -62,7 +61,7 @@ _Install: ./install health (dev by default)._
 - com/vayunmathur/health/notifications/DoseNotification.kt
 - com/vayunmathur/health/notifications/MedicationChannels.kt
 - com/vayunmathur/health/service/DoseSoundService.kt
-### util/ — food DB, sync worker, ViewModel (pending migration to closed roots)
+### util/ — food DB, sync worker, ViewModel
 - com/vayunmathur/health/util/HealthViewModel.kt
 - com/vayunmathur/health/util/HealthUiContract.kt
 - com/vayunmathur/health/util/HealthSyncWorker.kt

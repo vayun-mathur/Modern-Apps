@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `appstore/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install appstore (dev by default)._
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :appstore / dir: appstore/
 - Package roots present: ui, data, domain
 - Entry files: MainActivity.kt (no Route.kt — home/library/search/sources/trust/updates pages flow)
@@ -20,7 +19,7 @@ _Install: ./install appstore (dev by default)._
 **Architecture / data-flow:** `ui/` home/search/detail/library/updates/sources/trust → `util/AppStoreViewModel` (+ per-area `*Ops`, `AppStoreUiContract`) → `data/` providers per source (`*Repository`, Play/F-Droid/Accrescent clients) + `data/installer/` + `data/security/`; `domain/SearchRanking` is pure ranking.
 **Entry points + reading order:** `MainActivity.kt` → `ui/HomePage.kt` → `util/AppStoreViewModel.kt` → `data/CatalogRepository.kt` → `data/installer/InstallCoordinator.kt` → `data/security/InstallVerifier.kt`.
 **Gotchas:**
-- `util/` is NOT a closed package root — pending migration; don't add more files there
+- `util/` is NOT a closed package root — don't add more files there
 - Signature verification is the product — never shortcut it for UX; trust-profile changes need adversarial review
 - Anonymous Play auth sessions are fragile by nature; isolate Play failures from other sources
 
@@ -68,7 +67,7 @@ _Install: ./install appstore (dev by default)._
 - com/vayunmathur/appstore/data/RestrictedPackages.kt
 ### domain/ — pure ranking (no Android)
 - com/vayunmathur/appstore/domain/SearchRanking.kt
-### util/ — ViewModel + per-area ops (pending migration to closed roots)
+### util/ — ViewModel + per-area ops
 - com/vayunmathur/appstore/util/AppStoreViewModel.kt
 - com/vayunmathur/appstore/util/AppStoreUiContract.kt
 - com/vayunmathur/appstore/util/AppStoreHomeOps.kt
@@ -82,7 +81,7 @@ _Install: ./install appstore (dev by default)._
 - com/vayunmathur/appstore/ui/AppDetailPage.kt
 - com/vayunmathur/appstore/ui/AppDetailHeader.kt
 - com/vayunmathur/appstore/ui/AppDetailSections.kt
-- com/vayunmathur/appstore/ui/ScreenshotViewerScreen.kt — full-screen swipe/zoom screenshot viewer (`Route.Screenshots`, #918)
+- com/vayunmathur/appstore/ui/ScreenshotViewerScreen.kt — full-screen swipe/zoom screenshot viewer (`Route.Screenshots`)
 - com/vayunmathur/appstore/ui/AppTile.kt
 - com/vayunmathur/appstore/ui/AppComponents.kt
 - com/vayunmathur/appstore/ui/AppMeta.kt

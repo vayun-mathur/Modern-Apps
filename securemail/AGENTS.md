@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `securemail/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install securemail (dev by default)._
-<!-- last-reviewed: 2026-11-21 -->
 - Gradle: :securemail / dir: securemail/
 - Package roots present: ui, data, domain, platform, network, service
 - Entry files: MainActivity.kt, Route.kt, Navigation.kt
@@ -22,7 +21,7 @@ _Install: ./install securemail (dev by default)._
 **Gotchas:**
 - `NetworkClient.init(this, TrustBundle.FIRST_PARTY)` must stay first in `onCreateBeforeContent` — `mail.maemail.org` is a pinned first-party host; WKD/VKS lookups for arbitrary external domains ride the platform trust store instead.
 - `MainActivity` is a `MaFragmentActivity` with `autoSetContent = false`: composition is deferred until `unlockIfReady` succeeds — don't set content before the key gate.
-- `:library:e2ee-openpgp` was split out of `:library:e2ee-p2p` so non-mail apps don't link rPGP (#873); securemail is its only consumer — keep the PGP surface here, not in shared code.
+- `:library:e2ee-openpgp` provides the PGP surface and securemail is its only consumer, so non-mail apps don't link rPGP — keep the PGP surface here, not in shared code.
 - `data/MailConfig` is the prefs owner (address token + onboarded flag, non-secret fields only, one process-wide DataStore); secrets live only in `platform/crypto/KeyManager`'s Keystore-wrapped prefs — never add secrets to `MailConfig`.
 - `MailSocketService` owns the live socket lifetime; `MailSyncWorker` is only a backstop poll — don't move delivery onto the worker.
 

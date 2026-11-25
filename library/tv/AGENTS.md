@@ -2,7 +2,6 @@
 
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `library/tv/` + allowed shared modules. Do not root-scan.
 
-<!-- last-reviewed: 2026-11-21 -->
 - Gradle: :library:tv / dir: library/tv/
 - Package roots present: (TV Compose components — one package)
 - Entry files: TvAppFrame.kt + TvTheme.kt (no MainActivity/Route — library)

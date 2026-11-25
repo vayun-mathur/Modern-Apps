@@ -2,7 +2,6 @@
 
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `library/ink/` + allowed shared modules. Do not root-scan.
 
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :library:ink / dir: library/ink/
 - Package roots present: (stylus-ink view + serialization — one package)
 - Entry files: InkCanvasView.kt (no MainActivity/Route — library)

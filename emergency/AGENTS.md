@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `emergency/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install emergency (dev by default)._
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :emergency / dir: emergency/
 - Package roots present: ui, data, domain, platform, service, notifications
 - Entry files: MainActivity.kt, Route.kt, Navigation.kt + ui/SosScreen.kt (SosActivity stays separate; see Navigation.kt)
@@ -16,7 +15,7 @@ _Install: ./install emergency (dev by default)._
 **Key features:** `data/EmergencyRepository` (info, imported FHIR medical, contacts) → `platform/SosCoordinator` → `service/SosCountdownService` + `receiver/SosActionReceiver` → `notifications/SosNotifications`; gesture trigger provider + number lookup with override.
 **Entry points:** `MainActivity.kt` (ViewInfo/EditInfo host) + `ui/SosScreen.kt` SosActivity (Route.Sos host) → `platform/SosCoordinator.kt` → `service/SosCountdownService.kt` → `data/EmergencyRepository.kt`.
 **Gotchas:**
-- `receiver/` is NOT a closed package root — pending migration; don't add more files there
+- `receiver/` is NOT a closed package root — don't add more files there
 - SOS dials the real local emergency number — never trigger calls in tests, previews, or screenshots
 - Lockscreen visibility is permission/signature-gated — verify on the OS build, not sideloaded
 

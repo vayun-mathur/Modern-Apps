@@ -3,10 +3,9 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `cast/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install cast (dev by default)._
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :cast / dir: cast/
 - Package roots present: ui, domain, platform, network, service
-- Entry files: MainActivity.kt, Route.kt, Navigation.kt (CastApplication.kt was deleted by the shared-boilerplate migration — do NOT re-add)
+- Entry files: MainActivity.kt, Route.kt, Navigation.kt (no `CastApplication` class)
 - Deps: :library:aosp-stubs, :cast:protocol, :sdk:cast
 - Metadata: metadata_data/cast.md (present)
 - Rust: no / screenshotTest: yes

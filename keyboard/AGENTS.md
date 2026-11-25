@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `keyboard/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install keyboard (dev by default)._
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :keyboard / dir: keyboard/
 - Package roots present: ui, platform
 - Entry files: MainActivity.kt (settings/setup UI) + ime/KeyboardService.kt (the actual IME entry)
@@ -20,7 +19,7 @@ _Install: ./install keyboard (dev by default)._
 **Architecture / data-flow:** System binds `ime/KeyboardService` → `ime/KeyboardState` + `Composer` routespre-edit composition → `ui/` rows/pages render keys; `util/` holds layouts (Latin/Cyrillic/Other), dictionaries (incl. Pinyin), prefs, clipboard store. `MainActivity` is only the setup/settings UI, not the keyboard.
 **Entry points + reading order:** `ime/KeyboardService.kt` → `ime/KeyboardState.kt` → `ime/Composer.kt` → `ui/KeyboardScreen.kt` → `util/KeyboardLayouts*.kt`.
 **Gotchas:**
-- `ime/` and `util/` are NOT closed package roots — pending migration; don't add more files there
+- `ime/` and `util/` are NOT closed package roots — don't add more files there
 - No-network is a guarantee, not an accident — never add a network dep or permission here
 - Voice input needs its own permission activity before the strip works
 
@@ -53,7 +52,7 @@ _Install: ./install keyboard (dev by default)._
 - com/vayunmathur/keyboard/ui/ClipboardStrip.kt
 - com/vayunmathur/keyboard/ui/VoiceStrip.kt
 - com/vayunmathur/keyboard/ui/SetupScreen.kt
-### util/ — layouts, dictionaries, prefs (pending migration to closed roots)
+### util/ — layouts, dictionaries, prefs
 - com/vayunmathur/keyboard/util/KeyboardLayout.kt
 - com/vayunmathur/keyboard/util/KeyboardLayouts.kt
 - com/vayunmathur/keyboard/util/KeyboardLayoutsLatin.kt

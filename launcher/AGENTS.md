@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `launcher/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install launcher (dev by default). For a TV over Wi-Fi: `sh launcher/install-tv.sh <TV_IP>` builds, installs and offers to set it as the default home; `sh launcher/undo-tv.sh <TV_IP>` restores the stock home._
-<!-- last-reviewed: 2026-10-20 -->
 - Gradle: :launcher / dir: launcher/
 - Package roots present: ui, data, domain, platform + tv/{ui,data,domain,platform}
 - Entry files: MainActivity.kt (UiMode-routed), Route.kt + Navigation.kt (phone), tv/TvRoute.kt + tv/TvNavigation.kt (TV)

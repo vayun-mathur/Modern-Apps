@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `share/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install share (dev by default)._
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :share / dir: share/
 - Package roots present: ui, domain, platform, network
 - Entry files: MainActivity.kt, Route.kt, Navigation.kt + SharePopupActivity.kt (share-sheet entry)
@@ -20,7 +19,7 @@ _Install: ./install share (dev by default)._
 **Architecture / data-flow:** Send: share intent → popup → `ShareViewModel` → discovery managers → `ShareTransferService` → `TcpTransport`. Receive: tile/boot → `ShareReceiveController` → `PostGate` → notifier → `ShareSaveActivity`. `domain/protocol/ShareSession` models the handshake; `protocol/ShareNative` is the Rust JNI bridge.
 **Entry points + reading order:** `SharePopupActivity.kt` (send) / `platform/receive/ShareReceiveController.kt` (receive) → `Route` → `Navigation.kt` → `platform/ShareViewModel.kt` → `domain/protocol/ShareSession.kt`.
 **Gotchas:**
-- `protocol/` is NOT a closed package root — pending migration; don't add more files there
+- `protocol/` is NOT a closed package root — don't add more files there
 - Protocol interop with stock Android is version-sensitive — changes need cross-device testing, not just unit tests
 - Receive path must work with the app closed; never assume an Activity context there
 
@@ -50,7 +49,7 @@ _Install: ./install share (dev by default)._
 - com/vayunmathur/share/platform/receive/ShareBootReceiver.kt
 - com/vayunmathur/share/platform/receive/ShareReceiveTileService.kt
 - com/vayunmathur/share/platform/transfer/ShareTransferService.kt
-### protocol/ — Rust bridge (pending migration to closed roots)
+### protocol/ — Rust bridge
 - com/vayunmathur/share/protocol/ShareNative.kt
 ### ui/ — popup sheet + send screen
 - com/vayunmathur/share/ui/SharePopupSheet.kt

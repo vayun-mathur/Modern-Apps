@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `maps/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install maps (dev by default)._
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :maps / dir: maps/
 - Package roots present: ui, data, domain, platform, service, intents, util (single JNI-exception file)
 - Entry files: MainActivity.kt (no Route.kt — `Route` + `Navigation` are inline)

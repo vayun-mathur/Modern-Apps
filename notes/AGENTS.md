@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `notes/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install notes (dev by default)._
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :notes / dir: notes/
 - Package roots present: ui, data, domain, platform, intents, sync
 - Entry files: MainActivity.kt, Route.kt, Navigation.kt
@@ -34,7 +33,7 @@ _Install: ./install notes (dev by default)._
 - com/vayunmathur/notes/data/NoteBlock.kt
 - com/vayunmathur/notes/data/NoteDatabase.kt
 - com/vayunmathur/notes/data/NotesRepository.kt
-- com/vayunmathur/notes/data/NoteConverters.kt — `tags` JSON-array column (#913)
+- com/vayunmathur/notes/data/NoteConverters.kt — `tags` JSON-array column
 ### domain/ — pure rules (no Android)
 - com/vayunmathur/notes/domain/NoteTags.kt — tag normalisation, rename/merge, counts, suggestions
 ### platform/ — ViewModel, contract, stores, export

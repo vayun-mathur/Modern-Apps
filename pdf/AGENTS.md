@@ -3,9 +3,8 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `pdf/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install pdf (dev by default)._
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :pdf / dir: pdf/
-- Package roots present: ui
+- Package roots present: ui, data, platform, util
 - Entry files: MainActivity.kt, Route.kt, Navigation.kt (Route host; see Navigation.kt)
 - Deps: :library:image, :library:ocr
 - Metadata: metadata_data/pdf.md (present)
@@ -17,20 +16,20 @@ _Install: ./install pdf (dev by default)._
 - Full viewer: text search, text selection, form fields, outlines, zoom state, print via share menu; several documents open as separate Recents entries
 - Capture mode: photograph pages with auto-framing, crop, and compose them into a PDF; cut-and-glue screen for assembling pages
 - Native Rust PDF engine (`PdfNative`) for parsing, rendering, and export
-**Architecture / data-flow:** `MainActivity` hosts `Navigation.kt` (`Route.Home/Viewer/Capture/CapturePage/Crop/CutGlue`) over a single `util/PdfViewModel` + `util/PdfStateStore`, with `SafePdf*` utils wrapping the Rust engine for document access, page rendering, and edits; capture flows through `model/CapturedImage` → `AutoFrameDetector` → `ComposePdfDocument` → `PdfExporter`. `onCreateBeforeContent` only captures the launch intent's data URI; `Content()` picks viewer vs capture vs cut-glue vs picker.
-**Entry points + reading order:** `MainActivity.kt` + `Route.kt` + `Navigation.kt` (`InitialScreen` → viewer/capture/cut-glue) → `ui/SafePdfViewerScreen.kt` → `util/PdfViewModel.kt` → `util/SafePdfDocument.kt` → `util/SafePdfParser.kt`.
+**Architecture / data-flow:** `MainActivity` hosts `Navigation.kt` (`Route.Home/Viewer/Capture/CapturePage/Crop/CutGlue`) over a single `platform/PdfViewModel` + `platform/PdfStateStore`, with `SafePdf*` platform wrappers around the Rust engine for document access, page rendering, and edits; capture flows through `data/CapturedImage` → `AutoFrameDetector` → `ComposePdfDocument` → `PdfExporter`. `onCreateBeforeContent` only captures the launch intent's data URI; `Content()` picks viewer vs capture vs cut-glue vs picker.
+**Entry points + reading order:** `MainActivity.kt` + `Route.kt` + `Navigation.kt` (`InitialScreen` → viewer/capture/cut-glue) → `ui/SafePdfViewerScreen.kt` → `platform/PdfViewModel.kt` → `platform/SafePdfDocument.kt` → `platform/SafePdfParser.kt`.
 **Gotchas:**
 - Started-with-intent launches `finish()` on back instead of returning to the picker; in-app launches reset to the picker
-- Card drift fixed: `util/` gained `FrameGeometry`, `FrameImageOps`, `SafePdfDocumentEdits`, `SafePdfPrimitives`; `ui/` is `SafePdf*` + capture/crop/cut-glue screens (no separate `domain/` or `platform/`)
-- Extra non-conforming dirs (`model/`, `util/`) hold real code — closed-roots migration pending
+- Document, frame, and edit code (`FrameGeometry`, `FrameImageOps`, `SafePdfDocumentEdits`, `SafePdfPrimitives`, the `SafePdf*` wrappers) is in `platform/`; `ui/` is `SafePdf*` + capture/crop/cut-glue screens; there is no `domain/` root
+- `util/` holds only `PdfNative` (the Rust engine bridge) — don't add more files there; the capture model is in `data/`
 
 ## Key files
 ### Root — entry + navigation
 - com/vayunmathur/pdf/MainActivity.kt — host, intent → Route.Viewer routing
 - com/vayunmathur/pdf/Route.kt — Home/Viewer(uri)/Capture/CapturePage(index)/Crop(index)/CutGlue
 - com/vayunmathur/pdf/Navigation.kt — MainNavigation host
-### model/ — capture model
-- com/vayunmathur/pdf/model/CapturedImage.kt
+### data/ — capture model
+- com/vayunmathur/pdf/data/CapturedImage.kt
 ### ui/ — viewer chrome + state
 - com/vayunmathur/pdf/ui/SafePdfViewerScreen.kt
 - com/vayunmathur/pdf/ui/SafePdfViewerState.kt
@@ -70,22 +69,23 @@ _Install: ./install pdf (dev by default)._
 - com/vayunmathur/pdf/ui/CutGlueScreen.kt
 - com/vayunmathur/pdf/ui/components/CameraPreview.kt
 - com/vayunmathur/pdf/ui/components/SubcroppedImage.kt
-### util/ — ViewModel, engine bridge, capture pipeline (migration pending)
-- com/vayunmathur/pdf/util/PdfViewModel.kt
-- com/vayunmathur/pdf/util/PdfStateStore.kt
+### platform/ — ViewModel, engine wrappers, capture pipeline
+- com/vayunmathur/pdf/platform/PdfViewModel.kt
+- com/vayunmathur/pdf/platform/PdfStateStore.kt
+- com/vayunmathur/pdf/platform/SafePdfDocument.kt
+- com/vayunmathur/pdf/platform/SafePdfDocumentEdits.kt
+- com/vayunmathur/pdf/platform/SafePdfParser.kt
+- com/vayunmathur/pdf/platform/SafePdfModels.kt
+- com/vayunmathur/pdf/platform/SafePdfPrimitives.kt
+- com/vayunmathur/pdf/platform/SafePdfImages.kt
+- com/vayunmathur/pdf/platform/SafePdfListings.kt
+- com/vayunmathur/pdf/platform/AutoFrameDetector.kt
+- com/vayunmathur/pdf/platform/FrameGeometry.kt
+- com/vayunmathur/pdf/platform/FrameImageOps.kt
+- com/vayunmathur/pdf/platform/ComposePdfDocument.kt
+- com/vayunmathur/pdf/platform/PdfExporter.kt
+### util/ — Rust engine bridge
 - com/vayunmathur/pdf/util/PdfNative.kt — Rust engine bridge
-- com/vayunmathur/pdf/util/SafePdfDocument.kt
-- com/vayunmathur/pdf/util/SafePdfDocumentEdits.kt
-- com/vayunmathur/pdf/util/SafePdfParser.kt
-- com/vayunmathur/pdf/util/SafePdfModels.kt
-- com/vayunmathur/pdf/util/SafePdfPrimitives.kt
-- com/vayunmathur/pdf/util/SafePdfImages.kt
-- com/vayunmathur/pdf/util/SafePdfListings.kt
-- com/vayunmathur/pdf/util/AutoFrameDetector.kt
-- com/vayunmathur/pdf/util/FrameGeometry.kt
-- com/vayunmathur/pdf/util/FrameImageOps.kt
-- com/vayunmathur/pdf/util/ComposePdfDocument.kt
-- com/vayunmathur/pdf/util/PdfExporter.kt
 
 ## Verify (this module only)
 ```

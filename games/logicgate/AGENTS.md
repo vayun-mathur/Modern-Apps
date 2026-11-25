@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `games/logicgate/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install games/logicgate (dev by default)._
-<!-- last-reviewed: 2026-11-01 -->
 - Gradle: :games:logicgate / dir: games/logicgate/
 - Package roots present: domain, data, platform, ui
 - Entry files: MainActivity.kt, Route.kt, Navigation.kt

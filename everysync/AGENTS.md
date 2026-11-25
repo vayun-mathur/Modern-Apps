@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `everysync/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install everysync (dev by default)._
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :everysync / dir: everysync/
 - Package roots present: ui, data, domain, platform, network, provider, auth, sync
 - Entry files: MainActivity.kt, Route.kt, Navigation.kt, EverySyncApplication.kt

@@ -2,7 +2,6 @@
 
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `library/` + allowed shared modules. Do not root-scan.
 
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :library / dir: library/
 - Package roots present: intents
 - Entry files: util/Navigation.kt + util/AssistantIntent.kt (no MainActivity/Route — base library)

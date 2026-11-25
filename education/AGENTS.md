@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `education/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install education (dev by default)._
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :education / dir: education/
 - Package roots present: ui, data
 - Entry files: MainActivity.kt + EducationApplication.kt (no Route.kt — shell + course/unit/lesson/quiz flow)
@@ -16,7 +15,7 @@ _Install: ./install education (dev by default)._
 **Key features:** Bundled curriculum (`content/` model + validator) → course/unit/lesson/quiz pages; learner progress + deadlines in Room; video player pages stream Khan/YouTube; narrator + downloader helpers.
 **Entry points:** `EducationApplication.kt` → `MainActivity.kt` → `ui/Shell.kt` → `ui/HomePage.kt` → `util/EducationViewModel.kt` → `data/EducationRepository.kt`.
 **Gotchas:**
-- `content/` and `util/` are NOT closed package roots — pending migration; don't add more files there
+- `content/` and `util/` are NOT closed package roots — don't add more files there
 - Curriculum content is validated (`ContentValidator`) — content edits must pass validation, not just compile
 - Video is the only network use — everything else must work fully offline (classroom mode)
 
@@ -24,7 +23,7 @@ _Install: ./install education (dev by default)._
 ### Root — app init + entry (no Route.kt)
 - com/vayunmathur/education/EducationApplication.kt
 - com/vayunmathur/education/MainActivity.kt
-### content/ — curriculum model (pending migration to closed roots)
+### content/ — curriculum model
 - com/vayunmathur/education/content/ContentModel.kt
 - com/vayunmathur/education/content/ContentRepository.kt
 - com/vayunmathur/education/content/ContentValidator.kt
@@ -35,7 +34,7 @@ _Install: ./install education (dev by default)._
 - com/vayunmathur/education/data/Learner.kt
 - com/vayunmathur/education/data/SkillProgress.kt
 - com/vayunmathur/education/data/Deadline.kt
-### util/ — ViewModel + helpers (pending migration to closed roots)
+### util/ — ViewModel + helpers
 - com/vayunmathur/education/util/EducationViewModel.kt
 - com/vayunmathur/education/util/EducationUiContract.kt
 - com/vayunmathur/education/util/EducationDownloader.kt

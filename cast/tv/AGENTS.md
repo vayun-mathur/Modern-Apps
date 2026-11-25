@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `cast/tv/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install cast/tv (dev by default)._
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :cast:tv / dir: cast/tv/
 - Package roots present: ui, platform, service
 - Entry files: MainActivity.kt, Route.kt, Navigation.kt (receiver shell — NOT a phone app; one-deep Route host, TV panel modes instead)

@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `office/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install office (dev by default)._
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :office / dir: office/
 - Package roots present: ui
 - Entry files: MainActivity.kt (no Route.kt — `OfficeRoute` is inline)

@@ -2,12 +2,11 @@
 
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `sdk/controller/` + allowed shared modules. Do not root-scan.
 
-<!-- last-reviewed: 2026-10-17 -->
 - Gradle: :sdk:controller / dir: sdk/controller/
 - Package roots present: (public controller SDK — one package)
 - Entry files: ControllerContract.kt + ControllerModels.kt (no MainActivity/Route — SDK)
 - Deps: :library:e2ee-p2p (Hkdf key schedule + E2ee AES-GCM; PQC sealing stays in the hosting app)
-- UI: none — headless by design. The Compose pad screen lives in the hosting app (`:games:hub` `ui/screens/ControllerPad.kt`, #884)
+- UI: none — headless by design. The Compose pad screen lives in the hosting app (`:games:hub` `ui/screens/ControllerPad.kt`)
 - Metadata: metadata_data/sdk-controller.md (absent — SDKs have none by design)
 - Rust: no / screenshotTest: no
 

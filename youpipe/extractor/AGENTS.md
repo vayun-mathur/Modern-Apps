@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `youpipe/extractor/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install youpipe (dev by default)._
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :youpipe:extractor / dir: youpipe/extractor/
 - Package roots present: org.schabi.newpipe.extractor (upstream NewPipe API, not the closed set — third-party fork)
 - Entry files: NewPipe.kt (`init` + service registry)
@@ -21,7 +20,6 @@ _Install: ./install youpipe (dev by default)._
 **Entry points + reading order:** `NewPipe.kt` (`init`, `getService`) → `StreamingService.kt` → `Extractor.kt` / `ListExtractor.kt` → `services/youtube/` extractors → `downloader/Downloader.kt`.
 **Gotchas:**
 - This is a vendored upstream fork — prefer minimal surgical patches; large refactors will collide with upstream merges
-- The old card was an empty stub (no roots, entries, or deps listed); all header fields are new from this rewrite
 - Protobuf `lite` java builtin must stay `named("java")`, not `create` — the JVM path pre-registers it and a second create fails the build
 
 ## Key files

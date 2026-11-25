@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `setupwizard/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install setupwizard (dev by default)._
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :setupwizard / dir: setupwizard/
 - Package roots present: ui, platform
 - Entry files: MainActivity.kt, Route.kt, Navigation.kt

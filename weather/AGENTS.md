@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `weather/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install weather (dev by default)._
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :weather / dir: weather/
 - Package roots present: ui, data, domain, platform, network, intents, widget
 - Entry files: MainActivity.kt, Route.kt, Navigation.kt

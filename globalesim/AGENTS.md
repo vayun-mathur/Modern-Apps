@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `globalesim/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install globalesim (dev by default)._
-<!-- last-reviewed: 2026-10-24 -->
 - Gradle: :globalesim / dir: globalesim/
 - Package roots present: ui, data, domain, platform, network
 - Entry files: MainActivity.kt, Route.kt, Navigation.kt
@@ -27,7 +26,7 @@ _Install: ./install globalesim (dev by default)._
 - ViewModel messages are shown once by the tab host in `Navigation.kt`, not by the screens
 - Never log the account id / SIM ID; the clipboard copy is flagged sensitive
 - Install shows no QR/code — same-phone QR is unscannable; direct LPA handoff only
-- `rememberPaymentSheet` is deprecated in stripe-android 23.x (same as fooddelivery); leave until repo migrates
+- `rememberPaymentSheet` is deprecated in stripe-android 23.x (same as fooddelivery)
 
 ## Key files
 ### Root — entry + navigation

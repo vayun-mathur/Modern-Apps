@@ -2,13 +2,12 @@
 
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `library/ui/` + allowed shared modules. Do not root-scan.
 
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :library:ui / dir: library/ui/
 - Package roots present: ui
 - Entry files: MaActivity.kt, AppScaffold.kt, Icons.kt (no app MainActivity/Route — this is the shared shell)
 - Deps: :library
 - Network: none — offline-banner connectivity UI lives in `:library:network`
-  (`util/ConnectivityCompose.kt`); network apps depend on it directly (#884)
+  (`util/ConnectivityCompose.kt`); network apps depend on it directly
 - Metadata: metadata_data/library-ui.md (absent — libraries have none by design)
 - Rust: no / screenshotTest: no
 
@@ -22,7 +21,7 @@
 **Gotchas:**
 - One public `@Composable` per file, named as the file; closed package roots still apply inside this library
 - Never `imePadding()`/`navigationBarsPadding()`/`systemBarsPadding()` in this library's reusable components: the shared `Scaffold` wrapper owns IME (unconditional `contentWindowInsets ∪ ime`, consumed as `navigationBars ∪ ime` for content, so a stray inset modifier under an AppScaffold-family screen is a no-op). Exceptions that still own their insets: `bottomBar`-slot bars (`EditorBottomBar`, `BottomAppBar` — outside consumed content) and non-Scaffold overlays (`HistoryScrubberCard` — nav-bars only, suppressed with justification)
-- Connectivity UI (`OfflineAware`/`rememberIsOnline`) lives in `:library:network`, not here (#884)
+- Connectivity UI (`OfflineAware`/`rememberIsOnline`) lives in `:library:network`, not here
 - `MaFragmentActivity(autoSetContent=false)` + `showContent()` is the biometric-gate pattern (passwords, photos)
 
 ## Key files
@@ -118,7 +117,7 @@
 - com/vayunmathur/library/ui/HtmlEditorControllerCore.kt
 - com/vayunmathur/library/ui/HtmlEditorSpans.kt
 - com/vayunmathur/library/ui/HtmlSerialize.kt
-- com/vayunmathur/library/ui/HtmlText.kt — `scrollInternally`/`fitContentToWidth` for long untrusted mail (#900)
+- com/vayunmathur/library/ui/HtmlText.kt — `scrollInternally`/`fitContentToWidth` for long untrusted mail
 - com/vayunmathur/library/ui/HtmlTextDocument.kt — pure document wrapper (viewport, CSP, fit CSS)
 - com/vayunmathur/library/ui/RichEmailSpans.kt
 - com/vayunmathur/library/ui/EditorFormatter.kt
@@ -164,7 +163,7 @@
 - com/vayunmathur/library/ui/odf/PdfExporter.kt
 - com/vayunmathur/library/ui/odf/LatexExporter.kt
 ### Connectivity
-- com/vayunmathur/library/util/ConnectivityCompose.kt — offline banner (`OfflineAware`); lives in `:library:network`, not this module (#884)
+- com/vayunmathur/library/util/ConnectivityCompose.kt — offline banner (`OfflineAware`); lives in `:library:network`, not this module
 - com/vayunmathur/library/ui/Haptics.kt
 
 ## Verify (this module only)

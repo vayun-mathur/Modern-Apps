@@ -3,12 +3,11 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `games/hub/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install games/hub (dev by default)._
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :games:hub / dir: games/hub/
 - Package roots present: ui, data, provider
 - Entry files: MainActivity.kt (no Route.kt — dashboard/list/detail/profile flow)
 - Deps: :library, :library:ui, :library:room, :sdk:games, :sdk:controller, :library:e2ee-p2p
-- Play on TV: the `:sdk:controller` pad screen lives here (`ui/screens/ControllerPad.kt`), not in the SDK (#884)
+- Play on TV: the `:sdk:controller` pad screen lives here (`ui/screens/ControllerPad.kt`), not in the SDK
 - Metadata: metadata_data/games-hub.md (present)
 - Rust: no / screenshotTest: yes
 
@@ -18,7 +17,7 @@ _Install: ./install games/hub (dev by default)._
 **Architecture:** `ui/screens/` + `ui/components/` (shared `library/ui/game/` chrome) → `viewmodel/GameHubViewModel` → `data/GamesHubRepository` over Room (achievements, activity, sessions, streaks, profiles); `util/` holds pure calculators + icon resolution.
 **Entry points:** `MainActivity.kt` → `ui/screens/DashboardScreen.kt` → `viewmodel/GameHubViewModel.kt` → `data/GamesHubRepository.kt`.
 **Gotchas:**
-- `util/` + `viewmodel/` are NOT closed package roots — pending migration; don't add more files there
+- `util/` + `viewmodel/` are NOT closed package roots — don't add more files there
 - Games report via `:sdk:games` contract — hub schema changes must stay compatible with every game's reporter
 
 ## Key files
@@ -60,7 +59,7 @@ _Install: ./install games/hub (dev by default)._
 - com/vayunmathur/games/hub/ui/screens/ProfileScreen.kt
 - com/vayunmathur/games/hub/ui/screens/ProfilePage.kt
 - com/vayunmathur/games/hub/ui/screens/SettingsScreen.kt
-- com/vayunmathur/games/hub/ui/screens/ControllerPad.kt — phone-as-controller pad (moved from `:sdk:controller`, #884)
+- com/vayunmathur/games/hub/ui/screens/ControllerPad.kt — phone-as-controller pad
 - com/vayunmathur/games/hub/ui/components/GameCard.kt
 - com/vayunmathur/games/hub/ui/components/AchievementRow.kt
 - com/vayunmathur/games/hub/ui/components/ActivityItem.kt

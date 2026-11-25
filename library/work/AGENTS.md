@@ -2,11 +2,10 @@
 
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `library/work/` + allowed shared modules. Do not root-scan.
 
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :library:work / dir: library/work/
 - Package roots present: (WorkManager helpers — one package)
 - Entry files: Work.kt (no MainActivity/Route — library)
-- Deps: :library (permission-free; daily-reminder notification resources come from base, #884)
+- Deps: :library (permission-free; daily-reminder notification resources come from base)
 - Metadata: metadata_data/library-work.md (absent — libraries have none by design)
 - Rust: no / screenshotTest: no
 

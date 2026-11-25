@@ -2,7 +2,6 @@
 
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `library/locationprovider/` + allowed shared modules. Do not root-scan.
 
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :library:locationprovider / dir: library/locationprovider/
 - Package roots present: provider
 - Entry files: (see sources — location abstraction consumed by networklocation + apps)
@@ -13,11 +12,11 @@
 ## Overview
 **Purpose:** Location abstraction over GPS/network providers — the interface `networklocation/` implements and apps consume, so location callers never touch providers directly.
 **How to use:** Depend on the abstraction, not the implementation; `networklocation/` is the system-backed provider.
-**Entry points:** Read the `provider/` sources first (card Key files were empty — fill in from `ls` when touching this module).
-**Gotchas:** This card was a near-empty stub (no Key files) — verify against `ls` before trusting it.
+**Entry points:** Read the `provider/` sources first (add key files from `ls` when touching this module).
+**Gotchas:** Verify coverage against `ls` before trusting this card.
 
 ## Key files
-- (Verify via scoped `ls` — card had no Key files at last review; add them when touching this module.)
+- (No key files listed — verify via scoped `ls` when touching this module.)
 
 ## Verify (this module only)
 ```

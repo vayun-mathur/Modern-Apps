@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `todo/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install todo (dev by default)._
-<!-- last-reviewed: 2026-11-01 -->
 - Gradle: :todo / dir: todo/
 - Package roots present: ui, data, domain, platform, sync, notifications, widget, service, intents
 - Entry files: MainActivity.kt, Route.kt, Navigation.kt, TodoApplication.kt
@@ -16,7 +15,7 @@ _Install: ./install todo (dev by default)._
 **Architecture / data-flow:** `ui/` (stateless `*Screen` + binding `*Page`) → `platform/TodoViewModel` / `platform/TodoEditor` → `data/TodoRepository` over Room (`Todo`, `TodoList`, `SyncSnapshot`). Pure logic lives in `domain/` (no Android): `TodoQuery` (views/sort/groups), `QuickAddParser`, `Recurrence`, `Completion`, `Positions`, `DueDates`, `format/` (todo.txt, CSV, VTODO). `platform/TodoBackground` (started by `TodoApplication`) reacts to any data change: reminder alarms, digest, per-list channels, widgets, calendar mirror.
 **Entry points + reading order:** `Route` → `Navigation.kt` → `ui/TodoShell` → `ui/TodoListPage` → `platform/TodoViewModel` → `domain/TodoQuery` → `data/TodoRepository` → `sync/RelayTodoProvider`.
 **Gotchas:**
-- Relay envelopes (`sync/RelayEnvelopes.kt`) mirror everysync's `RemoteTodo` / `RemoteTodoList` field-for-field. Never rename a key; new fields need defaults (encodeDefaults is off, so legacy hashes stay identical). Update both sides together.
+- Relay envelopes (`sync/RelayEnvelopes.kt`) mirror everysync's `RemoteTodo` / `RemoteTodoList` field-for-field. Never rename a key; new fields need defaults (encodeDefaults is off, so hashes of existing envelopes stay identical). Update both sides together.
 - Lists sync on their own `todolists:<vault>` channel so pre-list builds never see them as tasks.
 - All-day `dueAt` is **local** midnight. The Material date picker speaks UTC midnight — go through `DueDates.fromPickerMillis` / `toPickerMillis` (or `ui/TodoDatePickerDialog`).
 - Editor writes run on `TodoRepository.appScope` and flush on close; a new task is only inserted once it has a title (`platform/TodoEditor`).

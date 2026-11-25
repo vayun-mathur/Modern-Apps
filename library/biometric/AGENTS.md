@@ -2,11 +2,10 @@
 
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `library/biometric/` + allowed shared modules. Do not root-scan.
 
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :library:biometric / dir: library/biometric/
 - Package roots present: (single-purpose crypto helper — one package)
 - Entry files: BiometricDatabaseHelper.kt (no MainActivity/Route — library)
-- Deps: :library (permission-free; extends base's DatabaseHelper keystore, #884)
+- Deps: :library (permission-free; extends base's DatabaseHelper keystore)
 - Metadata: metadata_data/library-biometric.md (absent — libraries have none by design)
 - Rust: no / screenshotTest: no
 

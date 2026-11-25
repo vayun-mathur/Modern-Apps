@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `screentime/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install screentime (dev by default)._
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :screentime / dir: screentime/
 - Package roots present: ui, data, domain, platform, service, widget, notifications
 - Entry files: MainActivity.kt + Route.kt + Navigation.kt (single host; FrictionActivity stays a system-triggered activity)
@@ -16,7 +15,7 @@ _Install: ./install screentime (dev by default)._
 **Key features:** `platform/UsageHistory` + `domain/HourBuckets` feed dashboard/charts; `AppTimers`/`Suspender`/`Coordinator` enforce limits; `WindDownApplier` + `WindowScheduler` run bedtime; widget mirrors the dashboard.
 **Entry points:** `MainActivity.kt` → `Navigation.kt` (`Route.Dashboard/AppDetails(packageName)/WindDown`) → `ui/DashboardScreen.kt` → `platform/ScreenTimeViewModel.kt` → `platform/Coordinator.kt` → `data/Rules.kt`.
 **Gotchas:**
-- `receiver/` is NOT a closed package root — pending migration; don't add more files there
+- `receiver/` is NOT a closed package root — don't add more files there
 - Usage access is a special grant — behavior without it is an empty dashboard, not an error; handle gracefully
 - Screenshot tests are off (`screenshotTest: no`) — verify timers/pause flows on device
 

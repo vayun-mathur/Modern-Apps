@@ -2,7 +2,6 @@
 
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `library/e2ee-p2p/` + allowed shared modules. Do not root-scan.
 
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :library:e2ee-p2p / dir: library/e2ee-p2p/
 - Package roots present: (E2EE + P2P primitives — `com.vayunmathur.e2ee` package)
 - Entry files: E2ee.kt + PqcIdentity.kt (no MainActivity/Route — library)
@@ -24,7 +23,7 @@
 - com/vayunmathur/e2ee/PqcNative.kt — Rust bridge
 - com/vayunmathur/e2ee/SecurityCode.kt
 - com/vayunmathur/e2ee/InviteFingerprint.kt
-- com/vayunmathur/e2ee/Hkdf.kt — HKDF-SHA256 key derivation (moved from `:library`, #884)
+- com/vayunmathur/e2ee/Hkdf.kt — HKDF-SHA256 key derivation
 
 ## Verify (this module only)
 ```

@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `parentalcontrols/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install parentalcontrols (dev by default)._
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :parentalcontrols / dir: parentalcontrols/
 - Package roots present: ui, data, domain, platform, service, notifications, auth
 - Entry files: MainActivity.kt + Route.kt + Navigation.kt (single host) + ui/SetupActivity.kt and ui/PinActivities.kt (PinGateActivity, kept for lock-screen activity-result) + ui/LockActivities.kt (kept OS lock surfaces)
@@ -16,7 +15,7 @@ _Install: ./install parentalcontrols (dev by default)._
 **Key features:** `platform/SupervisionMaster` + `SupervisionPolicies`/`Apis`/`Caller` enforce `data/` rules + `domain/TimeWindow`; `platform/Enforcer` + `AppLimits` + `BedtimeScheduler` apply limits; `service/` supervision messengers bridge the system.
 **Entry points:** `MainActivity.kt` → `Navigation.kt` (`Route.Dashboard/DailyLimit/AppLimits/Bedtime/Downtime/SchoolTime/WebFilters/PinSetup/PinGate`) → `platform/SupervisionViewModel.kt`; `ui/SetupActivity.kt` hands off to the host's PinSetup route then the platform setup flow → `platform/SupervisionMaster.kt` → `data/Rules.kt`.
 **Gotchas:**
-- `receiver/` is NOT a closed package root — pending migration; don't add more files there
+- `receiver/` is NOT a closed package root — don't add more files there
 - Enforcement is system-mediated (supervision APIs) — sideloaded builds can't enforce; PIN loss locks parents out by design, no backdoor
 - Screenshot tests are off (`screenshotTest: no`) — verify lock/PIN flows on device
 

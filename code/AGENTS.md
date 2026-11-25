@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `code/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install code (dev by default)._
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :code / dir: code/
 - Package roots present: ui
 - Entry files: MainActivity.kt (no Route.kt — editor workspace with pages, not nav destinations)
@@ -20,7 +19,7 @@ _Install: ./install code (dev by default)._
 **Architecture / data-flow:** `ui/` editor shell + pages → `util/EditorViewModel` (+ `CodeUiContract`, per-area `Editor*Ops`) → `util/EditorDocument` over SAF (`FileFiles`, `EditorFileTreeOps`); highlighting flows Rust → `SyntaxHighlighting` → `CodeEditorDraw`; git flows `GitRepo` → `EditorGitOps` → `GitPage`.
 **Entry points + reading order:** `MainActivity.kt` → `ui/EditorScreen.kt` → `util/EditorViewModel.kt` → `util/EditorDocument.kt` → `ui/CodeEditor.kt` → `syntax/SyntaxHighlighting.kt`.
 **Gotchas:**
-- `syntax/` and `util/` are NOT closed package roots — pending migration; don't add more files there
+- `syntax/` and `util/` are NOT closed package roots — don't add more files there
 - Editor state (tabs, undo, cursors) is session-scoped in the ViewModel — file writes go through `EditorSaveOps`, never direct
 - Native highlighting can lag on huge files — regex fallback must stay working, test both paths
 
@@ -55,7 +54,7 @@ _Install: ./install code (dev by default)._
 - com/vayunmathur/code/ui/SettingsPage.kt
 - com/vayunmathur/code/ui/SnippetsPage.kt
 - com/vayunmathur/code/ui/TerminalPage.kt
-### util/ — ViewModel, document, ops (pending migration to closed roots)
+### util/ — ViewModel, document, ops
 - com/vayunmathur/code/util/EditorViewModel.kt
 - com/vayunmathur/code/util/CodeUiContract.kt
 - com/vayunmathur/code/util/EditorDocument.kt

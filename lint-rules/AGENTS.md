@@ -2,7 +2,6 @@
 
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `lint-rules/` + allowed shared modules. Do not root-scan.
 
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :lint-rules / dir: lint-rules/
 - Package roots present: (custom lint detectors — `com.vayunmathur.lint` package)
 - Entry files: ModernAppsIssueRegistry.kt (no MainActivity/Route — lint registry)

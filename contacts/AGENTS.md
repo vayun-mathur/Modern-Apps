@@ -3,7 +3,6 @@
 > Scoped supplement. Global rules in root `AGENTS.md` apply. Stay inside `contacts/` + allowed shared modules. Do not root-scan.
 
 _Install: ./install contacts (dev by default)._
-<!-- last-reviewed: 2026-10-16 -->
 - Gradle: :contacts / dir: contacts/
 - Package roots present: ui, data, intents, auth
 - Entry files: MainActivity.kt (no Route.kt — list/detail/edit flow with dialogs + pick activities)
@@ -20,7 +19,7 @@ _Install: ./install contacts (dev by default)._
 **Architecture / data-flow:** `ui/` list/detail/edit pages (+ `ui/dialogs/`) → `util/ContactViewModel` (+ split `Accounts`/`Draft` helpers, `ContactsUiContract`) → `data/` models over the system contacts provider (`Contact`/`ContactGroup`, `ContactPrefill`, `SimContacts`); persistence is the provider, not Room — there is no database here.
 **Entry points + reading order:** `MainActivity.kt` → `ui/ContactListScreen.kt` → `ui/ContactDetailsPage.kt` → `ui/EditContactPage.kt` → `util/ContactViewModel.kt` → `data/Contact.kt`.
 **Gotchas:**
-- `util/` is NOT a closed package root — the `util/`→closed-roots migration is pending; don't add more files there
+- `util/` is NOT a closed package root — don't add more files there
 - Write paths go through the contacts provider + account (`auth/`), not a local DB — account picker dialogs matter
 - `ImportActivity` + `ImportVcfScreen` handle VIEW intents; `ContactListPick`/`ContactItemPick` serve picker callers
 
@@ -33,7 +32,7 @@ _Install: ./install contacts (dev by default)._
 - com/vayunmathur/contacts/data/ContactGroup.kt
 - com/vayunmathur/contacts/data/ContactPrefill.kt
 - com/vayunmathur/contacts/data/SimContacts.kt
-### util/ — ViewModel + helpers (pending migration to closed roots)
+### util/ — ViewModel + helpers
 - com/vayunmathur/contacts/util/ContactViewModel.kt
 - com/vayunmathur/contacts/util/ContactViewModelAccounts.kt
 - com/vayunmathur/contacts/util/ContactViewModelDraft.kt
