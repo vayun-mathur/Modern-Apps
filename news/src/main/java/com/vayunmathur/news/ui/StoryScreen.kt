@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.AppScaffold
+import com.vayunmathur.library.ui.DesktopMaxWidthContainer
 import com.vayunmathur.library.ui.IconBookmark
 import com.vayunmathur.library.ui.IconBookmarkBorder
 import com.vayunmathur.library.ui.IconButton
@@ -51,7 +52,8 @@ fun StoryScreen(
             return@AppScaffold
         }
         val single = story.articles.size == 1
-        LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
+        DesktopMaxWidthContainer(modifier = Modifier.padding(padding)) {
+        LazyColumn(modifier = Modifier.fillMaxSize()) {
             item {
                 Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
                     Text(story.title, style = MaterialTheme.typography.headlineSmall)
@@ -106,6 +108,7 @@ fun StoryScreen(
                     }
                 }
             }
+        }
         }
     }
 }

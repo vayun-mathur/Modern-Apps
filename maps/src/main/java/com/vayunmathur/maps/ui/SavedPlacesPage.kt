@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.AppScaffold
+import com.vayunmathur.library.ui.DesktopMaxWidthContainer
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.DropdownMenu
 import com.vayunmathur.library.ui.DropdownMenuItem
@@ -65,10 +66,9 @@ fun SavedPlacesPage(backStack: NavBackStack<Route>, viewModel: SavedPlacesViewMo
         // named list's members are lazy items with stable keys, so a long
         // library scrolls without composing every row. fillMaxSize keeps the
         // height bounded (required for lazy measurement, incl. in tests).
+        DesktopMaxWidthContainer(modifier = Modifier.padding(padding)) {
         LazyColumn(
-            Modifier
-                .fillMaxSize()
-                .padding(padding),
+            Modifier.fillMaxSize(),
         ) {
             // --- Flat saved list ---
             item(key = "saved-header") {
@@ -127,6 +127,7 @@ fun SavedPlacesPage(backStack: NavBackStack<Route>, viewModel: SavedPlacesViewMo
                     )
                 }
             }
+        }
         }
     }
 

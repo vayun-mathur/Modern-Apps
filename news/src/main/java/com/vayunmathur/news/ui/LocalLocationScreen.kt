@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.AppScaffold
+import com.vayunmathur.library.ui.DesktopMaxWidthContainer
 import com.vayunmathur.library.ui.ListItem
 import com.vayunmathur.library.ui.ScaffoldSearch
 import com.vayunmathur.library.ui.Text
@@ -58,7 +59,8 @@ fun LocalLocationScreen(viewModel: NewsViewModel, onBack: () -> Unit) {
             placeholder = stringResource(R.string.local_location_search_placeholder),
         ),
     ) { padding ->
-        LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
+        DesktopMaxWidthContainer(modifier = Modifier.padding(padding)) {
+        LazyColumn(modifier = Modifier.fillMaxSize()) {
             item {
                 Text(
                     stringResource(R.string.local_location_note),
@@ -109,6 +111,7 @@ fun LocalLocationScreen(viewModel: NewsViewModel, onBack: () -> Unit) {
             if (filtered.isEmpty() && trimmed.isEmpty()) {
                 item { Text(stringResource(R.string.local_location_empty), modifier = Modifier.padding(16.dp)) }
             }
+        }
         }
     }
 }

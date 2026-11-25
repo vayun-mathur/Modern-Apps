@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -15,6 +17,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.ScaffoldSearch
+import com.vayunmathur.library.ui.adaptiveGridCells
+import com.vayunmathur.library.ui.isMediumWidth
 import com.vayunmathur.library.ui.FilterChip
 import com.vayunmathur.library.ui.IconBookmark
 import com.vayunmathur.library.ui.IconButton
@@ -133,17 +137,40 @@ fun FeedScreen(
                     modifier = Modifier.padding(16.dp),
                 )
             }
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
-                items(shownStories, key = { it.id }) { story ->
-                    val representativeCached = cachedByUrl[story.representative.url]
-                    StoryRow(
-                        story = story,
-                        bookmarked = representativeCached?.bookmarked == true,
-                        onClick = { onOpenStory(story.id) },
-                        onToggleBookmark = {
-                            if (representativeCached != null) viewModel.toggleBookmark(representativeCached)
-                        },
-                    )
+            // Wide windows get story cards in as many ~280dp columns as fit
+            // (in the two-pane list pane that collapses back to one column);
+            // phones keep the single-column list. Same rows, same actions.
+            if (isMediumWidth()) {
+                LazyVerticalGrid(
+                    columns = adaptiveGridCells(280.dp),
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 4.dp),
+                ) {
+                    gridItems(shownStories, key = { it.id }) { story ->
+                        val representativeCached = cachedByUrl[story.representative.url]
+                        StoryRow(
+                            story = story,
+                            bookmarked = representativeCached?.bookmarked == true,
+                            onClick = { onOpenStory(story.id) },
+                            onToggleBookmark = {
+                                if (representativeCached != null) viewModel.toggleBookmark(representativeCached)
+                            },
+                        )
+                    }
+                }
+            } else {
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    items(shownStories, key = { it.id }) { story ->
+                        val representativeCached = cachedByUrl[story.representative.url]
+                        StoryRow(
+                            story = story,
+                            bookmarked = representativeCached?.bookmarked == true,
+                            onClick = { onOpenStory(story.id) },
+                            onToggleBookmark = {
+                                if (representativeCached != null) viewModel.toggleBookmark(representativeCached)
+                            },
+                        )
+                    }
                 }
             }
         }

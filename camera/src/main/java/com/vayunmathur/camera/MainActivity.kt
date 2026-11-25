@@ -21,6 +21,8 @@ import com.vayunmathur.library.ui.MaActivity
 import com.vayunmathur.library.ui.PermissionRequirement
 import com.vayunmathur.library.util.OpenSettingsIfRequested
 import com.vayunmathur.library.util.FullscreenPage
+import com.vayunmathur.library.util.ListDetailPage
+import com.vayunmathur.library.util.ListPage
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.NavKey
 import com.vayunmathur.library.util.rememberNavBackStack
@@ -80,14 +82,20 @@ class MainActivity : MaActivity() {
             // Land on settings when opened from the system App Info page.
             backStack.OpenSettingsIfRequested(Route.Settings)
             MainNavigation(backStack) {
-                entry<Route.Camera>(metadata = FullscreenPage()) {
+                // Camera is the list pane and Settings its detail pane: on
+                // medium+ widths the settings form sits beside the live
+                // viewfinder (changes are visible as they are made) instead
+                // of taking over the screen, while phones keep the current
+                // single-pane push. The viewfinder itself stays full-bleed
+                // inside its pane — it is immersive, never split internally.
+                entry<Route.Camera>(metadata = ListPage() + FullscreenPage()) {
                     CameraScreen(
                         backStack,
                         viewModel,
                         onCaptureResult = if (captureForResult) ::finishWithCaptureResult else null
                     )
                 }
-                entry<Route.Settings> {
+                entry<Route.Settings>(metadata = ListDetailPage()) {
                     SettingsPage(backStack, viewModel)
                 }
             }

@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.AppScaffold
+import com.vayunmathur.library.ui.DesktopMaxWidthContainer
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.news.R
 import com.vayunmathur.news.platform.NewsViewModel
@@ -33,7 +34,8 @@ fun SavedScreen(
                 modifier = Modifier.padding(padding).padding(16.dp),
             )
         } else {
-            LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
+            DesktopMaxWidthContainer(modifier = Modifier.padding(padding)) {
+            LazyColumn(modifier = Modifier.fillMaxSize()) {
                 items(saved, key = { it.url }) { article ->
                     ArticleRow(
                         article = article,
@@ -41,6 +43,7 @@ fun SavedScreen(
                         onToggleBookmark = { viewModel.toggleBookmark(article) },
                     )
                 }
+            }
             }
         }
     }

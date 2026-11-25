@@ -45,6 +45,7 @@ import com.vayunmathur.camera.data.setSaveTreeUri
 import com.vayunmathur.camera.data.setPhotoFormat
 import com.vayunmathur.camera.data.setVideoCodec
 import com.vayunmathur.camera.data.updateLocation
+import com.vayunmathur.library.ui.DesktopMaxWidthContainer
 import com.vayunmathur.library.ui.IconFolder
 import com.vayunmathur.library.ui.OutlinedButton
 import com.vayunmathur.library.ui.TextButton
@@ -140,10 +141,12 @@ fun <T : NavKey> SettingsPage(backStack: NavBackStack<T>, viewModel: CameraViewM
         title = stringResource(UiR.string.settings),
         backStack = backStack,
     ) { padding ->
+        // Cap the form at a readable measure when the detail pane is wide
+        // (large tablet beside the viewfinder); narrower panes pass through.
+        DesktopMaxWidthContainer(modifier = Modifier.padding(padding)) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
                 .verticalScroll(rememberScrollState())
         ) {
             SaveLocationSection(
@@ -210,6 +213,7 @@ fun <T : NavKey> SettingsPage(backStack: NavBackStack<T>, viewModel: CameraViewM
                     },
                 )
             }
+        }
         }
     }
 }

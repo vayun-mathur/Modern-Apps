@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vayunmathur.library.image.compose.AsyncImage
 import com.vayunmathur.library.ui.AppScaffold
+import com.vayunmathur.library.ui.DesktopMaxWidthContainer
 import com.vayunmathur.library.ui.IconBookmark
 import com.vayunmathur.library.ui.IconBookmarkBorder
 import com.vayunmathur.library.ui.IconButton
@@ -56,8 +57,11 @@ fun ReaderScreen(viewModel: NewsViewModel, url: String, onBack: () -> Unit) {
         title = "",
         onNavigateBack = onBack,
     ) { padding ->
+        // Article text keeps a comfortable measure on wide windows instead
+        // of stretching edge to edge; the scroll and actions are unchanged.
+        DesktopMaxWidthContainer(modifier = Modifier.padding(padding)) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())
+            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 12.dp),
         ) {
             if (body != null) {
@@ -79,6 +83,7 @@ fun ReaderScreen(viewModel: NewsViewModel, url: String, onBack: () -> Unit) {
                 body == null -> Text("…")
                 else -> ReaderBody(textSp = textSp, serif = serif, blocks = body!!.blocks)
             }
+        }
         }
     }
 }

@@ -17,6 +17,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.vayunmathur.library.ui.AppScaffold
+import com.vayunmathur.library.ui.DesktopMaxWidthContainer
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.IconClearNight
 import com.vayunmathur.library.ui.IconStar
@@ -72,10 +73,10 @@ fun MapSettingsPage(backStack: NavBackStack<Route>, viewModel: MapSettingsViewMo
         title = stringResource(UiR.string.settings),
         backStack = backStack,
     ) { padding ->
+        DesktopMaxWidthContainer(modifier = Modifier.padding(padding)) {
         Column(
             Modifier
                 .fillMaxSize()
-                .padding(padding)
                 .verticalScroll(rememberScrollState()),
         ) {
             SettingsSection(title = stringResource(R.string.settings_section_display)) {
@@ -145,6 +146,7 @@ fun MapSettingsPage(backStack: NavBackStack<Route>, viewModel: MapSettingsViewMo
             SettingsSection {
                 ResetDefaultsRow(onReset = { viewModel.resetAll() })
             }
+        }
         }
     }
 }

@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.AppScaffold
+import com.vayunmathur.library.ui.DesktopMaxWidthContainer
 import com.vayunmathur.library.ui.ListItem
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.news.R
@@ -35,7 +36,8 @@ fun SettingsScreen(
         title = stringResource(R.string.settings_title),
         onNavigateBack = onBack,
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+        DesktopMaxWidthContainer(modifier = Modifier.padding(padding)) {
+        Column(modifier = Modifier.fillMaxSize()) {
             ListItem(
                 headlineContent = { Text(stringResource(R.string.local_location_title)) },
                 supportingContent = {
@@ -47,6 +49,7 @@ fun SettingsScreen(
                 stringResource(R.string.settings_note),
                 modifier = Modifier.padding(16.dp),
             )
+        }
         }
     }
 }
