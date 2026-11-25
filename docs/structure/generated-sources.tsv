@@ -1,0 +1,20 @@
+# path	generator
+# Every Kotlin/Rust file with a GENERATED/@generated header (see
+# docs/structure/README.md for the header definition) must be listed here
+# with the command that regenerates it. tools/structure_check.py verifies
+# presence only (listed + header still present); it never regenerates.
+news/src/main/java/com/vayunmathur/news/domain/GeneratedSources.kt	python3 analysis/news-scale/curate_r2.py --apply (aggregator; round 1 alone: curate.py --apply)
+news/src/main/java/com/vayunmathur/news/domain/GeneratedSourcesA.kt	python3 analysis/news-scale/curate_r2.py --apply
+news/src/main/java/com/vayunmathur/news/domain/GeneratedSourcesB.kt	python3 analysis/news-scale/curate_r2.py --apply
+news/src/main/java/com/vayunmathur/news/domain/GeneratedSourcesC.kt	python3 analysis/news-scale/curate_r2.py --apply
+news/src/main/java/com/vayunmathur/news/domain/GeneratedSourcesD.kt	python3 analysis/news-scale/curate_r2.py --apply
+news/src/main/java/com/vayunmathur/news/domain/GeneratedSourcesE.kt	python3 analysis/news-scale/curate_r2.py --apply
+news/src/main/java/com/vayunmathur/news/domain/GeneratedSourcesF.kt	python3 analysis/news-scale/curate_r2.py --apply
+news/src/main/java/com/vayunmathur/news/domain/GeneratedSourcesG.kt	python3 analysis/news-scale/curate_r2.py --apply
+news/src/main/java/com/vayunmathur/news/domain/GeneratedSourcesH.kt	python3 analysis/news-scale/curate_r2.py --apply
+news/src/main/java/com/vayunmathur/news/domain/GeneratedSourcesI.kt	python3 analysis/news-scale/curate_r2.py --apply
+communicate/src/main/rust/src/wa_tokens.rs	Regenerate the token tables from communicate WhatsAppProtocol.kt (header: GENERATED from WhatsAppProtocol.kt; no generator script in repo)
+library/ml/src/main/rust/src/logmel_extra.rs	python3 scripts/ml/nnfp_reference.py (generated reference constants; see note inside file)
+library/ml/src/main/rust/src/microfrontend_part1.rs	python3 scripts/ml/nnfp_reference.py (generated reference constants; see note inside file)
+library/ml/src/main/rust/src/nets/gemma4_part5.rs	Generated constant tables read off the Gemma 4 source bundle (see header in file; no generator script in repo)
+office/src/screenshotTest/kotlin/com/vayunmathur/office/ui/SampleDocx.kt	Run the app OoxmlImporter over metadata_data/assets/sample1.docx and emit the first 14 blocks (see header in file; no generator script in repo)

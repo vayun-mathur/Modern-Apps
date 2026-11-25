@@ -1,0 +1,20 @@
+# pair_id	phone_path	wear_path
+# Duplicated Wear protocol files (phone <-> wear). Gradle cannot let one app
+# module depend on another, so each wear module carries a copy of the phone
+# file under its own package. tools/structure_check.py strips package/import
+# lines and all comments, then requires token-stream identity per pair.
+# library/wearlink/WearLinkProtocol.kt is deliberately NOT listed: it is a
+# shared library module both sides depend on, not a duplicated copy.
+appstore	appstore/src/main/java/com/vayunmathur/appstore/domain/WearSyncProtocol.kt	appstore/wear/src/main/java/com/vayunmathur/appstore/wear/domain/WearSyncProtocol.kt
+calendar	calendar/src/main/java/com/vayunmathur/calendar/domain/WearCalendarProtocol.kt	calendar-wear/src/main/java/com/vayunmathur/calendar/wear/domain/WearCalendarProtocol.kt
+camera	camera/src/main/java/com/vayunmathur/camera/domain/WearCameraProtocol.kt	camera-wear/src/main/java/com/vayunmathur/camera/wear/domain/WearCameraProtocol.kt
+clock	clock/src/main/java/com/vayunmathur/clock/domain/WearClockProtocol.kt	clock-wear/src/main/java/com/vayunmathur/clock/wear/domain/WearClockProtocol.kt
+communicate	communicate/src/main/java/com/vayunmathur/communicate/domain/WearCommunicateProtocol.kt	communicate-wear/src/main/java/com/vayunmathur/communicate/wear/domain/WearCommunicateProtocol.kt
+contacts	contacts/src/main/java/com/vayunmathur/contacts/domain/WearContactsProtocol.kt	contacts-wear/src/main/java/com/vayunmathur/contacts/wear/domain/WearContactsProtocol.kt
+findfamily	findfamily/src/main/java/com/vayunmathur/findfamily/domain/WearFindFamilyProtocol.kt	findfamily-wear/src/main/java/com/vayunmathur/findfamily/wear/domain/WearFindFamilyProtocol.kt
+launcher	launcher/src/main/java/com/vayunmathur/launcher/domain/WearLauncherProtocol.kt	launcher-wear/src/main/java/com/vayunmathur/launcher/wear/domain/WearLauncherProtocol.kt
+maps	maps/src/main/java/com/vayunmathur/maps/domain/WearMapsProtocol.kt	maps-wear/src/main/java/com/vayunmathur/maps/wear/domain/WearMapsProtocol.kt
+music	music/src/main/java/com/vayunmathur/music/domain/WearMusicProtocol.kt	music-wear/src/main/java/com/vayunmathur/music/wear/domain/WearMusicProtocol.kt
+notes	notes/src/main/java/com/vayunmathur/notes/domain/WearNotesProtocol.kt	notes-wear/src/main/java/com/vayunmathur/notes/wear/domain/WearNotesProtocol.kt
+todo	todo/src/main/java/com/vayunmathur/todo/domain/WearTodoProtocol.kt	todo-wear/src/main/java/com/vayunmathur/todo/wear/domain/WearTodoProtocol.kt
+weather	weather/src/main/java/com/vayunmathur/weather/domain/WearWeatherProtocol.kt	weather-wear/src/main/java/com/vayunmathur/weather/wear/domain/WearWeatherProtocol.kt

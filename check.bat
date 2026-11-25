@@ -37,6 +37,12 @@ Usage:
   check.bat games/voxels maps        # multi-module, one gradlew invocation
   check.bat voxels                    # shorthand -> games:voxels (same as install.bat)
   check.bat all                       # every app + library module
+  check.bat structure                 # only the structure ratchets (below)
+
+Structure ratchets (docs/structure/README.md): tools/structure_check.py
+checks Wear protocol-pair drift, the generated-source manifest, and the
+exception-marker inventory. They run on every check.bat invocation (cheap,
+no build) and their failure fails this script.
 
 Module notation mirrors install.bat: slash == colon, games:/personal: shorthand,
 'all' keyword, deduped. Tasks run with --continue so one broken module does not
@@ -107,6 +113,21 @@ foreach ($CheckA in $args) {
   }
 }
 
+function Invoke-CheckStructure {
+  $CheckPy = Get-Command python3 -ErrorAction SilentlyContinue
+  if (-not $CheckPy) { $CheckPy = Get-Command python -ErrorAction SilentlyContinue }
+  if (-not $CheckPy) {
+    [Console]::Error.WriteLine('Error: python3 not found; structure checks (tools/structure_check.py) cannot run.')
+    return 1
+  }
+  & $CheckPy.Source (Join-Path $CheckRoot 'tools/structure_check.py') all
+  return $LASTEXITCODE
+}
+
+foreach ($CheckA in $args) {
+  if ($CheckA -eq 'structure') { exit (Invoke-CheckStructure) }
+}
+
 $CheckMods = @()
 $CheckAllExp = $false
 foreach ($CheckRaw in $args) {
@@ -149,6 +170,10 @@ foreach ($CheckMod in $CheckMods) {
 }
 Write-Output "Modules ($($CheckMods.Count)): $($CheckMods -join ' ')"
 Write-Output "Gradle tasks: $($CheckTasks -join ' ')"
+Write-Output ''
+
+$CheckStructureRc = Invoke-CheckStructure
+if ($CheckStructureRc -ne 0) { Write-Output "Warning: structure checks reported failures (exit $CheckStructureRc)." }
 Write-Output ''
 
 # gradlew: prefer the extensionless wrapper via bash when present
@@ -247,5 +272,5 @@ if (($CheckRootCrates.Count -eq 0) -and ($CheckStandaloneDirs.Count -eq 0)) {
   Write-Output 'No Rust crates in scope; cargo step skipped.'
 }
 
-if (($CheckDetektRc -ne 0) -or ($CheckCargoRc -ne 0)) { exit 1 }
+if (($CheckStructureRc -ne 0) -or ($CheckDetektRc -ne 0) -or ($CheckCargoRc -ne 0)) { exit 1 }
 exit 0

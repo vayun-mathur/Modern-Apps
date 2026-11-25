@@ -39,6 +39,7 @@ Monorepo: ~100 Gradle modules + Rust workspace. Do scoped work only.
 | widgets/work | `library/widgets/`, `library/work/` | Glance widgets / WorkManager |
 | biometric/ink | `library/biometric/`, `library/ink/` | biometric / stylus ink |
 | downloadservice | `library/downloadservice/` | foreground downloads (INTERNET itself) |
+| format | `library/format/` | relative-age bucketing + `"<amount>m ago"` wording (opt-in; calendar dates stay in `library/ui` `DateString`) |
 | locationprovider | `library/locationprovider/` | location abstraction |
 | aosp-stubs | `library/aosp-stubs/` | compile-only hidden-API stubs |
 | sdk:games/cast/openassistant | `sdk/games/`, `sdk/cast/`, `sdk/openassistant/` | achievements / casting / assistant tools |
@@ -121,10 +122,11 @@ Rules: `release` default (dev is almost never the right install), `dev` only whe
 ```
 Never grep repo-wide when a filter will do. Always excluded: `target/ build/ .gradle/ .kotlin/ .git/ .llms/ analysis/ *.log *.onnx metadata_data/photos/`.
 
-`./check` — static verification without building: `:<module>:detekt` (rules in `detekt.yml`) + `:<module>:lint` + `cargo check/clippy/fmt/doc --locked` for Rust modules (workspace members via `-p`, standalone crates in-dir; fmt is advisory-only until the tree is fmt-clean):
+`./check` — static verification without building: `:<module>:detekt` (rules in `detekt.yml`) + `:<module>:lint` + `cargo check/clippy/fmt/doc --locked` for Rust modules (workspace members via `-p`, standalone crates in-dir; fmt is advisory-only until the tree is fmt-clean) + structure ratchets (`tools/structure_check.py`, manifests in `docs/structure/` — Wear protocol-pair drift, generated-source guard, exception-marker inventory; runs on every invocation):
 ```
 ./check <module> [...]   # e.g. ./check notes backup; ./check voxels
 ./check all              # every app + library module (pure-JVM modules excluded)
+./check structure        # only the structure ratchets
 ```
 Findings fail the task. Only `notes/`, `backup/`, `library/ui/`, `games/voxels/` are detekt-clean today; other modules carry incremental backlog — fixing a module means `./check <module>` goes green, not config relaxation.
 

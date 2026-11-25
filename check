@@ -7,6 +7,12 @@
 #   ./check games/voxels maps        # multi-module, one gradlew invocation
 #   ./check voxels                    # shorthand -> games:voxels (same as ./install)
 #   ./check all                       # every app + library module
+#   ./check structure                 # only the structure ratchets (below)
+#
+# Structure ratchets (docs/structure/README.md): tools/structure_check.py
+# checks Wear protocol-pair drift, the generated-source manifest, and the
+# exception-marker inventory. They run on every ./check invocation (cheap,
+# no build) and their failure fails this script.
 #
 # Module notation mirrors ./install: slash == colon, games:/personal: shorthand,
 # 'all' keyword, deduped. Tasks run with --continue so one broken module does not
@@ -57,6 +63,11 @@ all_module_dirs() {
 
 if [[ $# -eq 0 ]]; then print_help; echo ""; echo "Error: no modules specified."; exit 1; fi
 for arg in "$@"; do case "$arg" in --help|-h|help) print_help; exit 0;; esac; done
+for arg in "$@"; do
+  if [[ "$arg" == "structure" ]]; then
+    exec python3 "$ROOT/tools/structure_check.py" all
+  fi
+done
 
 MODS=(); ALL_EXP=0
 for raw in "$@"; do
@@ -98,6 +109,16 @@ done
 TASKS+=(":verifyLibraryBoundaries")
 echo "Modules (${#MODS[@]}): ${MODS[*]}"
 echo "Gradle tasks: ${TASKS[*]}"
+echo ""
+
+STRUCTURE_RC=0
+if command -v python3 >/dev/null 2>&1; then
+  python3 "$ROOT/tools/structure_check.py" all || STRUCTURE_RC=$?
+else
+  echo "Error: python3 not found; structure checks (tools/structure_check.py) cannot run." >&2
+  STRUCTURE_RC=1
+fi
+[[ $STRUCTURE_RC -ne 0 ]] && echo "Warning: structure checks reported failures (exit $STRUCTURE_RC)."
 echo ""
 
 DETEKT_RC=0
@@ -213,5 +234,5 @@ if [[ ${#ROOT_CRATES[@]} -eq 0 && ${#STANDALONE_DIRS[@]} -eq 0 ]]; then
   echo "No Rust crates in scope; cargo steps skipped."
 fi
 
-if [[ $DETEKT_RC -ne 0 || $CARGO_RC -ne 0 || $CLIPPY_RC -ne 0 || $DOC_RC -ne 0 ]]; then exit 1; fi
+if [[ $STRUCTURE_RC -ne 0 || $DETEKT_RC -ne 0 || $CARGO_RC -ne 0 || $CLIPPY_RC -ne 0 || $DOC_RC -ne 0 ]]; then exit 1; fi
 exit 0
