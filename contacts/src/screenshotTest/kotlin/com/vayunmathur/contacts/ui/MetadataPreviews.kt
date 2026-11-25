@@ -41,6 +41,9 @@ import kotlinx.datetime.LocalDate
 /** Phone-shaped, roughly 1080x2340 at xxhdpi — comfortably above the F-Droid minimum. */
 private const val PHONE = "spec:width=411dp,height=891dp,dpi=420"
 
+/** Expanded desktop/tablet window: list main screen and the landscape detail header. */
+private const val EXPANDED = "spec:width=1280dp,height=800dp,dpi=240"
+
 private val FAMILY = ContactGroup(1, "Family")
 private val FRIENDS = ContactGroup(2, "Friends")
 private val WORK = ContactGroup(3, "Work")
@@ -137,6 +140,13 @@ private fun groupRow(group: ContactGroup) = GroupWithContacts(
  * palette from the wallpaper, which does not exist here, so these render with the fallback
  * scheme rather than a user's accent colour. Contact photos are absent too — an avatar is
  * decoded in a coroutine, and a preview never runs one — so every row shows its initial.
+ *
+ * Coverage: `ContactsList`, `GroupsList` and `ContactDetail` on phone, plus the list
+ * (main) and detail (landscape-header wide layout) on large-tablet.
+ * Exceptions (no stateless slice; ViewModel + contacts-provider / decoded-bitmap state):
+ * `Settings`, `EditContact`/`InsertOrEditContact` and `ImportVcf` are not
+ * preview-rendered, and `CropPhoto` needs a decoded bitmap from a content URI which
+ * Layoutlib cannot load. Dialog routes are dialogs, not full screens.
  */
 class MetadataPreviews {
 
@@ -167,6 +177,28 @@ class MetadataPreviews {
     @Composable
     fun Preview3Groups() {
         ChromePreview(selectedTab = 1)
+    }
+
+    @PreviewTest
+    @Preview(name = "4-list-expanded", device = EXPANDED, group = "large-tablet", showSystemUi = true)
+    @Composable
+    fun Preview4ListExpanded() {
+        ChromePreview(selectedTab = 0)
+    }
+
+    @PreviewTest
+    @Preview(name = "5-details-expanded", device = EXPANDED, group = "large-tablet", showSystemUi = true)
+    @Composable
+    fun Preview5DetailsExpanded() {
+        DynamicTheme(darkTheme = true) {
+            ContactDetailsScreen(
+                state = ContactDetailsUiState(
+                    contact = AISHA,
+                    groups = GROUPS,
+                ),
+                actions = ContactsActions.Noop,
+            )
+        }
     }
 }
 

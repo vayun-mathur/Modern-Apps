@@ -69,6 +69,16 @@ private val TODAY = LocalDate(2026, 1, 17)
  * `cmd uimode night yes` the old on-device generator used. Material You sources its palette
  * from the device wallpaper, which does not exist here, so these render with the fallback
  * scheme rather than a user's actual accent colour.
+ *
+ * Coverage: `Today` and `NutritionDetails` tabs, `BarChartDetails` (steps + heart
+ * rate), the dose-reminder full screen and the Health-Connect-required gate on
+ * phone, plus the metric detail on large-tablet (the main tab's detail pane).
+ * Exceptions (no stateless slice; HealthViewModel/MedicalViewModel over Health
+ * Connect + Room + the bundled food database): `Body`, `Medical`,
+ * `NutritionFullBreakdown`, `RecipeManagement`/`RecipeEditor`, `SleepDetails`,
+ * `ExerciseDetails` and the medical editors (`EditVaccination`/`EditMedication`/
+ * `EditAllergy`/`EditCondition`/`EditLabResult`/`CatalogPicker`) are not
+ * preview-rendered. Date/time-picker dialog routes are dialogs, not full screens.
  */
 class MetadataPreviews {
 
@@ -236,6 +246,59 @@ class MetadataPreviews {
                     ),
                 ),
                 actions = MetricDetailsActions.Noop,
+            )
+        }
+    }
+
+    @PreviewTest
+    @Preview(name = "8-today-expanded", device = EXPANDED, group = "large-tablet", showSystemUi = true)
+    @Composable
+    fun Preview8TodayExpanded() {
+        ChromePreview(Route.Today) {
+            TodayScreen(
+                state = TodayUiState(
+                    steps = 8_432L,
+                    activeCalories = 412L,
+                    mindfulnessMinutes = 15L,
+                    distanceKm = 6.12,
+                    floors = 7.0,
+                    hydrationMl = 1850.0,
+                    heartRateMin = 52L,
+                    heartRateMax = 141L,
+                    metrics = MainPageMetrics(
+                        spo2 = 98.0,
+                        rhr = 58L,
+                        bloodPressure = 118.0 to 76.0,
+                        sleepMinutes = 447L,
+                    ),
+                ),
+                actions = TodayActions.Noop,
+            )
+        }
+    }
+
+    @PreviewTest
+    @Preview(name = "6-dose-reminder", device = PHONE, group = "phone", showSystemUi = true)
+    @Composable
+    fun Preview6DoseReminder() {
+        DynamicTheme(darkTheme = true) {
+            DoseReminderScreen(
+                medicationName = "Metformin",
+                amount = "500 mg",
+                onTaken = {},
+                onSnooze = {},
+            )
+        }
+    }
+
+    @PreviewTest
+    @Preview(name = "7-health-connect-required", device = PHONE, group = "phone", showSystemUi = true)
+    @Composable
+    fun Preview7HealthConnectRequired() {
+        DynamicTheme(darkTheme = true) {
+            HealthConnectRequiredPage(
+                availability = com.vayunmathur.health.platform.HealthConnectAvailability.NOT_INSTALLED,
+                onInstall = { false },
             )
         }
     }

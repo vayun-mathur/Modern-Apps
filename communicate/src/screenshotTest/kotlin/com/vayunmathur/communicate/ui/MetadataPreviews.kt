@@ -6,11 +6,14 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import com.android.tools.screenshot.PreviewTest
 import com.vayunmathur.communicate.data.CommunicateCallLogEntry
 import com.vayunmathur.communicate.data.CommunicateCallType
 import com.vayunmathur.communicate.data.CommunicateContact
+import com.vayunmathur.communicate.data.SmsMessage
 import com.vayunmathur.communicate.data.SmsThread
+import com.vayunmathur.communicate.data.VoicemailEntry
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.IconCall
 import com.vayunmathur.library.ui.IconHistory
@@ -23,6 +26,9 @@ import com.vayunmathur.library.ui.TabbedPagerScaffold
 /** Phone-shaped, roughly 1080x2340 at xxhdpi — comfortably above the F-Droid minimum. */
 private const val PHONE = "spec:width=411dp,height=891dp,dpi=420"
 
+/** Expanded desktop/tablet window for the main (Messages) screen. */
+private const val EXPANDED = "spec:width=1280dp,height=800dp,dpi=240"
+
 /**
  * Store listing images for `:communicate` phone tabs, rendered from Compose previews.
  *
@@ -30,6 +36,16 @@ private const val PHONE = "spec:width=411dp,height=891dp,dpi=420"
  * cover the handset tabs: Messages, Dialer, Call logs, Voicemail. The tab screens were split
  * into stateless `*Content` slices so previews render without the SMS provider,
  * the SIM/session lines, or the contact/call-log content providers.
+ *
+ * Coverage: the four tabs and `Conversation` (primary detail, via its stateless
+ * message-list + composer slices) on phone, plus Messages (main) on large-tablet;
+ * the car templates are in CarMetadataPreviews.
+ * Exceptions: `Accounts` and the WhatsApp/Signal/RCS/Google-Voice registration
+ * wizards read Keystore-sealed DataStore line sessions and provider state — there is
+ * no stateless slice and Layoutlib has no AndroidKeyStore session to show.
+ * `Call` is a live WebRTC/telecom call (mic/camera/video surface, global call
+ * registry): like `camera`'s viewfinder it cannot be rendered in Layoutlib; the car
+ * in-call template in CarMetadataPreviews is the renderable in-call surface.
  */
 class MetadataPreviews {
 
@@ -158,6 +174,44 @@ class MetadataPreviews {
     @Composable
     fun Preview4Voicemail() {
         ChromePreview(selectedTab = 3)
+    }
+
+    @PreviewTest
+    @Preview(name = "7-conversation", device = PHONE, group = "phone", showSystemUi = true)
+    @Composable
+    fun Preview7Conversation() {
+        DynamicTheme(darkTheme = true) {
+            androidx.compose.foundation.layout.Column(Modifier.fillMaxSize()) {
+                Box(Modifier.weight(1f).fillMaxSize()) {
+                    MessagesContent(
+                        padding = androidx.compose.foundation.layout.PaddingValues(0.dp),
+                        rows = listOf(
+                            SmsMessage(1, 1, "+14155550102", "Running 10 minutes late, start without me", 1_785_566_400_000, outgoing = false, read = true),
+                            SmsMessage(2, 1, "+14155550102", "No worries — we moved to room B", 1_785_566_460_000, outgoing = true, read = true),
+                            SmsMessage(3, 1, "+14155550102", "Perfect, see you there", 1_785_566_520_000, outgoing = false, read = true),
+                        ),
+                    )
+                }
+                ComposeSmsRow(
+                    draft = "",
+                    onDraftChange = {},
+                    attachments = emptyList(),
+                    onAttachMedia = {},
+                    onAttachFile = {},
+                    onCreatePoll = null,
+                    onShareContact = null,
+                    onRemoveAttachment = {},
+                    onSend = {},
+                )
+            }
+        }
+    }
+
+    @PreviewTest
+    @Preview(name = "8-messages-expanded", device = EXPANDED, group = "large-tablet", showSystemUi = true)
+    @Composable
+    fun Preview8MessagesExpanded() {
+        ChromePreview(selectedTab = 0)
     }
 
     @Composable

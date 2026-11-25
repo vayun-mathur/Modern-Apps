@@ -7,6 +7,7 @@ import com.vayunmathur.email.data.EmailAccount
 import com.vayunmathur.email.data.EmailFolder
 import com.vayunmathur.email.data.EmailMessage
 import com.vayunmathur.email.data.EmailPreview
+import com.vayunmathur.email.ui.AddAccountFormScreen
 import com.vayunmathur.email.ui.AddAccountScreen
 import com.vayunmathur.email.ui.EmailDrawerContent
 import com.vayunmathur.email.ui.MessageListScreen
@@ -48,6 +49,13 @@ private const val EXPANDED = "spec:width=1280dp,height=800dp,dpi=240"
  *    renders top-level previews happily, but the screenshot engine discovers previews as
  *    JUnit tests and needs a real class to attach them to — top-level functions land in a
  *    synthetic `…Kt` facade and are silently skipped.
+ *
+ * Coverage: `MessageList` (inbox/search/drawer), `MessageThread` (detail) and
+ * `AddAccount` + `AddAccountForm` on phone, plus the thread on large-tablet.
+ * Exceptions: `Composer` hosts an `AndroidView` HTML editor (WebView) which
+ * Layoutlib cannot render; `Outbox`, `Drafts` and `Settings` have no stateless
+ * slice (EmailViewModel + Room/DataStore), and `EmlViewer` reads a SAF URI's
+ * bytes — none can be shown honestly from literals.
  */
 class MetadataPreviews {
 
@@ -103,6 +111,27 @@ class MetadataPreviews {
     fun Preview4AddAccount() {
         DynamicTheme(darkTheme = true) {
             AddAccountScreen(onBack = {}, onPickProvider = {})
+        }
+    }
+
+    @PreviewTest
+    @Preview(name = "8-inbox-expanded", device = EXPANDED, group = "large-tablet", showSystemUi = true)
+    @Composable
+    fun Preview8InboxExpanded() {
+        DynamicTheme(darkTheme = true) {
+            MessageListScreen(
+                state = MessageListUiState(messages = INBOX),
+                actions = MessageListActions.Noop,
+            )
+        }
+    }
+
+    @PreviewTest
+    @Preview(name = "7-add-account-form", device = PHONE, group = "phone", showSystemUi = true)
+    @Composable
+    fun Preview7AddAccountForm() {
+        DynamicTheme(darkTheme = true) {
+            AddAccountFormScreen(providerId = "gmail", onBack = {}, onAccountAdded = {})
         }
     }
 

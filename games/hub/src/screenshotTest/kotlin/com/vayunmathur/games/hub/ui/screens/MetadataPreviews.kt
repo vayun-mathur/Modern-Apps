@@ -53,12 +53,22 @@ private const val DAY = 24 * HOUR
  * is not collected as a screenshot test. Previews must also be class members, not top-level
  * functions. Order comes from the function names (Preview1…, Preview2…).
  *
- * Timestamps are relative to now so the "2h ago" style labels stay in their intended
- * bucket; the rendered text is the same on every run.
+ * Timestamps are offsets from a fixed instant ([NOW]) so the "2h ago" style
+ * labels stay in their intended bucket and the rendered text is identical on
+ * every run (no relative-to-now fixtures).
+ *
+ * Coverage: `Dashboard`, `Games`, `Profile`, `Yuu` (list/empty/editor) and
+ * `PlayOnTv` (controller-pad discovery) on phone, plus the dashboard on
+ * large-tablet.
+ * Exceptions (no stateless slice; GameHubViewModel over Room): `Achievements`,
+ * `AchievementsForGame`, `GameDetail`, `Activity` and `Settings` are not
+ * preview-rendered. The Yuu editor's 3D avatar surface is the screen's own
+ * preview seam as already rendered by `Preview7YuuEditor`.
  */
 class MetadataPreviews {
 
-    private val now = System.currentTimeMillis()
+    /** 2026-01-17T12:00Z — fixed, never the wall clock. */
+    private val now = 1_768_651_200_000L
 
     private val games = listOf(
         HubGameEntity("chess", "com.vayunmathur.games.chess", "Chess", "Classic chess with puzzles and a human-like AI", "1.0", registeredAt = now - 28 * DAY, lastSeenAt = now - HOUR, lastPlayedAt = now - HOUR, totalPlaytimeMs = 5 * HOUR + 23 * 60_000L, totalSessions = 42),
@@ -255,6 +265,35 @@ class MetadataPreviews {
             YuuScreen(
                 state = YuuListUiState(),
                 actions = YuuListActions.Noop,
+            )
+        }
+    }
+
+    @PreviewTest
+    @Preview(name = "8-play-on-tv", device = PHONE, group = "phone", showSystemUi = true)
+    @Composable
+    fun Preview8PlayOnTv() {
+        DynamicTheme(darkTheme = true) {
+            ControllerPad(
+                state = ControllerPadState(
+                    hosts = listOf(
+                        com.vayunmathur.sdk.controller.ControllerHostInfo(
+                            id = "tv-1",
+                            instanceName = "Living Room TV",
+                            friendlyName = "Living Room TV",
+                            host = "192.168.1.20",
+                            port = 5277,
+                            protocolVersion = 1,
+                            gameId = "kart",
+                        ),
+                    ),
+                ),
+                onConnect = {},
+                onProveCode = {},
+                onJoin = {},
+                onInput = { _, _, _, _ -> },
+                onLeave = {},
+                onRescan = {},
             )
         }
     }

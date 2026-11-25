@@ -198,6 +198,15 @@ private val SamplePresentation = OdfDocument.Presentation(
  * Each preview needs @PreviewTest as well as @Preview: @Preview alone renders in Studio but
  * is not collected as a screenshot test. Previews must also be class members, not top-level
  * functions. Order comes from the function names (Preview1…, Preview2…).
+ *
+ * Coverage: `OfflineHome`, the three offline editor bodies (text/sheet/slides,
+ * the renderable form of `OfflineEditor`), the outline drawer, and
+ * `OnlineHome` in its disabled state on phone, plus the wide editor layout on
+ * large-tablet (main/editor wide variant).
+ * Exceptions: the enabled `OnlineHome` list and `OnlineEditor` need the E2EE
+ * relay session + OfficeViewModel, and the full editor chrome needs the native
+ * `office_engine` (above) — Layoutlib cannot load that native library, so only
+ * the document bodies are shown, exactly as the header above describes.
  */
 class MetadataPreviews {
 
@@ -244,6 +253,22 @@ class MetadataPreviews {
     @Composable
     fun Preview4Home() {
         ChromePreview()
+    }
+
+    @PreviewTest
+    @Preview(name = "8-home-expanded", device = EXPANDED, group = "large-tablet", showSystemUi = true)
+    @Composable
+    fun Preview8HomeExpanded() {
+        ChromePreview()
+    }
+
+    @PreviewTest
+    @Preview(name = "7-online-disabled", device = PHONE, group = "phone", showSystemUi = true)
+    @Composable
+    fun Preview7OnlineDisabled() {
+        DynamicTheme(darkTheme = true) {
+            OnlineDisabledScreen(onEnable = {})
+        }
     }
 
     @PreviewTest

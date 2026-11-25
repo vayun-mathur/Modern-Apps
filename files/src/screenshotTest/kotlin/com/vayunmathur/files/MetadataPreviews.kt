@@ -6,9 +6,12 @@ import com.android.tools.screenshot.PreviewTest
 import com.vayunmathur.files.platform.FileBrowserItem
 import com.vayunmathur.files.platform.FilesActions
 import com.vayunmathur.files.platform.FilesUiState
+import com.vayunmathur.files.platform.HomeUiState
+import com.vayunmathur.files.platform.StorageInfo
 import com.vayunmathur.files.platform.TrashUiState
 import com.vayunmathur.files.ui.DirectoryScreen
 import com.vayunmathur.files.ui.FilesDrawer
+import com.vayunmathur.files.ui.HomeScreen
 import com.vayunmathur.files.ui.TrashScreen
 import com.vayunmathur.library.ui.DrawerValue
 import com.vayunmathur.library.ui.DynamicTheme
@@ -19,6 +22,9 @@ import java.io.File
 
 /** Phone-shaped, roughly 1080x2340 at xxhdpi — comfortably above the F-Droid minimum. */
 private const val PHONE = "spec:width=411dp,height=891dp,dpi=420"
+
+/** Expanded desktop/tablet window for the main (home) screen. */
+private const val EXPANDED = "spec:width=1280dp,height=800dp,dpi=240"
 
 private const val ROOT = "/storage/emulated/0"
 
@@ -32,6 +38,10 @@ private const val ROOT = "/storage/emulated/0"
  * The [File]s below are never touched — the browser only reads the names and sizes it is
  * handed — so these render without a filesystem, a device, or the all-files permission the
  * real app needs before it shows anything at all.
+ *
+ * Coverage: every `Route` destination — `Home`, `Directory`, `Category`, `Trash` and
+ * `Zip` on phone, plus `Home` (main) on large-tablet. The text editor is a separate
+ * activity (`TextEditorActivity`, ViewModel + SAF URI), not a `Route` destination.
  */
 class MetadataPreviews {
 
@@ -195,6 +205,61 @@ class MetadataPreviews {
             ) {
                 BrowseContent()
             }
+        }
+    }
+
+    @Composable
+    private fun HomeContent() {
+        HomeScreen(
+            home = HomeUiState(
+                rootDisplayName = "Pixel 9 Pro",
+                storage = StorageInfo(totalBytes = 256_000_000_000, freeBytes = 84_000_000_000),
+                recents = listOf(
+                    file("$ROOT/Download/receipts-june.pdf", 184_320),
+                    file("$ROOT/DCIM/IMG_2481.jpg", 3_145_728),
+                ),
+                bookmarks = listOf(dir("$ROOT/Documents")),
+            ),
+            actions = FilesActions.Noop,
+        )
+    }
+
+    @PreviewTest
+    @Preview(name = "6-home", device = PHONE, group = "phone", showSystemUi = true)
+    @Composable
+    fun Preview6Home() {
+        DynamicTheme(darkTheme = true) {
+            HomeContent()
+        }
+    }
+
+    @PreviewTest
+    @Preview(name = "7-category", device = PHONE, group = "phone", showSystemUi = true)
+    @Composable
+    fun Preview7Category() {
+        DynamicTheme(darkTheme = true) {
+            DirectoryScreen(
+                state = FilesUiState(
+                    rootDirectory = File(ROOT),
+                    rootDisplayName = "Pixel 9 Pro",
+                    currentDirectory = File(ROOT),
+                    categoryTitle = "Images",
+                    files = listOf(
+                        file("$ROOT/DCIM/IMG_2481.jpg", 3_145_728),
+                        file("$ROOT/Pictures/offsite.png", 1_204_112),
+                    ),
+                ),
+                actions = FilesActions.Noop,
+            )
+        }
+    }
+
+    @PreviewTest
+    @Preview(name = "8-home-expanded", device = EXPANDED, group = "large-tablet", showSystemUi = true)
+    @Composable
+    fun Preview8HomeExpanded() {
+        DynamicTheme(darkTheme = true) {
+            HomeContent()
         }
     }
 }

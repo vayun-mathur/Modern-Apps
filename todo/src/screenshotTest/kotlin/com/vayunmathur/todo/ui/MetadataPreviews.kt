@@ -29,6 +29,7 @@ import kotlinx.datetime.TimeZone
 /** Phone-shaped, roughly 1080x2340 at xxhdpi - comfortably above the F-Droid minimum. */
 private const val PHONE = "spec:width=411dp,height=891dp,dpi=420"
 private const val TABLET = "spec:width=1280dp,height=800dp,dpi=240"
+private const val EXPANDED = "spec:width=1280dp,height=800dp,dpi=240"
 
 /**
  * 2026-10-14 09:00 in the rendering machine's zone: the labels are computed in the system zone,
@@ -50,6 +51,9 @@ private fun at(offset: Int, h: Int, m: Int = 0) = DueDates.at(TODAY.plus(offset,
  *
  * Everything here is a literal - no ViewModel, no database, no device - which is also what
  * makes the images reproducible from a clean checkout.
+ *
+ * Coverage: every `Route` destination is shown — `TodoList` (Today/All/search),
+ * `TodoDetail` (editor) and `Settings` on phone, plus the main list on large-tablet.
  */
 class MetadataPreviews {
     private val work = TodoList(id = 1, syncId = "work", name = "Work", color = 0xFF1E88E5.toInt(), icon = "work")
@@ -148,6 +152,18 @@ class MetadataPreviews {
     }
 
     @PreviewTest
+    @Preview(name = "6-settings", device = PHONE, group = "phone", showSystemUi = true)
+    @Composable
+    fun Preview7Settings() {
+        DynamicTheme(darkTheme = true) {
+            SettingsScreen(
+                state = SettingsUiState(lists = lists),
+                actions = object : SettingsActions {},
+            )
+        }
+    }
+
+    @PreviewTest
     @Preview(name = "1-tablet", device = TABLET, group = "tablet", showSystemUi = true)
     @Composable
     fun Preview6Tablet() {
@@ -159,6 +175,15 @@ class MetadataPreviews {
                 }
                 Surface(Modifier.fillMaxHeight()) { TodoDetailScreen(state = editorState, actions = TodoActions.Noop) }
             }
+        }
+    }
+
+    @PreviewTest
+    @Preview(name = "7-large-tablet", device = EXPANDED, group = "large-tablet", showSystemUi = true)
+    @Composable
+    fun Preview8LargeTablet() {
+        DynamicTheme(darkTheme = true) {
+            TodoListScreen(state = listState(), actions = TodoListActions.Noop)
         }
     }
 }

@@ -60,6 +60,16 @@ private const val EXPANDED = "spec:width=1280dp,height=800dp,dpi=420"
  * generator also seeded synthetic gradient JPEGs rather than shipping real photographs.
  * The map screen is gone from the listing entirely; it is a MapLibre GL surface and there
  * is nothing for Layoutlib to draw.
+ *
+ * Coverage: `Gallery`, `People`, `Albums`, `AlbumDetail` and `Favorites` on phone,
+ * plus the wide viewer layout on large-tablet.
+ * Exceptions: `Map` is a MapLibre GL surface (above). `PhotoPage` (viewer),
+ * `Trash`, `SecureFolder`/`VaultViewer`, `Wallpaper` and the photo/video editors
+ * have no placeholder seam at the page level — they need a decoded MediaStore
+ * bitmap/pager, MediaStore trash intents, a decrypted vault file behind
+ * biometrics, WallpaperManager/WindowManager, or a native-ML editor canvas /
+ * video surface, none of which Layoutlib can supply. The wide layout above is
+ * the renderable wide form of the viewer.
  */
 class MetadataPreviews {
 
@@ -109,6 +119,46 @@ class MetadataPreviews {
                 viewer = { GalleryPreview(GalleryUiState(photos = samplePhotos())) },
                 filmstrip = { GalleryPreview(GalleryUiState(photos = samplePhotos().take(4))) },
             )
+        }
+    }
+
+    @PreviewTest
+    @Preview(name = "8-gallery-expanded", device = EXPANDED, group = "large-tablet", showSystemUi = true)
+    @Composable
+    fun Preview8GalleryExpanded() {
+        GalleryPreview(GalleryUiState(photos = samplePhotos()))
+    }
+
+    @PreviewTest
+    @Preview(name = "6-album-detail", device = PHONE, group = "phone", showSystemUi = true)
+    @Composable
+    fun Preview6AlbumDetail() {
+        val photos = samplePhotos()
+        DynamicTheme(darkTheme = true) {
+            CompositionLocalProvider(LocalColumnCount provides remember { mutableFloatStateOf(3f) }) {
+                AlbumDetailScreen(
+                    backStack = NavBackStack(arrayOf<Route>(Route.AlbumDetail("Trip"))),
+                    albumName = "Trip",
+                    album = Album("Trip", photos[4], photos.slice(4..9)),
+                    thumbnail = { photo, modifier -> PlaceholderTile(photo, modifier) },
+                )
+            }
+        }
+    }
+
+    @PreviewTest
+    @Preview(name = "7-favorites", device = PHONE, group = "phone", showSystemUi = true)
+    @Composable
+    fun Preview7Favorites() {
+        DynamicTheme(darkTheme = true) {
+            CompositionLocalProvider(LocalColumnCount provides remember { mutableFloatStateOf(3f) }) {
+                FavoritesScreen(
+                    backStack = NavBackStack(arrayOf<Route>(Route.Favorites)),
+                    state = GalleryUiState(photos = samplePhotos().take(9)),
+                    actions = GalleryActions.Noop,
+                    thumbnail = { photo, modifier -> PlaceholderTile(photo, modifier) },
+                )
+            }
         }
     }
 

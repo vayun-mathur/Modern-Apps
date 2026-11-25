@@ -143,6 +143,13 @@ private val SAMPLE_EVENTS = listOf(
  * the `cmd uimode night yes` the old on-device generator used. Material You sources its
  * palette from the wallpaper, which does not exist here, so these render with the fallback
  * scheme rather than a user's accent colour.
+ *
+ * Coverage: `Calendar` (month), `Event` (detail) and `Settings` on phone, plus both the
+ * month (main) and event detail on large-tablet.
+ * Exceptions (no stateless slice; ViewModel + system CalendarProvider / intent URIs):
+ * `EditEvent`, `HolidayCalendars` and `ImportIcs` are not preview-rendered — faking them
+ * from literals would not show the real editor/import screens. Dialog routes
+ * (`GotoDialog`, pickers, recurrence, settings dialogs) are dialogs, not full screens.
  */
 class MetadataPreviews {
 
@@ -195,6 +202,26 @@ class MetadataPreviews {
                     themeMode = CalendarViewModel.ThemeMode.Dark,
                 ),
                 actions = SettingsActions.Noop,
+            )
+        }
+    }
+
+    @PreviewTest
+    @Preview(name = "5-month-expanded", device = EXPANDED, group = "large-tablet", showSystemUi = true)
+    @Composable
+    fun Preview5MonthExpanded() {
+        DynamicTheme(darkTheme = true) {
+            CalendarScreen(
+                state = CalendarUiState(
+                    layout = CalendarViewModel.CalendarLayout.Month,
+                    dateViewing = TODAY,
+                    today = TODAY,
+                    events = SAMPLE_EVENTS,
+                    calendars = mapOf(PERSONAL.id to PERSONAL, WORK.id to WORK),
+                    calendarVisibility = mapOf(PERSONAL.id to true, WORK.id to true),
+                    previewInstances = SAMPLE_EVENTS.map { instance(it) },
+                ),
+                actions = CalendarActions.Noop,
             )
         }
     }
