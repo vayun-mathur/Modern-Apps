@@ -251,6 +251,28 @@ internal object MapNative {
         hasBearing: Boolean,
     )
 
+    /**
+     * Query basemap geometry in a bounding box from the on-device `.mamaps`
+     * archive at [localPath] (see [MapGeometry] for the bounded Kotlin API
+     * over this). Handle-free and off the render path by design: it opens
+     * its own read-only archive view on the calling thread, so callers must
+     * call it off the main thread and never from a frame.
+     *
+     * Returns `\u0001`-joined rows: row 0 is `OK␁<truncated 0|1>␁
+     * <coveredTiles>␁<totalTiles>` or the single row `UNAVAILABLE` (no
+     * readable archive); later rows are `<KIND>␁<class>␁<closed 0|1>␁
+     * <lonE7,latE7,...>` for ROAD/PATH/WATER/BUILDING features.
+     */
+    external fun queryGeometry(
+        localPath: String?,
+        west: Double,
+        south: Double,
+        east: Double,
+        north: Double,
+        kindsMask: Int,
+        maxFeatures: Int,
+    ): Array<String>
+
     /** Take the puck away: no fix, or a host that stopped asking for one. */
     external fun clearUserPuck(handle: Long)
 

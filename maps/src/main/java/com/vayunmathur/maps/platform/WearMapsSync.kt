@@ -2,11 +2,14 @@ package com.vayunmathur.maps.platform
 
 import android.content.Context
 import com.vayunmathur.library.log.Log
+import com.vayunmathur.library.map.GeoBounds
 import com.vayunmathur.library.map.GeoPoint
+import com.vayunmathur.library.map.MapGeometry
 import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.library.wearlink.WearLinkListener
 import com.vayunmathur.library.wearlink.WearLinkNode
 import com.vayunmathur.library.wearlink.WearLinkState
+import com.vayunmathur.maps.data.MapTileCache
 import com.vayunmathur.maps.data.PoiIndex
 import com.vayunmathur.maps.data.SavedPlaceStore
 import com.vayunmathur.maps.data.inViewport
@@ -22,9 +25,12 @@ import com.vayunmathur.maps.domain.WearRouteState
 import com.vayunmathur.maps.domain.WearSavedPlace
 import com.vayunmathur.maps.domain.buildWearMapSnapshot
 import com.vayunmathur.maps.domain.buildWearRouteState
+import com.vayunmathur.maps.domain.toWearRawLines
+import com.vayunmathur.maps.domain.wearMissingKinds
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import java.io.File
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
@@ -38,18 +44,26 @@ import kotlin.math.cos
  *   watch runs no GPS of its own. Every fix publishes a small
  *   [WearPosition]; a fresh region is extracted only when
  *   [WearRegionHysteresis] says the user nears the snapshot edge.
- * - Region geometry is what this app has cheaply in Kotlin: POIs from
- *   the offline index ([PoiIndex.inViewport]), saved places, and — while
- *   navigating — the route. Basemap road/water/building linework is NOT
- *   available in Kotlin (`:library:map` decodes tiles natively), so the
- *   snapshot names those kinds in `degraded` rather than faking them;
- *   the extractor/renderer carry them the moment a source exists.
+ * - Region geometry: POIs from the offline index
+ *   ([PoiIndex.inViewport]), saved places, basemap road/path/water/
+ *   building linework from `:library:map`'s [MapGeometry] query over
+ *   the downloaded `.mamaps` archive, and — while navigating — the
+ *   route. When there is no readable archive the snapshot names the
+ *   unsourced kinds in `degraded` (unavailable, not merely empty)
+ *   rather than faking them.
  * - Navigation mirrors [NavigationSessionManager]: Navigating publishes
  *   an active [WearRouteState]; Idle/Arrived/Failed publish the explicit
  *   `active=false` clear exactly once per transition.
  */
 object WearMapsSync {
     private const val TAG = "WearMapsSync"
+
+    /**
+     * Basemap features per region query. The snapshot's own 48 KB cap
+     * degrades further from here; this bounds the native extraction to
+     * a few street tiles' worth of linework for a 600 m region.
+     */
+    private const val GEOMETRY_MAX_FEATURES = 320
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     @Volatile
@@ -145,11 +159,31 @@ object WearMapsSync {
         }
     }
 
-    /** The cheap-Kotlin extraction: offline POIs + saved places (+ route line while navigating). */
+    /**
+     * Region extraction: offline POIs + saved places, basemap geometry
+     * from [MapGeometry] over the downloaded archive, plus the route
+     * line while navigating. Runs on the IO scope: the geometry query
+     * does file I/O and never touches the render path.
+     */
     private fun extractRegion(appContext: Context, center: GeoPoint): WearMapSnapshot {
         val radius = WearMapsProtocol.REGION_RADIUS_M.toDouble()
         val dLat = radius / 110_540.0
         val dLon = radius / (111_320.0 * cos(Math.toRadians(center.latitude)).coerceAtLeast(0.05))
+        val bounds = GeoBounds(
+            west = center.longitude - dLon, south = center.latitude - dLat,
+            east = center.longitude + dLon, north = center.latitude + dLat,
+        )
+        // No planet downloaded yet (or a partially-written file) reads
+        // as a null path here and as unsourced kinds in the result —
+        // never as an empty-but-complete map.
+        val archiveFile = appContext.getExternalFilesDir(null)
+            ?.let { File(it, MapTileCache.BASEMAP_ARCHIVE_FILE) }
+            ?.takeIf { it.isFile }
+        val geometry = MapGeometry.query(
+            archivePath = archiveFile?.absolutePath,
+            bounds = bounds,
+            maxFeatures = GEOMETRY_MAX_FEATURES,
+        )
         val points = runCatching {
             PoiIndex.initialize(appContext)
             PoiIndex.inViewport(
@@ -165,7 +199,7 @@ object WearMapsSync {
                 WearSavedPlace(it.name, (it.lat * 1e7).toInt(), (it.lon * 1e7).toInt())
             }
         val route = NavigationSessionManager.session.value.route
-        val lines = if (route != null && route.polyline.size >= 2) {
+        val routeLine = if (route != null && route.polyline.size >= 2) {
             listOf(WearRawLine(WearLineKind.ROUTE, route.polyline))
         } else {
             emptyList()
@@ -173,12 +207,14 @@ object WearMapsSync {
         return buildWearMapSnapshot(
             center = center,
             generatedAtMillis = System.currentTimeMillis(),
-            rawLines = lines,
+            rawLines = routeLine + geometry.toWearRawLines(),
             rawPoints = points,
             saved = saved.take(20),
             userBearingDeg = lastBearingDeg,
-            // Honest absence: no Kotlin source for basemap linework today.
-            missingKinds = listOf("roads", "water", "buildings"),
+            // degraded = unavailable only: kinds the archive was read
+            // for but which simply have no features here are not named.
+            missingKinds = geometry.wearMissingKinds(),
+            sourceTruncated = geometry.truncated,
         )
     }
 

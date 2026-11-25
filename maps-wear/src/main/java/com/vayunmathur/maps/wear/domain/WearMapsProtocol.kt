@@ -26,13 +26,14 @@ import kotlin.math.cos
  * What a snapshot contains — and what it honestly does not:
  * Coordinates are quantized metres east/north of the snapshot centre
  * ([QUANT_STEP_M] per unit, so round-trip error is at most half a step).
- * Lines carry roads/paths/water/buildings/route geometry *when the phone
- * has a cheap source for them*; points carry POIs from the offline index
- * and saved places. `:library:map` exposes no Kotlin geometry API for the
- * basemap's road/water/building linework (the Vulkan renderer decodes the
- * `.mamaps` tiles natively), so a phone build without such a source sets
- * [WearMapSnapshot.degraded] to name the missing kinds instead of faking
- * geometry. The watch renders whatever lines it is given.
+ * Lines carry roads/paths/water/buildings/route geometry from
+ * `:library:map`'s Kotlin geometry API (`MapGeometry`, decoding the
+ * downloaded `.mamaps` archive through the renderer's own codec);
+ * points carry POIs from the offline index and saved places.
+ * [WearMapSnapshot.degraded] names kinds that are *unavailable* - no
+ * readable archive - never kinds that were read and simply have no
+ * features in this region (an ocean bbox is a complete, empty map).
+ * The watch renders whatever lines it is given.
  *
  * Position source is the PHONE. The watch does not run its own GPS in
  * this design (a watch fix would cost watch battery for a worse antenna
@@ -127,7 +128,12 @@ data class WearMapSnapshot(
     val saved: List<WearSavedPlace> = emptyList(),
     /** True when the byte cap dropped or coarsened geometry. */
     val truncated: Boolean = false,
-    /** Human-honest names of what is missing/coarser, e.g. "roads", "detail". Empty = full. */
+    /**
+     * Human-honest names of what is unavailable/coarser, e.g. "roads",
+     * "detail". A basemap kind appears here only when it could not be
+     * sourced (no readable archive), not when it was read and the
+     * region simply contains none. Empty = full.
+     */
     val degraded: List<String> = emptyList(),
     /** User bearing (degrees clockwise from north) at publish, -1 = unknown. */
     val userBearingDeg: Int = -1,

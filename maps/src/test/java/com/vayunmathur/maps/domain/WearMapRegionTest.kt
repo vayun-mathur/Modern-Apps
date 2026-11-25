@@ -1,6 +1,9 @@
 package com.vayunmathur.maps.domain
 
 import com.vayunmathur.library.map.GeoPoint
+import com.vayunmathur.library.map.MapGeometryFeature
+import com.vayunmathur.library.map.MapGeometryKind
+import com.vayunmathur.library.map.MapGeometryResult
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -103,6 +106,106 @@ class WearMapRegionTest {
         if (bytes <= WearMapsProtocol.MAX_JSON_BYTES) {
             assertTrue(snapshot.degraded.contains("buildings") || snapshot.degraded.contains("detail"))
         }
+    }
+
+    /** Real-shaped geometry as `MapGeometry` returns it for a city block at the equator. */
+    private fun realShapedGeometry() = MapGeometryResult(
+        features = listOf(
+            MapGeometryFeature(
+                MapGeometryKind.ROAD, "residential", closed = false,
+                points = listOf(east(-400.0), east(-100.0), east(150.0), east(400.0)),
+            ),
+            MapGeometryFeature(
+                MapGeometryKind.PATH, "path", closed = false,
+                points = listOf(north(-300.0), north(300.0)),
+            ),
+            MapGeometryFeature(
+                MapGeometryKind.WATER, "lake", closed = true,
+                points = listOf(
+                    GeoPoint(100.0 / 111_320.0, 100.0 / 110_540.0),
+                    GeoPoint(300.0 / 111_320.0, 100.0 / 110_540.0),
+                    GeoPoint(300.0 / 111_320.0, 250.0 / 110_540.0),
+                    GeoPoint(100.0 / 111_320.0, 250.0 / 110_540.0),
+                ),
+            ),
+            MapGeometryFeature(
+                MapGeometryKind.BUILDING, "building", closed = true,
+                points = listOf(
+                    GeoPoint(-300.0 / 111_320.0, -200.0 / 110_540.0),
+                    GeoPoint(-200.0 / 111_320.0, -200.0 / 110_540.0),
+                    GeoPoint(-200.0 / 111_320.0, -100.0 / 110_540.0),
+                    GeoPoint(-300.0 / 111_320.0, -100.0 / 110_540.0),
+                ),
+            ),
+        ),
+        coveredTiles = 4,
+        totalTiles = 4,
+    )
+
+    @Test
+    fun geometryResultPopulatesRoadsWaterAndBuildings() {
+        val geometry = realShapedGeometry()
+        val snapshot = buildWearMapSnapshot(
+            center, 3L, geometry.toWearRawLines(), emptyList(),
+            missingKinds = geometry.wearMissingKinds(),
+            sourceTruncated = geometry.truncated,
+        )
+        assertEquals(emptyList(), snapshot.degraded, "a sourced region is not degraded")
+        val kinds = snapshot.lines.map { it.kind }.toSet()
+        assertTrue(WearLineKind.ROAD in kinds && WearLineKind.PATH in kinds)
+        assertTrue(WearLineKind.WATER in kinds && WearLineKind.BUILDING in kinds)
+        assertTrue(snapshot.lines.filter { it.closed }.all {
+            it.kind == WearLineKind.WATER || it.kind == WearLineKind.BUILDING
+        })
+        // Quantized onto the 2 m grid and inside the region.
+        assertTrue(snapshot.lines.all { line ->
+            line.pts.indices.step(2).all { i ->
+                kotlin.math.abs(wearDequantize(line.pts[i])) <= snapshot.radiusM + 2.0
+            }
+        })
+    }
+
+    @Test
+    fun unavailableGeometryDegradesEveryBasemapKind() {
+        val geometry = MapGeometryResult(
+            unsourcedKinds = setOf(
+                MapGeometryKind.ROAD, MapGeometryKind.PATH,
+                MapGeometryKind.WATER, MapGeometryKind.BUILDING,
+            ),
+        )
+        assertEquals(listOf("roads", "water", "buildings"), geometry.wearMissingKinds())
+        val snapshot = buildWearMapSnapshot(
+            center, 0L, geometry.toWearRawLines(), emptyList(),
+            missingKinds = geometry.wearMissingKinds(),
+        )
+        assertEquals(listOf("roads", "water", "buildings"), snapshot.degraded)
+        assertTrue(snapshot.lines.isEmpty())
+    }
+
+    @Test
+    fun scannedButEmptyGeometryIsNotDegraded() {
+        // The archive was read (tiles covered) and the region simply
+        // holds no roads/water/buildings: a complete, empty map.
+        val geometry = MapGeometryResult(coveredTiles = 2, totalTiles = 2)
+        assertEquals(emptyList(), geometry.wearMissingKinds())
+        val snapshot = buildWearMapSnapshot(
+            center, 0L, geometry.toWearRawLines(), emptyList(),
+            missingKinds = geometry.wearMissingKinds(),
+        )
+        assertEquals(emptyList(), snapshot.degraded)
+    }
+
+    @Test
+    fun truncatedGeometryFlagsDetail() {
+        val geometry = realShapedGeometry().copy(truncated = true)
+        val snapshot = buildWearMapSnapshot(
+            center, 0L, geometry.toWearRawLines(), emptyList(),
+            missingKinds = geometry.wearMissingKinds(),
+            sourceTruncated = geometry.truncated,
+        )
+        assertTrue(snapshot.truncated)
+        assertTrue(snapshot.degraded.contains("detail"))
+        assertTrue(snapshot.lines.isNotEmpty(), "capped geometry still draws what came back")
     }
 
     @Test

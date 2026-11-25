@@ -1,6 +1,8 @@
 package com.vayunmathur.maps.domain
 
 import com.vayunmathur.library.map.GeoPoint
+import com.vayunmathur.library.map.MapGeometryKind
+import com.vayunmathur.library.map.MapGeometryResult
 import kotlinx.serialization.encodeToString
 import kotlin.math.abs
 import kotlin.math.hypot
@@ -27,6 +29,42 @@ data class WearRawLine(
     val closed: Boolean = false,
     val name: String = "",
 )
+
+/**
+ * Basemap geometry from `:library:map` ([MapGeometryResult]) as raw
+ * wear lines, in the result's own priority order. A feature's class is
+ * not a display name, so [WearRawLine.name] stays empty.
+ */
+fun MapGeometryResult.toWearRawLines(): List<WearRawLine> = features.map { feature ->
+    WearRawLine(
+        kind = when (feature.kind) {
+            MapGeometryKind.ROAD -> WearLineKind.ROAD
+            MapGeometryKind.PATH -> WearLineKind.PATH
+            MapGeometryKind.WATER -> WearLineKind.WATER
+            MapGeometryKind.BUILDING -> WearLineKind.BUILDING
+        },
+        points = feature.points,
+        closed = feature.closed,
+    )
+}
+
+/**
+ * The `degraded` names for basemap kinds this result could not source.
+ *
+ * `degraded` means **unavailable**, not **empty**: a kind whose archive
+ * was read but which returned no features (an ocean or desert region)
+ * is genuinely absent there and is *not* named. A kind is named only
+ * when it sits in [MapGeometryResult.unsourcedKinds] — no planet file,
+ * an unreadable one, or no native library. Roads and paths share one
+ * source layer, so either unsourced names the group "roads".
+ */
+fun MapGeometryResult.wearMissingKinds(): List<String> = buildList {
+    if (MapGeometryKind.ROAD in unsourcedKinds || MapGeometryKind.PATH in unsourcedKinds) {
+        add("roads")
+    }
+    if (MapGeometryKind.WATER in unsourcedKinds) add("water")
+    if (MapGeometryKind.BUILDING in unsourcedKinds) add("buildings")
+}
 
 /** One POI in geographic coords, as a caller supplies it. */
 data class WearRawPoint(
@@ -153,8 +191,11 @@ private fun toMeterPts(points: List<GeoPoint>, originLat: Double, originLon: Dou
 
 /**
  * Builds a byte-capped snapshot. [missingKinds] names geometry kinds the
- * caller could not supply at all (honesty, e.g. basemap linework); they
- * are merged into [WearMapSnapshot.degraded] verbatim.
+ * caller could not source at all (honesty: unavailable, not merely
+ * empty — see [wearMissingKinds]); they are merged into
+ * [WearMapSnapshot.degraded] verbatim. [sourceTruncated] says the
+ * geometry source itself capped what it returned, so the snapshot is
+ * flagged truncated/"detail" even when it fits under the byte cap.
  */
 fun buildWearMapSnapshot(
     center: GeoPoint,
@@ -165,6 +206,7 @@ fun buildWearMapSnapshot(
     userBearingDeg: Int = -1,
     missingKinds: List<String> = emptyList(),
     radiusM: Int = WearMapsProtocol.REGION_RADIUS_M,
+    sourceTruncated: Boolean = false,
 ): WearMapSnapshot {
     val tolerances = listOf(4.0, 8.0, 16.0, 32.0)
     val pointCaps = listOf(80, 60, 40, 20)
@@ -175,7 +217,7 @@ fun buildWearMapSnapshot(
             userBearingDeg, missingKinds, radiusM,
             toleranceM = tolerances[step], pointCap = pointCaps[step],
             droppedKinds = droppedKinds,
-            coarsened = step > 0,
+            coarsened = step > 0 || sourceTruncated,
         )
         if (encodedSize(snapshot) <= WearMapsProtocol.MAX_JSON_BYTES) return snapshot
         // Next rung: also drop the lowest-priority remaining line kind.

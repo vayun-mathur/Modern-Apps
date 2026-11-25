@@ -18,8 +18,13 @@
 //! `render` drains. That is the split the plan asks for: the expensive half off the
 //! critical path, and no JNI in the hot loop.
 //!
+//! One exception: `geometry`'s query entry takes no handle and opens its own
+//! read-only archive view, so it runs on the caller's (background) thread and
+//! never touches the render thread or a frame.
+//!
 //! Split by domain; each module header names what it holds.
 mod frame;
+mod geometry;
 mod handle;
 mod layers;
 mod lifecycle;

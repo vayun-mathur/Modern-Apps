@@ -7,6 +7,7 @@
 pub mod arrow;
 pub mod cache;
 pub mod geometry;
+pub mod geometry_query;
 pub mod glyph;
 pub mod placement;
 pub mod select;
