@@ -14,6 +14,7 @@ import com.vayunmathur.camera.data.saveProcessedStill
 import com.vayunmathur.camera.platform.camera2.Camera2Driver
 import com.vayunmathur.camera.platform.camera2.Camera2Executor
 import com.vayunmathur.camera.platform.camera2.Camera2Session
+import com.vayunmathur.camera.platform.camera2.captureFromRing
 import com.vayunmathur.camera.platform.camera2.CaptureSessionCallback
 import com.vayunmathur.camera.platform.camera2.CaptureSessionHandle
 import com.vayunmathur.camera.platform.camera2.CapturedStill

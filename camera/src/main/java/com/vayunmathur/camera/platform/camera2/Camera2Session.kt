@@ -84,7 +84,7 @@ class Camera2Session(
     fun previewMetadataFor(timestampNs: Long): RawStillMetadata? = previewMetas[timestampNs]
 
     private var device: DeviceHandle? = null
-    private var captureSession: CaptureSessionHandle? = null
+    internal var captureSession: CaptureSessionHandle? = null
     internal var previewSurface: Surface? = null
     private var previewSize: FrameSize? = null
     internal var stillOutput: StillOutput? = null
@@ -93,7 +93,7 @@ class Camera2Session(
     internal var ultraHdrSize: FrameSize? = null
     internal var ringOutput: RingOutput? = null
     internal var ringSize: FrameSize? = null
-    private val ring = ReprocessRing<RingHeldFrame>(ringConfig.capacity)
+    internal val ring = ReprocessRing<RingHeldFrame>(ringConfig.capacity)
     internal var analysisOutput: AnalysisOutput? = null
     internal var analysisSize: FrameSize? = null
     /** Set once a configure failure has dropped analysis: never re-add it. */
@@ -101,15 +101,44 @@ class Camera2Session(
     internal var rawRingOutput: RawRingOutput? = null
     internal var rawRingSize: FrameSize? = null
     internal var rawRingFormat: RingFormat? = null
-    private val rawRing = ReprocessRing<RawHeldFrame>(rawRingConfig.capacity)
-    private var latestPreviewTimestampNs: Long? = null
+    internal val rawRing = ReprocessRing<RawHeldFrame>(rawRingConfig.capacity)
+    internal var latestPreviewTimestampNs: Long? = null
     private val previewMetas = LinkedHashMap<Long, RawStillMetadata>()
+
+    /**
+     * Generation of the device whose HAL close [close] initiated and whose
+     * real `onClosed` has not been delivered yet, or null. `CameraDevice.close()`
+     * only *initiates* teardown — the device stays busy in the camera service
+     * until `onClosed` — so an [open] that arrives in this window (the
+     * background → resume surface bounce, or close+open on a size change) must
+     * not issue `openCamera` yet: it would fail camera-in-use on a device the
+     * session itself is still closing. The open is parked in [pendingOpen]
+     * and issued from that device's `onClosed` instead. This is why a resume
+     * used to fail once and a manual Retry (fresh holder, old device long
+     * closed) succeeded.
+     */
+    private var awaitingDeviceClosedGeneration: Long? = null
+
+    /** Generation captured by the live device's callback, for [awaitingDeviceClosedGeneration]. */
+    private var deviceCallbackGeneration: Long? = null
+
+    /** Generation whose real `onClosed` has already been delivered, if any. */
+    private var deviceClosedGeneration: Long? = null
+
+    /** An [open] parked until the previous device's `onClosed` lands. */
+    private var pendingOpen: PendingOpen? = null
+
+    private class PendingOpen(
+        val cameraId: String,
+        val surface: Surface,
+        val requestedSize: FrameSize,
+    )
 
     @Volatile
     private var latestPreviewMeta: RawStillMetadata? = null
     internal var pendingStill: PendingStill? = null
     internal var displayRotationDegrees: Int = 0
-    private var controls: Camera2ControlState = Camera2ControlState.DEFAULT
+    internal var controls: Camera2ControlState = Camera2ControlState.DEFAULT
 
     /** In-flight still: JPEG bytes and result metadata pair up by arrival. */
     internal class PendingStill(
@@ -132,7 +161,21 @@ class Camera2Session(
      */
     fun open(cameraId: String, surface: Surface, requestedSize: FrameSize) {
         executor.execute {
-            if (stateMachine.state != SessionState.CLOSED) return@execute
+            // Previous device still closing in the HAL (see
+            // awaitingDeviceClosedGeneration): park this open and let that
+            // device's onClosed issue it, instead of racing openCamera
+            // against the close and failing the first resume attempt.
+            if (awaitingDeviceClosedGeneration != null) {
+                pendingOpen = PendingOpen(cameraId, surface, requestedSize)
+                return@execute
+            }
+            openOnExecutor(cameraId, surface, requestedSize)
+        }
+    }
+
+    /** The [open] body; must run on the executor thread (or a device callback on it). */
+    private fun openOnExecutor(cameraId: String, surface: Surface, requestedSize: FrameSize) {
+            if (stateMachine.state != SessionState.CLOSED) return
             // LIMITED guaranteed combinations cap the preview target at
             // 1080p alongside JPEG(MAX)+YUV: never select a larger preview
             // size on such a lens when a capped size exists. The surface
@@ -146,21 +189,21 @@ class Camera2Session(
                     "no supported preview sizes for camera $cameraId " +
                         "(requested ${requestedSize.width}x${requestedSize.height})",
                 )
-                return@execute
+                return
             }
             previewSurface = surface
             previewSize = selected
             if (transition(SessionEvent.OPEN_REQUESTED) !is TransitionResult.Applied) {
-                return@execute
+                return
             }
             val gen = stateMachine.generation
+            deviceCallbackGeneration = gen
             runCatching {
                 driver.openCamera(cameraId, DeviceCallbackImpl(gen))
             }.onFailure {
                 dispatch(gen, SessionEvent.ERROR_OCCURRED)
                 reportError("openCamera failed for $cameraId: ${it.message}")
             }
-        }
     }
 
     /** Replaces the whole control state and re-issues the repeating request. */
@@ -326,149 +369,6 @@ class Camera2Session(
     val rawSupported: Boolean get() = snapshot.supportsRawRing
 
     /**
-     * Takes one still from the ring: picks the exposure-complete frame
-     * nearest [shutterTimestampNs] (or the latest preview timestamp when
-     * null), then either reprocesses it on the reprocessable session or
-     * direct-encodes it, delivering through the same [StillCallback]
-     * shape as [capture]. A ring miss (empty / nothing fully exposed)
-     * and a runtime reprocess refusal both fall back to the regular
-     * still capture — the shutter is never lost to the ring.
-     */
-    fun captureFromRing(
-        callback: StillCallback,
-        shutterTimestampNs: Long? = null,
-        displayRotationDegrees: Int? = null,
-        mirrored: Boolean = false,
-    ) {
-        executor.execute {
-            val session = captureSession
-            when {
-                stateMachine.state != SessionState.STREAMING || session == null ->
-                    callback.onStillFailed("ring capture requires a streaming session")
-                ringOutput == null ->
-                    callback.onStillFailed("no YUV ring output on this session")
-                pendingStill != null ->
-                    callback.onStillFailed("a still capture is already in flight")
-                else -> {
-                    val shutter = shutterTimestampNs
-                        ?: latestPreviewTimestampNs
-                        ?: ring.metas().maxOfOrNull { it.sensorTimestampNs }
-                    val selection = shutter?.let { ring.select(it) }
-                    if (selection !is RingSelection.Hit) {
-                        // No already-exposed frame: take a fresh still.
-                        startStillCapture(callback, displayRotationDegrees, mirrored)
-                        return@execute
-                    }
-                    val held = ring.remove(selection.meta.sensorTimestampNs)
-                    if (held == null) {
-                        startStillCapture(callback, displayRotationDegrees, mirrored)
-                        return@execute
-                    }
-                    val params = StillCapturePlanner.resolve(
-                        state = controls,
-                        snapshot = snapshot,
-                        displayRotationDegrees = displayRotationDegrees
-                            ?: this@Camera2Session.displayRotationDegrees,
-                        mirrored = mirrored,
-                    )
-                    val output = stillOutput
-                    val reprocessed = output != null && snapshot.supportsYuvRingReprocess &&
-                        runCatching {
-                            val pending = PendingStill(params, callback)
-                            pendingStill = pending
-                            val started = session.captureReprocess(
-                                params, output.surface, held,
-                                object : StillResultCallback {
-                                    override fun onCompleted(metadata: RawStillMetadata) =
-                                        onStillResult(pending, metadata)
-
-                                    override fun onFailed(message: String) =
-                                        failPending(pending, message)
-                                },
-                            )
-                            if (!started && pendingStill === pending) pendingStill = null
-                            started
-                        }.getOrDefault(false)
-                    if (reprocessed) {
-                        // ImageWriter owns the held image from here.
-                        return@execute
-                    }
-                    // Direct fallback: encode the already-exposed frame.
-                    val jpeg = held.encodeJpeg()
-                    // The ring's copy carries preview-result patches;
-                    // the held frame's own meta may predate them.
-                    val meta = selection.meta
-                    held.close()
-                    if (jpeg == null) {
-                        startStillCapture(callback, displayRotationDegrees, mirrored)
-                        return@execute
-                    }
-                    callback.onStillCaptured(
-                        CapturedStill(
-                            jpegBytes = jpeg,
-                            jpegWidth = meta.width,
-                            jpegHeight = meta.height,
-                            metadata = StillMetadataMapper.map(
-                                RawStillMetadata(
-                                    sensorTimestampNs = meta.sensorTimestampNs,
-                                    exposureTimeNs = meta.exposureTimeNs,
-                                    iso = meta.iso,
-                                    frameNumber = meta.frameNumber,
-                                ),
-                                params.jpegOrientationDegrees, params.mirrored,
-                            ),
-                        ),
-                    )
-                }
-            }
-        }
-    }
-
-    /**
-     * Hands the newest [count] exposure-complete RAW ring frames (oldest
-     * first, so frame 0 is the merge reference) to [callback]. The frames
-     * are removed from the ring; the caller owns closing them. Fewer than
-     * two frames is a failure — a one-frame "merge" would silently be a
-     * single RAW shot, and the caller falls back to the YUV night path.
-     */
-    fun captureRawBurst(
-        count: Int,
-        callback: RawBurstCallback,
-        shutterTimestampNs: Long? = null,
-    ) {
-        executor.execute {
-            when {
-                stateMachine.state != SessionState.STREAMING ->
-                    callback.onRawBurstFailed("RAW burst requires a streaming session")
-                rawRingOutput == null ->
-                    callback.onRawBurstFailed("no RAW ring output on this session")
-                else -> {
-                    val shutter = shutterTimestampNs
-                        ?: latestPreviewTimestampNs
-                        ?: rawRing.metas().maxOfOrNull { it.sensorTimestampNs }
-                    val burst = shutter?.let { rawRing.latestCompleteBurst(count, it) }
-                        .orEmpty()
-                    if (burst.size < 2) {
-                        callback.onRawBurstFailed(
-                            "RAW ring holds ${burst.size} complete frames, need 2+",
-                        )
-                        return@execute
-                    }
-                    val frames = burst.mapNotNull { (frame, meta) ->
-                        rawRing.remove(meta.sensorTimestampNs)?.let { frame }
-                    }
-                    if (frames.size < 2) {
-                        frames.forEach { runCatching { it.close() } }
-                        callback.onRawBurstFailed("RAW ring frames vanished during burst selection")
-                        return@execute
-                    }
-                    callback.onRawBurst(frames, burst.map { it.second })
-                }
-            }
-        }
-    }
-
-    /**
      * Takes one plain still: issues `TEMPLATE_STILL_CAPTURE` carrying the
      * session's current control state plus flash resolution, and delivers
      * the JPEG bytes with mapped `CaptureResult` metadata to [callback]
@@ -498,7 +398,7 @@ class Camera2Session(
     }
 
     /** Regular TEMPLATE_STILL_CAPTURE path (capture + ring-miss fallback). */
-    private fun startStillCapture(
+    internal fun startStillCapture(
         callback: StillCallback,
         displayRotationDegrees: Int?,
         mirrored: Boolean,
@@ -607,6 +507,10 @@ class Camera2Session(
      */
     fun close() {
         executor.execute {
+            // A parked reopen is cancelled by any later teardown (the
+            // surface went away again before the old device finished
+            // closing); it must not resurrect the camera afterwards.
+            pendingOpen = null
             if (stateMachine.state == SessionState.CLOSED) return@execute
             val gen = stateMachine.beginTeardown()
             pendingStill?.let { pending ->
@@ -634,7 +538,20 @@ class Camera2Session(
             rawRingFormat = null
             rawRing.drainAll().forEach { runCatching { it.close() } }
             previewMetas.clear()
-            runCatching { device?.close() }
+            // The session reports CLOSED below so its own bookkeeping can
+            // proceed, but the HAL device is only closing: record which
+            // generation's real onClosed completes the teardown so a
+            // following open waits for it (see pendingOpen).
+            val closingDevice = device
+            if (closingDevice != null) {
+                // Only await a close that has not already been signalled
+                // (a device that errored/disconnected may have delivered
+                // its onClosed before this teardown ran).
+                awaitingDeviceClosedGeneration =
+                    deviceCallbackGeneration?.takeIf { it != deviceClosedGeneration }
+                runCatching { closingDevice.close() }
+                    .onFailure { awaitingDeviceClosedGeneration = null }
+            }
             device = null
             previewSurface = null
             dispatch(gen, SessionEvent.DEVICE_CLOSED)
@@ -710,6 +627,21 @@ class Camera2Session(
         }
 
         override fun onClosed() {
+            deviceClosedGeneration = gen
+            if (awaitingDeviceClosedGeneration == gen) {
+                // The real HAL close this session's close() initiated has
+                // completed. The state machine already reached CLOSED via
+                // close()'s synthetic dispatch (this callback's generation
+                // is stale by design), so only the parked reopen is left:
+                // issue it now, on this callback, never before.
+                awaitingDeviceClosedGeneration = null
+                val pending = pendingOpen
+                pendingOpen = null
+                if (pending != null && stateMachine.state == SessionState.CLOSED) {
+                    openOnExecutor(pending.cameraId, pending.surface, pending.requestedSize)
+                }
+                return
+            }
             dispatch(gen, SessionEvent.DEVICE_CLOSED)
         }
 

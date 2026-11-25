@@ -12,6 +12,7 @@ import com.vayunmathur.camera.domain.StillFormat
 import com.vayunmathur.camera.domain.StillFormatRouting
 import com.vayunmathur.camera.domain.UltraHdrIntentPolicy
 import com.vayunmathur.camera.platform.camera2.Camera2Session
+import com.vayunmathur.camera.platform.camera2.captureFromRing
 import com.vayunmathur.camera.platform.camera2.CapturedStill
 import com.vayunmathur.camera.platform.camera2.StillOutputTag
 import com.vayunmathur.camera.platform.camera2.StillEngineInput

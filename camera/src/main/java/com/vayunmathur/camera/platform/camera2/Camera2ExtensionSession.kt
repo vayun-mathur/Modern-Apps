@@ -61,6 +61,19 @@ class Camera2ExtensionSession(
     private var stillSize: FrameSize? = null
     private var probeResult: ExtensionProbeResult? = null
     private var pendingStill: PendingStill? = null
+
+    // Reopen serialization, mirroring Camera2Session: a device close only
+    // completes at its real onClosed, so an open in that window is parked.
+    private var awaitingDeviceClosedGeneration: Long? = null
+    private var deviceCallbackGeneration: Long? = null
+    private var deviceClosedGeneration: Long? = null
+    private var pendingOpen: PendingOpen? = null
+
+    private class PendingOpen(
+        val cameraId: String,
+        val surface: Surface,
+        val requestedSize: FrameSize,
+    )
     private var displayRotationDegrees: Int = 0
     private var controls: Camera2ControlState = Camera2ControlState.DEFAULT
 
@@ -102,12 +115,22 @@ class Camera2ExtensionSession(
      */
     fun open(cameraId: String, surface: Surface, requestedSize: FrameSize) {
         executor.execute {
-            if (stateMachine.state != SessionState.CLOSED) return@execute
+            if (awaitingDeviceClosedGeneration != null) {
+                pendingOpen = PendingOpen(cameraId, surface, requestedSize)
+                return@execute
+            }
+            openOnExecutor(cameraId, surface, requestedSize)
+        }
+    }
+
+    /** The [open] body; must run on the executor thread (or a device callback on it). */
+    private fun openOnExecutor(cameraId: String, surface: Surface, requestedSize: FrameSize) {
+            if (stateMachine.state != SessionState.CLOSED) return
             val probe = Camera2ExtensionProbe.probeNight(snapshot)
             probeResult = probe
             if (!probe.usable) {
                 reportError("Camera2 NIGHT extension unusable for camera $cameraId: ${probe.rejectionReason}")
-                return@execute
+                return
             }
             val previewSizes = snapshot.extensionSupportFor(probe.mode)?.previewSizes
                 .orEmpty().map { FrameSize.from(it) }.distinct()
@@ -117,21 +140,21 @@ class Camera2ExtensionSession(
             )
             if (selected == null) {
                 reportError("no extension preview sizes for camera $cameraId")
-                return@execute
+                return
             }
             previewSurface = surface
             previewSize = selected
             if (transition(SessionEvent.OPEN_REQUESTED) !is TransitionResult.Applied) {
-                return@execute
+                return
             }
             val gen = stateMachine.generation
+            deviceCallbackGeneration = gen
             runCatching {
                 driver.openCamera(cameraId, DeviceCallbackImpl(gen))
             }.onFailure {
                 dispatch(gen, SessionEvent.ERROR_OCCURRED)
                 reportError("openCamera failed for $cameraId: ${it.message}")
             }
-        }
     }
 
     /**
@@ -185,6 +208,7 @@ class Camera2ExtensionSession(
     /** Tears the session down; idempotent and terminal. */
     fun close() {
         executor.execute {
+            pendingOpen = null
             if (stateMachine.state == SessionState.CLOSED) return@execute
             val gen = stateMachine.beginTeardown()
             pendingStill?.let { pending ->
@@ -196,7 +220,13 @@ class Camera2ExtensionSession(
             runCatching { stillOutput?.close() }
             stillOutput = null
             stillSize = null
-            runCatching { device?.close() }
+            val closingDevice = device
+            if (closingDevice != null) {
+                awaitingDeviceClosedGeneration =
+                    deviceCallbackGeneration?.takeIf { it != deviceClosedGeneration }
+                runCatching { closingDevice.close() }
+                    .onFailure { awaitingDeviceClosedGeneration = null }
+            }
             device = null
             previewSurface = null
             dispatch(gen, SessionEvent.DEVICE_CLOSED)
@@ -338,6 +368,16 @@ class Camera2ExtensionSession(
         }
 
         override fun onClosed() {
+            deviceClosedGeneration = gen
+            if (awaitingDeviceClosedGeneration == gen) {
+                awaitingDeviceClosedGeneration = null
+                val pending = pendingOpen
+                pendingOpen = null
+                if (pending != null && stateMachine.state == SessionState.CLOSED) {
+                    openOnExecutor(pending.cameraId, pending.surface, pending.requestedSize)
+                }
+                return
+            }
             dispatch(gen, SessionEvent.DEVICE_CLOSED)
         }
 

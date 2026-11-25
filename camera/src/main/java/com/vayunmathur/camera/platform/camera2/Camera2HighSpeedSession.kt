@@ -42,6 +42,19 @@ class Camera2HighSpeedSession(
     private var captureSession: CaptureSessionHandle? = null
     private var selection: HighSpeedSelection? = null
 
+    // Reopen serialization, mirroring Camera2Session: a device close only
+    // completes at its real onClosed, so an open in that window is parked.
+    private var awaitingDeviceClosedGeneration: Long? = null
+    private var deviceCallbackGeneration: Long? = null
+    private var deviceClosedGeneration: Long? = null
+    private var pendingOpen: PendingOpen? = null
+
+    private class PendingOpen(
+        val cameraId: String,
+        val encoderSurface: Surface,
+        val previewSurface: Surface,
+    )
+
     /**
      * Opens [cameraId] for slo-mo: [encoderSurface] receives the HFR frames
      * for the codec, [previewSurface] the viewfinder. The operating point
@@ -51,24 +64,34 @@ class Camera2HighSpeedSession(
      */
     fun open(cameraId: String, encoderSurface: Surface, previewSurface: Surface) {
         executor.execute {
-            if (stateMachine.state != SessionState.CLOSED) return@execute
+            if (awaitingDeviceClosedGeneration != null) {
+                pendingOpen = PendingOpen(cameraId, encoderSurface, previewSurface)
+                return@execute
+            }
+            openOnExecutor(cameraId, encoderSurface, previewSurface)
+        }
+    }
+
+    /** The [open] body; must run on the executor thread (or a device callback on it). */
+    private fun openOnExecutor(cameraId: String, encoderSurface: Surface, previewSurface: Surface) {
+            if (stateMachine.state != SessionState.CLOSED) return
             val selected = HighSpeedPlanner.select(snapshot)
             if (selected == null) {
                 reportError("no constrained high-speed slo-mo point for camera $cameraId")
-                return@execute
+                return
             }
             selection = selected
             if (transition(SessionEvent.OPEN_REQUESTED) !is TransitionResult.Applied) {
-                return@execute
+                return
             }
             val gen = stateMachine.generation
+            deviceCallbackGeneration = gen
             runCatching {
                 driver.openCamera(cameraId, DeviceCallbackImpl(gen, encoderSurface, previewSurface))
             }.onFailure {
                 dispatch(gen, SessionEvent.ERROR_OCCURRED)
                 reportError("openCamera failed for $cameraId: ${it.message}")
             }
-        }
     }
 
     /** The operating point chosen at [open], or null before a successful open. */
@@ -99,11 +122,18 @@ class Camera2HighSpeedSession(
      */
     fun close() {
         executor.execute {
+            pendingOpen = null
             if (stateMachine.state == SessionState.CLOSED) return@execute
             val gen = stateMachine.beginTeardown()
             runCatching { captureSession?.close() }
             captureSession = null
-            runCatching { device?.close() }
+            val closingDevice = device
+            if (closingDevice != null) {
+                awaitingDeviceClosedGeneration =
+                    deviceCallbackGeneration?.takeIf { it != deviceClosedGeneration }
+                runCatching { closingDevice.close() }
+                    .onFailure { awaitingDeviceClosedGeneration = null }
+            }
             device = null
             dispatch(gen, SessionEvent.DEVICE_CLOSED)
             if (stateMachine.state == SessionState.CLOSING) {
@@ -182,6 +212,16 @@ class Camera2HighSpeedSession(
         }
 
         override fun onClosed() {
+            deviceClosedGeneration = gen
+            if (awaitingDeviceClosedGeneration == gen) {
+                awaitingDeviceClosedGeneration = null
+                val pending = pendingOpen
+                pendingOpen = null
+                if (pending != null && stateMachine.state == SessionState.CLOSED) {
+                    openOnExecutor(pending.cameraId, pending.encoderSurface, pending.previewSurface)
+                }
+                return
+            }
             dispatch(gen, SessionEvent.DEVICE_CLOSED)
         }
 

@@ -174,6 +174,14 @@ class PreviewSurfaceBridge(
 
     override fun onSurfaceTextureDestroyed(texture: SurfaceTexture): Boolean {
         this.texture = null
+        // The pinned buffer size was applied to the texture that just
+        // died; a new texture (resume re-attach) starts unpinned. Forget
+        // the pin so the next setPreviewStream re-applies
+        // setDefaultBufferSize to it even when the stream size is
+        // unchanged — otherwise the resume configure runs against the
+        // new texture's default buffer size and fails once, while a
+        // fresh bridge (cold start / manual Retry) pins correctly.
+        streamSize = null
         val current = state.surface
         state = PreviewSurfaceState()
         if (current != null) {

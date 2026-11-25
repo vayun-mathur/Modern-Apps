@@ -49,6 +49,8 @@ class Camera2SessionTest {
     ) : DeviceHandle {
         var sessionCallback: CaptureSessionCallback? = null
         var closed = false
+        /** Models the HAL's async close completion; null withholds it. */
+        var onClosedHook: (() -> Unit)? = null
         val sessionHandleRef: FakeSessionHandle get() = sessionHandle
         override fun createCaptureSession(
             surfaces: List<Surface>,
@@ -58,7 +60,10 @@ class Camera2SessionTest {
             if (failConfigure) callback.onConfigureFailed()
             else callback.onConfigured(sessionHandle)
         }
-        override fun close() { closed = true }
+        override fun close() {
+            closed = true
+            onClosedHook?.invoke()
+        }
     }
 
     private class FakeDriver(
@@ -66,13 +71,21 @@ class Camera2SessionTest {
         private val failConfigure: Boolean = false,
     ) : Camera2Driver {
         var openedCameraId: String? = null
+        var openCount: Int = 0
         var deviceCallback: DeviceCallback? = null
         override fun openCamera(cameraId: String, callback: DeviceCallback) {
             openedCameraId = cameraId
+            openCount++
             deviceCallback = callback
-            callback.onOpened(
-                if (failConfigure) FakeDeviceHandle(cameraId, failConfigure = true) else device,
-            )
+            val handed = if (failConfigure) {
+                FakeDeviceHandle(cameraId, failConfigure = true)
+            } else {
+                device
+            }
+            // Android delivers onClosed for a closed device; wire it here
+            // unless a test withholds it by clearing the hook.
+            handed.onClosedHook = { callback.onClosed() }
+            callback.onOpened(handed)
         }
         override fun createStillOutput(size: FrameSize): StillOutput? = null
     }
@@ -270,6 +283,68 @@ class Camera2SessionTest {
             // A closed session may be re-opened only from CLOSED — which is
             // exactly its state — so a fresh open is legal and streams again.
             assertEquals(SessionState.STREAMING, session.state)
+        } finally {
+            executor.shutdown()
+        }
+    }
+
+    /**
+     * Regression (resume-after-background): the pause surface bounce is
+     * close() followed immediately by open() on the *same* session, while
+     * the HAL has only initiated — not completed — the old device's close.
+     * The reopen must be parked until that device's onClosed; issuing
+     * openCamera earlier is the first-attempt resume failure (and a later
+     * manual Retry, on a fresh session, always worked). Before the fix the
+     * second openCamera was issued as soon as its executor task ran.
+     */
+    @Test fun reopenIsDeferredUntilPreviousDeviceClosed() {
+        val executor = Camera2Executor("Camera2SessionTest-reopen-deferred")
+        try {
+            val driver = FakeDriver()
+            val session = newSession(driver, executor)
+            session.open("0", mock(Surface::class.java), FrameSize(1280, 720))
+            executor.drain()
+            assertEquals(SessionState.STREAMING, session.state)
+            assertEquals(1, driver.openCount)
+
+            // Withhold the HAL's close completion, as on a real resume
+            // where onClosed has not been delivered yet.
+            driver.device.onClosedHook = null
+            session.close()
+            session.open("0", mock(Surface::class.java), FrameSize(1280, 720))
+            executor.drain()
+
+            // Session is locally CLOSED but no new openCamera may exist yet.
+            assertEquals(SessionState.CLOSED, session.state)
+            assertEquals(1, driver.openCount)
+
+            // The old device finishes closing: the parked open is issued.
+            driver.deviceCallback!!.onClosed()
+            executor.drain()
+            assertEquals(2, driver.openCount)
+            assertEquals(SessionState.STREAMING, session.state)
+        } finally {
+            executor.shutdown()
+        }
+    }
+
+    @Test fun parkedReopenIsCancelledByAnotherClose() {
+        val executor = Camera2Executor("Camera2SessionTest-reopen-cancelled")
+        try {
+            val driver = FakeDriver()
+            val session = newSession(driver, executor)
+            session.open("0", mock(Surface::class.java), FrameSize(1280, 720))
+            executor.drain()
+            driver.device.onClosedHook = null
+            session.close()
+            session.open("0", mock(Surface::class.java), FrameSize(1280, 720))
+            // Surface destroyed again before the old device closed.
+            session.close()
+            executor.drain()
+            driver.deviceCallback!!.onClosed()
+            executor.drain()
+            assertEquals(1, driver.openCount)
+            assertEquals(SessionState.CLOSED, session.state)
         } finally {
             executor.shutdown()
         }

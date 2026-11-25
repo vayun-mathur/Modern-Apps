@@ -4,6 +4,7 @@ import androidx.lifecycle.viewModelScope
 import com.vayunmathur.camera.data.saveProcessedStill
 import com.vayunmathur.camera.data.setLastCaptureUri
 import com.vayunmathur.camera.platform.camera2.Camera2Session
+import com.vayunmathur.camera.platform.camera2.captureRawBurst
 import com.vayunmathur.camera.platform.camera2.DngMetadataAssembler
 import com.vayunmathur.camera.platform.camera2.RawNightInput
 import com.vayunmathur.camera.platform.camera2.RawNightMerger
