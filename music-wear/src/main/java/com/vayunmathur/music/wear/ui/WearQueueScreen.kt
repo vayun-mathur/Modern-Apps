@@ -1,17 +1,20 @@
 package com.vayunmathur.music.wear.ui
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.wear.compose.material.Text
-import androidx.wear.compose.material.Chip
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
+import androidx.wear.compose.foundation.lazy.itemsIndexed
+import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
 import androidx.wear.compose.material.Chip
+import androidx.wear.compose.material.ChipDefaults
+import androidx.wear.compose.material.Text
+import com.vayunmathur.music.wear.R
 import com.vayunmathur.music.wear.data.WearMusicStore
 import com.vayunmathur.music.wear.domain.WearMusicOp
 import com.vayunmathur.music.wear.domain.WearOpKind
@@ -20,20 +23,25 @@ import com.vayunmathur.music.wear.domain.WearOpKind
 @Composable
 fun WearQueueScreen(store: WearMusicStore, onRoute: (WearRoute) -> Unit) {
     val playback by store.playback.collectAsState()
-    Column {
-        Text("Up next (on your phone)")
-        LazyColumn {
-            itemsIndexed(playback.queue) { index, track ->
+    ScalingLazyColumn(state = rememberScalingLazyListState()) {
+        item { WearTitle(stringResource(R.string.wear_queue)) }
+        if (playback.queue.isEmpty()) {
+            item { WearNote(stringResource(R.string.wear_nothing_queued)) }
+        } else {
+            itemsIndexed(playback.queue, key = { _, track -> track.id }) { index, track ->
                 Chip(
-                    label = { Text((if (index == playback.queueIndex) "\u25B6 " else "") + track.title) },
+                    label = { Text((if (index == playback.queueIndex) "▶ " else "") + track.title, maxLines = 1) },
+                    secondaryLabel = { Text(track.artist, maxLines = 1) },
                     onClick = {
                         store.enqueueOp(
                             WearMusicOp(WearOpKind.PLAY_TRACKS, trackIds = playback.queue.map { it.id }, startIndex = index),
                         )
                     },
-                    modifier = Modifier.fillMaxWidth(),
+                    colors = ChipDefaults.secondaryChipColors(),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
                 )
             }
         }
+        wearBackItem { onRoute(WearRoute.NowPlaying) }
     }
 }

@@ -48,7 +48,7 @@ fun WearCallLogScreen(
         } else {
             items(snapshot.calls, key = { it.key }) { call ->
                 Chip(
-                    onClick = {},
+                    onClick = {}, enabled = false,
                     label = { Text(call.displayName.ifBlank { call.phoneNumber }, maxLines = 1) },
                     secondaryLabel = {
                         Text("${call.line} · ${call.type} · ${call.durationSeconds}s", maxLines = 1)

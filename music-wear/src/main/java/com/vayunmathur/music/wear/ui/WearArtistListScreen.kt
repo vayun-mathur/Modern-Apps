@@ -1,15 +1,20 @@
 package com.vayunmathur.music.wear.ui
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.wear.compose.material.Text
-import androidx.wear.compose.material.Chip
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
+import androidx.wear.compose.foundation.lazy.items
+import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
+import androidx.wear.compose.material.Chip
+import androidx.wear.compose.material.ChipDefaults
+import androidx.wear.compose.material.Text
+import com.vayunmathur.music.wear.R
 import com.vayunmathur.music.wear.data.WearMusicStore
 import com.vayunmathur.music.wear.domain.WearPageId
 import com.vayunmathur.music.wear.domain.WearPageKey
@@ -20,12 +25,23 @@ fun WearArtistListScreen(store: WearMusicStore, onRoute: (WearRoute) -> Unit) {
     val page = WearPageId(WearPageKey.ARTISTS)
     WearPageLoader(store, page)
     val pages by store.pages.collectAsState()
-    Column {
-        Text("Artists")
-        LazyColumn {
-            items(pages[page]?.artists.orEmpty()) { artist ->
-                Chip(label = { Text(artist.name) }, onClick = { onRoute(WearRoute.ArtistDetail(artist.id)) }, modifier = Modifier.fillMaxWidth())
+    val snapshot = pages[page]
+    ScalingLazyColumn(state = rememberScalingLazyListState()) {
+        item { WearTitle(stringResource(R.string.wear_artists)) }
+        if (snapshot == null) {
+            item { WearNote(stringResource(R.string.wear_loading)) }
+        } else if (snapshot.artists.isEmpty()) {
+            item { WearNote(stringResource(R.string.wear_empty)) }
+        } else {
+            items(snapshot.artists, key = { it.id }) { artist ->
+                Chip(
+                    label = { Text(artist.name, maxLines = 1) },
+                    onClick = { onRoute(WearRoute.ArtistDetail(artist.id)) },
+                    colors = ChipDefaults.secondaryChipColors(),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                )
             }
         }
+        wearBackItem { onRoute(WearRoute.Home) }
     }
 }

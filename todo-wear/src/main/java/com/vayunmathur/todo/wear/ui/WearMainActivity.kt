@@ -51,7 +51,6 @@ class WearMainActivity : ComponentActivity() {
                         onConfirmDelete = {
                             route = WearRoute.ConfirmDelete(it, current.pageKey)
                         },
-                        onOpenSubtask = { route = WearRoute.TaskDetail(it, current.pageKey) },
                         onBack = { route = WearRoute.Page(current.pageKey) },
                     )
                     is WearRoute.QuickAdd -> WearTodoQuickAddScreen(

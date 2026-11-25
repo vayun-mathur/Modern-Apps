@@ -60,20 +60,23 @@ fun ContactDetailScreen(
                         .padding(horizontal = 12.dp, vertical = 6.dp),
                 )
             }
+            // Phones/emails are display text, not chips: a Chip with an empty
+            // onClick looks tappable but does nothing (this screen's own rule
+            // is "never a dead tap"). Long values wrap instead of truncating.
             items(contact.phones) { phone ->
-                Chip(
-                    onClick = {},
-                    label = { Text(phone, maxLines = 1) },
-                    colors = ChipDefaults.secondaryChipColors(),
-                    modifier = Modifier.fillMaxWidth(),
+                Text(
+                    text = phone,
+                    style = MaterialTheme.typography.body2,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp),
                 )
             }
             items(contact.emails) { email ->
-                Chip(
-                    onClick = {},
-                    label = { Text(email, maxLines = 1) },
-                    colors = ChipDefaults.secondaryChipColors(),
-                    modifier = Modifier.fillMaxWidth(),
+                Text(
+                    text = email,
+                    style = MaterialTheme.typography.body2,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp),
                 )
             }
             items(actions) { action ->
@@ -85,9 +88,9 @@ fun ContactDetailScreen(
                             }
                         }
                     },
-                    label = { Text(actionLabel(action)) },
+                    label = { Text(actionLabel(action), maxLines = 1) },
                     colors = ChipDefaults.primaryChipColors(),
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
                 )
             }
         }

@@ -58,7 +58,7 @@ fun WearSavedScreen(
             items(places) { place ->
                 val meters = wearDistanceM(fromLat, fromLon, place)
                 Chip(
-                    onClick = {},
+                    onClick = {}, enabled = false,
                     label = { Text(place.name, maxLines = 1) },
                     secondaryLabel = {
                         Text(

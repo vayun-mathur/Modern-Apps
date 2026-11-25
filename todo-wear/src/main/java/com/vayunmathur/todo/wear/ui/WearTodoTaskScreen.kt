@@ -36,7 +36,7 @@ fun WearTodoTaskScreen(
     pageKey: String,
     onEdit: (String) -> Unit,
     onConfirmDelete: (String) -> Unit,
-    onOpenSubtask: (String) -> Unit,
+    // Subtasks toggle done inline (AGENTS.md); there is no subtask detail route.
     onBack: () -> Unit,
 ) {
     val pagesMap by store.pages.collectAsState()

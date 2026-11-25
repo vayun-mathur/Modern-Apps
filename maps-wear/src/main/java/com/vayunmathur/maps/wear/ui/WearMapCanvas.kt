@@ -134,9 +134,12 @@ fun WearMapCanvas(
         }
         drawCircle(Color.White, radius = 8f, center = Offset(ux, uy))
         drawCircle(UserColor, radius = 6f, center = Offset(ux, uy))
-        // Scale bar: 100 m in the bottom-left, north marker top-right.
+        // Scale bar centred on the bottom centreline and north marker on the
+        // top centreline: corners are outside the visible circle on round watches.
         val scalePx = (100.0 * projection.pixelsPerMeter).toFloat()
-        drawLine(Color.White, Offset(12f, size.height - 12f), Offset(12f + scalePx, size.height - 12f), 3f)
-        drawCircle(Color.DarkGray, radius = 13f, center = Offset(size.width - 18f, 18f))
+        // Above the bottom chip row so the controls never cover it.
+        val scaleY = size.height * 0.70f
+        drawLine(Color.White, Offset(size.width / 2f - scalePx / 2f, scaleY), Offset(size.width / 2f + scalePx / 2f, scaleY), 3f)
+        drawCircle(Color.DarkGray, radius = 13f, center = Offset(size.width / 2f, 18f))
     }
 }

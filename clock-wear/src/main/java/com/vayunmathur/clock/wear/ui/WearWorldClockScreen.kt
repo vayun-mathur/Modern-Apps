@@ -83,7 +83,7 @@ private fun WearWorldClockRow(clock: WearWorldClock, nowMillis: Long) {
         Instant.fromEpochMilliseconds(nowMillis).toLocalDateTime(zone)
     }
     Chip(
-        onClick = {},
+        onClick = {}, enabled = false,
         label = { Text(clock.city, maxLines = 1) },
         secondaryLabel = {
             Text(formatWearAlarmTime(local.hour, local.minute), maxLines = 1)

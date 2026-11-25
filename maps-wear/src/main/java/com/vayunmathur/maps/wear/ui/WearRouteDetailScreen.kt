@@ -59,7 +59,7 @@ fun WearRouteDetailScreen(
             }
             items(current.maneuvers) { maneuver ->
                 Chip(
-                    onClick = {},
+                    onClick = {}, enabled = false,
                     label = { Text(maneuver.text.ifBlank { maneuver.kind }, maxLines = 2) },
                     secondaryLabel = { Text("${maneuver.distanceFromStartM} m", maxLines = 1) },
                     colors = ChipDefaults.secondaryChipColors(),

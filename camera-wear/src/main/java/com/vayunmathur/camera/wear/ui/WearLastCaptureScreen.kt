@@ -2,7 +2,6 @@ package com.vayunmathur.camera.wear.ui
 
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
@@ -15,6 +14,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
+import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
 import androidx.wear.compose.material.Chip
 import androidx.wear.compose.material.ChipDefaults
 import androidx.wear.compose.material.MaterialTheme
@@ -31,41 +32,53 @@ fun WearLastCaptureScreen(store: WearCameraStore, onBack: () -> Unit) {
         thumbnailJpeg?.let { runCatching { BitmapFactory.decodeByteArray(it, 0, it.size) }.getOrNull() }
     }
 
-    Column(modifier = Modifier.padding(horizontal = 12.dp)) {
-        Text(
-            stringResource(R.string.wear_last_capture),
-            style = MaterialTheme.typography.title3,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        )
-        if (bitmap != null) {
-            Image(
-                bitmap = bitmap.asImageBitmap(),
-                contentDescription = null,
-                contentScale = ContentScale.FillWidth,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            if (state.lastCaptureKind.isNotEmpty()) {
-                Text(
-                    state.lastCaptureKind,
-                    style = MaterialTheme.typography.body2,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                )
-            }
-        } else {
+    // ScalingLazyColumn (was a fixed Column): on a 1.4" round screen the
+    // thumbnail + caption + Back chip overflowed without scrolling.
+    ScalingLazyColumn(state = rememberScalingLazyListState()) {
+        item {
             Text(
-                stringResource(R.string.wear_no_capture),
-                style = MaterialTheme.typography.body2,
+                stringResource(R.string.wear_last_capture),
+                style = MaterialTheme.typography.title3,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
             )
         }
-        Chip(
-            onClick = onBack,
-            label = { Text(stringResource(R.string.wear_back), maxLines = 1) },
-            colors = ChipDefaults.secondaryChipColors(),
-            modifier = Modifier.fillMaxWidth(),
-        )
+        if (bitmap != null) {
+            item {
+                Image(
+                    bitmap = bitmap.asImageBitmap(),
+                    contentDescription = null,
+                    contentScale = ContentScale.FillWidth,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                )
+            }
+            if (state.lastCaptureKind.isNotEmpty()) {
+                item {
+                    Text(
+                        state.lastCaptureKind,
+                        style = MaterialTheme.typography.body2,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+                    )
+                }
+            }
+        } else {
+            item {
+                Text(
+                    stringResource(R.string.wear_no_capture),
+                    style = MaterialTheme.typography.body2,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+                )
+            }
+        }
+        item {
+            Chip(
+                onClick = onBack,
+                label = { Text(stringResource(R.string.wear_back), maxLines = 1) },
+                colors = ChipDefaults.secondaryChipColors(),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+            )
+        }
     }
 }

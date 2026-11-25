@@ -96,7 +96,7 @@ fun ContactListScreen(
                         { Text(phone, maxLines = 1) }
                     },
                     colors = ChipDefaults.secondaryChipColors(),
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
                 )
             }
         }

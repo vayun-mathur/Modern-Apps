@@ -13,4 +13,16 @@
     <string name="wear_queue">Queue</string>
     <string name="wear_search">Search your library</string>
     <string name="wear_now_playing">Now playing on your phone</string>
+    <string name="wear_songs">Songs</string>
+    <string name="wear_albums">Albums</string>
+    <string name="wear_artists">Artists</string>
+    <string name="wear_playlists">Playlists</string>
+    <string name="wear_back">Back</string>
+    <string name="wear_settings">About this watch</string>
+    <string name="wear_add_to_playlist">Add to playlist</string>
+    <string name="wear_nothing_playing">Nothing playing on your phone</string>
+    <string name="wear_nothing_queued">Nothing queued on your phone</string>
+    <string name="wear_loading">Loading from your phone…</string>
+    <string name="wear_seek_back">Seek −30s</string>
+    <string name="wear_seek_forward">Seek +30s</string>
 </resources>

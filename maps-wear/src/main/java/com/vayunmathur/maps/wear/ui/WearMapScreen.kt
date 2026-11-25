@@ -1,8 +1,8 @@
 package com.vayunmathur.maps.wear.ui
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -19,7 +19,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.wear.compose.material.Button
+import androidx.wear.compose.material.Chip
+import androidx.wear.compose.material.ChipDefaults
 import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
 import com.vayunmathur.maps.wear.R
@@ -78,8 +79,20 @@ fun WearMapScreen(
                     )
                 }
             }
-            Column(Modifier.align(Alignment.BottomCenter).padding(bottom = 26.dp)) {
-                val stale = wearIsStale(current, System.currentTimeMillis())
+        }
+        // One chip row on the centreline, lifted 22dp: the previous row of
+        // circular Buttons at 2dp put text in the bezel corners on round watches,
+        // and three stacked full-width chips would cover the centred user puck.
+        Column(
+            Modifier.align(Alignment.BottomCenter)
+                .padding(bottom = 22.dp, start = 20.dp, end = 20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            // Honesty labels stack directly above the chips so neither sits
+            // in the bezel and the centred user puck stays clear.
+            val currentSnapshot = snapshot
+            if (currentSnapshot != null) {
+                val stale = wearIsStale(currentSnapshot, System.currentTimeMillis())
                 when {
                     !connected -> Text(
                         stringResource(R.string.wear_offline),
@@ -94,7 +107,7 @@ fun WearMapScreen(
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
-                if (current.degraded.isNotEmpty()) {
+                if (currentSnapshot.degraded.isNotEmpty()) {
                     Text(
                         stringResource(R.string.wear_limited_detail),
                         style = MaterialTheme.typography.caption2,
@@ -102,29 +115,41 @@ fun WearMapScreen(
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
-                note?.let {
-                    Text(
-                        it,
-                        style = MaterialTheme.typography.caption2,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth(),
+            }
+            note?.let {
+                Text(
+                    it,
+                    style = MaterialTheme.typography.caption2,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            LazyRow {
+                item {
+                    Chip(
+                        onClick = onOpenRoute,
+                        label = { Text(stringResource(R.string.wear_route), maxLines = 1) },
+                        colors = ChipDefaults.secondaryChipColors(),
                     )
                 }
-            }
-        }
-        Row(Modifier.align(Alignment.BottomCenter).padding(bottom = 2.dp)) {
-            Button(onClick = onOpenRoute, modifier = Modifier.padding(end = 4.dp)) {
-                Text(stringResource(R.string.wear_route), maxLines = 1)
-            }
-            Button(onClick = onOpenSaved, modifier = Modifier.padding(end = 4.dp)) {
-                Text(stringResource(R.string.wear_saved), maxLines = 1)
-            }
-            Button(onClick = {
-                scope.launch {
-                    note = if (WearLinkBridge.requestRegion(context)) requestedText else noPhoneText
+                item {
+                    Chip(
+                        onClick = onOpenSaved,
+                        label = { Text(stringResource(R.string.wear_saved), maxLines = 1) },
+                        colors = ChipDefaults.secondaryChipColors(),
+                    )
                 }
-            }) {
-                Text(stringResource(R.string.wear_request_region), maxLines = 1)
+                item {
+                    Chip(
+                        onClick = {
+                            scope.launch {
+                                note = if (WearLinkBridge.requestRegion(context)) requestedText else noPhoneText
+                            }
+                        },
+                        label = { Text(stringResource(R.string.wear_request_region), maxLines = 1) },
+                        colors = ChipDefaults.primaryChipColors(),
+                    )
+                }
             }
         }
     }

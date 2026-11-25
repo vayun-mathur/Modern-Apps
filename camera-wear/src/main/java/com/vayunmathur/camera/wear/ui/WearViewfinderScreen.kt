@@ -23,7 +23,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.wear.compose.material.Button
+import androidx.compose.foundation.layout.Arrangement
 import androidx.wear.compose.material.Chip
 import androidx.wear.compose.material.ChipDefaults
 import androidx.wear.compose.material.MaterialTheme
@@ -60,8 +60,9 @@ fun WearViewfinderScreen(
 
     if (!connected) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+            modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
         ) {
             Text(
                 stringResource(R.string.wear_no_phone),
@@ -99,7 +100,7 @@ fun WearViewfinderScreen(
             )
         }
 
-        Column(modifier = Modifier.align(Alignment.TopCenter).padding(top = 4.dp)) {
+        Column(modifier = Modifier.align(Alignment.TopCenter).padding(top = 16.dp, start = 24.dp, end = 24.dp)) {
             Text(
                 state.mode,
                 style = MaterialTheme.typography.caption1,
@@ -123,8 +124,12 @@ fun WearViewfinderScreen(
             }
         }
 
+        // Bottom controls sit on the vertical centreline with a 24dp lift so
+        // the round bezel never clips the shutter — the previous 4dp inset
+        // put the circular Button's text in the bezel curve.
         Column(
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 4.dp),
+            modifier = Modifier.align(Alignment.BottomCenter)
+                .padding(bottom = 24.dp, start = 20.dp, end = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             LazyRow {
@@ -142,7 +147,7 @@ fun WearViewfinderScreen(
                     )
                 }
             }
-            Button(
+            Chip(
                 onClick = {
                     val op = if (videoMode) {
                         WearCameraOp(WearOpKind.RECORD_TOGGLE)
@@ -151,16 +156,19 @@ fun WearViewfinderScreen(
                     }
                     WearLinkBridge.sendOpAsync(context, op)
                 },
-            ) {
-                Text(
-                    when {
-                        state.recording -> stringResource(R.string.wear_record_stop)
-                        videoMode -> stringResource(R.string.wear_record_start)
-                        else -> stringResource(R.string.wear_shutter)
-                    },
-                    maxLines = 1,
-                )
-            }
+                label = {
+                    Text(
+                        when {
+                            state.recording -> stringResource(R.string.wear_record_stop)
+                            videoMode -> stringResource(R.string.wear_record_start)
+                            else -> stringResource(R.string.wear_shutter)
+                        },
+                        maxLines = 1,
+                    )
+                },
+                colors = ChipDefaults.primaryChipColors(),
+                modifier = Modifier.fillMaxWidth(),
+            )
             LazyRow {
                 item {
                     Chip(
