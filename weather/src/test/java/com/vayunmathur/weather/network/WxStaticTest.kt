@@ -22,8 +22,8 @@ import java.util.zip.GZIPInputStream
  * tile + the finished days + the geo block (header, entry, block); the same
  * run later costs nothing until `next_check`, then one entry GET; a new run
  * costs entry + tile; a run replaced between the two GETs is caught by
- * If-Match; an ocean tile is a clean [WxStatic.NotCovered] (→ API fallback)
- * and is not re-checked for 6 h.
+ * If-Match; an ocean tile is a clean [WxStatic.NotCovered] (the flagged
+ * no-land-tile case) and is not re-checked for 6 h.
  */
 class WxStaticTest {
     private val json = Json { ignoreUnknownKeys = true }
@@ -122,6 +122,40 @@ class WxStaticTest {
         }
         assertTrue(WxStatic.bundle(lat, lon, now).current != null)
         assertEquals("entry, tile (412), entry, tile", 4, requests.count { it.startsWith("run.wxp@") })
+    }
+
+    @Test
+    fun `timezone current and map reads come from the packs`() = runBlocking {
+        val b = WxStatic.bundle(lat, lon, now)
+        val tz = WxStatic.timezoneAt(lat, lon, now)
+        assertEquals(b.tz, tz.timezone)
+        assertEquals(b.utcOffset, tz.utcOffsetSeconds)
+        assertEquals(b.current!!.temp, WxStatic.currentTemperature(lat, lon, now)!!, 0.0)
+        assertEquals(
+            mapOf((lat to lon) to b.current!!.temp),
+            WxStatic.currentTemperatures(listOf(lat to lon), now),
+        )
+        val meta = WxStatic.mapMetadata(lat, lon, now)!!
+        assertEquals(b.run, meta.referenceTime)
+        assertTrue(meta.validTimes.size > 24)
+        assertTrue(meta.supports(com.vayunmathur.weather.domain.WeatherMetric.Temperature))
+        val values = WxStatic.regionValues(
+            "temperature_2m", meta.validTimes[meta.validTimes.size / 2],
+            lon - 0.5, lat - 0.5, lon + 0.5, lat + 0.5, 8, 8, now,
+        )!!
+        assertTrue("some finite samples", values.any { it.isFinite() })
+        assertTrue("some gaps stay NaN-transparent or finite, never invented", values.all { it.isNaN() || it.isFinite() })
+    }
+
+    @Test
+    fun `manifest decodes generated_at and valid times`() = runBlocking {
+        WxStatic.manifestFetcher = {
+            """{"v":1,"run":"r1","gen":1794600000,"generated_at":1794600000,"next_check":1794607421,"icon_run":"2026-11-13T12:00:00Z","valid_times":["2026-11-13T12:00Z"],"variables":["temperature_2m"]}"""
+        }
+        val m = WxStatic.manifest(now)
+        assertEquals(1794600000L, m.generatedAt)
+        assertEquals(listOf("2026-11-13T12:00Z"), m.validTimes)
+        assertEquals(1794600000L, WxStatic.generatedAtEpoch())
     }
 
     @Test

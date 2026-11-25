@@ -50,11 +50,11 @@ import com.vayunmathur.library.util.ConnectivityMonitor
 import com.vayunmathur.library.map.GeoPoint
 
 /**
- * Full-screen map that shades an area by a chosen weather [metric], decoded
- * natively from the self-hosted binary `.om` spatial files (keyless,
- * model-native resolution) via the Rust/JNI [OmTilesNative] bridge. The decoded field is
- * colorized to a bitmap and drawn as a translucent [RasterLayer] over a muted
- * raster basemap. Panning/zooming re-decodes only the visible region; the
+ * Full-screen map that shades an area by a chosen weather [metric], sampled
+ * on device from the static R2 run tiles (same 0.125° ICON grid the bundle
+ * uses; nearest cell, no `.om` files and no origin read). The sampled field is
+ * colorized to a bitmap and drawn as a translucent overlay over a muted
+ * basemap. Panning/zooming re-samples only the visible region; the
  * measure and time step can be changed on the fly. Pre-set from the graph sheet
  * to a location + time + measure.
  */
@@ -78,7 +78,7 @@ fun WeatherMapPage(
         CameraPosition(target = GeoPoint(longitude, latitude), zoom = 7.0),
     )
 
-    WeatherMapMetadataEffect(state, isoTime)
+    WeatherMapMetadataEffect(state, isoTime, latitude, longitude)
     WeatherMapCameraEffects(state, camera)
     WeatherMapDecodeEffect(state)
 

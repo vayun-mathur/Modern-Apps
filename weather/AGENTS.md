@@ -16,11 +16,11 @@ _Install: ./install weather (dev by default)._
 - Saved locations + device location (reverse-geocoded) with Room-cached forecasts refreshed by `WeatherRefreshWorker`
 - Metric blocks + graphs per location; Open-Meteo vector map tiles via the Rust core (`domain/map/OmTilesNative`)
 - Two Glance widgets (standard + blob); `GetWeather`/`GetWeatherByName` assistant intents
-**Architecture / data-flow:** `ui/` home/map/locations → `platform/WeatherViewModel` (+ `WeatherUiContract`) → `data/WeatherRepository` over Room + `network/WeatherApi` DTOs; `domain/` holds pure unit/metric/WMO formatting + map metadata; widgets read the same repository snapshot.
+**Architecture / data-flow:** `ui/` home/map/locations → `platform/WeatherViewModel` (+ `WeatherUiContract`) → `data/WeatherRepository` over Room + `network/WeatherApi`; all weather reads come from the static R2 packs (`network/WxStatic`: `run.wxp`/`hist/<day>.wxp`/`geo.wxp` + `latest.json` manifest on `static.maproj.org/wx/v1/`), computed on device by `domain/wx/`; the map samples the same run tiles (no `.om`/`data_spatial` read); place search is the on-device `places.db.br` catalogue; `domain/` holds pure unit/metric/WMO formatting + map metadata; widgets read the same repository snapshot.
 **Entry points + reading order:** `Route` → `MainActivity.kt` → `Navigation.kt` → `ui/HomePage.kt` → `platform/WeatherViewModel.kt` → `data/WeatherRepository.kt` → `network/WeatherApi.kt`.
 **Gotchas:**
 - Unit system follows the device locale (`platform/SystemUnits`) — format in `domain/`, never in `ui/`
-- Map tiles are native-rendered Open-Meteo domains; tile bugs live in Rust or `domain/map/`, not the Compose layer
+- Map shading is sampled on device from the R2 run tiles in `network/WxStatic`; the Rust `.om` bridge (`domain/map/OmTilesNative`) is not on the read path
 - Widgets must render from cache alone — never network on the widget path
 
 ## Key files
@@ -47,11 +47,13 @@ _Install: ./install weather (dev by default)._
 - com/vayunmathur/weather/domain/map/OmMapMetadata.kt
 - com/vayunmathur/weather/domain/map/OmColorize.kt
 - com/vayunmathur/weather/domain/map/OmTilesNative.kt — Rust tile bridge
-### network/ — Open-Meteo DTOs + API
-- com/vayunmathur/weather/network/WeatherApi.kt
+### network/ — static R2 reads + DTOs
+- com/vayunmathur/weather/network/WeatherApi.kt — one entry point: bundles/temperatures/time zone via `WxStatic`, place search via the on-device catalogue; the only origin read left is the flagged `WxStatic.NotCovered` (no land tile, e.g. open ocean) bundle fallback to `api.maproj.org/wx/v1`, which stays up for older clients
+- com/vayunmathur/weather/network/WxStatic.kt — R2 pack reader (Range + disk cache, run `next_check` staleness), manifest (`latest.json` `generated_at`), geo-block time zone, search-row temperatures, and map metadata/region sampling from the run tiles (nearest 0.125° cell; the old `.om` path bilinearly interpolated the same grid)
 - com/vayunmathur/weather/network/OpenMeteoDto.kt
 - com/vayunmathur/weather/network/GeocodingDto.kt
 - com/vayunmathur/weather/network/AirQualityDto.kt
+- com/vayunmathur/weather/network/WxBundleDto.kt / WxBundleMapper.kt — bundle format + mapping to the DTOs above
 ### platform/ — ViewModel, location, summaries
 - com/vayunmathur/weather/platform/WeatherViewModel.kt
 - com/vayunmathur/weather/platform/WeatherUiContract.kt

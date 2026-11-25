@@ -2,13 +2,10 @@ package com.vayunmathur.weather.ui
 
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.library.map.GeoBounds
-import com.vayunmathur.weather.domain.map.DwdIconGlobal
 import com.vayunmathur.weather.domain.map.OmMapMetadata
-import com.vayunmathur.weather.domain.map.OmTilesNative
 import com.vayunmathur.weather.domain.map.colorizeToBitmap
-import com.vayunmathur.weather.domain.map.fetchOmMapMetadata
-import com.vayunmathur.weather.domain.map.omFileUrl
 import com.vayunmathur.weather.domain.map.omVariable
+import com.vayunmathur.weather.network.WxStatic
 import com.vayunmathur.weather.domain.WeatherMetric
 import com.vayunmathur.weather.domain.colorRamp
 import com.vayunmathur.weather.domain.mapMetrics
@@ -61,8 +58,6 @@ internal data class DecodeRequest(
 internal class WeatherMapState(
     metric: String,
 ) {
-    val domain = DwdIconGlobal
-
     var selectedMetric by mutableStateOf(
         runCatching { WeatherMetric.valueOf(metric) }
             .getOrDefault(WeatherMetric.Temperature)
@@ -95,16 +90,16 @@ internal fun rememberWeatherMapState(metric: String): WeatherMapState {
     return remember { WeatherMapState(metric) }
 }
 
-/** Loads model metadata once, then seeds the time index near the requested time. */
+/** Loads run metadata (from the R2 tile serving the page's location) once, then seeds the time index near the requested time. */
 @Composable
-internal fun WeatherMapMetadataEffect(state: WeatherMapState, isoTime: String?) {
-    LaunchedEffect(state.domain) {
-        val meta = fetchOmMapMetadata(state.domain)
+internal fun WeatherMapMetadataEffect(state: WeatherMapState, isoTime: String?, latitude: Double, longitude: Double) {
+    LaunchedEffect(latitude, longitude) {
+        val meta = WxStatic.mapMetadata(latitude, longitude)
         state.metadata = meta
         Log.status(
             "OmMap",
-            if (meta == null) "metadata NULL (fetch failed)"
-            else "metadata ok ref=${meta.referenceTime} times=${meta.validTimes.size} vars=${meta.variables.size} native=${OmTilesNative.isAvailable}",
+            if (meta == null) "metadata NULL (no static tile for the page location)"
+            else "metadata ok ref=${meta.referenceTime} times=${meta.validTimes.size} vars=${meta.variables.size}",
         )
         if (meta != null) {
             if (meta.validTimes.isNotEmpty() && !state.userScrubbed) {
@@ -176,11 +171,8 @@ internal fun WeatherMapDecodeEffect(state: WeatherMapState) {
                 val bbox = req.bbox ?: return@collectLatest
                 val meta = req.meta ?: return@collectLatest
                 val validTime = meta.validTimes.getOrNull(req.timeIndex) ?: return@collectLatest
-                if (!meta.supports(req.metric) || !OmTilesNative.isAvailable) {
-                    Log.status(
-                        "OmMap",
-                        "skip decode: supports=${meta.supports(req.metric)} native=${OmTilesNative.isAvailable} metric=${req.metric}",
-                    )
+                if (!meta.supports(req.metric)) {
+                    Log.status("OmMap", "skip decode: metric ${req.metric} not in the static run")
                     state.overlay = null
                     return@collectLatest
                 }
@@ -191,25 +183,21 @@ internal fun WeatherMapDecodeEffect(state: WeatherMapState) {
                     state.loading = true
                     val decoded = withContext(Dispatchers.IO) {
                         val (w, h) = rasterSize(bbox)
-                        val url = omFileUrl(state.domain, meta.referenceTime, validTime) ?: return@withContext null
                         val t0 = System.currentTimeMillis()
-                        // Range-fetching decodeRegion(url); ranges are fetched natively in Rust.
-                        // (HttpURLConnection 64KB blocks, LRU) instead of full-file
-                        // performRequestBytes (~148 MB) which caused OOM crash.
-                        val values = OmTilesNative.decodeRegion(
-                            url,
-                            variable,
-                            state.domain.nx, state.domain.ny, state.domain.lonMin, state.domain.latMin, state.domain.dx, state.domain.dy,
+                        // Sampled from the R2 run tiles (nearest ICON cell;
+                        // see WxStatic.regionValues for the precision note).
+                        val values = WxStatic.regionValues(
+                            variable, validTime,
                             bbox.west, bbox.south, bbox.east, bbox.north,
                             w, h,
                         )
                         if (values == null) {
-                            Log.status("OmMap", "decodeRegion null for $variable $validTime")
+                            Log.status("OmMap", "regionValues null for $variable $validTime")
                             return@withContext null
                         }
                         Log.status(
                             "OmMap",
-                            "decoded $variable $validTime ${w}x$h in ${System.currentTimeMillis() - t0}ms",
+                            "sampled $variable $validTime ${w}x$h in ${System.currentTimeMillis() - t0}ms",
                         )
                         DecodedRegion(values, w, h, bbox)
                     }

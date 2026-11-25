@@ -2,7 +2,6 @@ package com.vayunmathur.weather.network
 
 import com.vayunmathur.weather.domain.map.OmMapMetadata
 import com.vayunmathur.weather.domain.WeatherMetric
-import com.vayunmathur.weather.domain.map.omFileUrl
 import com.vayunmathur.weather.domain.map.DwdIconGlobal
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
@@ -84,22 +83,10 @@ class NetworkDtoTest {
         assertEquals(2879, DwdIconGlobal.nx)
     }
 
-    @Test fun omFileUrl() {
-        assertEquals(
-            "https://api.maproj.org/data_spatial/dwd_icon/2026/07/01/1800Z/2026-07-01T1800.om",
-            omFileUrl(DwdIconGlobal, "2026-07-01T18:00:00Z", "2026-07-01T18:00Z"),
-        )
-    }
-
     @Test fun geocodeBlankIsEmpty() = runTest {
         assertTrue(WeatherApi.geocode("").results.isEmpty())
         assertTrue(WeatherApi.geocode("   ").results.isEmpty())
         assertTrue(WeatherApi.currentTemperatures(emptyList()).isEmpty())
     }
 
-    @Test fun currentTempResponseDefaults() {
-        val c = json.decodeFromString<CurrentTemperatureResponse>("""{"current":{"temperature_2m":21.5}}""")
-        assertEquals(21.5, c.current!!.temperature)
-        assertNull(json.decodeFromString<CurrentTemperatureResponse>("{}").current)
-    }
 }

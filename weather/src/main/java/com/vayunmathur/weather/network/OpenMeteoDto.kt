@@ -5,7 +5,7 @@ import kotlinx.serialization.Serializable
 
 /**
  * Subset of the forecast response we actually use, mapped from the
- * self-hosted `wx/v1/bundle`.
+ * static `wx/v1` bundle computed on device from the R2 packs.
  *
  * We always request: current weather + hourly arrays + daily arrays in metric
  * units. Unit conversion for the UI happens at display time so swapping
@@ -25,32 +25,14 @@ data class ForecastResponse(
 )
 
 /**
- * Minimal bundle envelope used only to resolve the IANA
- * time zone (and its current abbreviation) for a coordinate.
- * Requested with `fields=tz`, which returns the envelope with no weather
- * data at all.
+ * Time zone (and its current abbreviation) for a coordinate, resolved
+ * from the R2 geo block by `WxStatic.timezoneAt`.
  */
 @Serializable
 data class RegionTimezone(
     val timezone: String? = null,
     @SerialName("timezone_abbreviation") val abbreviation: String? = null,
     @SerialName("utc_offset_seconds") val utcOffsetSeconds: Int = 0,
-)
-
-/**
- * Minimal bundle response used to show the current
- * temperature next to a city-search result. Requests only the `current`
- * section so the per-result lookups stay cheap.
- */
-@Serializable
-data class CurrentTemperatureResponse(
-    val current: CurrentTemperature? = null,
-)
-
-/** Immutable value describing current temperature. */
-@Serializable
-data class CurrentTemperature(
-    @SerialName("temperature_2m") val temperature: Double,
 )
 
 /** Immutable value describing minutely15. */

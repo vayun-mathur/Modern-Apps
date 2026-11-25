@@ -23,10 +23,10 @@ class MainActivity : MaActivity() {
 
     override fun onCreateBeforeContent() {
         com.vayunmathur.library.wearlink.WearLinkPermissions.requestIfNeeded(this)
-        // FIRST_PARTY covers api.maproj.org (self-hosted weather bundle
-        // fallback and tiles proxy) and static.maproj.org (static weather
-        // tiles, R2 custom domain on the same Cloudflare roots); place
-        // search is a committed on-device asset.
+        // FIRST_PARTY covers static.maproj.org (static weather packs on
+        // R2, the app's only weather origin) and, for the flagged
+        // no-land-tile fallback only, api.maproj.org; place search is a
+        // committed on-device asset.
         NetworkClient.init(this, TrustBundle.FIRST_PARTY)
         // Static weather tiles (static.maproj.org), cached under cacheDir.
         WxStatic.init(this)

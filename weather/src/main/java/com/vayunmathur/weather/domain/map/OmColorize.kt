@@ -7,8 +7,8 @@ import androidx.core.graphics.createBitmap
 import com.vayunmathur.weather.domain.ColorStop
 
 /**
- * Colorize a row-major [values] grid (`w × h`, from
- * [OmTilesNative.decodeRegion]) into an opaque [ImageBitmap] using [ramp].
+ * Colorize a row-major [values] grid (`w × h`, sampled from the R2 run
+ * tiles by `WxStatic.regionValues`) into an opaque [ImageBitmap] using [ramp].
  * `NaN` values become fully transparent so gaps in coverage show the basemap.
  * The overall overlay translucency is applied by the `RasterLayer`, so pixels
  * here are fully opaque.

@@ -157,7 +157,7 @@ class PagesTest {
     @Test fun mapMetadataEffectHandlesFetchFailure() {
         rule.setContent {
             val state = rememberWeatherMapState("Humidity")
-            WeatherMapMetadataEffect(state, "2026-07-01T18:00Z")
+            WeatherMapMetadataEffect(state, "2026-07-01T18:00Z", 52.52, 13.40)
             assertEquals(WeatherMetric.Humidity, state.selectedMetric)
         }
         rule.waitForIdle()

@@ -6,25 +6,9 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/** Wire-format round trips for the bundle/batch DTOs: serial names, defaults, nullability. */
+/** Wire-format round trips for the bundle DTOs: serial names, defaults, nullability. */
 class WxDtoWireTest {
     private val json = Json { ignoreUnknownKeys = true }
-
-    @Test
-    fun currentBatchDecodesPointsAndDefaultsVersion() {
-        val batch = json.decodeFromString<WxCurrentBatch>(
-            """{"points":[{"lat":51.5,"lon":-0.12,"temp":9.5,"code":3,"day":1},{"lat":40.7,"lon":-74.0,"temp":21.25,"code":0,"day":0}]}""",
-        )
-        assertEquals(1, batch.v)
-        assertEquals(2, batch.points.size)
-        assertEquals(WxCurrentPoint(51.5, -0.12, 9.5, 3, 1), batch.points[0])
-        assertEquals(0, batch.points[1].day)
-        assertEquals("""{"v":2}""", json.encodeToString(WxCurrentBatch.serializer(), WxCurrentBatch(v = 2))) // default empty points omitted
-        assertEquals(WxCurrentBatch(), json.decodeFromString<WxCurrentBatch>("""{}"""))
-        // copy/component semantics carry the point values, not defaults
-        val moved = batch.points[1].copy(temp = -3.0, code = 61)
-        assertEquals(-3.0, moved.temp); assertEquals(61, moved.code); assertEquals(40.7, moved.lat)
-    }
 
     @Test
     fun min15AndCurrentSerialNames() {
@@ -40,15 +24,11 @@ class WxDtoWireTest {
     }
 
     @Test
-    fun regionTimezoneAndCurrentTemperatureDefaults() {
+    fun regionTimezoneDefaults() {
         val tz = json.decodeFromString<RegionTimezone>("""{"timezone":"Europe/London","timezone_abbreviation":"GMT","utc_offset_seconds":0}""")
         assertEquals("Europe/London", tz.timezone); assertEquals("GMT", tz.abbreviation); assertEquals(0, tz.utcOffsetSeconds)
         val empty = json.decodeFromString<RegionTimezone>("""{}""")
         assertNull(empty.timezone); assertNull(empty.abbreviation)
-        val temp = json.decodeFromString<CurrentTemperatureResponse>("""{"current":{"temperature_2m":18.25}}""")
-        assertEquals(18.25, temp.current!!.temperature)
-        assertNull(json.decodeFromString<CurrentTemperatureResponse>("""{}""").current)
-        assertTrue(json.encodeToString(CurrentTemperature.serializer(), CurrentTemperature(7.5)).contains("\"temperature_2m\":7.5"))
     }
 
     @Test

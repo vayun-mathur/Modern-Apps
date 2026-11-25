@@ -7,7 +7,7 @@ package com.vayunmathur.weather.domain.map
  * stored `[ny, nx]`.
  */
 data class OmDomain(
-    /** Model id used in the `data_spatial/<model>/…` bucket paths. */
+    /** Model id of the ICON grid the R2 run tiles are built on. */
     val model: String,
     val nx: Int,
     val ny: Int,
@@ -18,7 +18,7 @@ data class OmDomain(
 )
 
 /**
- * v1 model: DWD ICON global, a regular 0.125° lat/lon grid covering the whole
+ * DWD ICON global, a regular 0.125° lat/lon grid covering the whole
  * globe. Chosen because it exposes the direct variables we shade (temperature,
  * humidity, precipitation, gusts, pressure, cloud cover) plus the u/v wind
  * components we derive wind speed from. Projected/Gaussian grids and

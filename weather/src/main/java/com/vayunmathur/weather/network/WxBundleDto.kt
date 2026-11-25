@@ -117,20 +117,3 @@ data class WxAq(
     val ragweed: Double? = null,
     val mugwort: Double? = null,
 )
-
-/** P4 batch response: current-hour temp/code/is_day per requested point. */
-@Serializable
-data class WxCurrentBatch(
-    val v: Int = 1,
-    val points: List<WxCurrentPoint> = emptyList(),
-)
-
-/** Immutable value describing wx current point. */
-@Serializable
-data class WxCurrentPoint(
-    val lat: Double,
-    val lon: Double,
-    val temp: Double,
-    val code: Int,
-    val day: Int,
-)

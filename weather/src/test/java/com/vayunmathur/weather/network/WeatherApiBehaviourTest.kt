@@ -21,11 +21,15 @@ class WeatherApiBehaviourTest {
 
     @BeforeTest fun setUp() {
         GeoDatabase.init(ctx)
+        // Hermetic failure path: static path disabled (NotCovered) and the
+        // flagged fallback pointed at a dead loopback port.
+        WxStatic.enabled = false
         WeatherApi.bundleBaseOverride = "https://127.0.0.1:9/wx/v1"
     }
 
     @AfterTest fun tearDown() {
         WeatherApi.bundleBaseOverride = null
+        WxStatic.enabled = true
     }
 
     @Test fun geocodeBlankShortCircuits() = runTest {
@@ -44,12 +48,13 @@ class WeatherApiBehaviourTest {
         assertEquals(emptyMap(), WeatherApi.currentTemperatures(emptyList()))
     }
 
-    @Test fun bundleDerivedCallsFailAgainstDeadServer() = runTest {
+    @Test fun bundleDerivedCallsFailWithoutStaticCoverage() = runTest {
         assertFailsWith<Exception> { WeatherApi.forecast(52.0, 13.0) }
         assertFailsWith<Exception> { WeatherApi.airQuality(52.0, 13.0) }
         assertFailsWith<Exception> { WeatherApi.timezoneAt(52.0, 13.0) }
-        assertFailsWith<Exception> { WeatherApi.currentTemperature(52.0, 13.0) }
-        assertFailsWith<Exception> { WeatherApi.currentTemperatures(listOf(52.0 to 13.0)) }
+        // Per-point reads degrade to absent/null instead of throwing.
+        assertEquals(null, WeatherApi.currentTemperature(52.0, 13.0))
+        assertEquals(emptyMap(), WeatherApi.currentTemperatures(listOf(52.0 to 13.0)))
     }
 
     @Test fun dtoDefaultsAndJsonRoundTrip() {

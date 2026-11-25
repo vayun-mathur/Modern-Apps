@@ -65,9 +65,10 @@ class GeoAndWorkerTest {
 
     @JUnitTest(timeout = 60_000)
     fun apiBundleFailsWithoutNetwork() = runTest {
-        // Hermetic: point the API at a dead loopback port so the failure
-        // happens on internet-connected boxes too (CI reached the real
-        // api.maproj.org and the "expected failure" never came).
+        // Hermetic: disable the static path (NotCovered) and point the
+        // flagged fallback at a dead loopback port, so the failure happens
+        // on internet-connected boxes too.
+        com.vayunmathur.weather.network.WxStatic.enabled = false
         com.vayunmathur.weather.network.WeatherApi.bundleBaseOverride = "https://127.0.0.1:9/wx/v1"
         try {
             try {
@@ -76,12 +77,11 @@ class GeoAndWorkerTest {
             } catch (e: Exception) {
                 assertTrue(e.message != null || e is RuntimeException)
             }
-            val failure = kotlin.test.assertFailsWith<Exception> {
-                WeatherApi.currentTemperatures(listOf(52.0 to 13.0))
-            }
-            assertNotNull(failure)
+            // Batch temperatures degrade to an empty map, never a throw.
+            assertTrue(WeatherApi.currentTemperatures(listOf(52.0 to 13.0)).isEmpty())
         } finally {
             com.vayunmathur.weather.network.WeatherApi.bundleBaseOverride = null
+            com.vayunmathur.weather.network.WxStatic.enabled = true
         }
     }
 }
