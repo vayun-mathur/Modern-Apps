@@ -523,6 +523,15 @@ class CameraViewModel(internal val app: Application) : AndroidViewModel(app) {
     /** Per-mode Camera2 analysis sink; see Camera2AnalysisGlue. */
     @Volatile internal var analysisSink: ((com.vayunmathur.camera.platform.camera2.AnalysisFrame) -> Unit)? = null
 
+    /**
+     * Secondary analysis tap for the Wear OS live viewfinder
+     * (WearCameraSync): invoked after the mode sink for every frame, it
+     * must never block or throw into the analysis path — it only offers
+     * the frame to a latest-only slot. Null unless a watch asked for the
+     * preview.
+     */
+    @Volatile internal var wearPreviewTap: ((com.vayunmathur.camera.platform.camera2.AnalysisFrame) -> Unit)? = null
+
     /** True once the photo session's use cases (incl. ImageAnalysis) are bound. */
     internal val photoSessionActiveMutable = MutableStateFlow(false)
     val photoSessionActive = photoSessionActiveMutable.asStateFlow()

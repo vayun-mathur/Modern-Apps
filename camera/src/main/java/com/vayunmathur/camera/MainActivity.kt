@@ -52,6 +52,13 @@ class MainActivity : MaActivity() {
             )
             viewModel.enableCaptureForResult(outputUri)
         }
+        // Wear OS companion (live viewfinder + remote controls over
+        // WearLink): lifecycle-bound to this process, like the other wear
+        // pairs — nothing wakes a dead phone app for the watch.
+        com.vayunmathur.library.wearlink.WearLinkPermissions.requestIfNeeded(this)
+        val wearSync = com.vayunmathur.camera.platform.WearCameraSync.get(this)
+        wearSync.viewModel = viewModel
+        wearSync.start()
     }
 
     @Composable

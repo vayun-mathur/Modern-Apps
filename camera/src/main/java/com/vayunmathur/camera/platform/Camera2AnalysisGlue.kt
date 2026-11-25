@@ -24,6 +24,9 @@ internal fun CameraViewModel.camera2AnalysisConsumer(): AnalysisConsumer =
 /** Routes one Camera2 analysis frame to the installed mode sink. */
 internal fun CameraViewModel.dispatchAnalysisFrame(frame: AnalysisFrame) {
     analysisSink?.invoke(frame)
+    // Wear viewfinder tap: latest-only and failure-isolated, so a watch
+    // preview can never stall or crash the capture/analysis path.
+    wearPreviewTap?.let { tap -> runCatching { tap(frame) } }
 }
 
 /** Installs (or clears, with null) the per-mode analysis sink. */

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Camera</string>
+    <string name="wear_no_phone">No phone nearby</string>
+    <string name="wear_no_phone_hint">Open Camera on your phone and keep it nearby — the viewfinder streams from the phone camera.</string>
+    <string name="wear_connecting">Looking for your phone…</string>
+    <string name="wear_viewfinder_waiting">Waiting for the phone viewfinder…</string>
+    <string name="wear_shutter">Take photo</string>
+    <string name="wear_record_start">Start recording</string>
+    <string name="wear_record_stop">Stop recording</string>
+    <string name="wear_controls">Controls</string>
+    <string name="wear_last_capture">Last capture</string>
+    <string name="wear_no_capture">No capture yet this session. Media stays on your phone.</string>
+    <string name="wear_back">Back</string>
+    <string name="wear_flip_lens">Flip lens</string>
+    <string name="wear_front">Front</string>
+    <string name="wear_back_lens">Back</string>
+    <string name="wear_torch">Torch</string>
+    <string name="wear_flash">Flash %1$s</string>
+    <string name="wear_timer">Timer %1$s</string>
+    <string name="wear_zoom">Zoom %1$s</string>
+</resources>
