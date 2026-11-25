@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Maps</string>
+    <string name="wear_no_region">No map synced yet. Open Maps on your phone to sync this watch.</string>
+    <string name="wear_stale">Stale · last map from your phone</string>
+    <string name="wear_offline">Offline · showing the last map</string>
+    <string name="wear_limited_detail">Road detail stays on your phone</string>
+    <string name="wear_request_region">Update map</string>
+    <string name="wear_requested">Asked your phone for a fresh map</string>
+    <string name="wear_no_phone">Phone not reachable — showing the last map</string>
+    <string name="wear_route">Route</string>
+    <string name="wear_saved">Saved</string>
+    <string name="wear_back">Back</string>
+    <string name="wear_no_route">No route on your phone. Start navigation there and it appears here.</string>
+    <string name="wear_no_saved">No saved places synced yet.</string>
+    <string name="wear_maneuvers">Maneuvers</string>
+</resources>

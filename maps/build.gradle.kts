@@ -131,6 +131,11 @@ dependencies {
     // WorkManager: the map-overlay check worker outlives the settings screen.
     implementation(project(":library:work"))
 
+    // Phone side of the Wear OS companion (platform/WearMapsSync): region
+    // snapshot + route overlay to :maps:wear, which shares this app's
+    // applicationId and signing certificate.
+    implementation(project(":library:wearlink"))
+
     // Manifest JSON parsing (pure JVM: unit-testable, unlike org.json).
     implementation(libs.kotlinx.serialization.json)
 

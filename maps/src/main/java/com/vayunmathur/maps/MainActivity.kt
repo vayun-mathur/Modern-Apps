@@ -86,6 +86,10 @@ class MainActivity : MaActivity() {
     override fun onCreateBeforeContent() {
         // FIRST_PARTY: data.maproj.org tiles + amenities + api.maproj.org -> ISRG+GTS
         NetworkClient.init(this, TrustBundle.FIRST_PARTY)
+        // Wear watch companion (region snapshot + route overlay over
+        // WearLink; app-lifecycle-bound, see platform/WearMapsSync).
+        com.vayunmathur.library.wearlink.WearLinkPermissions.requestIfNeeded(this)
+        com.vayunmathur.maps.platform.WearMapsSync.start(this)
         intentLauncher = IntentLauncher(this)
         // Deferred off the startup path: neither the legacy-file delete nor
         // the overlay-schedule check gates the first frame (the theme reads
