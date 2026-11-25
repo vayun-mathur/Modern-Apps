@@ -6,8 +6,6 @@
     <string name="feed_empty">No articles yet. Pull to refresh.</string>
     <string name="feed_all_categories">All</string>
     <string name="feed_refresh_failed">Could not refresh all sources; showing the cached feed.</string>
-    <string name="feed_sort_top">Top stories</string>
-    <string name="feed_sort_latest">Latest</string>
     <string name="feed_search_placeholder">Search downloaded news</string>
     <string name="feed_search_empty">No downloaded articles match. Search covers titles and articles you have opened.</string>
     <!-- ReaderScreen -->
@@ -19,7 +17,7 @@
     <string name="feed_local_with_location">Local · %1$s</string>
     <!-- SettingsScreen -->
     <string name="settings_title">Settings</string>
-    <string name="settings_note">Feed order is chosen on the feed; reader text options are in the reader.</string>
+    <string name="settings_note">Reader text options are in the reader.</string>
     <!-- LocalLocationScreen / SettingsScreen setting -->
     <string name="local_location_title">Local news location</string>
     <string name="local_location_note">Choose where Local news should come from first. Sources from your location appear first in Local; other local sources still follow. This is only a preference — the app never uses your device location.</string>

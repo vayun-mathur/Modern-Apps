@@ -39,10 +39,9 @@ data class Story(
         get() = articles.firstNotNullOfOrNull { it.serverStoryId?.takeIf { s -> s.isNotBlank() } }
     /** Distinct source ids carrying this story, sorted. */
     val sources: List<String> get() = articles.map { it.sourceId }.distinct().sorted()
-    /** Distinct source display names (catalog name, else id), sorted. */
-    val sourceNames: List<String>
-        get() = sources.map { SourceCatalog.byId(it)?.name ?: it }.sorted()
     val sourceCount: Int get() = sources.size
+    /** Card/header label for [sourceCount]: "1 source" or "N sources". */
+    val sourceCountLabel: String get() = if (sourceCount == 1) "1 source" else "$sourceCount sources"
     val articleCount: Int get() = articles.size
     /** Earliest known publication, or 0 when every member is unstamped. */
     val firstSeenMillis: Long

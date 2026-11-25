@@ -137,23 +137,19 @@ class StoryGroupingTest {
         val multi = (1..4).map { i ->
             a("s$i", "https://e/m$i", "Storm hits coast as winds rise", h(24.0 - i), serverStoryId = "s1")
         }
-        val single = listOf(a("solo", "https://e/solo", "Obscure local council meets", h(20.0)))
-        val top = FeedRanking.rankStories(multi + single, FeedSort.TOP, now)
-        assertEquals(2, top.size, "ranking orders the 2 mechanical stories; it does not create or dissolve any")
-        assertEquals(4, top.first { it.id == "srv:s1" }.articles.size)
-        assertTrue(
-            FeedRanking.storyScore(top.first { it.id == "srv:s1" }, now) >
-                FeedRanking.storyScore(StoryGrouping.group(single).single(), now),
-            "cross-source breadth (actual server membership) folds into Top ordering",
-        )
-        val latest = FeedRanking.rankStories(multi + single, FeedSort.LATEST, now)
-        assertEquals(2, latest.size)
-        assertEquals(multi.maxOf { it.publishedAtMillis }, latest.first().latestMillis)
+        val single = listOf(a("solo", "https://e/solo", "Obscure local council meets", h(1.0)))
+        val ranked = FeedRanking.rankStories(multi + single)
+        assertEquals(2, ranked.size, "ranking orders the 2 mechanical stories; it does not create or dissolve any")
+        assertEquals(4, ranked.first { it.id == "srv:s1" }.articles.size)
+        // Source-count-first: the 4-source story precedes the fresher singleton.
+        assertEquals("srv:s1", ranked[0].id)
+        assertEquals("4 sources", ranked[0].sourceCountLabel)
+        assertEquals("1 source", ranked[1].sourceCountLabel)
         // Without a shared storyId the same headlines stay 5 separate ranked rows.
         val ungrouped = (1..4).map { i ->
             a("s$i", "https://e/u$i", "Storm hits coast as winds rise", h(24.0 - i))
         }
-        assertEquals(5, FeedRanking.rankStories(ungrouped + single, FeedSort.TOP, now).size)
+        assertEquals(5, FeedRanking.rankStories(ungrouped + single).size)
     }
 
     @Test fun searchHitsSurfaceTheirStory() {

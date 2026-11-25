@@ -34,16 +34,15 @@ class CoreJourneyTest {
         val packageName = targetContext.packageName
         grantAll(instrumentation.uiAutomation, targetContext.packageManager, packageName)
         launch(packageName, device, targetContext)
-        waitAny(device, "Search downloaded news", "Top stories", "No articles yet. Pull to refresh.")
-        clickText(device, "Latest"); clickText(device, "Top stories")
+        waitAny(device, "Search downloaded news", "No articles yet. Pull to refresh.")
         // Try to open the first story: story rows are clickable cards below the chips.
         Thread.sleep(3000)
         val rows = device.findObjects(By.clickable(true))
         val storyRow = rows.firstOrNull { it.visibleBounds.top > 300 && it.visibleBounds.height() > 60 }
         if (storyRow != null) {
             val b = storyRow.visibleBounds; device.click(b.centerX(), b.centerY())
-            val landed = waitAny(device, "Summary", "How it developed", "This story is no longer in the downloaded feed.", "Search downloaded news")
-            if (landed == "Summary" || landed == "How it developed") {
+            val landed = waitAny(device, "Summary", "How it developed", "1 source", "This story is no longer in the downloaded feed.", "Search downloaded news")
+            if (landed == "Summary" || landed == "How it developed" || landed == "1 source") {
                 // Open the first article in the reader.
                 val arts = device.findObjects(By.clickable(true))
                 val art = arts.firstOrNull { it.visibleBounds.top > 400 }

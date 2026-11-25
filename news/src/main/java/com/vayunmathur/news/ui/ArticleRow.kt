@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import com.vayunmathur.library.format.formatRelativeAge
 import com.vayunmathur.library.image.compose.AsyncImage
 import com.vayunmathur.library.ui.IconBookmark
 import com.vayunmathur.library.ui.IconBookmarkBorder
@@ -25,14 +26,13 @@ fun ArticleRow(
     article: CachedArticle,
     onClick: () -> Unit,
     onToggleBookmark: () -> Unit,
-    alsoFromSources: Int = 0,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(16.dp),
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "${SourceCatalog.byId(article.sourceId)?.name ?: article.sourceId} · ${relativeTime(article.publishedAtMillis)}" + if (alsoFromSources > 0) " · +$alsoFromSources sources" else "",
+                text = "${SourceCatalog.byId(article.sourceId)?.name ?: article.sourceId} · ${relativeTime(article.publishedAtMillis)}",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary,
             )
@@ -56,13 +56,5 @@ fun ArticleRow(
     }
 }
 
-internal fun relativeTime(millis: Long): String {
-    if (millis <= 0L) return ""
-    val minutes = ((System.currentTimeMillis() - millis) / 60_000L).coerceAtLeast(0L)
-    return when {
-        minutes < 1L -> "now"
-        minutes < 60L -> "${minutes}m ago"
-        minutes < 60L * 24L -> "${minutes / 60L}h ago"
-        else -> "${minutes / (60L * 24L)}d ago"
-    }
-}
+internal fun relativeTime(millis: Long): String =
+    formatRelativeAge(millis, System.currentTimeMillis(), justNowLabel = "now")

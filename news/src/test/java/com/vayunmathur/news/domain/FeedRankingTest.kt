@@ -4,7 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/** Top-stories ranking: decay, diversity cap, mechanical story order, Latest. */
+/** Feed ordering: source-count-first, recency tiebreak, label logic. */
 class FeedRankingTest {
 
     private val now = 1_700_000_000_000L
@@ -15,102 +15,98 @@ class FeedRankingTest {
         url: String,
         title: String = "Story $url",
         published: Long,
-        image: String? = null,
-        keywords: List<String> = emptyList(),
         serverStoryId: String? = null,
-    ) = FeedArticle(url, source, title, published, image, keywords, serverStoryId = serverStoryId)
+    ) = FeedArticle(url, source, title, published, serverStoryId = serverStoryId)
 
-    @Test fun decayOrdersFreshBeforeDayOldBeforeThreeDaysOld() {
-        val ranked = FeedRanking.rank(
-            listOf(
-                article("old-wire", "https://e/old", published = hoursAgo(72.0)),
-                article("fresh-wire", "https://e/fresh", published = hoursAgo(1.0)),
-                article("day-wire", "https://e/day", published = hoursAgo(24.0)),
-            ),
-            FeedSort.TOP, now,
+    private fun story(id: String, sources: List<String>, latestHoursAgo: Double): Story {
+        val articles = sources.mapIndexed { i, source ->
+            article(source, "https://e/$id-$i", published = hoursAgo(latestHoursAgo + i))
+        }
+        return Story(
+            id = id,
+            representative = articles.first(),
+            articles = articles,
         )
-        assertEquals(
-            listOf("https://e/fresh", "https://e/day", "https://e/old"),
-            ranked.map { it.article.url },
-        )
-        // Day-old sinks but does not vanish: its score is still positive.
-        assertTrue(FeedRanking.score(article("w", "https://e/x", published = hoursAgo(24.0)), now) > 20.0)
-        assertTrue(FeedRanking.score(article("w", "https://e/x", published = 0L), now) == 0.0)
     }
 
-    @Test fun firstPageCapsAnyOneSourceAtThree() {
-        val flood = (1..30).map {
-            article("bbc", "https://e/bbc-$it", published = hoursAgo(it * 0.1))
-        }
-        val others = (1..17).map { source ->
-            article("wire-$source", "https://e/w$source", published = hoursAgo(6.0 + source))
-        }
-        val ranked = FeedRanking.rank(flood + others, FeedSort.TOP, now)
-        val firstPage = ranked.take(FeedRanking.FIRST_PAGE_SIZE)
-        assertEquals(20, firstPage.size)
-        assertTrue(
-            firstPage.groupingBy { it.article.sourceId }.eachCount().values.all {
-                it <= FeedRanking.FIRST_PAGE_PER_SOURCE
-            },
-            "first page must cap a high-volume wire",
+    @Test fun moreSourcesBeatsFresherFewerSources() {
+        val ranked = FeedRanking.rankGroupedStories(
+            listOf(
+                story("fresh-single", listOf("a"), latestHoursAgo = 0.5),
+                story("old-five", listOf("a", "b", "c", "d", "e"), latestHoursAgo = 72.0),
+                story("mid-two", listOf("a", "b"), latestHoursAgo = 1.0),
+            ),
         )
-        assertTrue(firstPage.map { it.article.sourceId }.distinct().size >= 7)
-        // A one-source corpus still fills the page (cap relaxes).
-        val solo = FeedRanking.rank(flood, FeedSort.TOP, now)
-        assertEquals(20, solo.take(20).size)
-        assertEquals(30, solo.size)
+        assertEquals(listOf("old-five", "mid-two", "fresh-single"), ranked.map { it.id })
+    }
+
+    @Test fun recencyBreaksSourceCountTiesNewestFirst() {
+        val ranked = FeedRanking.rankGroupedStories(
+            listOf(
+                story("older", listOf("a", "b"), latestHoursAgo = 10.0),
+                story("newer", listOf("c", "d"), latestHoursAgo = 1.0),
+                story("middle", listOf("e", "f"), latestHoursAgo = 5.0),
+            ),
+        )
+        assertEquals(listOf("newer", "middle", "older"), ranked.map { it.id })
+    }
+
+    @Test fun singletonsAreRankedStoriesToo() {
+        val ranked = FeedRanking.rankStories(
+            listOf(
+                article("solo", "https://e/solo", published = hoursAgo(0.1)),
+                article("bbc", "https://e/b1", published = hoursAgo(50.0), serverStoryId = "s1"),
+                article("dw", "https://e/d1", published = hoursAgo(49.0), serverStoryId = "s1"),
+            ),
+        )
+        assertEquals(2, ranked.size)
+        assertEquals("srv:s1", ranked[0].id)
+        assertEquals(1, ranked[1].articles.size)
+        assertEquals("1 source", ranked[1].sourceCountLabel)
     }
 
     @Test fun identicalHeadlinesWithoutStoryIdDoNotCollapse() {
-        val ranked = FeedRanking.rank(
+        val ranked = FeedRanking.rankStories(
             listOf(
                 article("bbc", "https://e/b1", title = "Storm hits coast as winds rise", published = hoursAgo(2.0)),
                 article("g1", "https://e/g1", title = "BBC: Storm hits coast as winds rise!", published = hoursAgo(5.0)),
                 article("dw", "https://e/d1", title = "Winds rise as storm hits coast", published = hoursAgo(1.0)),
-                article("npr", "https://e/n1", title = "Markets rally on jobs data", published = hoursAgo(1.0)),
             ),
-            FeedSort.TOP, now,
         )
-        assertEquals(4, ranked.size, "no storyId = no grouping, however similar the headlines")
-        assertTrue(ranked.all { it.alsoFromSources == 0 })
+        assertEquals(3, ranked.size, "no storyId = no grouping, however similar the headlines")
+        assertTrue(ranked.all { it.sourceCount == 1 && it.sourceCountLabel == "1 source" })
     }
 
-    @Test fun sharedStoryIdCollapsesToEarliestRepresentative() {
-        val ranked = FeedRanking.rank(
+    @Test fun sharedStoryIdCollapsesAndCountsDistinctSources() {
+        val ranked = FeedRanking.rankStories(
             listOf(
-                article("bbc", "https://e/b1", title = "Storm hits coast as winds rise", published = hoursAgo(2.0), serverStoryId = "s1"),
-                article("g1", "https://e/g1", title = "Different wording entirely", published = hoursAgo(5.0), serverStoryId = "s1"),
-                article("dw", "https://e/d1", title = "Winds rise as storm hits coast", published = hoursAgo(1.0), serverStoryId = "s1"),
-                article("npr", "https://e/n1", title = "Markets rally on jobs data", published = hoursAgo(1.0)),
+                article("bbc", "https://e/b1", published = hoursAgo(2.0), serverStoryId = "s1"),
+                article("bbc", "https://e/b2", published = hoursAgo(3.0), serverStoryId = "s1"),
+                article("dw", "https://e/d1", published = hoursAgo(1.0), serverStoryId = "s1"),
+                article("npr", "https://e/n1", published = hoursAgo(0.5)),
             ),
-            FeedSort.TOP, now,
         )
-        assertEquals(2, ranked.size, "only the server-grouped articles collapse to one row")
-        val storm = ranked.first { it.alsoFromSources == 2 }
-        assertEquals("https://e/g1", storm.article.url, "representative is the earliest member")
-        // Latest keeps the same mechanical membership.
-        val latest = FeedRanking.rank(
-            listOf(
-                article("bbc", "https://e/b1", title = "Same headline", published = hoursAgo(2.0), serverStoryId = "s1"),
-                article("g1", "https://e/g1", title = "Same headline", published = hoursAgo(5.0), serverStoryId = "s1"),
-            ),
-            FeedSort.LATEST, now,
-        )
-        assertEquals(1, latest.size)
-        assertEquals(1, latest[0].alsoFromSources)
+        assertEquals(2, ranked.size, "only the server-grouped articles collapse to one story")
+        val grouped = ranked.first { it.id == "srv:s1" }
+        // Two BBC articles + one DW article = 2 distinct sources, 3 articles.
+        assertEquals(2, grouped.sourceCount)
+        assertEquals(3, grouped.articleCount)
+        assertEquals("2 sources", grouped.sourceCountLabel)
+        assertEquals("srv:s1", ranked[0].id, "2-source story precedes fresher singleton")
     }
 
-    @Test fun latestIsNewestFirstAndIgnoresMetadataBonus() {
-        val ranked = FeedRanking.rank(
-            listOf(
-                article("a", "https://e/newer-plain", published = hoursAgo(1.0)),
-                article(
-                    "b", "https://e/older-rich", published = hoursAgo(2.0),
-                    image = "https://e/img", keywords = listOf("k"),
-                ),
-            ),
-            FeedSort.LATEST, now,
-        )
-        assertEquals(listOf("https://e/newer-plain", "https://e/older-rich"), ranked.map { it.article.url })
+    @Test fun sourceCountLabelSingularAndPlural() {
+        assertEquals("1 source", story("one", listOf("a"), 1.0).sourceCountLabel)
+        assertEquals("2 sources", story("two", listOf("a", "b"), 1.0).sourceCountLabel)
+        assertEquals("5 sources", story("five", listOf("a", "b", "c", "d", "e"), 1.0).sourceCountLabel)
+    }
+
+    @Test fun equalCountAndTimeOrderIsDeterministicById() {
+        val a = story("srv:b", listOf("a", "b"), latestHoursAgo = 1.0)
+        val b = story("srv:a", listOf("c", "d"), latestHoursAgo = 1.0)
+        // Same source count; latest/firstSeen also tie only if timestamps match —
+        // story() offsets members by index, so both share the same instants.
+        assertEquals(listOf("srv:a", "srv:b"), FeedRanking.rankGroupedStories(listOf(a, b)).map { it.id })
+        assertEquals(listOf("srv:a", "srv:b"), FeedRanking.rankGroupedStories(listOf(b, a)).map { it.id })
     }
 }

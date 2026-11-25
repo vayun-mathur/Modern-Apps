@@ -26,12 +26,14 @@ import com.vayunmathur.news.domain.SourceCatalog
 import com.vayunmathur.news.platform.NewsViewModel
 
 /**
- * Story page: how one event developed, earliest → latest. Each
- * article row (source, time, headline) opens the existing Reader
- * (which fetches its body on-device). Single-article stories show
- * just that article — no timeline/count/summary chrome.
- * The server one-liner, when present, is shown as a labelled
- * summary; no server-extracted article text is ever displayed.
+ * Story page: how one event developed, earliest → latest. Every
+ * story, singletons included, opens this page. The header identifies
+ * the story by its source count, never by a lead source; each
+ * article row (source, time, headline) keeps its own per-article
+ * attribution and opens the existing Reader (which fetches its body
+ * on-device). The server one-liner, when present, is shown as a
+ * labelled summary; no server-extracted article text is ever
+ * displayed.
  */
 @Composable
 fun StoryScreen(
@@ -43,6 +45,28 @@ fun StoryScreen(
     val allStories by viewModel.allStories.collectAsState()
     val cachedByUrl by viewModel.cachedByUrl.collectAsState()
     val story = allStories.firstOrNull { it.id == storyId }
+    StoryContent(
+        story = story,
+        cachedByUrl = cachedByUrl,
+        onOpenArticle = onOpenArticle,
+        onToggleBookmark = viewModel::toggleBookmark,
+        onBack = onBack,
+    )
+}
+
+/**
+ * Stateless story body behind [StoryScreen]: every value is a parameter, so
+ * Compose previews (src/screenshotTest) render the real screen from literal
+ * fixtures with no ViewModel or database.
+ */
+@Composable
+internal fun StoryContent(
+    story: com.vayunmathur.news.domain.Story?,
+    cachedByUrl: Map<String, com.vayunmathur.news.data.CachedArticle>,
+    onOpenArticle: (String) -> Unit,
+    onToggleBookmark: (com.vayunmathur.news.data.CachedArticle) -> Unit,
+    onBack: () -> Unit,
+) {
     AppScaffold(title = "", onNavigateBack = onBack) { padding ->
         if (story == null) {
             Text(
@@ -57,28 +81,28 @@ fun StoryScreen(
             item {
                 Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
                     Text(story.title, style = MaterialTheme.typography.headlineSmall)
-                    if (!single) {
-                        val range = buildString {
-                            append(story.sourceNames.joinToString(", "))
-                            val first = relativeTime(story.firstSeenMillis)
-                            val latest = relativeTime(story.latestMillis)
-                            if (first.isNotEmpty()) append(" · from $first")
-                            if (latest.isNotEmpty() && latest != first) append(" · updated $latest")
-                        }
+                    val range = buildString {
+                        append(story.sourceCountLabel)
+                        val first = relativeTime(story.firstSeenMillis)
+                        val latest = relativeTime(story.latestMillis)
+                        if (first.isNotEmpty()) append(" · from $first")
+                        if (latest.isNotEmpty() && latest != first) append(" · updated $latest")
+                    }
+                    Text(
+                        range,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(top = 6.dp),
+                    )
+                    if (story.oneLiner != null) {
                         Text(
-                            range,
+                            stringResource(R.string.story_summary_label),
                             style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(top = 6.dp),
+                            modifier = Modifier.padding(top = 10.dp),
                         )
-                        if (story.oneLiner != null) {
-                            Text(
-                                stringResource(R.string.story_summary_label),
-                                style = MaterialTheme.typography.labelMedium,
-                                modifier = Modifier.padding(top = 10.dp),
-                            )
-                            Text(story.oneLiner!!, style = MaterialTheme.typography.bodyMedium)
-                        }
+                        Text(story.oneLiner!!, style = MaterialTheme.typography.bodyMedium)
+                    }
+                    if (!single) {
                         Text(
                             stringResource(R.string.story_timeline_label),
                             style = MaterialTheme.typography.labelLarge,
@@ -102,7 +126,7 @@ fun StoryScreen(
                         Text(article.title, style = MaterialTheme.typography.titleMedium)
                     }
                     if (cached != null) {
-                        IconButton(onClick = { viewModel.toggleBookmark(cached) }) {
+                        IconButton(onClick = { onToggleBookmark(cached) }) {
                             if (cached.bookmarked) IconBookmark() else IconBookmarkBorder()
                         }
                     }

@@ -19,11 +19,11 @@ import com.vayunmathur.library.ui.Text
 import com.vayunmathur.news.domain.Story
 
 /**
- * One feed story card: representative headline, hero image, latest
- * update time, and — only for multi-source stories — source count
- * and names. Single-article stories render as a plain article row
- * (no source-count chrome). [Story.oneLiner] is a server-generated
- * summary, never extracted article text.
+ * One feed story card: headline, hero image, latest update time and
+ * the story's source count ("1 source" / "N sources"). No source is
+ * named on the card — the count is the story's identity signal, for
+ * multi-source and singleton stories alike. [Story.oneLiner] is a
+ * server-generated summary, never extracted article text.
  */
 @Composable
 fun StoryRow(
@@ -37,20 +37,12 @@ fun StoryRow(
     ) {
         Column(modifier = Modifier.weight(1f)) {
             val meta = buildString {
-                append(story.sourceNames.firstOrNull() ?: story.representative.sourceId)
+                append(story.sourceCountLabel)
                 val whenText = relativeTime(story.latestMillis)
                 if (whenText.isNotEmpty()) append(" · $whenText")
-                if (story.sourceCount > 1) append(" · ${story.sourceCount} sources")
             }
             Text(meta, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
             Text(story.title, style = MaterialTheme.typography.titleMedium)
-            if (story.sourceCount > 1) {
-                Text(
-                    story.sourceNames.joinToString(", "),
-                    style = MaterialTheme.typography.labelMedium,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
-            }
             if (story.oneLiner != null) {
                 Text(
                     story.oneLiner!!,

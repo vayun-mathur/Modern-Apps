@@ -11,7 +11,6 @@ import com.vayunmathur.news.data.NewsRepository
 import com.vayunmathur.news.data.toFeedArticle
 import com.vayunmathur.news.domain.ExtractedArticle
 import com.vayunmathur.news.domain.FeedRanking
-import com.vayunmathur.news.domain.FeedSort
 import com.vayunmathur.news.domain.NewsCategory
 import com.vayunmathur.news.domain.SourceCatalog
 import com.vayunmathur.news.domain.LocalNews
@@ -33,9 +32,9 @@ import kotlinx.coroutines.launch
  * in-memory over the Room article cache per emission (the two server
  * story columns are the only v2 addition). A null category filter is
  * "All"; a story matches a category when ANY member does.
- * [FeedRanking] only *orders* stories (Top folds cross-source
- * breadth — counted over actual server membership — into recency;
- * Latest is by latest update). Search hits surface their whole story.
+ * [FeedRanking] only *orders* stories: descending source count,
+ * then newest first. Search hits surface their whole story and keep
+ * search relevance order.
  */
 
 /** UI state and actions for feed, reader and saved screens. */
@@ -54,9 +53,6 @@ class NewsViewModel(
     private val _categoryFilter = MutableStateFlow<NewsCategory?>(null)
     val categoryFilter: StateFlow<NewsCategory?> = _categoryFilter.asStateFlow()
 
-    val feedSort: StateFlow<FeedSort> = prefs.feedSort
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FeedSort.TOP)
-
     /** Manually picked Local news location; null = unset (all locals equal). */
     val localLocation: StateFlow<String?> = prefs.localLocation
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
@@ -66,11 +62,6 @@ class NewsViewModel(
         .map { all -> StoryGrouping.group(all.map { it.toFeedArticle() }) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    /** Extra sources per feed-row URL, from actual server story membership only. */
-    val clusterCounts: StateFlow<Map<String, Int>> = allStories
-        .map { stories -> stories.associate { it.representative.url to (it.sourceCount - 1).coerceAtLeast(0) } }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
-
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
     private val _searchResults = MutableStateFlow<List<CachedArticle>>(emptyList())
@@ -79,7 +70,7 @@ class NewsViewModel(
      * Search composes with the category filter: the repository search
      * runs over the whole local corpus, and its results are then kept to
      * the selected category exactly like the feed. Search order is its
-     * relevance ranking regardless of the feed sort.
+     * relevance ranking, not the feed's source-count order.
      * So searching searches *within* the selected category, and changing
      * the category while a query is active re-filters the visible
      * results without a new search.
@@ -115,12 +106,12 @@ class NewsViewModel(
         }
     }
 
-    /** Feed stories: mechanical grouping, category = any-member, ranked (order only). */
+    /** Feed stories: mechanical grouping, category = any-member, ordered (order only). */
     val stories: StateFlow<List<Story>> = combine(
-        allStories, _categoryFilter, feedSort, localLocation,
-    ) { grouped, category, sort, location ->
+        allStories, _categoryFilter, localLocation,
+    ) { grouped, category, location ->
         val filtered = grouped.filter { it.matchesCategory(category) }
-        val ranked = FeedRanking.rankGroupedStories(filtered, sort, System.currentTimeMillis())
+        val ranked = FeedRanking.rankGroupedStories(filtered)
         if (category == NewsCategory.LOCAL && !location.isNullOrBlank()) {
             val (matching, rest) = ranked.partition { story ->
                 story.articles.any { LocalNews.matches(SourceCatalog.regionOf(it.sourceId), location) }
@@ -170,11 +161,6 @@ class NewsViewModel(
     /** Single-select category filter; null is "All". */
     fun setCategoryFilter(category: NewsCategory?) {
         _categoryFilter.value = category
-    }
-
-    /** Persists the feed order (Top stories / Latest). Search is unaffected. */
-    fun setFeedSort(sort: FeedSort) {
-        viewModelScope.launch { prefs.setFeedSort(sort) }
     }
 
     /** Persists the manual Local news location; null/blank clears it. */

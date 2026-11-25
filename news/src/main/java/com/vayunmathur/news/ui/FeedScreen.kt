@@ -26,19 +26,19 @@ import com.vayunmathur.library.ui.IconSettings
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.news.R
 import com.vayunmathur.news.data.CachedArticle
-import com.vayunmathur.news.domain.FeedSort
 import com.vayunmathur.news.domain.NewsCategory
 import com.vayunmathur.news.domain.SourceCatalog
 import com.vayunmathur.news.domain.Story
 import com.vayunmathur.news.platform.NewsViewModel
 
 /**
- * Merged feed with category chips, a Top stories / Latest sort selector
- * and pull-to-refresh. Every source is always in the corpus; chips are
- * the categories of all sources (plus the current selection, so it
- * stays tappable). Feed controls hide while searching — search keeps
- * its relevance order. Selecting a category also narrows search
- * results (see NewsViewModel.searchResults).
+ * Merged story feed with category chips and pull-to-refresh. Every
+ * story — multi-source or singleton — is a story card ordered by
+ * descending source count, then newest first. Every source is always
+ * in the corpus; chips are the categories of all sources (plus the
+ * current selection, so it stays tappable). Feed controls hide while
+ * searching — search keeps its relevance order. Selecting a category
+ * also narrows search results (see NewsViewModel.searchResults).
  */
 @Composable
 fun FeedScreen(
@@ -52,7 +52,6 @@ fun FeedScreen(
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     val refreshFailed by viewModel.refreshFailed.collectAsState()
     val categoryFilter by viewModel.categoryFilter.collectAsState()
-    val feedSort by viewModel.feedSort.collectAsState()
     val cachedByUrl by viewModel.cachedByUrl.collectAsState()
     val localLocation by viewModel.localLocation.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
@@ -64,12 +63,10 @@ fun FeedScreen(
         isRefreshing = isRefreshing,
         refreshFailed = refreshFailed,
         categoryFilter = categoryFilter,
-        feedSort = feedSort,
         localLocation = localLocation,
         searchQuery = searchQuery,
         onSearchQueryChange = viewModel::setSearchQuery,
         onRefresh = viewModel::refresh,
-        onFeedSortChange = viewModel::setFeedSort,
         onCategoryFilterChange = viewModel::setCategoryFilter,
         onToggleBookmark = viewModel::toggleBookmark,
         onOpenSaved = onOpenSaved,
@@ -91,12 +88,10 @@ internal fun FeedContent(
     isRefreshing: Boolean,
     refreshFailed: Boolean,
     categoryFilter: NewsCategory?,
-    feedSort: FeedSort,
     localLocation: String?,
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
     onRefresh: () -> Unit,
-    onFeedSortChange: (FeedSort) -> Unit,
     onCategoryFilterChange: (NewsCategory?) -> Unit,
     onToggleBookmark: (CachedArticle) -> Unit,
     onOpenSaved: () -> Unit,
@@ -124,29 +119,11 @@ internal fun FeedContent(
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             if (!searching) {
-            // Sort selector: persisted Top stories (ranked) / Latest.
-            LazyRow(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-                item {
-                    FilterChip(
-                        selected = feedSort == FeedSort.TOP,
-                        onClick = { onFeedSortChange(FeedSort.TOP) },
-                        label = { Text(stringResource(R.string.feed_sort_top)) },
-                    )
-                }
-                item {
-                    FilterChip(
-                        selected = feedSort == FeedSort.LATEST,
-                        onClick = { onFeedSortChange(FeedSort.LATEST) },
-                        label = { Text(stringResource(R.string.feed_sort_latest)) },
-                        modifier = Modifier.padding(start = 8.dp),
-                    )
-                }
-            }
             // Category chips (single-select, "All" = no category filter).
             val categories = (SourceCatalog.categoriesAmong(SourceCatalog.sources) +
                 listOfNotNull(categoryFilter)).distinct()
                 .sortedBy { it.ordinal }
-            LazyRow(modifier = Modifier.padding(horizontal = 12.dp)) {
+            LazyRow(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
                 item {
                     FilterChip(
                         selected = categoryFilter == null,

@@ -71,6 +71,9 @@ class FeedScreenTest {
             0,
             rule.onAllNodesWithText("Sources").fetchSemanticsNodes().size,
         )
+        // No Latest / Top-stories mode switch exists any more.
+        assertEquals(0, rule.onAllNodesWithText("Top stories").fetchSemanticsNodes().size)
+        assertEquals(0, rule.onAllNodesWithText("Latest").fetchSemanticsNodes().size)
     }
 
     @Test fun typingShowsClear_clearRestoresFeed() {
