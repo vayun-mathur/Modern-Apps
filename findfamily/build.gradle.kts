@@ -146,8 +146,15 @@ val stageDevScreenshotTestResources = tasks.register<Copy>("stageDevScreenshotTe
     mustRunAfter("compileDevScreenshotTestKotlin")
     outputs.upToDateWhen { false }
 }
+// `rustNativeTests` (above) makes RustNative's split register a
+// `…Native` companion for every Test task — including the screenshot
+// renderer's update/validate tasks — and both the renderer and its
+// companion read the compiled classes dir this staging task writes into.
+// Match by prefix so both the AGP tasks and their `Native` companions
+// declare the dependency; naming only the two AGP tasks leaves the
+// companions with an implicit-dependency validation failure.
 tasks.matching {
-    it.name == "updateDevScreenshotTest" || it.name == "validateDevScreenshotTest"
+    it.name.startsWith("updateDevScreenshotTest") || it.name.startsWith("validateDevScreenshotTest")
 }.configureEach {
     dependsOn(stageDevScreenshotTestResources)
 }

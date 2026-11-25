@@ -10,6 +10,7 @@ import com.android.tools.screenshot.PreviewTest
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.securemail.data.MailFolder
 import com.vayunmathur.securemail.data.StoredMessage
+import com.vayunmathur.securemail.data.StoredMessagePreview
 import com.vayunmathur.securemail.platform.MailUiState
 
 /** Phone-shaped, roughly 1080x2340 at xxhdpi — comfortably above the F-Droid minimum. */
@@ -68,24 +69,23 @@ class MetadataPreviews {
                 onConsumeMessage = {},
             ),
             messages = listOf(
-                StoredMessage(
+                StoredMessagePreview(
                     id = "m_1",
                     from = "bob@proton.me",
                     toJson = "alice@maemail.org",
                     dateMillis = 1_792_772_800_000L,
                     messageId = "m_1",
-                    blobBase64 = "",
-                    decryptedBody = "Lunch tomorrow?",
                     decryptedSubject = "Hello from Proton",
                     verifiedSigner = "A1B2C3D4E5F60718",
+                    preview = "Lunch tomorrow?",
+                    hasDecryptedBody = true,
                 ),
-                StoredMessage(
+                StoredMessagePreview(
                     id = "m_2",
                     from = "carol@maemail.org",
                     toJson = "alice@maemail.org",
                     dateMillis = 1_792_770_000_000L,
                     messageId = "m_2",
-                    blobBase64 = "e30=",
                 ),
             ),
         )
@@ -146,15 +146,15 @@ class MetadataPreviews {
                     ),
                     outbox = emptyList(),
                     sent = listOf(
-                        StoredMessage(
+                        StoredMessagePreview(
                             id = "sent-1",
                             from = "alice@maemail.org",
                             toJson = "carol@maemail.org",
                             dateMillis = 1_792_770_000_000L,
                             messageId = "sent-1",
-                            blobBase64 = "",
                             decryptedSubject = "Re: Lunch",
-                            decryptedBody = "Sounds good, see you at noon.",
+                            preview = "Sounds good, see you at noon.",
+                            hasDecryptedBody = true,
                             isRead = true,
                             folder = MailFolder.SENT,
                         ),
