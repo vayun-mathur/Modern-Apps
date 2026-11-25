@@ -11,12 +11,20 @@ _Install: ./install news_
 - Rust: no / screenshotTest: yes (phone + large-tablet)
 
 ## Overview
-**Purpose:** News reader. Primary feed is our server's `GET /news.json`
-(`https://api.maproj.org/news.json`, see `domain/ServerFeedParser` for the
-contract + assumptions), merged into Room. Every source is always in the
-corpus (no per-source toggle); category + search are the filters, and the persisted
-Top stories / Latest sort (`domain/FeedRanking`) orders the feed
-client-side. If the server fetch fails/times out/parses empty, refresh
+**Purpose:** News reader. Primary feed is our server's merged
+`news.json` snapshot, read first from its static copy on R2
+(`https://static.maproj.org/news/v1/news.json`, republished by the
+server on every refresh) with the origin `GET /news.json`
+(`https://api.maproj.org/news.json`, see `domain/ServerFeedParser` for
+the contract + assumptions) as fallback when the static copy is
+missing, failing, or older than 1 hour; the result is merged into Room. Every source is always in the
+corpus (no per-source toggle); category + search are the filters, and
+`domain/FeedRanking` orders the story feed client-side by descending
+source count, then newest first (search keeps its relevance order).
+Every feed item is a story (`domain/Story`, mechanical grouping by
+exact server `storyId` only — singletons included), shown as a card
+labelled only with its source count ("1 source" / "N sources", no
+lead-source name) and opening the story view. If the server fetch fails/times out/parses empty, refresh
 falls back to the on-device per-source sitemap/RSS crawl of all sources
 (cached feed stays visible either way). Article reading is always on-device:
 publisher HTML is fetched directly and extracted locally. No account.
@@ -57,8 +65,11 @@ Japan Times (sitemap URL serves HTML, not XML).
 (DataStore owner) → `network/Networking` (the single networking entry
 point, `NetworkClient` with `TrustBundle.SYSTEM` — publisher hosts are
 arbitrary, so no reduced bundle can cover them; SYSTEM also covers
-api.maproj.org, whereas FIRST_PARTY would break publisher fetches) →
-`domain/` parsers and extractor (pure, no Android imports).
+api.maproj.org and static.maproj.org, whereas FIRST_PARTY would break
+publisher fetches; the server feed goes through
+`Networking.fetchServerFeedText` → `StaticMirror.get`, static first,
+origin fallback) → `domain/` parsers and extractor (pure, no Android
+imports).
 
 ## Entry points + reading order
 `Route` (`Feed` / `Reader(url)` / `Saved`) → `MainActivity.kt`
@@ -71,6 +82,9 @@ api.maproj.org, whereas FIRST_PARTY would break publisher fetches) →
 - A failing source never fails a refresh; the cached feed stays visible.
 - Extraction quality is judged by `ExtractedArticle.bodyChars`; truncated
   extractions usually mean the source changed its markup or paywall.
+
+## Screenshot coverage
+Every `Route` leaf (`Feed`/`Story`/`Reader`/`Saved`/`LocalLocation`/`Settings`) has a capture in `src/screenshotTest` named `<n>-<route-key>`; the fatal `RouteScreenshotCoverage` lint enforces it (no exemptions here). News has no dialogs — dialog UI, if added, must be a `Route` destination with `DialogPage()` metadata, not state in a screen. Convention: `docs/screenshot-coverage.md`.
 
 ## Verify (this module only)
 ```

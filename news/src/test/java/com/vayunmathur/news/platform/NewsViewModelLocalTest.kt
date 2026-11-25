@@ -63,9 +63,11 @@ class NewsViewModelLocalTest {
     @Test fun localLocationBoostsMatchingSourcesFirstAndUnsetRestores() {
         val context = ApplicationProvider.getApplicationContext<Application>()
         seedNewsDb(context)
-        val repository = NewsRepository(context, fetch = { url ->
-            if (url.contains("news.json")) serverJson else throw IOException("offline")
-        })
+        val repository = NewsRepository(
+            context,
+            fetch = { throw IOException("offline") },
+            serverFeedFetch = { serverJson },
+        )
         runBlocking { repository.refresh(SourceCatalog.sources) }
         val prefs = NewsPrefs(context)
         val viewModel = NewsViewModel(context, repository, prefs)

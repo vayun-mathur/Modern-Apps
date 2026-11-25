@@ -29,7 +29,10 @@ import kotlinx.serialization.json.Json
 /**
  * Owns the Room cache and all feed/article fetching. The [fetch] seam
  * defaults to [Networking] and is replaced by a fake in unit tests, so
- * no test touches the network. Bodies are extracted on device only.
+ * no test touches the network; the server feed goes through the
+ * [serverFeedFetch] seam (defaults to [Networking.fetchServerFeedText]:
+ * R2 static copy first, origin as fallback). Bodies are extracted on
+ * device only.
  *
  * Refresh topology (fixed 2026-11-23, was the ANR / "stuck feed" bug):
  * sources fetch in parallel, each on [feedDispatcher] (never Main —
@@ -45,6 +48,7 @@ class NewsRepository internal constructor(
     private val fetch: suspend (String) -> String,
     private val feedDispatcher: CoroutineDispatcher = Dispatchers.Default,
     private val sourceTimeoutMs: Long = SOURCE_TIMEOUT_MS,
+    private val serverFeedFetch: suspend () -> String = { Networking.fetchServerFeedText() },
 ) : RoomRepository<NewsDatabase>(context, NewsDatabase::class, DB_NAME) {
 
     constructor(context: Context) : this(context, Networking::fetchText)
@@ -61,7 +65,9 @@ class NewsRepository internal constructor(
         dao.setBookmarked(url, bookmarked)
 
     /**
-     * Primary path: one fetch of the server's `news.json`, merged into
+     * Primary path: one fetch of the server feed (its R2 static copy
+     * first, the origin `news.json` as fallback — see
+     * [Networking.fetchServerFeedText]), merged into
      * Room exactly like a crawl result. Every source the server carries
      * is always included — there is no client-side enabled-source
      * filter; categories and search are the filters. [sources] only
@@ -92,7 +98,7 @@ class NewsRepository internal constructor(
     private suspend fun fetchServerFeed(): List<FeedArticle>? {
         val articles = try {
             withTimeoutOrNull(sourceTimeoutMs) {
-                withContext(feedDispatcher) { ServerFeedParser.parse(fetch(Networking.SERVER_FEED_URL)) }
+                withContext(feedDispatcher) { ServerFeedParser.parse(serverFeedFetch()) }
             }
         } catch (e: CancellationException) {
             throw e

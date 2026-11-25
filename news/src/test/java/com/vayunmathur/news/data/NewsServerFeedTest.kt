@@ -43,12 +43,26 @@ class NewsServerFeedTest {
     @Test fun refreshPrefersServerFeedAndDoesNotCrawl() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val calls = mutableListOf<String>()
-        val repo = NewsRepository(context, fetch = { url -> calls += url; serverJson })
+        var serverCalls = 0
+        val repo = NewsRepository(
+            context,
+            fetch = { url -> calls += url; serverJson },
+            serverFeedFetch = { serverCalls++; serverJson },
+        )
         val failed = repo.refresh(SourceCatalog.sources)
         assertTrue(failed.isEmpty())
-        assertEquals(listOf(Networking.SERVER_FEED_URL), calls, "primary path must be the single server fetch")
+        assertEquals(1, serverCalls, "primary path must be the single server-feed fetch")
+        assertTrue(calls.isEmpty(), "server feed success must not crawl sources, saw $calls")
         val cached = withTimeout(10_000) { repo.articles.first { a -> a.any { it.url == "https://srv.example/alpha" } } }
         assertTrue(cached.any { it.title == "Server Alpha Volcano" })
+    }
+
+    @Test fun staticFeedUrlIsTheR2CopyWithOriginFallback() {
+        // The contract the server publishes to (location_share_server
+        // NEWS_R2_KEY) and the app's fallback order.
+        assertEquals("https://static.maproj.org/news/v1/news.json", Networking.STATIC_FEED_URL)
+        assertEquals("https://api.maproj.org/news.json", Networking.SERVER_FEED_URL)
+        assertTrue(Networking.STATIC_MAX_AGE_MS > 0)
     }
 
     @Test fun refreshIncludesServerArticlesFromEverySource() = runBlocking {
@@ -61,7 +75,7 @@ class NewsServerFeedTest {
                "published_at":"2026-11-23T09:00:00Z"}
             ]}
         """.trimIndent()
-        val repo = NewsRepository(context, fetch = { filterJson })
+        val repo = NewsRepository(context, fetch = { filterJson }, serverFeedFetch = { filterJson })
         // No enabled-source filter exists: even though only BBC drives
         // the (unused) fallback list, the Guardian server article lands.
         val failed = repo.refresh(listOf(SourceCatalog.byId("bbc")!!))
@@ -73,11 +87,11 @@ class NewsServerFeedTest {
     @Test fun serverFailureFallsBackToSourceCrawl() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val calls = mutableListOf<String>()
-        val repo = NewsRepository(context, fetch = { url ->
-            calls += url
-            if (url == Networking.SERVER_FEED_URL) throw IOException("server unreachable")
-            fallbackUrlset
-        })
+        val repo = NewsRepository(
+            context,
+            fetch = { url -> calls += url; fallbackUrlset },
+            serverFeedFetch = { calls += Networking.SERVER_FEED_URL; throw IOException("server unreachable") },
+        )
         val bbc = SourceCatalog.byId("bbc")!!.copy(feedUrl = "https://srv.example/fallback.xml")
         val failed = repo.refresh(listOf(bbc))
         assertTrue(failed.isEmpty(), "fallback crawl success must not report failure")
@@ -89,13 +103,11 @@ class NewsServerFeedTest {
 
     @Test fun searchRanksTitleHitBeforeDownloadedBodyHit() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
-        val repo = NewsRepository(context, fetch = { url ->
-            when {
-                url == Networking.SERVER_FEED_URL -> serverJson
-                url.endsWith("/beta") -> articleHtml
-                else -> serverJson
-            }
-        })
+        val repo = NewsRepository(
+            context,
+            fetch = { url -> if (url.endsWith("/beta")) articleHtml else serverJson },
+            serverFeedFetch = { serverJson },
+        )
         repo.refresh(SourceCatalog.sources)
         withTimeout(10_000) { repo.articles.first { a -> a.any { it.url == "https://srv.example/beta" } } }
         // Title hit: "volcano" is only in Alpha's title.

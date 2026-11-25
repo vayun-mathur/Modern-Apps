@@ -38,7 +38,7 @@ class FeedScreenTest {
     private fun viewModel(): NewsViewModel {
         val context = ApplicationProvider.getApplicationContext<Application>()
         seedNewsDb(context)
-        val repository = NewsRepository(context, fetch = { throw IOException("offline") })
+        val repository = NewsRepository(context, fetch = { throw IOException("offline") }, serverFeedFetch = { throw IOException("offline") })
         return NewsViewModel(context, repository, NewsPrefs(context))
     }
 

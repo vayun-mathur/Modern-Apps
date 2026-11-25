@@ -50,7 +50,7 @@ class NewsRepositoryTest {
     fun refreshFollowsIndexAndCachesArticles() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val calls = mutableListOf<String>()
-        val repo = NewsRepository(context, fakeFetch(calls))
+        val repo = NewsRepository(context, fakeFetch(calls), serverFeedFetch = { throw java.io.IOException("offline") })
         val source = SourceCatalog.byId("bbc")!!.copy(feedUrl = "https://fake.example/index.xml")
         val failed = repo.refresh(listOf(source))
         assertTrue(failed.isEmpty())
@@ -64,7 +64,7 @@ class NewsRepositoryTest {
     fun articleBodyExtractsAndCaches() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val calls = mutableListOf<String>()
-        val repo = NewsRepository(context, fakeFetch(calls))
+        val repo = NewsRepository(context, fakeFetch(calls), serverFeedFetch = { throw java.io.IOException("offline") })
         val body = repo.articleBody("https://fake.example/story")
         assertEquals("Fake Story", body.title)
         assertEquals(2, body.blocks.size)
@@ -87,6 +87,7 @@ class NewsRepositoryTest {
                 fastUrlset
             },
             sourceTimeoutMs = 500,
+            serverFeedFetch = { throw java.io.IOException("offline") },
         )
         val fast = SourceCatalog.byId("bbc")!!.copy(name = "Fast", feedUrl = "https://fake.example/fast.xml")
         val hanging = SourceCatalog.byId("guardian")!!.copy(name = "Hang", feedUrl = "https://fake.example/hang.xml")
@@ -106,7 +107,7 @@ class NewsRepositoryTest {
     fun cachedArticlesEmitWithoutRefresh() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val calls = mutableListOf<String>()
-        val repo = NewsRepository(context, fakeFetch(calls))
+        val repo = NewsRepository(context, fakeFetch(calls), serverFeedFetch = { throw java.io.IOException("offline") })
         val source = SourceCatalog.byId("bbc")!!.copy(feedUrl = "https://fake.example/index.xml")
         repo.refresh(listOf(source))
         // No refresh in flight: the Room cache alone must serve the feed.
@@ -122,7 +123,7 @@ class NewsRepositoryTest {
         val repo = NewsRepository(context, fetch = { _ ->
             seenThreads += Thread.currentThread().name
             childUrlset
-        })
+        }, serverFeedFetch = { throw java.io.IOException("offline") })
         val source = SourceCatalog.byId("bbc")!!.copy(feedUrl = "https://fake.example/direct.xml")
         repo.refresh(listOf(source))
         assertTrue(seenThreads.isNotEmpty())
@@ -135,7 +136,7 @@ class NewsRepositoryTest {
     @Test
     fun failingSourceIsReportedNotThrown() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
-        val repo = NewsRepository(context, fetch = { throw java.io.IOException("offline") })
+        val repo = NewsRepository(context, fetch = { throw java.io.IOException("offline") }, serverFeedFetch = { throw java.io.IOException("offline") })
         val failed = repo.refresh(listOf(SourceCatalog.sources.first()))
         assertEquals(1, failed.size)
     }

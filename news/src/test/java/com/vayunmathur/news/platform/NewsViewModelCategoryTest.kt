@@ -60,9 +60,11 @@ class NewsViewModelCategoryTest {
     @Test fun categoryFilterAllPassthroughAndSearchWithinCategory() {
         val context = ApplicationProvider.getApplicationContext<Application>()
         seedNewsDb(context)
-        val repository = NewsRepository(context, fetch = { url ->
-            if (url.contains("news.json")) serverJson else throw IOException("offline")
-        })
+        val repository = NewsRepository(
+            context,
+            fetch = { throw IOException("offline") },
+            serverFeedFetch = { serverJson },
+        )
         // Pre-land the server feed in Room so the ViewModel flows have data
         // regardless of its init-refresh timing.
         runBlocking { repository.refresh(SourceCatalog.sources) }
