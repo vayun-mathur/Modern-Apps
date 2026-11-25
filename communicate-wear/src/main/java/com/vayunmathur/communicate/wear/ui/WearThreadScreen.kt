@@ -47,6 +47,19 @@ fun WearThreadScreen(
     LaunchedEffect(threadKey) {
         WearLinkBridge.requestThreadPage(context, threadKey)
     }
+    WearThreadContent(thread = thread, cache = cache, onLoadOlder = { scope.launch { WearLinkBridge.requestThreadPage(context, threadKey, cache?.oldestTimestampMillis ?: 0L) } }, onReply = onReply, onMarkRead = { if (thread != null) store.queueMarkRead(thread) }, onBack = onBack)
+}
+
+/** Stateless thread behind [WearThreadScreen]: thread/cache are parameters for previews. */
+@Composable
+internal fun WearThreadContent(
+    thread: com.vayunmathur.communicate.wear.domain.WearThread?,
+    cache: com.vayunmathur.communicate.wear.data.WearThreadCache?,
+    onLoadOlder: () -> Unit,
+    onReply: (String) -> Unit,
+    onMarkRead: () -> Unit,
+    onBack: () -> Unit,
+) {
 
     ScalingLazyColumn(state = rememberScalingLazyListState()) {
         item {
@@ -81,13 +94,7 @@ fun WearThreadScreen(
             if (cache?.hasMore == true) {
                 item {
                     Chip(
-                        onClick = {
-                            scope.launch {
-                                WearLinkBridge.requestThreadPage(
-                                    context, threadKey, cache.oldestTimestampMillis,
-                                )
-                            }
-                        },
+                        onClick = onLoadOlder,
                         label = { Text(stringResource(R.string.wear_load_older), maxLines = 1) },
                         colors = ChipDefaults.secondaryChipColors(),
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
@@ -137,7 +144,7 @@ fun WearThreadScreen(
             if (thread.unreadCount > 0) {
                 item {
                     Chip(
-                        onClick = { store.queueMarkRead(thread) },
+                        onClick = onMarkRead,
                         label = { Text(stringResource(R.string.wear_mark_read), maxLines = 1) },
                         colors = ChipDefaults.secondaryChipColors(),
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),

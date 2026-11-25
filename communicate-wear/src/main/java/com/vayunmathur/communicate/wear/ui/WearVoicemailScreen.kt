@@ -30,6 +30,12 @@ fun WearVoicemailScreen(
     onBack: () -> Unit,
 ) {
     val snapshot by store.snapshot.collectAsState()
+    WearVoicemailContent(snapshot = snapshot, onMarkRead = { store.queueMarkVoicemailRead(it) }, onBack = onBack)
+}
+
+/** Stateless voicemail behind [WearVoicemailScreen]: snapshot is a parameter for previews. */
+@Composable
+internal fun WearVoicemailContent(snapshot: com.vayunmathur.communicate.wear.domain.WearCommunicateSnapshot, onMarkRead: (com.vayunmathur.communicate.wear.domain.WearVoicemail) -> Unit, onBack: () -> Unit) {
 
     ScalingLazyColumn(state = rememberScalingLazyListState()) {
         item {
@@ -53,7 +59,7 @@ fun WearVoicemailScreen(
             items(snapshot.voicemails, key = { it.key }) { voicemail ->
                 Chip(
                     onClick = {
-                        if (!voicemail.isRead) store.queueMarkVoicemailRead(voicemail)
+                        if (!voicemail.isRead) onMarkRead(voicemail)
                     },
                     label = { Text(voicemail.phoneNumber, maxLines = 1) },
                     secondaryLabel = {

@@ -26,6 +26,12 @@ fun WearCallLogScreen(
     onBack: () -> Unit,
 ) {
     val snapshot by store.snapshot.collectAsState()
+    WearCallLogContent(snapshot = snapshot, onBack = onBack)
+}
+
+/** Stateless call log behind [WearCallLogScreen]: snapshot is a parameter for previews. */
+@Composable
+internal fun WearCallLogContent(snapshot: com.vayunmathur.communicate.wear.domain.WearCommunicateSnapshot, onBack: () -> Unit) {
 
     ScalingLazyColumn(state = rememberScalingLazyListState()) {
         item {

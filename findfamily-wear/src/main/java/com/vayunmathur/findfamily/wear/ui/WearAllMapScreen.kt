@@ -37,7 +37,19 @@ fun WearAllMapScreen(
 ) {
     val snapshot by store.snapshot.collectAsState()
     val connected by store.connected.collectAsState()
-    val now = System.currentTimeMillis()
+    WearAllMapContent(snapshot = snapshot, connected = connected, nowMillis = System.currentTimeMillis(), onOpenPerson = onOpenPerson, onBack = onBack)
+}
+
+/** Stateless all-map behind [WearAllMapScreen]: snapshot/connection/instant are parameters for previews. */
+@Composable
+internal fun WearAllMapContent(
+    snapshot: com.vayunmathur.findfamily.wear.domain.WearFindFamilySnapshot,
+    connected: Boolean,
+    nowMillis: Long,
+    onOpenPerson: (Long) -> Unit,
+    onBack: () -> Unit,
+) {
+    val now = nowMillis
     val listState = rememberScalingLazyListState()
     val located = snapshot.people.filter { it.latE7 != null && it.lonE7 != null }
 

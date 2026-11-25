@@ -53,7 +53,20 @@ fun WearTodoTaskScreen(
                     done = sub.done,
                 )
             }
+    WearTodoTaskContent(task = task, onToggleSubtask = { id, done -> store.setDone(id, done) }, onSetDone = { id, done -> store.setDone(id, done) }, onSnooze = { id, tomorrow -> store.snooze(id, tomorrow) }, onEdit = onEdit, onConfirmDelete = onConfirmDelete, onBack = onBack)
+}
 
+/** Stateless task detail behind [WearTodoTaskScreen]: the task is a parameter for previews. */
+@Composable
+internal fun WearTodoTaskContent(
+    task: com.vayunmathur.todo.wear.domain.WearTodoTask?,
+    onToggleSubtask: (String, Boolean) -> Unit,
+    onSetDone: (String, Boolean) -> Unit,
+    onSnooze: (String, Boolean) -> Unit,
+    onEdit: (String) -> Unit,
+    onConfirmDelete: (String) -> Unit,
+    onBack: () -> Unit,
+) {
     ScalingLazyColumn(state = rememberScalingLazyListState()) {
         if (task == null) {
             item {
@@ -118,7 +131,7 @@ fun WearTodoTaskScreen(
             if (task.subtasks.isNotEmpty()) {
                 items(task.subtasks, key = { it.syncId }) { sub ->
                     Chip(
-                        onClick = { store.setDone(sub.syncId, !sub.done) },
+                        onClick = { onToggleSubtask(sub.syncId, !sub.done) },
                         label = {
                             Text(
                                 (if (sub.done) "✓ " else "") + sub.title,
@@ -132,7 +145,7 @@ fun WearTodoTaskScreen(
             }
             item {
                 Chip(
-                    onClick = { store.setDone(task.syncId, !task.done) },
+                    onClick = { onSetDone(task.syncId, !task.done) },
                     label = {
                         Text(
                             stringResource(
@@ -147,7 +160,7 @@ fun WearTodoTaskScreen(
             }
             item {
                 Chip(
-                    onClick = { store.snooze(task.syncId, tomorrow = false) },
+                    onClick = { onSnooze(task.syncId, false) },
                     label = { Text(stringResource(R.string.wear_snooze_hour), maxLines = 1) },
                     colors = ChipDefaults.secondaryChipColors(),
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
@@ -155,7 +168,7 @@ fun WearTodoTaskScreen(
             }
             item {
                 Chip(
-                    onClick = { store.snooze(task.syncId, tomorrow = true) },
+                    onClick = { onSnooze(task.syncId, true) },
                     label = {
                         Text(stringResource(R.string.wear_snooze_tomorrow), maxLines = 1)
                     },

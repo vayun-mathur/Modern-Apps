@@ -38,7 +38,17 @@ fun WearReplyScreen(
 ) {
     val snapshot by store.snapshot.collectAsState()
     val thread = snapshot.threads.firstOrNull { it.key == threadKey }
-    var draft by remember(threadKey) { mutableStateOf("") }
+    WearReplyContent(
+        initialDraft = "",
+        onSend = { text -> if (thread != null && store.queueReply(thread, text) != null) onDone() },
+        onDone = onDone,
+    )
+}
+
+/** Stateless reply behind [WearReplyScreen]: the send sink is a parameter for previews. */
+@Composable
+internal fun WearReplyContent(initialDraft: String, onSend: (String) -> Unit, onDone: () -> Unit) {
+    var draft by remember(initialDraft) { mutableStateOf(initialDraft) }
     val textStyle = TextStyle(color = MaterialTheme.colors.onSurface)
 
     ScalingLazyColumn(state = rememberScalingLazyListState()) {
@@ -61,7 +71,7 @@ fun WearReplyScreen(
         item {
             Chip(
                 onClick = {
-                    if (thread != null && store.queueReply(thread, draft) != null) onDone()
+                    onSend(draft)
                 },
                 label = { Text(stringResource(R.string.wear_send), maxLines = 1) },
                 colors = ChipDefaults.primaryChipColors(),
@@ -71,7 +81,7 @@ fun WearReplyScreen(
         items(WearCommunicateProtocol.CANNED_REPLIES) { canned ->
             Chip(
                 onClick = {
-                    if (thread != null && store.queueReply(thread, canned) != null) onDone()
+                    onSend(canned)
                 },
                 label = { Text(canned, maxLines = 1) },
                 colors = ChipDefaults.secondaryChipColors(),

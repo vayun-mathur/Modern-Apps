@@ -1,10 +1,11 @@
 plugins {
     id("common-conventions-app")
-    // No metadata convention. The game screen is a Vulkan SurfaceView driven by the Rust
-    // engine below, with Compose only as a HUD on top, so Layoutlib can render the joystick
-    // and hotbar but never the world behind them. The listing images are hand-captured and
-    // committed under metadata_data/photos/games-voxels/phone/, which the release build
-    // picks up into graphics/phone-screenshots.
+    id("common-conventions-preview-metadata")
+    // Preview-metadata for Layoutlib-renderable Compose ONLY (menus/inventory/
+    // settings overlays in src/screenshotTest). The game screen is a Vulkan
+    // SurfaceView driven by the Rust engine below: Layoutlib can render the
+    // Compose chrome but never the world behind it, so no game render is
+    // previewed or faked — see MetadataPreviews.kt for the documented exception.
 }
 
 launcherIcon {

@@ -63,6 +63,26 @@ fun WearStoreScreen(store: WearStore) {
     // Recompute rows when any input moves; rows() also folds in PackageManager.
     val rows = store.rows()
     val context = androidx.compose.ui.platform.LocalContext.current
+    WearStoreContent(
+        rows = rows,
+        onInstall = { row ->
+            if (row.phase == WatchAppPhase.READY_TO_INSTALL || row.phase == WatchAppPhase.INSTALL_FAILED) {
+                WearInstaller.install(context, row.app.packageName, store.apkFile(row.app.packageName))
+            }
+        },
+    )
+}
+
+/**
+ * Stateless store body behind [WearStoreScreen]: rows are a parameter, so Compose
+ * previews (src/screenshotTest) render literal fixtures with no store or phone.
+ * This is the module's only top-level screen (deliberately one scrolling column).
+ */
+@Composable
+internal fun WearStoreContent(
+    rows: List<com.vayunmathur.appstore.wear.data.WearRow>,
+    onInstall: (com.vayunmathur.appstore.wear.data.WearRow) -> Unit,
+) {
     val listState = rememberScalingLazyListState()
 
     ScalingLazyColumn(state = listState) {
@@ -86,18 +106,7 @@ fun WearStoreScreen(store: WearStore) {
             return@ScalingLazyColumn
         }
         items(rows, key = { it.app.packageName }) { row ->
-            val phase = store.phaseOf(row.app.packageName)
-            WearRowChip(row.app.name, phase, row.installRequested || row.app.packageName in requested) {
-                if (phase == WatchAppPhase.READY_TO_INSTALL ||
-                    phase == WatchAppPhase.INSTALL_FAILED
-                ) {
-                    WearInstaller.install(
-                        context,
-                        row.app.packageName,
-                        store.apkFile(row.app.packageName),
-                    )
-                }
-            }
+            WearRowChip(row.app.name, row.phase, row.installRequested) { onInstall(row) }
         }
     }
 }

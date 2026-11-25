@@ -24,6 +24,12 @@ fun WearTodoConfirmDeleteScreen(
     onDone: () -> Unit,
     onCancel: () -> Unit,
 ) {
+    WearTodoConfirmDeleteContent(onConfirm = { store.delete(syncId); onDone() }, onCancel = onCancel)
+}
+
+/** Stateless confirmation behind [WearTodoConfirmDeleteScreen]: actions are parameters for previews. */
+@Composable
+internal fun WearTodoConfirmDeleteContent(onConfirm: () -> Unit, onCancel: () -> Unit) {
     ScalingLazyColumn(state = rememberScalingLazyListState()) {
         item {
             Text(
@@ -35,10 +41,7 @@ fun WearTodoConfirmDeleteScreen(
         }
         item {
             Chip(
-                onClick = {
-                    store.delete(syncId)
-                    onDone()
-                },
+                onClick = onConfirm,
                 label = { Text(stringResource(R.string.wear_delete), maxLines = 1) },
                 colors = ChipDefaults.primaryChipColors(),
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),

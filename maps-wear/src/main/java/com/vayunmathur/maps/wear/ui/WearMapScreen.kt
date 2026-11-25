@@ -46,6 +46,21 @@ fun WearMapScreen(
     val position by store.position.collectAsState()
     val connected by store.connected.collectAsState()
     val context = LocalContext.current
+    WearMapContent(snapshot = snapshot, route = route, position = position, connected = connected, nowMillis = System.currentTimeMillis(), onOpenRoute = onOpenRoute, onOpenSaved = onOpenSaved, onRequestRegion = { WearLinkBridge.requestRegion(context) })
+}
+
+/** Stateless map behind [WearMapScreen]: snapshot/route/position are parameters for previews. */
+@Composable
+internal fun WearMapContent(
+    snapshot: com.vayunmathur.maps.wear.domain.WearMapSnapshot?,
+    route: com.vayunmathur.maps.wear.domain.WearRouteState?,
+    position: com.vayunmathur.maps.wear.domain.WearPosition?,
+    connected: Boolean,
+    nowMillis: Long,
+    onOpenRoute: () -> Unit,
+    onOpenSaved: () -> Unit,
+    onRequestRegion: suspend () -> Boolean,
+) {
     val scope = rememberCoroutineScope()
     var note by remember { mutableStateOf<String?>(null) }
     val requestedText = stringResource(R.string.wear_requested)
@@ -92,7 +107,7 @@ fun WearMapScreen(
             // in the bezel and the centred user puck stays clear.
             val currentSnapshot = snapshot
             if (currentSnapshot != null) {
-                val stale = wearIsStale(currentSnapshot, System.currentTimeMillis())
+                val stale = wearIsStale(currentSnapshot, nowMillis)
                 when {
                     !connected -> Text(
                         stringResource(R.string.wear_offline),
@@ -143,7 +158,7 @@ fun WearMapScreen(
                     Chip(
                         onClick = {
                             scope.launch {
-                                note = if (WearLinkBridge.requestRegion(context)) requestedText else noPhoneText
+                                note = if (onRequestRegion()) requestedText else noPhoneText
                             }
                         },
                         label = { Text(stringResource(R.string.wear_request_region), maxLines = 1) },

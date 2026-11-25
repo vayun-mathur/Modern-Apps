@@ -55,6 +55,31 @@ fun WearTodoPageScreen(
     LaunchedEffect(pageKey) {
         if (slices.isEmpty()) WearLinkBridge.requestPage(context, pageKey, 0)
     }
+    WearTodoPageContent(
+        title = title,
+        tasks = allTasks,
+        slicesEmpty = slices.isEmpty(),
+        hasMore = hasMore,
+        onOpenTask = onOpenTask,
+        onQuickAdd = onQuickAdd,
+        onLoadMore = { scope.launch { WearLinkBridge.requestPage(context, pageKey, last?.nextOffset ?: 0) } },
+        onBack = onBack,
+    )
+}
+
+/** Stateless page behind [WearTodoPageScreen]: title/tasks/paging are parameters for previews. */
+@Composable
+internal fun WearTodoPageContent(
+    title: String,
+    tasks: List<com.vayunmathur.todo.wear.domain.WearTodoTask>,
+    slicesEmpty: Boolean,
+    hasMore: Boolean,
+    onOpenTask: (String) -> Unit,
+    onQuickAdd: () -> Unit,
+    onLoadMore: () -> Unit,
+    onBack: () -> Unit,
+) {
+    val allTasks = tasks
 
     ScalingLazyColumn(state = rememberScalingLazyListState()) {
         item {
@@ -73,7 +98,7 @@ fun WearTodoPageScreen(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
             )
         }
-        if (slices.isEmpty()) {
+        if (slicesEmpty) {
             item {
                 Text(
                     stringResource(R.string.wear_no_page),
@@ -118,11 +143,7 @@ fun WearTodoPageScreen(
         if (hasMore) {
             item {
                 Chip(
-                    onClick = {
-                        scope.launch {
-                            WearLinkBridge.requestPage(context, pageKey, last.nextOffset)
-                        }
-                    },
+                    onClick = onLoadMore,
                     label = { Text(stringResource(R.string.wear_load_more), maxLines = 1) },
                     colors = ChipDefaults.secondaryChipColors(),
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),

@@ -57,13 +57,39 @@ fun WearLauncherScreen(
     val sections = remember(installed, snapshot, recents) {
         buildWearLauncherSections(installed, snapshot, recents, context.packageName)
     }
-    val listState = rememberScalingLazyListState()
+    WearLauncherContent(
+        sections = sections,
+        installedEmpty = installed.isEmpty(),
+        onLaunch = { app ->
+            val intent = InstalledApps.launchIntent(context, app) ?: return@WearLauncherContent
+            store.recordLaunch(app.packageName)
+            runCatching { context.startActivity(intent) }
+        },
+        onOpenAllApps = onOpenAllApps,
+        onOpenSettings = onOpenSettings,
+        onRequestSync = { requestWearSync(context) },
+    )
+}
 
-    fun launch(app: WatchApp) {
-        val intent = InstalledApps.launchIntent(context, app) ?: return
-        store.recordLaunch(app.packageName)
-        runCatching { context.startActivity(intent) }
-    }
+/**
+ * Stateless launcher home behind [WearLauncherScreen]: sections are a parameter, so
+ * Compose previews (src/screenshotTest) render literal fixtures with no store/PackageManager.
+ */
+@Composable
+internal fun WearLauncherContent(
+    sections: com.vayunmathur.launcher.wear.domain.WearLauncherSections,
+    installedEmpty: Boolean,
+    onLaunch: (WatchApp) -> Unit,
+    onOpenAllApps: () -> Unit,
+    onOpenSettings: () -> Unit,
+    onRequestSync: suspend () -> Boolean,
+) {
+    val scope = rememberCoroutineScope()
+    var syncNote by remember { mutableStateOf<String?>(null) }
+    val requestedText = stringResource(R.string.wear_sync_requested)
+    val noPhoneText = stringResource(R.string.wear_no_phone)
+    val listState = rememberScalingLazyListState()
+    fun launch(app: WatchApp) = onLaunch(app)
 
     ScalingLazyColumn(state = listState) {
         item {
@@ -92,7 +118,7 @@ fun WearLauncherScreen(
                 )
             }
         }
-        if (installed.isEmpty()) {
+        if (installedEmpty) {
             item {
                 Text(
                     stringResource(R.string.wear_no_apps),
@@ -160,7 +186,7 @@ fun WearLauncherScreen(
             Chip(
                 onClick = {
                     scope.launch {
-                        syncNote = if (requestWearSync(context)) requestedText else noPhoneText
+                        syncNote = if (onRequestSync()) requestedText else noPhoneText
                     }
                 },
                 label = { Text(stringResource(R.string.wear_request_sync), maxLines = 1) },

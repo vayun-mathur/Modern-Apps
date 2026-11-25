@@ -31,6 +31,12 @@ fun WearLastCaptureScreen(store: WearCameraStore, onBack: () -> Unit) {
     val bitmap = remember(thumbnailJpeg) {
         thumbnailJpeg?.let { runCatching { BitmapFactory.decodeByteArray(it, 0, it.size) }.getOrNull() }
     }
+    WearLastCaptureContent(bitmap = bitmap, lastCaptureKind = state.lastCaptureKind, onBack = onBack)
+}
+
+/** Stateless last-capture behind [WearLastCaptureScreen]: decoded bitmap is a parameter for previews. */
+@Composable
+internal fun WearLastCaptureContent(bitmap: android.graphics.Bitmap?, lastCaptureKind: String, onBack: () -> Unit) {
 
     // ScalingLazyColumn (was a fixed Column): on a 1.4" round screen the
     // thumbnail + caption + Back chip overflowed without scrolling.
@@ -52,10 +58,10 @@ fun WearLastCaptureScreen(store: WearCameraStore, onBack: () -> Unit) {
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
                 )
             }
-            if (state.lastCaptureKind.isNotEmpty()) {
+            if (lastCaptureKind.isNotEmpty()) {
                 item {
                     Text(
-                        state.lastCaptureKind,
+                        lastCaptureKind,
                         style = MaterialTheme.typography.body2,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),

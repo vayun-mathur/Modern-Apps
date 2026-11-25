@@ -36,6 +36,21 @@ fun WearNotesListScreen(
     val notes by store.notes.collectAsState()
     val pending by store.pendingOps.collectAsState()
     val context = LocalContext.current
+    WearNotesListContent(notes = notes, pendingCount = pending.size, onOpenNote = onOpenNote, onCreateNote = onCreateNote, onRequestSync = { WearLinkBridge.requestSync(context) })
+}
+
+/**
+ * Stateless list body behind [WearNotesListScreen]: notes/pending count are parameters,
+ * so Compose previews (src/screenshotTest) render literal fixtures with no store or phone.
+ */
+@Composable
+internal fun WearNotesListContent(
+    notes: List<com.vayunmathur.notes.wear.domain.WearNote>,
+    pendingCount: Int,
+    onOpenNote: (String) -> Unit,
+    onCreateNote: () -> Unit,
+    onRequestSync: suspend () -> Boolean,
+) {
     val scope = rememberCoroutineScope()
     var syncNote by remember { mutableStateOf<String?>(null) }
     val requestedText = stringResource(R.string.wear_sync_requested)
@@ -51,10 +66,10 @@ fun WearNotesListScreen(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
             )
         }
-        if (pending.isNotEmpty()) {
+        if (pendingCount > 0) {
             item {
                 Text(
-                    stringResource(R.string.wear_pending, pending.size),
+                    stringResource(R.string.wear_pending, pendingCount),
                     style = MaterialTheme.typography.body2,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
@@ -105,7 +120,7 @@ fun WearNotesListScreen(
             Chip(
                 onClick = {
                     scope.launch {
-                        syncNote = if (WearLinkBridge.requestSync(context)) requestedText else noPhoneText
+                        syncNote = if (onRequestSync()) requestedText else noPhoneText
                     }
                 },
                 label = { Text(stringResource(R.string.wear_request_sync), maxLines = 1) },

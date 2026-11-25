@@ -24,6 +24,7 @@ import androidx.wear.compose.material.Text
 import com.vayunmathur.calendar.wear.R
 import com.vayunmathur.calendar.wear.data.WearCalendarStore
 import com.vayunmathur.calendar.wear.domain.WearCalendarEvent
+import com.vayunmathur.calendar.wear.domain.WearCalendarSnapshot
 import com.vayunmathur.calendar.wear.domain.wearAgenda
 import com.vayunmathur.calendar.wear.domain.wearEventDay
 import com.vayunmathur.calendar.wear.sync.requestWearSync
@@ -42,13 +43,32 @@ import kotlinx.datetime.toLocalDateTime
 fun WearAgendaScreen(store: WearCalendarStore, onOpenEvent: (WearCalendarEvent) -> Unit) {
     val snapshot by store.snapshot.collectAsState()
     val context = LocalContext.current
+    WearAgendaContent(
+        snapshot = snapshot,
+        nowMillis = System.currentTimeMillis(),
+        onOpenEvent = onOpenEvent,
+        onRequestSync = { requestWearSync(context) },
+    )
+}
+
+/**
+ * Stateless agenda body behind [WearAgendaScreen]: snapshot and instant are parameters,
+ * so Compose previews (src/screenshotTest) render literal fixtures with no store or phone.
+ */
+@Composable
+internal fun WearAgendaContent(
+    snapshot: WearCalendarSnapshot,
+    nowMillis: Long,
+    onOpenEvent: (WearCalendarEvent) -> Unit,
+    onRequestSync: suspend () -> Boolean,
+) {
     val scope = rememberCoroutineScope()
     var syncNote by remember { mutableStateOf<String?>(null) }
     val requestedText = stringResource(R.string.wear_sync_requested)
     val noPhoneText = stringResource(R.string.wear_no_phone)
     val zone = remember { TimeZone.currentSystemDefault() }
-    val agenda = remember(snapshot) {
-        wearAgenda(snapshot, System.currentTimeMillis(), zone)
+    val agenda = remember(snapshot, nowMillis) {
+        wearAgenda(snapshot, nowMillis, zone)
     }
     val listState = rememberScalingLazyListState()
 
@@ -111,7 +131,7 @@ fun WearAgendaScreen(store: WearCalendarStore, onOpenEvent: (WearCalendarEvent) 
             Chip(
                 onClick = {
                     scope.launch {
-                        syncNote = if (requestWearSync(context)) requestedText else noPhoneText
+                        syncNote = if (onRequestSync()) requestedText else noPhoneText
                     }
                 },
                 label = { Text(stringResource(R.string.wear_request_sync), maxLines = 1) },

@@ -39,6 +39,22 @@ fun WearConversationListScreen(
     val pending by store.pendingOps.collectAsState()
     val alert by store.lastAlert.collectAsState()
     val context = LocalContext.current
+    WearConversationListContent(snapshot = snapshot, pendingCount = pending.size, alert = alert, onOpenThread = onOpenThread, onOpenAlert = { store.clearAlert(); onOpenThread(it.threadKey) }, onOpenCalls = onOpenCalls, onOpenVoicemail = onOpenVoicemail, onOpenPhoneOnly = onOpenPhoneOnly, onRequestSync = { WearLinkBridge.requestSync(context) })
+}
+
+/** Stateless conversation list behind [WearConversationListScreen]: snapshot/alert are parameters for previews. */
+@Composable
+internal fun WearConversationListContent(
+    snapshot: com.vayunmathur.communicate.wear.domain.WearCommunicateSnapshot,
+    pendingCount: Int,
+    alert: com.vayunmathur.communicate.wear.domain.WearNewMessageAlert?,
+    onOpenThread: (String) -> Unit,
+    onOpenAlert: (com.vayunmathur.communicate.wear.domain.WearNewMessageAlert) -> Unit,
+    onOpenCalls: () -> Unit,
+    onOpenVoicemail: () -> Unit,
+    onOpenPhoneOnly: () -> Unit,
+    onRequestSync: suspend () -> Boolean,
+) {
     val scope = rememberCoroutineScope()
     var syncNote by remember { mutableStateOf<String?>(null) }
     val requestedText = stringResource(R.string.wear_sync_requested)
@@ -56,10 +72,7 @@ fun WearConversationListScreen(
         alert?.let { newMessage ->
             item {
                 Chip(
-                    onClick = {
-                        store.clearAlert()
-                        onOpenThread(newMessage.threadKey)
-                    },
+                    onClick = { onOpenAlert(newMessage) },
                     label = {
                         Text(
                             "${stringResource(R.string.wear_new_message)}: ${newMessage.displayName}",
@@ -76,10 +89,10 @@ fun WearConversationListScreen(
                 )
             }
         }
-        if (pending.isNotEmpty()) {
+        if (pendingCount > 0) {
             item {
                 Text(
-                    stringResource(R.string.wear_pending, pending.size),
+                    stringResource(R.string.wear_pending, pendingCount),
                     style = MaterialTheme.typography.body2,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
@@ -177,7 +190,7 @@ fun WearConversationListScreen(
             Chip(
                 onClick = {
                     scope.launch {
-                        syncNote = if (WearLinkBridge.requestSync(context)) {
+                        syncNote = if (onRequestSync()) {
                             requestedText
                         } else {
                             noPhoneText

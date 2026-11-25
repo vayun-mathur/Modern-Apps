@@ -40,6 +40,18 @@ fun WearTodoHomeScreen(
     val catalog by store.catalog.collectAsState()
     val pending by store.pendingOps.collectAsState()
     val context = LocalContext.current
+    WearTodoHomeContent(catalog = catalog, pendingCount = pending.size, onOpenPage = onOpenPage, onQuickAdd = onQuickAdd, onRequestSync = { WearLinkBridge.requestSync(context) })
+}
+
+/** Stateless home behind [WearTodoHomeScreen]: catalog/pending count are parameters for previews. */
+@Composable
+internal fun WearTodoHomeContent(
+    catalog: com.vayunmathur.todo.wear.domain.WearTodoCatalog,
+    pendingCount: Int,
+    onOpenPage: (String) -> Unit,
+    onQuickAdd: () -> Unit,
+    onRequestSync: suspend () -> Boolean,
+) {
     val scope = rememberCoroutineScope()
     var syncNote by remember { mutableStateOf<String?>(null) }
     val requestedText = stringResource(R.string.wear_sync_requested)
@@ -54,10 +66,10 @@ fun WearTodoHomeScreen(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
             )
         }
-        if (pending.isNotEmpty()) {
+        if (pendingCount > 0) {
             item {
                 Text(
-                    stringResource(R.string.wear_pending, pending.size),
+                    stringResource(R.string.wear_pending, pendingCount),
                     style = MaterialTheme.typography.body2,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
@@ -108,7 +120,7 @@ fun WearTodoHomeScreen(
             Chip(
                 onClick = {
                     scope.launch {
-                        syncNote = if (WearLinkBridge.requestSync(context)) {
+                        syncNote = if (onRequestSync()) {
                             requestedText
                         } else {
                             noPhoneText

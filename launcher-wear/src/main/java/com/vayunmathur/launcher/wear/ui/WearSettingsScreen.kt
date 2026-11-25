@@ -28,6 +28,23 @@ import com.vayunmathur.launcher.wear.platform.InstalledApps
 fun WearSettingsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val targets = remember(context) { InstalledApps.settingsTargets(context) }
+    WearSettingsContent(
+        targets = targets,
+        onOpenTarget = { target -> runCatching { context.startActivity(InstalledApps.settingsIntent(target)) } },
+        onBack = onBack,
+    )
+}
+
+/**
+ * Stateless settings behind [WearSettingsScreen]: targets are a parameter, so Compose
+ * previews (src/screenshotTest) render literal fixtures without probing PackageManager.
+ */
+@Composable
+internal fun WearSettingsContent(
+    targets: List<com.vayunmathur.launcher.wear.domain.WearSettingsTarget>,
+    onOpenTarget: (com.vayunmathur.launcher.wear.domain.WearSettingsTarget) -> Unit,
+    onBack: () -> Unit,
+) {
     val listState = rememberScalingLazyListState()
 
     ScalingLazyColumn(state = listState) {
@@ -51,9 +68,7 @@ fun WearSettingsScreen(onBack: () -> Unit) {
         } else {
             items(targets, key = { it.action }) { target ->
                 Chip(
-                    onClick = {
-                        runCatching { context.startActivity(InstalledApps.settingsIntent(target)) }
-                    },
+                    onClick = { onOpenTarget(target) },
                     label = { Text(target.label, maxLines = 1) },
                     colors = ChipDefaults.secondaryChipColors(),
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),

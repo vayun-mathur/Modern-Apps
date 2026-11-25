@@ -5,12 +5,12 @@ plugins {
     // the type-safe `launcherIcon` and `nativeAbis` accessors below are generated from the plugins this
     // file applies directly.
     id("common-conventions-tv")
-    // No preview-metadata convention. Every screen here is either a full-screen decoder surface or
-    // a TV-shaped idle screen; hand-place any listing images under
-    // metadata_data/photos/cast-tv/tv/ (the release build maps each bucket to its
-    // Triple-T graphics/<bucket>-screenshots dir). `camera` and `games/voxels`
-    // set the precedent for opting out. metadata_data/cast-tv.md still exists, which
+    // Listing screenshots come from Compose previews (src/screenshotTest) for the
+    // Layoutlib-renderable TV screens (ready/pairing/now-playing); decoder/mirror
+    // surfaces are not previewed — see MetadataPreviews.kt. Renders land in
+    // metadata_data/photos/cast-tv/tv/. metadata_data/cast-tv.md still exists, which
     // is what makes release.sh generate a listing at all.
+    id("common-conventions-preview-metadata")
 }
 
 launcherIcon {

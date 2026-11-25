@@ -57,6 +57,28 @@ fun WearViewfinderScreen(
         if (connected) WearLinkBridge.startPreview(context)
         onDispose { WearLinkBridge.stopPreview(context) }
     }
+    val decoded = remember(previewJpeg) {
+        previewJpeg?.let { runCatching { BitmapFactory.decodeByteArray(it, 0, it.size) }.getOrNull() }
+    }
+    WearViewfinderContent(connected = connected, state = state, bitmap = decoded, rotation = rotation, onOp = { op -> WearLinkBridge.sendOpAsync(context, op) }, onOpenControls = onOpenControls, onOpenLastCapture = onOpenLastCapture)
+}
+
+/**
+ * Stateless viewfinder behind [WearViewfinderScreen]: connection/mirrored state and the
+ * decoded frame (null while waiting) are parameters, so previews render the waiting
+ * state with no phone. Layoutlib cannot render a live phone-camera frame — see MetadataPreviews.
+ */
+@Composable
+internal fun WearViewfinderContent(
+    connected: Boolean,
+    state: com.vayunmathur.camera.wear.domain.WearCameraState,
+    bitmap: android.graphics.Bitmap?,
+    rotation: Int,
+    onOp: (WearCameraOp) -> Unit,
+    onOpenControls: () -> Unit,
+    onOpenLastCapture: () -> Unit,
+) {
+    val context = LocalContext.current
 
     if (!connected) {
         Column(
@@ -78,9 +100,6 @@ fun WearViewfinderScreen(
         return
     }
 
-    val bitmap = remember(previewJpeg) {
-        previewJpeg?.let { runCatching { BitmapFactory.decodeByteArray(it, 0, it.size) }.getOrNull() }
-    }
     val videoMode = state.mode in WearCameraProtocol.VIDEO_MODES
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -136,7 +155,7 @@ fun WearViewfinderScreen(
                 items(state.remoteModes) { mode ->
                     Chip(
                         onClick = {
-                            WearLinkBridge.sendOpAsync(context, WearCameraOp(WearOpKind.SET_MODE, mode = mode))
+                            onOp(WearCameraOp(WearOpKind.SET_MODE, mode = mode))
                         },
                         label = { Text(mode, maxLines = 1) },
                         colors = if (mode == state.mode) {
@@ -154,7 +173,7 @@ fun WearViewfinderScreen(
                     } else {
                         WearCameraOp(WearOpKind.SHUTTER)
                     }
-                    WearLinkBridge.sendOpAsync(context, op)
+                    onOp(op)
                 },
                 label = {
                     Text(

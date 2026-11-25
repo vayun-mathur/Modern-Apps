@@ -25,7 +25,12 @@ fun WearArtistListScreen(store: WearMusicStore, onRoute: (WearRoute) -> Unit) {
     val page = WearPageId(WearPageKey.ARTISTS)
     WearPageLoader(store, page)
     val pages by store.pages.collectAsState()
-    val snapshot = pages[page]
+    WearArtistListContent(snapshot = pages[page], onRoute = onRoute)
+}
+
+/** Stateless artists body behind [WearArtistListScreen]: snapshot is a parameter for previews. */
+@Composable
+internal fun WearArtistListContent(snapshot: com.vayunmathur.music.wear.domain.WearPageSnapshot?, onRoute: (WearRoute) -> Unit) {
     ScalingLazyColumn(state = rememberScalingLazyListState()) {
         item { WearTitle(stringResource(R.string.wear_artists)) }
         if (snapshot == null) {

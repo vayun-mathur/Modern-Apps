@@ -32,6 +32,20 @@ fun WearNoteScreen(
 ) {
     val notes by store.notes.collectAsState()
     val note = notes.firstOrNull { it.syncId == syncId }
+    WearNoteContent(note = note, onEdit = onEdit, onDelete = { store.deleteNote(it); onBack() }, onBack = onBack)
+}
+
+/**
+ * Stateless note body behind [WearNoteScreen]: the note is a parameter, so Compose
+ * previews (src/screenshotTest) render a literal fixture with no store.
+ */
+@Composable
+internal fun WearNoteContent(
+    note: com.vayunmathur.notes.wear.domain.WearNote?,
+    onEdit: (String) -> Unit,
+    onDelete: (String) -> Unit,
+    onBack: () -> Unit,
+) {
     val listState = rememberScalingLazyListState()
 
     ScalingLazyColumn(state = listState) {
@@ -93,10 +107,7 @@ fun WearNoteScreen(
             }
             item {
                 Chip(
-                    onClick = {
-                        store.deleteNote(note.syncId)
-                        onBack()
-                    },
+                    onClick = { onDelete(note.syncId) },
                     label = { Text(stringResource(R.string.wear_delete), maxLines = 1) },
                     colors = ChipDefaults.secondaryChipColors(),
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),

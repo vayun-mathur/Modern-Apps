@@ -23,6 +23,12 @@ import com.vayunmathur.music.wear.domain.WearOpKind
 @Composable
 fun WearQueueScreen(store: WearMusicStore, onRoute: (WearRoute) -> Unit) {
     val playback by store.playback.collectAsState()
+    WearQueueContent(playback = playback, onOp = store::enqueueOp, onRoute = onRoute)
+}
+
+/** Stateless queue body behind [WearQueueScreen]: playback is a parameter for previews. */
+@Composable
+internal fun WearQueueContent(playback: com.vayunmathur.music.wear.domain.WearPlaybackState, onOp: (WearMusicOp) -> Unit, onRoute: (WearRoute) -> Unit) {
     ScalingLazyColumn(state = rememberScalingLazyListState()) {
         item { WearTitle(stringResource(R.string.wear_queue)) }
         if (playback.queue.isEmpty()) {
@@ -33,7 +39,7 @@ fun WearQueueScreen(store: WearMusicStore, onRoute: (WearRoute) -> Unit) {
                     label = { Text((if (index == playback.queueIndex) "▶ " else "") + track.title, maxLines = 1) },
                     secondaryLabel = { Text(track.artist, maxLines = 1) },
                     onClick = {
-                        store.enqueueOp(
+                        onOp(
                             WearMusicOp(WearOpKind.PLAY_TRACKS, trackIds = playback.queue.map { it.id }, startIndex = index),
                         )
                     },

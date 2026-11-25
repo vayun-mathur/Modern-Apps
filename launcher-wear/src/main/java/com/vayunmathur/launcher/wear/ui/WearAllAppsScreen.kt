@@ -39,13 +39,34 @@ import kotlinx.coroutines.withContext
 fun WearAllAppsScreen(store: WearLauncherStore, onBack: () -> Unit) {
     val context = LocalContext.current
     val snapshot by store.snapshot.collectAsState()
-    var query by remember { mutableStateOf("") }
     val installed by produceState(initialValue = emptyList<WatchApp>(), context) {
         value = withContext(Dispatchers.IO) { InstalledApps.load(context) }
     }
     val all = remember(installed, snapshot) {
         buildWearLauncherSections(installed, snapshot, emptyList(), context.packageName).all
     }
+    WearAllAppsContent(
+        all = all,
+        onLaunch = { app ->
+            val intent = InstalledApps.launchIntent(context, app) ?: return@WearAllAppsContent
+            store.recordLaunch(app.packageName)
+            runCatching { context.startActivity(intent) }
+        },
+        onBack = onBack,
+    )
+}
+
+/**
+ * Stateless drawer behind [WearAllAppsScreen]: the app list is a parameter, so Compose
+ * previews (src/screenshotTest) render literal fixtures with no store/PackageManager.
+ */
+@Composable
+internal fun WearAllAppsContent(
+    all: List<WatchApp>,
+    onLaunch: (WatchApp) -> Unit,
+    onBack: () -> Unit,
+) {
+    var query by remember { mutableStateOf("") }
     val filtered = remember(all, query) { filterWatchApps(all, query) }
     val listState = rememberScalingLazyListState()
 
@@ -87,11 +108,7 @@ fun WearAllAppsScreen(store: WearLauncherStore, onBack: () -> Unit) {
             }
         } else {
             items(filtered, key = { it.packageName }) { app ->
-                WearAppChip(app) {
-                    val intent = InstalledApps.launchIntent(context, app) ?: return@WearAppChip
-                    store.recordLaunch(app.packageName)
-                    runCatching { context.startActivity(intent) }
-                }
+                WearAppChip(app) { onLaunch(app) }
             }
         }
         item {

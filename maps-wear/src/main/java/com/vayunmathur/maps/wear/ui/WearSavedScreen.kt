@@ -32,6 +32,12 @@ fun WearSavedScreen(
 ) {
     val snapshot by store.snapshot.collectAsState()
     val position by store.position.collectAsState()
+    WearSavedContent(snapshot = snapshot, position = position, onBack = onBack)
+}
+
+/** Stateless saved places behind [WearSavedScreen]: snapshot/position are parameters for previews. */
+@Composable
+internal fun WearSavedContent(snapshot: com.vayunmathur.maps.wear.domain.WearMapSnapshot?, position: com.vayunmathur.maps.wear.domain.WearPosition?, onBack: () -> Unit) {
     val listState = rememberScalingLazyListState()
     ScalingLazyColumn(state = listState) {
         item {

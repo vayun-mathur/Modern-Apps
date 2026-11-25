@@ -32,6 +32,31 @@ fun WearSearchScreen(store: WearMusicStore, onRoute: (WearRoute) -> Unit) {
     val pages by store.pages.collectAsState()
     val playback by store.playback.collectAsState()
     val page = WearPageId(WearPageKey.SEARCH, query = query)
+    WearSearchContent(
+        initialQuery = query,
+        snapshots = pages,
+        playback = playback,
+        onSearch = { next -> if (next.length >= 2) WearLinkBridge.requestSearch(context, next) },
+        onEnqueueOp = store::enqueueOp,
+        onRoute = onRoute,
+    )
+}
+
+/**
+ * Stateless search body behind [WearSearchScreen]: results snapshot/playback and the
+ * search sink are parameters, so previews render a literal fixture with no phone.
+ */
+@Composable
+internal fun WearSearchContent(
+    initialQuery: String,
+    snapshots: Map<WearPageId, com.vayunmathur.music.wear.domain.WearPageSnapshot>,
+    playback: com.vayunmathur.music.wear.domain.WearPlaybackState,
+    onSearch: (String) -> Unit,
+    onEnqueueOp: (com.vayunmathur.music.wear.domain.WearMusicOp) -> Unit,
+    onRoute: (WearRoute) -> Unit,
+) {
+    var query by remember { mutableStateOf(initialQuery) }
+    val page = WearPageId(WearPageKey.SEARCH, query = query)
     ScalingLazyColumn(state = rememberScalingLazyListState()) {
         item { WearTitle(stringResource(R.string.wear_search)) }
         item {
@@ -39,7 +64,7 @@ fun WearSearchScreen(store: WearMusicStore, onRoute: (WearRoute) -> Unit) {
                 value = query,
                 onValueChange = { next ->
                     query = next
-                    if (next.length >= 2) WearLinkBridge.requestSearch(context, next)
+                    onSearch(next)
                 },
                 textStyle = TextStyle(color = MaterialTheme.colors.onSurface),
                 cursorBrush = SolidColor(MaterialTheme.colors.onSurface),
@@ -49,7 +74,7 @@ fun WearSearchScreen(store: WearMusicStore, onRoute: (WearRoute) -> Unit) {
         if (query.length < 2) {
             item { WearNote(stringResource(R.string.wear_search)) }
         } else {
-            wearTrackItems(store::enqueueOp, page, pages[page], playback, onRoute)
+            wearTrackItems(onEnqueueOp, page, snapshots[page], playback, onRoute)
         }
         wearBackItem { onRoute(WearRoute.Home) }
     }

@@ -27,7 +27,12 @@ fun WearAddToPlaylistScreen(store: WearMusicStore, musicId: Long, onRoute: (Wear
     val page = WearPageId(WearPageKey.PLAYLISTS)
     WearPageLoader(store, page)
     val pages by store.pages.collectAsState()
-    val snapshot = pages[page]
+    WearAddToPlaylistContent(snapshot = pages[page], onAdd = { playlistId -> store.enqueueOp(WearMusicOp(WearOpKind.ADD_TO_PLAYLIST, trackIds = listOf(musicId), entityId = playlistId)); onRoute(WearRoute.NowPlaying) }, onRoute = onRoute)
+}
+
+/** Stateless add-to-playlist body behind [WearAddToPlaylistScreen]: snapshot is a parameter for previews. */
+@Composable
+internal fun WearAddToPlaylistContent(snapshot: com.vayunmathur.music.wear.domain.WearPageSnapshot?, onAdd: (Long) -> Unit, onRoute: (WearRoute) -> Unit) {
     ScalingLazyColumn(state = rememberScalingLazyListState()) {
         item { WearTitle(stringResource(R.string.wear_add_to_playlist)) }
         if (snapshot == null) {
@@ -39,8 +44,7 @@ fun WearAddToPlaylistScreen(store: WearMusicStore, musicId: Long, onRoute: (Wear
                 Chip(
                     label = { Text(playlist.name, maxLines = 1) },
                     onClick = {
-                        store.enqueueOp(WearMusicOp(WearOpKind.ADD_TO_PLAYLIST, trackIds = listOf(musicId), entityId = playlist.id))
-                        onRoute(WearRoute.NowPlaying)
+                        onAdd(playlist.id)
                     },
                     colors = ChipDefaults.secondaryChipColors(),
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),

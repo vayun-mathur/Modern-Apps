@@ -14,12 +14,18 @@ import com.vayunmathur.music.wear.data.WearMusicStore
 fun WearSettingsScreen(store: WearMusicStore, onRoute: (WearRoute) -> Unit) {
     val pages by store.pages.collectAsState()
     val pending by store.pendingOps.collectAsState()
+    WearSettingsContent(cachedPages = pages.size, pendingCount = pending.size, onRoute = onRoute)
+}
+
+/** Stateless settings body behind [WearSettingsScreen]: counts are parameters for previews. */
+@Composable
+internal fun WearSettingsContent(cachedPages: Int, pendingCount: Int, onRoute: (WearRoute) -> Unit) {
     ScalingLazyColumn(state = rememberScalingLazyListState()) {
         item { WearTitle(stringResource(R.string.wear_settings)) }
         item { WearNote("Music and playback stay on your phone.") }
-        item { WearNote("Cached pages: " + pages.size) }
-        item { WearNote("Waiting for phone: " + pending.size) }
-        if (pending.isNotEmpty()) {
+        item { WearNote("Cached pages: " + cachedPages) }
+        item { WearNote("Waiting for phone: " + pendingCount) }
+        if (pendingCount > 0) {
             item { WearNote(stringResource(R.string.wear_no_phone)) }
         }
         wearBackItem { onRoute(WearRoute.Home) }

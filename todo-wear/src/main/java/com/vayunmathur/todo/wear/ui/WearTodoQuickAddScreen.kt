@@ -34,7 +34,13 @@ fun WearTodoQuickAddScreen(
     pageKey: String,
     onDone: () -> Unit,
 ) {
-    var text by remember { mutableStateOf("") }
+    WearTodoQuickAddContent(initialText = "", onSave = { text -> if (text.isNotBlank()) store.quickAdd(text, pageKey) }, onDone = onDone)
+}
+
+/** Stateless quick-add behind [WearTodoQuickAddScreen]: the save sink is a parameter for previews. */
+@Composable
+internal fun WearTodoQuickAddContent(initialText: String, onSave: (String) -> Unit, onDone: () -> Unit) {
+    var text by remember(initialText) { mutableStateOf(initialText) }
 
     ScalingLazyColumn(state = rememberScalingLazyListState()) {
         item {
@@ -56,7 +62,7 @@ fun WearTodoQuickAddScreen(
         item {
             Chip(
                 onClick = {
-                    if (text.isNotBlank()) store.quickAdd(text, pageKey)
+                    onSave(text)
                     onDone()
                 },
                 label = { Text(stringResource(R.string.wear_save), maxLines = 1) },

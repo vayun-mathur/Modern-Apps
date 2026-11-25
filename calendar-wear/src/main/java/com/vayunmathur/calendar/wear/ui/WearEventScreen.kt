@@ -18,6 +18,7 @@ import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
 import com.vayunmathur.calendar.wear.R
 import com.vayunmathur.calendar.wear.data.WearCalendarStore
+import com.vayunmathur.calendar.wear.domain.WearCalendarEvent
 import kotlinx.datetime.TimeZone
 import kotlin.time.Instant
 import kotlinx.datetime.toLocalDateTime
@@ -34,6 +35,15 @@ fun WearEventScreen(
     val event = snapshot.events.firstOrNull {
         it.eventId == eventId && it.startMillis == startMillis
     }
+    WearEventContent(event = event, onBack = onBack)
+}
+
+/**
+ * Stateless event detail behind [WearEventScreen]: the event is a parameter, so
+ * Compose previews (src/screenshotTest) render a literal fixture with no store.
+ */
+@Composable
+internal fun WearEventContent(event: WearCalendarEvent?, onBack: () -> Unit) {
     val zone = remember { TimeZone.currentSystemDefault() }
     val listState = rememberScalingLazyListState()
 

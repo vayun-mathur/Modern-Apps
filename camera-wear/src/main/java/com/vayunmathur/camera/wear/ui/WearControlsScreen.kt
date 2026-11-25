@@ -37,6 +37,14 @@ fun WearControlsScreen(store: WearCameraStore, onBack: () -> Unit) {
     val listState = rememberScalingLazyListState()
 
     fun send(op: WearCameraOp) = WearLinkBridge.sendOpAsync(context, op)
+    WearControlsContent(state = state, onOp = ::send, onBack = onBack)
+}
+
+/** Stateless controls behind [WearControlsScreen]: mirrored state/op sink are parameters for previews. */
+@Composable
+internal fun WearControlsContent(state: com.vayunmathur.camera.wear.domain.WearCameraState, onOp: (WearCameraOp) -> Unit, onBack: () -> Unit) {
+    val listState = rememberScalingLazyListState()
+    fun send(op: WearCameraOp) = onOp(op)
 
     ScalingLazyColumn(state = listState) {
         item {

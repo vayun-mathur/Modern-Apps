@@ -39,10 +39,28 @@ fun WearTodoEditScreen(
 ) {
     val pagesMap by store.pages.collectAsState()
     val existing = store.pagesForAll().firstOrNull { it.syncId == syncId }
-    var title by remember(syncId) { mutableStateOf(existing?.title.orEmpty()) }
-    var dueAt by remember(syncId) { mutableStateOf(existing?.dueAt) }
-    var clearDue by remember(syncId) { mutableStateOf(false) }
-    var priority by remember(syncId) { mutableStateOf(existing?.priority ?: 0) }
+    WearTodoEditContent(
+        initialTitle = existing?.title.orEmpty(),
+        initialDueAt = existing?.dueAt,
+        initialPriority = existing?.priority ?: 0,
+        onSave = { title, dueAt, clearDue, priority -> store.edit(syncId = syncId, title = title, dueAt = dueAt, clearDue = clearDue, priority = priority) },
+        onDone = onDone,
+    )
+}
+
+/** Stateless edit behind [WearTodoEditScreen]: initial values/save sink are parameters for previews. */
+@Composable
+internal fun WearTodoEditContent(
+    initialTitle: String,
+    initialDueAt: Long?,
+    initialPriority: Int,
+    onSave: (String?, Long?, Boolean, Int) -> Unit,
+    onDone: () -> Unit,
+) {
+    var title by remember(initialTitle) { mutableStateOf(initialTitle) }
+    var dueAt by remember(initialDueAt) { mutableStateOf(initialDueAt) }
+    var clearDue by remember { mutableStateOf(false) }
+    var priority by remember(initialPriority) { mutableStateOf(initialPriority) }
     val zone = ZoneId.systemDefault()
     fun startOfDay(date: LocalDate): Long =
         date.atStartOfDay(zone).toInstant().toEpochMilli()
@@ -111,13 +129,7 @@ fun WearTodoEditScreen(
         item {
             Chip(
                 onClick = {
-                    store.edit(
-                        syncId = syncId,
-                        title = title.trim().takeIf { it.isNotEmpty() },
-                        dueAt = dueAt,
-                        clearDue = clearDue,
-                        priority = priority,
-                    )
+                    onSave(title.trim().takeIf { it.isNotEmpty() }, dueAt, clearDue, priority)
                     onDone()
                 },
                 label = { Text(stringResource(R.string.wear_save), maxLines = 1) },

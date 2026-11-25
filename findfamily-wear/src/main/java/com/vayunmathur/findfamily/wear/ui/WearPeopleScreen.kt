@@ -47,11 +47,25 @@ fun WearPeopleScreen(
     val snapshot by store.snapshot.collectAsState()
     val connected by store.connected.collectAsState()
     val context = LocalContext.current
+    WearPeopleContent(snapshot = snapshot, connected = connected, nowMillis = System.currentTimeMillis(), onOpenPerson = onOpenPerson, onOpenMap = onOpenMap, onRequestRefresh = { WearLinkBridge.requestRefresh(context) }, onStopSharing = { WearLinkBridge.stopSharingNow(context) })
+}
+
+/** Stateless people home behind [WearPeopleScreen]: snapshot/connection/instant are parameters for previews. */
+@Composable
+internal fun WearPeopleContent(
+    snapshot: com.vayunmathur.findfamily.wear.domain.WearFindFamilySnapshot,
+    connected: Boolean,
+    nowMillis: Long,
+    onOpenPerson: (Long) -> Unit,
+    onOpenMap: () -> Unit,
+    onRequestRefresh: suspend () -> Boolean,
+    onStopSharing: suspend () -> Boolean,
+) {
     val scope = rememberCoroutineScope()
     var note by remember { mutableStateOf<String?>(null) }
     val requestedText = stringResource(R.string.wear_requested)
     val noPhoneText = stringResource(R.string.wear_no_phone)
-    val now = System.currentTimeMillis()
+    val now = nowMillis
     val self = snapshot.people.firstOrNull { it.isSelf }
     val listState = rememberScalingLazyListState()
 
@@ -190,7 +204,7 @@ fun WearPeopleScreen(
             Chip(
                 onClick = {
                     scope.launch {
-                        note = if (WearLinkBridge.requestRefresh(context)) requestedText else noPhoneText
+                        note = if (onRequestRefresh()) requestedText else noPhoneText
                     }
                 },
                 label = { Text(stringResource(R.string.wear_refresh), maxLines = 1) },
@@ -202,7 +216,7 @@ fun WearPeopleScreen(
             Chip(
                 onClick = {
                     scope.launch {
-                        note = if (WearLinkBridge.stopSharingNow(context)) requestedText else noPhoneText
+                        note = if (onStopSharing()) requestedText else noPhoneText
                     }
                 },
                 label = { Text(stringResource(R.string.wear_stop_sharing), maxLines = 1) },

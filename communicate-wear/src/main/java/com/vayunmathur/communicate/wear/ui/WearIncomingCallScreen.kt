@@ -28,6 +28,12 @@ fun WearIncomingCallScreen(
     call: WearIncomingCall,
     onDone: () -> Unit,
 ) {
+    WearIncomingCallContent(call = call, onDecline = { store.queueDeclineCall(call); onDone() }, onDone = onDone)
+}
+
+/** Stateless incoming-call behind [WearIncomingCallScreen]: call is a parameter for previews. */
+@Composable
+internal fun WearIncomingCallContent(call: WearIncomingCall, onDecline: () -> Unit, onDone: () -> Unit) {
     ScalingLazyColumn(state = rememberScalingLazyListState()) {
         item {
             Text(
@@ -55,10 +61,7 @@ fun WearIncomingCallScreen(
         }
         item {
             Chip(
-                onClick = {
-                    store.queueDeclineCall(call)
-                    onDone()
-                },
+                onClick = onDecline,
                 label = { Text(stringResource(R.string.wear_decline), maxLines = 1) },
                 colors = ChipDefaults.primaryChipColors(),
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),

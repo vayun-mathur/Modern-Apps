@@ -26,6 +26,12 @@ fun WearRouteDetailScreen(
     onBack: () -> Unit,
 ) {
     val route by store.route.collectAsState()
+    WearRouteDetailContent(route = route, onBack = onBack)
+}
+
+/** Stateless route detail behind [WearRouteDetailScreen]: route is a parameter for previews. */
+@Composable
+internal fun WearRouteDetailContent(route: com.vayunmathur.maps.wear.domain.WearRouteState?, onBack: () -> Unit) {
     val listState = rememberScalingLazyListState()
     ScalingLazyColumn(state = listState) {
         item {

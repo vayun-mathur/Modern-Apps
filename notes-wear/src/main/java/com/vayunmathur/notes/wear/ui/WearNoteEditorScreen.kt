@@ -37,8 +37,29 @@ fun WearNoteEditorScreen(
 ) {
     val notes by store.notes.collectAsState()
     val existing = syncId?.let { id -> notes.firstOrNull { it.syncId == id } }
-    var title by remember(syncId) { mutableStateOf(existing?.title.orEmpty()) }
-    var body by remember(syncId) { mutableStateOf(existing?.body.orEmpty()) }
+    WearNoteEditorContent(
+        initialTitle = existing?.title.orEmpty(),
+        initialBody = existing?.body.orEmpty(),
+        onSave = { title, body ->
+            if (syncId == null) store.createNote(title, body) else store.editNote(syncId, title, body)
+        },
+        onDone = onDone,
+    )
+}
+
+/**
+ * Stateless editor body behind [WearNoteEditorScreen]: initial text and the save sink
+ * are parameters, so Compose previews (src/screenshotTest) render literal fixtures.
+ */
+@Composable
+internal fun WearNoteEditorContent(
+    initialTitle: String,
+    initialBody: String,
+    onSave: (String, String) -> Unit,
+    onDone: () -> Unit,
+) {
+    var title by remember(initialTitle) { mutableStateOf(initialTitle) }
+    var body by remember(initialBody) { mutableStateOf(initialBody) }
     val listState = rememberScalingLazyListState()
     val textStyle = TextStyle(color = MaterialTheme.colors.onSurface)
 
@@ -78,11 +99,7 @@ fun WearNoteEditorScreen(
         item {
             Chip(
                 onClick = {
-                    if (syncId == null) {
-                        store.createNote(title.trim(), body.trim())
-                    } else {
-                        store.editNote(syncId, title.trim(), body.trim())
-                    }
+                    onSave(title.trim(), body.trim())
                     onDone()
                 },
                 label = { Text(stringResource(R.string.wear_save), maxLines = 1) },

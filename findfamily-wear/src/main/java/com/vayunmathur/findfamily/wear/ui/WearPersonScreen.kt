@@ -40,7 +40,18 @@ fun WearPersonScreen(
     val snapshot by store.snapshot.collectAsState()
     val person = snapshot.people.firstOrNull { it.id == personId }
     val self = snapshot.people.firstOrNull { it.isSelf }
-    val now = System.currentTimeMillis()
+    WearPersonContent(person = person, self = self, nowMillis = System.currentTimeMillis(), onBack = onBack)
+}
+
+/** Stateless person detail behind [WearPersonScreen]: person/self/instant are parameters for previews. */
+@Composable
+internal fun WearPersonContent(
+    person: com.vayunmathur.findfamily.wear.domain.WearPerson?,
+    self: com.vayunmathur.findfamily.wear.domain.WearPerson?,
+    nowMillis: Long,
+    onBack: () -> Unit,
+) {
+    val now = nowMillis
     val listState = rememberScalingLazyListState()
     val noLocationText = stringResource(R.string.wear_no_location)
     val lines: List<String> = if (person == null) {

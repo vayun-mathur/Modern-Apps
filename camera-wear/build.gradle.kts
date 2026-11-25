@@ -1,5 +1,6 @@
 plugins {
     id("common-conventions-wear")
+    id("common-conventions-preview-metadata")
 }
 
 launcherIcon {
