@@ -125,6 +125,7 @@ dependencies {
     implementation(project(":library:image"))
 
     implementation(project(":library:map"))
+    implementation(project(":library:wearlink"))
     // @SystemApi android.nearby.NearbyManager, for powered-off finding. Present at runtime,
     // absent from the public SDK, and must NOT be packaged. See :library:aosp-stubs.
     compileOnly(project(":library:aosp-stubs"))

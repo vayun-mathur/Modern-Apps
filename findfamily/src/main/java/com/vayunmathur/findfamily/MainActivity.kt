@@ -54,6 +54,10 @@ class MainActivity : MaActivity() {
     private val noShowTarget = mutableStateOf<Pair<Long, Long?>?>(null)
 
     override fun onCreateBeforeContent() {
+        com.vayunmathur.library.wearlink.WearLinkPermissions.requestIfNeeded(this)
+        // Wear companion sync lives and dies with this process (WearLink has
+        // no system wakeup); it republishes on reconnect and on data changes.
+        com.vayunmathur.findfamily.sync.WearFindFamilySync.get(this).start()
         deepLinkAddInvite.value = parseAddDeepLink(intent)
         noShowTarget.value = parseNoShowTarget(intent)
         // FIRST_PARTY: api.maproj.org + data.maproj.org (Cloudflare ISRG+GTS).

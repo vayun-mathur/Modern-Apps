@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">FindFamily</string>
+    <string name="wear_empty">No people synced yet. Open FindFamily on your phone to sync this watch.</string>
+    <string name="wear_people">People</string>
+    <string name="wear_map">Map</string>
+    <string name="wear_refresh">Refresh</string>
+    <string name="wear_stop_sharing">Stop sharing now</string>
+    <string name="wear_sharing_on">Sharing on</string>
+    <string name="wear_sharing_off">Sharing stopped</string>
+    <string name="wear_requested">Asked your phone</string>
+    <string name="wear_no_phone">Phone not reachable — showing the last synced copy</string>
+    <string name="wear_offline">Offline — last synced copy</string>
+    <string name="wear_stale_snapshot">Stale snapshot</string>
+    <string name="wear_truncated">Showing %1$d of %2$d people — the rest would not fit; most recent kept</string>
+    <string name="wear_alerts">Alerts</string>
+    <string name="wear_back">Back</string>
+    <string name="wear_no_location">No location yet</string>
+    <string name="wear_you">You</string>
+</resources>
