@@ -24,5 +24,10 @@ dependencies {
     implementRoom(libs)
     implementation(project(":library:room"))
     implementation(project(":library:widgets"))
+    // Phone side of the Wear OS sync (sync/WearTodoSync): catalog/page
+    // publish and watch-originated ops to :todo-wear, which shares this
+    // app's applicationId and signing certificate.
+    implementation(project(":library:wearlink"))
+    implementation(libs.kotlinx.coroutines.android)
     testImplementation(libs.androidx.sqlite.bundled.jvm)
 }

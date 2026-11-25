@@ -42,6 +42,8 @@ dependencies {
     // Opus transcoder: every cast audio track is 48 kHz Opus, and most of the library is not.
     implementation(project(":sdk:cast"))
     implementation(project(":library:media"))
+    implementation(project(":library:wearlink"))
+    implementation(libs.kotlinx.serialization.json)
 
     // Car-view store-listing screenshots render through the shared host renderer.
     add("screenshotTestImplementation", project(":library:carhost"))

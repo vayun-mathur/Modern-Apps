@@ -20,7 +20,11 @@ class MainActivity : MaActivity() {
     }
 
     override fun onCreateBeforeContent() {
+        com.vayunmathur.library.wearlink.WearLinkPermissions.requestIfNeeded(this)
         todoRepository = TodoRepository.get(applicationContext)
+        // Wear companion lives and dies with this process (WearLink has no
+        // system wakeup); it publishes once the link connects.
+        com.vayunmathur.todo.sync.WearTodoSync.get(applicationContext).start()
         IntentRouter.handle(intent)
     }
 

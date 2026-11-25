@@ -271,6 +271,8 @@ dependencies {
     // Google Voice virtual line: protojson RPCs + SIP-over-WSS transport go through
     // the repo's own Android-only HTTP/WebSocket stack (no OkHttp/Ktor).
     implementation(project(":library:network"))
+    // Wear OS companion sync (RFCOMM, no Play services); phone side of :communicate-wear.
+    implementation(project(":library:wearlink"))
     // Local Compose image loading for Google Voice MMS previews (remote https + content://).
     implementation(project(":library:image"))
     // RingRTC supplies both Signal's calling engine and the org.webrtc classes every line's calling

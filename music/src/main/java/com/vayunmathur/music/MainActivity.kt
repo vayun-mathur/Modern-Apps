@@ -13,11 +13,18 @@ import com.vayunmathur.music.data.MusicRepository
 import com.vayunmathur.music.platform.MusicViewModel
 import com.vayunmathur.music.platform.MusicViewModelFactory
 import com.vayunmathur.music.platform.PlaybackManager
+import com.vayunmathur.music.sync.WearMusicSync
 
 /** Main Activity: a ma activity implementation for main activity. */
 class MainActivity : MaActivity() {
     private val musicViewModel: MusicViewModel by viewModels {
         MusicViewModelFactory(application, MusicRepository.get(application), PlaybackManager.getInstance(this))
+    }
+
+    override fun onCreateBeforeContent() {
+        // Phone side of the Wear OS companion: page server + playback-state
+        // streamer + op executor (see sync/WearMusicSync.kt).
+        WearMusicSync.start(this)
     }
 
     @Composable

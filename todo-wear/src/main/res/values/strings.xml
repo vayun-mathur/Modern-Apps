@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Todo</string>
+    <string name="wear_empty">No tasks synced yet. Open Todo on your phone to sync this watch.</string>
+    <string name="wear_no_page">This page has not synced yet. Open Todo on your phone, or tap Sync.</string>
+    <string name="wear_quick_add">Quick add</string>
+    <string name="wear_sync">Sync</string>
+    <string name="wear_sync_requested">Asked your phone for a fresh copy</string>
+    <string name="wear_no_phone">Phone not reachable — showing the last synced copy</string>
+    <string name="wear_pending">Waiting for your phone to confirm %1$d change(s)</string>
+    <string name="wear_load_more">Load more</string>
+    <string name="wear_complete">Complete</string>
+    <string name="wear_uncomplete">Reopen</string>
+    <string name="wear_snooze_hour">Snooze 1 hour</string>
+    <string name="wear_snooze_tomorrow">Snooze to tomorrow</string>
+    <string name="wear_edit">Edit</string>
+    <string name="wear_delete">Delete</string>
+    <string name="wear_delete_confirm">Delete this task on your phone?</string>
+    <string name="wear_save">Save</string>
+    <string name="wear_back">Back</string>
+    <string name="wear_cancel">Cancel</string>
+    <string name="wear_title_hint">Title (tap the mic to dictate)</string>
+    <string name="wear_quick_add_hint">Say it like: Buy milk tomorrow !1 (your phone works out dates, lists and tags)</string>
+    <string name="wear_due_none">No due date</string>
+    <string name="wear_due_today">Due today</string>
+    <string name="wear_due_tomorrow">Due tomorrow</string>
+    <string name="wear_due_next_week">Due next week</string>
+    <string name="wear_priority">Priority: %1$s</string>
+    <string name="wear_notes_truncated">… (full notes on your phone)</string>
+</resources>
