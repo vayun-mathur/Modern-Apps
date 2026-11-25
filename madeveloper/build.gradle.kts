@@ -15,5 +15,6 @@ android {
 
 dependencies {
     implementation(project(":library:network"))
+    implementation(project(":library:format"))
     implementation(project(":library:work"))
 }

@@ -6,6 +6,8 @@ import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import com.vayunmathur.library.format.RelativeAge
+import com.vayunmathur.library.format.relativeAge
 
 /** Coarse CI outcome used to pick a status colour and icon in the UI. */
 enum class CiStatus { Passed, Failed, Running, Unknown }
@@ -65,17 +67,17 @@ object DevPresentation {
         val raw = time.trim()
         if (raw.isBlank()) return ""
         val epochMs = parseEpochMs(raw) ?: return raw
-        val delta = nowEpochMs - epochMs
-        if (delta < 0) return shortDate(epochMs)
-        val minutes = delta / MILLIS_PER_MINUTE
-        val hours = delta / MILLIS_PER_HOUR
-        val days = delta / MILLIS_PER_DAY
-        return when {
-            delta < MILLIS_PER_MINUTE -> "just now"
-            minutes < 60 -> "${minutes}m ago"
-            hours < 24 -> "${hours}h ago"
-            days < 7 -> "${days}d ago"
-            else -> shortDate(epochMs)
+        // Bucketing is shared (:library:format); the git-host timestamp
+        // parsing above and the short-date fallback (future and older than
+        // a week) stay here, as they are this app's wording.
+        return when (val age = relativeAge(epochMs, nowEpochMs, maxDays = DAYS_PER_WEEK)) {
+            RelativeAge.Unknown -> shortDate(epochMs)
+            RelativeAge.Future -> shortDate(epochMs)
+            RelativeAge.JustNow -> "just now"
+            is RelativeAge.Minutes -> "${age.amount}m ago"
+            is RelativeAge.Hours -> "${age.amount}h ago"
+            is RelativeAge.Days -> "${age.amount}d ago"
+            RelativeAge.Older -> shortDate(epochMs)
         }
     }
 
@@ -129,9 +131,7 @@ object DevPresentation {
     fun shortSha(sha: String): String = sha.take(SHORT_SHA_LENGTH)
 
     private const val MILLIS_PER_SECOND = 1_000L
-    private const val MILLIS_PER_MINUTE = 60_000L
-    private const val MILLIS_PER_HOUR = 3_600_000L
-    private const val MILLIS_PER_DAY = 86_400_000L
+    private const val DAYS_PER_WEEK = 7L
     private const val EPOCH_SECONDS_THRESHOLD = 10_000_000_000L
     private const val DATE_PREFIX_LENGTH = 10
     private const val SHORT_SHA_LENGTH = 8

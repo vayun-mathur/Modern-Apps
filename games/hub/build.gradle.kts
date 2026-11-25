@@ -60,6 +60,7 @@ rustNativeTests {
 
 dependencies {
     implementation(project(":library"))
+    implementation(project(":library:format"))
     implementation(project(":library:ui"))
     implementation(project(":library:room"))
     implementation(project(":library:avatar"))

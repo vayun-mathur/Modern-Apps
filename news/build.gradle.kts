@@ -18,6 +18,7 @@ android {
 
 dependencies {
     implementation(project(":library:network"))
+    implementation(project(":library:format"))
     implementation(project(":library:image"))
     implementRoom(libs)
     implementation(project(":library:room"))

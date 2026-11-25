@@ -2,6 +2,7 @@ package com.vayunmathur.games.hub.util
 
 import kotlin.time.Duration.Companion.milliseconds
 import androidx.compose.ui.graphics.Color
+import com.vayunmathur.library.format.formatRelativeAge
 
 fun formatPlaytime(ms: Long): String {
     if (ms <= 0) return "0m"
@@ -27,18 +28,23 @@ fun formatDurationMs(ms: Long): String {
 }
 
 fun formatRelativeTime(timestamp: Long, now: Long = System.currentTimeMillis()): String {
-    val diff = now - timestamp
-    if (diff < 0) return "now"
-    val minutes = diff.milliseconds.inWholeMinutes
-    val hours = diff.milliseconds.inWholeHours
-    val days = diff.milliseconds.inWholeDays
-    return when {
-        minutes < 1 -> "just now"
-        minutes < MINUTES_PER_HOUR -> "${minutes}m ago"
-        hours < HOURS_PER_DAY -> "${hours}h ago"
-        days < DAYS_PER_WEEK -> "${days}d ago"
-        else -> java.text.SimpleDateFormat("MMM d", java.util.Locale.getDefault()).format(java.util.Date(timestamp))
+    // A non-positive timestamp took the date fallback before centralization
+    // (it is far past the week band), so keep that instead of the shared
+    // unknown-label.
+    if (timestamp <= 0L) {
+        return java.text.SimpleDateFormat("MMM d", java.util.Locale.getDefault())
+            .format(java.util.Date(timestamp))
     }
+    return formatRelativeAge(
+        atMillis = timestamp,
+        nowMillis = now,
+        futureLabel = "now",
+        maxDays = DAYS_PER_WEEK.toLong(),
+        olderLabel = { atMillis ->
+            java.text.SimpleDateFormat("MMM d", java.util.Locale.getDefault())
+                .format(java.util.Date(atMillis))
+        },
+    )
 }
 
 fun tierColor(tier: String): Color = when (tier.uppercase()) {
@@ -49,7 +55,6 @@ fun tierColor(tier: String): Color = when (tier.uppercase()) {
 }
 
 private const val MINUTES_PER_HOUR = 60
-private const val HOURS_PER_DAY = 24
 private const val DAYS_PER_WEEK = 7
 
 private const val PLATINUM_ARGB = 0xFF9C27B0
