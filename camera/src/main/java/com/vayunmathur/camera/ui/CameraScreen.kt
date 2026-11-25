@@ -1,6 +1,3 @@
-// RAW ANIMATION EXCEPTION: the panorama capture flash is imperative - an Animatable snapped to
-// white as each guide dot is captured and released back to zero, with no declarative target to
-// animate towards; the shutter and record-button springs are tuned to this viewfinder's own feel.
 package com.vayunmathur.camera.ui
 
 import android.graphics.Bitmap
@@ -39,8 +36,8 @@ import com.vayunmathur.camera.data.toggleLevel
 import com.vayunmathur.camera.platform.toggleMicMuted
 import com.vayunmathur.camera.platform.toggleRecording
 import com.vayunmathur.camera.data.toggleTorch
+import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Motion
-import com.vayunmathur.library.ui.Scaffold
 import com.vayunmathur.library.ui.animatedFloat
 import com.vayunmathur.library.util.NavBackStack
 
@@ -48,7 +45,12 @@ import com.vayunmathur.library.util.NavBackStack
 fun CameraScreen(
     backStack: NavBackStack<Route>,
     viewModel: CameraViewModel,
-    onCaptureResult: ((Bitmap?) -> Unit)? = null
+    onCaptureResult: ((Bitmap?) -> Unit)? = null,
+    // Screenshot/preview fake viewfinder provider only. Production default is
+    // null and MainActivity never passes it, so on device the live camera
+    // surfaces always serve; screenshotTest fixtures pass a deterministic
+    // fake scene instead of rendering a black TextureView pane.
+    screenshotFakePreview: (@Composable (Modifier) -> Unit)? = null,
 ) {
     val view = LocalView.current
     val state = rememberCameraScreenState(viewModel)
@@ -92,12 +94,8 @@ fun CameraScreen(
         spec = Motion.over(300)
     )
 
-    // RAW SCAFFOLD EXCEPTION: full-bleed viewfinder with a black surface and its own custom
-    // top/bottom control bars (TopBar/ShutterRow/ModeSelector/BottomBar). It has no Material
-    // top app bar or title, so AppScaffold would inject an unwanted bar, and TopAppBarOverlay
-    // provides neither the black container surface nor the system-inset padding the preview
-    // relies on. The bare Scaffold(containerColor) is the correct primitive here.
-    Scaffold(
+    AppScaffold(
+        topBar = {},
         containerColor = Color.Black
     ) { padding ->
         BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(padding)) {
@@ -161,6 +159,7 @@ fun CameraScreen(
                         state = state,
                         viewModel = viewModel,
                         animatedRotation = animatedRotation,
+                        screenshotFakePreview = screenshotFakePreview,
                     )
                 }
 

@@ -8,7 +8,7 @@ _Install: ./install camera (dev by default)._
 - Entry files: MainActivity.kt, Route.kt (`Route.Camera` / `Route.Settings`)
 - Deps: :library:ml
 - Metadata: metadata_data/camera.md (present)
-- Rust: yes / screenshotTest: hybrid (phone hand-captured; wide controls preview-rendered)
+- Rust: yes / screenshotTest: yes (phone + large-tablet preview-rendered over a screenshot-only fake viewfinder scene)
 
 ## Overview
 **Purpose:** The most featureful open-source camera app — usable as the system camera and from the lockscreen. 100% offline.
@@ -21,7 +21,8 @@ _Install: ./install camera (dev by default)._
 **Entry points + reading order:** `MainActivity.kt` → `Route.kt` (`Route.Camera`/`Settings`) → `ui/CameraScreen.kt` → `platform/CameraViewModel.kt` → `platform/CameraSessions.kt` → `platform/PanoramaEngine.kt` / `NightCaptureEngine.kt`.
 **Gotchas:**
 - Capture code lives in `platform/` (the Camera2 driver in `platform/camera2/`); there is no `util/` root in this module
-- Screenshots are hand-captured (no metadata convention plugin — Layoutlib can't open a camera); committed listing images live under `metadata_data/photos/camera/phone/`
+- Camera2 session reopen after a surface destroy (background/resume, size change) is serialized in `platform/camera2/`: a session parks a reopen until the previous device's real `onClosed` (device `close()` only initiates HAL teardown), and `PreviewSurfaceBridge` forgets its pinned stream size on destroy so a new `SurfaceTexture` is re-pinned before configure
+- Listing screenshots are preview-rendered (`:camera:metadata`): Layoutlib can't open a camera, so `src/screenshotTest` draws the deterministic `FakeCameraPreview` scene behind the real top bar/grid/shutter/mode controls. The `screenshotFakePreview` parameter on `CameraScreen`/`CameraPreviewSurface` is the same seam in `main` — production-default null, never passed by `MainActivity`, so no fake frame can appear on device
 - Volume keys act as the shutter, gated on the camera route being foreground; Esc/space covers desktop keyboards
 - `.maml` model assets ship uncompressed (`noCompress`) — never compress them
 
@@ -92,6 +93,7 @@ _Install: ./install camera (dev by default)._
 ### platform/camera2/ — Camera2 driver
 - com/vayunmathur/camera/platform/camera2/Camera2Driver.kt
 - com/vayunmathur/camera/platform/camera2/Camera2Session.kt
+- com/vayunmathur/camera/platform/camera2/Camera2SessionRingCapture.kt
 - com/vayunmathur/camera/platform/camera2/Camera2ExtensionSession.kt
 - com/vayunmathur/camera/platform/camera2/Camera2HighSpeedSession.kt
 - com/vayunmathur/camera/platform/camera2/StillCapture.kt

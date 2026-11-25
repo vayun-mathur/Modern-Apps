@@ -32,13 +32,24 @@ import com.vayunmathur.library.ui.R as UiR
  * Camera2 engine serves, otherwise the CameraX viewfinder (or the
  * bind-failed / black fallback box). Extracted verbatim from
  * [CameraPreviewBox]; overlays, effects and gestures stay with the caller.
+ *
+ * [screenshotFakePreview] is the screenshot/preview fake-provider seam: when
+ * non-null it is drawn instead of every live surface and no Camera2/CameraX
+ * session is touched. It defaults to null and no production caller passes it
+ * — only `src/screenshotTest` fixtures (and Studio previews) may supply a
+ * deterministic fake scene, so a fake frame can never appear on device.
  */
 @Composable
 internal fun CameraPreviewSurface(
     state: CameraScreenState,
     viewModel: CameraViewModel,
     previewModifier: Modifier,
+    screenshotFakePreview: (@Composable (Modifier) -> Unit)? = null,
 ) {
+    if (screenshotFakePreview != null) {
+        screenshotFakePreview(previewModifier)
+        return
+    }
     val useCamera2Preview = state.useCamera2Preview
     val useCamera2NightPreview = state.useCamera2NightPreview
     val useCamera2SloMoPreview = state.useCamera2SloMoPreview

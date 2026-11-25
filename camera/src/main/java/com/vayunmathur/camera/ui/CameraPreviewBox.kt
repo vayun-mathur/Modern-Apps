@@ -74,6 +74,9 @@ internal fun BoxWithConstraintsScope.CameraPreviewBox(
     state: CameraScreenState,
     viewModel: CameraViewModel,
     animatedRotation: Float,
+    // Screenshot/preview fake provider only; null (production default) keeps
+    // the live TextureView surfaces. See CameraPreviewSurface.
+    screenshotFakePreview: (@Composable (Modifier) -> Unit)? = null,
 ) {
     val cameraMode = state.cameraMode
     val maskBitmap = state.maskBitmap
@@ -185,6 +188,7 @@ internal fun BoxWithConstraintsScope.CameraPreviewBox(
         state = state,
         viewModel = viewModel,
         previewModifier = previewModifier,
+        screenshotFakePreview = screenshotFakePreview,
     )
 
     CaptureFlashOverlay(viewModel.shutterFeedback, previewSize.clip(RoundedCornerShape(12.dp)))
