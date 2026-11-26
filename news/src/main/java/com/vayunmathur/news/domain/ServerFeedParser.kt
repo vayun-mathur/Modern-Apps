@@ -9,7 +9,9 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 
 /**
- * Parser for the location_share_server `GET /news.json` contract:
+ * Parser for the server-published static feed contract
+ * (`https://static.maproj.org/news/v1/news.json`, written by
+ * location_share_server's background refresh):
  *
  * ```
  * { "generated_at": ..., "articles": [

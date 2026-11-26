@@ -57,11 +57,12 @@ class NewsServerFeedTest {
         assertTrue(cached.any { it.title == "Server Alpha Volcano" })
     }
 
-    @Test fun staticFeedUrlIsTheR2CopyWithOriginFallback() {
+    @Test fun staticFeedUrlIsTheOnlyDistributionCopy() {
         // The contract the server publishes to (location_share_server
-        // NEWS_R2_KEY) and the app's fallback order.
+        // NEWS_R2_KEY). There is no origin news endpoint and no origin
+        // fallback URL: a missing/failing/stale static copy makes
+        // fetchServerFeedText throw and the repository crawls on-device.
         assertEquals("https://static.maproj.org/news/v1/news.json", Networking.STATIC_FEED_URL)
-        assertEquals("https://api.maproj.org/news.json", Networking.SERVER_FEED_URL)
         assertTrue(Networking.STATIC_MAX_AGE_MS > 0)
     }
 
@@ -90,12 +91,12 @@ class NewsServerFeedTest {
         val repo = NewsRepository(
             context,
             fetch = { url -> calls += url; fallbackUrlset },
-            serverFeedFetch = { calls += Networking.SERVER_FEED_URL; throw IOException("server unreachable") },
+            serverFeedFetch = { calls += "server-feed"; throw IOException("static feed unavailable") },
         )
         val bbc = SourceCatalog.byId("bbc")!!.copy(feedUrl = "https://srv.example/fallback.xml")
         val failed = repo.refresh(listOf(bbc))
         assertTrue(failed.isEmpty(), "fallback crawl success must not report failure")
-        assertTrue(calls.first() == Networking.SERVER_FEED_URL, "server must be tried first")
+        assertTrue(calls.first() == "server-feed", "server feed must be tried first")
         assertTrue(calls.any { it.endsWith("fallback.xml") }, "fallback must crawl the given source")
         val cached = withTimeout(10_000) { repo.articles.first { a -> a.any { it.title == "Fallback Story" } } }
         assertTrue(cached.any { it.title == "Fallback Story" })

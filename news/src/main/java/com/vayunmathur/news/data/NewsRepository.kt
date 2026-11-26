@@ -31,8 +31,8 @@ import kotlinx.serialization.json.Json
  * defaults to [Networking] and is replaced by a fake in unit tests, so
  * no test touches the network; the server feed goes through the
  * [serverFeedFetch] seam (defaults to [Networking.fetchServerFeedText]:
- * R2 static copy first, origin as fallback). Bodies are extracted on
- * device only.
+ * the R2 static copy only — there is no origin news endpoint). Bodies
+ * are extracted on device only.
  *
  * Refresh topology (fixed 2026-11-23, was the ANR / "stuck feed" bug):
  * sources fetch in parallel, each on [feedDispatcher] (never Main —
@@ -66,8 +66,7 @@ class NewsRepository internal constructor(
 
     /**
      * Primary path: one fetch of the server feed (its R2 static copy
-     * first, the origin `news.json` as fallback — see
-     * [Networking.fetchServerFeedText]), merged into
+     * only — see [Networking.fetchServerFeedText]), merged into
      * Room exactly like a crawl result. Every source the server carries
      * is always included — there is no client-side enabled-source
      * filter; categories and search are the filters. [sources] only

@@ -12,19 +12,20 @@ _Install: ./install news_
 
 ## Overview
 **Purpose:** News reader. Primary feed is our server's merged
-`news.json` snapshot, read first from its static copy on R2
+`news.json` snapshot, distributed only as its static copy on R2
 (`https://static.maproj.org/news/v1/news.json`, republished by the
-server on every refresh) with the origin `GET /news.json`
-(`https://api.maproj.org/news.json`, see `domain/ServerFeedParser` for
-the contract + assumptions) as fallback when the static copy is
-missing, failing, or older than 1 hour; the result is merged into Room. Every source is always in the
+server's background refresh on every cycle; there is no news endpoint
+on the origin — see `domain/ServerFeedParser` for the contract +
+assumptions). When the static copy is missing, failing, or older
+than 1 hour, refresh falls back to the on-device crawl below; the
+result is merged into Room. Every source is always in the
 corpus (no per-source toggle); category + search are the filters, and
 `domain/FeedRanking` orders the story feed client-side by descending
 source count, then newest first (search keeps its relevance order).
 Every feed item is a story (`domain/Story`, mechanical grouping by
 exact server `storyId` only — singletons included), shown as a card
 labelled only with its source count ("1 source" / "N sources", no
-lead-source name) and opening the story view. If the server fetch fails/times out/parses empty, refresh
+lead-source name) and opening the story view. If the static feed fetch fails/times out/parses empty, refresh
 falls back to the on-device per-source sitemap/RSS crawl of all sources
 (cached feed stays visible either way). Article reading is always on-device:
 publisher HTML is fetched directly and extracted locally. No account.
@@ -65,10 +66,10 @@ Japan Times (sitemap URL serves HTML, not XML).
 (DataStore owner) → `network/Networking` (the single networking entry
 point, `NetworkClient` with `TrustBundle.SYSTEM` — publisher hosts are
 arbitrary, so no reduced bundle can cover them; SYSTEM also covers
-api.maproj.org and static.maproj.org, whereas FIRST_PARTY would break
+static.maproj.org, whereas FIRST_PARTY would break
 publisher fetches; the server feed goes through
-`Networking.fetchServerFeedText` → `StaticMirror.get`, static first,
-origin fallback) → `domain/` parsers and extractor (pure, no Android
+`Networking.fetchServerFeedText` → `StaticMirror.getStatic`, R2 only,
+no origin fallback) → `domain/` parsers and extractor (pure, no Android
 imports).
 
 ## Entry points + reading order
