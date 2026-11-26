@@ -1,6 +1,5 @@
 package com.vayunmathur.maps.ui.map
 import com.vayunmathur.maps.data.regionId
-import com.vayunmathur.maps.data.Wikidata
 
 import com.vayunmathur.library.log.Log
 import androidx.compose.ui.unit.DpOffset
@@ -60,9 +59,8 @@ fun interface FeatureSource {
  * `return`s.
  *
  * Not a composable. [pickPin] suspends because a probe's resolver may do I/O. The admin-label
- * branch is the opposite arrangement — it used to make a Wikidata round-trip inside the gesture
- * handler, and now belongs to the ViewModel, which is why [ADMIN_LABEL_LAYER_IDS] hits come back
- * as raw features for the caller to resolve.
+ * branch is the opposite arrangement — label resolution belongs to the ViewModel, which is why
+ * [ADMIN_LABEL_LAYER_IDS] hits come back as raw features for the caller to resolve.
  *
  * Ambient POIs are **not** probed here. The renderer draws them, so the renderer picks them:
  * a tap arrives as `MapClick.poi` already resolved against the collision pass that put the icon

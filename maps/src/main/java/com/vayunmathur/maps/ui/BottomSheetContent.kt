@@ -1,7 +1,6 @@
 package com.vayunmathur.maps.ui
 import com.vayunmathur.maps.platform.PlacePanelState
 import com.vayunmathur.maps.data.string
-import com.vayunmathur.maps.data.Wikidata
 import com.vayunmathur.maps.platform.rememberPlacePanelState
 
 import androidx.compose.foundation.layout.Column
@@ -174,8 +173,8 @@ private fun AdminLabelHeader(name: String, wikipedia: String?, modifier: Modifie
             modifier = Modifier.weight(1f),
         )
         // Only when there is an article to open. The name comes from the basemap and is always
-        // there; the article is a Wikidata lookup that needs the network, so offline the sheet
-        // shows the place with no button rather than not opening at all.
+        // there; the article link is not baked into the archive yet, so the sheet normally
+        // shows the place with no button.
         if (wikipedia != null) {
             TextButton(onClick = { goto(context, wikipedia) }) {
                 Text(stringResource(R.string.wikipedia))

@@ -1,7 +1,6 @@
 package com.vayunmathur.maps.platform
 import com.vayunmathur.maps.data.planWithAlternatives
 import com.vayunmathur.maps.data.OfflineRouterRoadRoutes
-import com.vayunmathur.maps.data.Wikidata
 import com.vayunmathur.maps.domain.AlternativeRoutes
 import com.vayunmathur.maps.domain.RouteService
 import android.app.Application
@@ -213,10 +212,9 @@ class SelectedFeatureViewModel(application: Application): AndroidViewModel(appli
     /**
      * Resolve the first basemap place label that parses, or null.
      *
-     * Lives here rather than in the tap handler because `parse` may make a Wikidata round-trip
-     * per candidate. The native pick returns placed labels in placement order, so stopping at the
-     * first success is what keeps a tap from doing every round-trip serially — and doing any of
-     * them on the caller's thread is what made the gesture handler a hundred lines long.
+     * Lives here rather than in the tap handler so label resolution stays off the gesture
+     * handler's thread. The native pick returns placed labels in placement order, so stopping
+     * at the first success keeps a tap from resolving every candidate.
      */
     suspend fun resolveAdminLabel(candidates: List<Feature1>): SpecificFeature? =
         withContext(Dispatchers.IO) {

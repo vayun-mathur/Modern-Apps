@@ -3,7 +3,6 @@ package com.vayunmathur.maps.data
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.library.map.GeoPoint
 import com.vayunmathur.maps.data.PoiIndex
-import com.vayunmathur.maps.data.Wikidata
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
@@ -21,9 +20,9 @@ sealed interface SpecificFeature {
     }
 
     /**
-     * A country. [iso] and [wikipedia] are optional because the basemap archive carries neither:
-     * a picked label supplies a name and a position, and the Wikidata round trip that fills these
-     * in needs the network. Requiring them meant tapping a country did nothing at all offline.
+     * A country. [iso] and [wikipedia] are optional because the basemap archive carries
+     * neither: a picked label supplies a name and a position. Both stay null until the
+     * planet build bakes them into the archive.
      *
      * [regionId] is the baked link: the tagged OSM relation id of the boundary this label
      * names, stamped at build time (see `region_links`). `0` means unlinked — mask nothing.
@@ -152,25 +151,15 @@ fun JsonObject.string(key: String): String? = this[key]?.jsonPrimitive?.content
  * Resolve a tapped basemap feature into a [SpecificFeature].
  *
  * Amenities are drawn by the renderer and picked there, arriving as `MapClick.poi`, so this
- * no longer reads the amenities DB: it only handles the country/region/city admin labels
- * (Wikidata-backed). Everything else returns null.
+ * only handles the country/region/city admin labels. Everything else returns null.
+ *
+ * A picked label supplies `kind`, `name`, `name:en` and the baked `regionId` — all from the
+ * archive, no network. The ISO code and Wikipedia article the label types carry stay null:
+ * the archive does not bake them in yet, and the sheet already renders without them.
  */
 suspend fun parse(feature: Feature1): SpecificFeature? {
     val properties = feature.properties ?: return null
-    // The name is the only thing an admin label truly needs. Everything below it is enrichment
-    // from Wikidata, which the basemap archive does not carry and which needs the network.
-    //
-    // Requiring that enrichment is what made tapping a city, state or country do nothing: a
-    // picked label supplies `kind`, `name` and `name:en` and nothing else, so `wikidata` was
-    // always absent, every branch returned null, and the tap fell through to reverse-geocode —
-    // which is online-only and therefore silent offline. Two `runCatching` swallows on the path
-    // meant it failed without a trace.
     val name = properties.string("name:en") ?: properties.string("name") ?: return null
-    // Absent id, or a lookup that fails or times out, leaves the article and ISO code unset
-    // rather than losing the whole feature.
-    val wiki = properties.string("wikidata")?.let { id ->
-        try { Wikidata.get(id) } catch (_: Exception) { null }
-    }
     // Where the label sits, kept for search-picked regions and as a fallback anchor: the
     // mask itself is the baked `regionId` below, not a containment probe.
     val at = (feature.geometry as? Point)?.coordinates
@@ -180,23 +169,16 @@ suspend fun parse(feature: Feature1): SpecificFeature? {
     Log.dev("RegionDbg", "parse kind=${properties.string("kind")} name=$name regionId=$regionId")
     return when (properties.string("kind")) {
         "country" -> SpecificFeature.Admin0Label(
-            iso = wiki?.getProperty("P297"),
-            wikipedia = wiki?.getWikipedia(),
             name = name,
             position = at,
             regionId = regionId,
         )
         "region" -> SpecificFeature.Admin1Label(
-            iso = wiki?.getProperty("P300"),
-            wikipedia = wiki?.getWikipedia(),
             name = name,
             position = at,
             regionId = regionId,
         )
-        // No ISO lookup: a city has no ISO 3166 code, so the Wikidata round trip is only for the
-        // article URL.
         "locality" -> SpecificFeature.Admin2Label(
-            wikipedia = wiki?.getWikipedia(),
             name = name,
             position = at,
             regionId = regionId,

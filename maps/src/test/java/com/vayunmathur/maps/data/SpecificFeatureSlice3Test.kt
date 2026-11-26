@@ -14,9 +14,9 @@ import kotlin.test.assertTrue
  * features to admin labels, and [SpecificFeature] matching covers the
  * routable types.
  *
- * The Wikidata enrichment is skipped here by omitting the `wikidata`
- * property, so no network is touched: the label/region resolution is what
- * is pinned, including the unknown-kind null and the missing-name null.
+ * Label resolution reads only the archive-supplied properties, so no
+ * network is touched: the label/region resolution is what is pinned,
+ * including the unknown-kind null and the missing-name null.
  */
 class SpecificFeatureSlice3Test {
 

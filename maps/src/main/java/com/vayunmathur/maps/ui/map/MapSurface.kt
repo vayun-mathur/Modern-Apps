@@ -5,7 +5,6 @@ import kotlinx.coroutines.withContext
 import com.vayunmathur.maps.data.PoiCategories
 import com.vayunmathur.maps.data.OfflineRouterTraffic
 import com.vayunmathur.maps.data.nearest
-import com.vayunmathur.maps.data.Wikidata
 import com.vayunmathur.maps.platform.SearchResult
 
 import androidx.compose.runtime.Composable
@@ -287,8 +286,7 @@ fun MapSurface(
                 }
 
                 // Fall back to the basemap's own place labels from the native pick.
-                // Resolving one may make a Wikidata round-trip, so the ViewModel owns
-                // that rather than this handler. `VulkanMapSurface` registers the native
+                // The ViewModel owns resolving them rather than this handler. `VulkanMapSurface` registers the native
                 // pick, so this is populated whenever a placed label is under the finger;
                 // when nothing is, it falls through to reverse-geocode exactly like a
                 // blank tap.

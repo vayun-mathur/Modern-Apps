@@ -175,7 +175,6 @@ _Install: ./install maps (dev by default)._
 - com/vayunmathur/maps/domain/SpatialKey.kt
 - com/vayunmathur/maps/platform/RegionalUnits.kt
 - com/vayunmathur/maps/domain/ItineraryWording.kt
-- com/vayunmathur/maps/data/Wikidata.kt
 - com/vayunmathur/maps/domain/CameraBounds.kt
 - com/vayunmathur/maps/platform/ContactLookup.kt
 - com/vayunmathur/maps/platform/FrameworkLocationManager.kt
