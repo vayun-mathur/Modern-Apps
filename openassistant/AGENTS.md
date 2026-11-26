@@ -39,7 +39,7 @@ _Install: ./install openassistant (dev by default)._
 - com/vayunmathur/openassistant/service/OpenAssistantVoiceInteractionService.kt
 - com/vayunmathur/openassistant/service/StubRecognitionService.kt — placeholder recognizer hook
 ### network/ — web tools
-- com/vayunmathur/openassistant/network/AssistantWebTools.kt
+- com/vayunmathur/openassistant/network/AssistantWebTools.kt — the app's networking entry point for web tools: `web_search` calls the server's `GET /api/search` (type=text/news) through `NetworkClient` (FIRST_PARTY bundle inited in MainActivity) and reshapes results on device into {title,url,snippet} hits (n<=10); `web_read`/`web_read_result` fetch the page on device (per-request system trust, since page hosts are arbitrary) and extract readable text locally via `domain/WebPageExtractor` — http/https only, localhost/.local/private IP literals refused, 10s timeouts, 2M-char body cap, 6000-char pages paged by character offset. Tool failures are typed `Error: ...` strings, never silent empties
 ### data/ — chats + repository
 - com/vayunmathur/openassistant/data/Database.kt
 - com/vayunmathur/openassistant/data/OpenAssistantRepository.kt
@@ -60,6 +60,7 @@ _Install: ./install openassistant (dev by default)._
 - com/vayunmathur/openassistant/domain/A2uiBlocks.kt — split/restore ```a2ui blocks, streaming-safe
 - com/vayunmathur/openassistant/domain/A2uiEnvelope.kt — block → A2UI protocol messages, action → user turn
 - com/vayunmathur/openassistant/domain/ModelLoadFailure.kt — missing vs incomplete vs refused model load, for the error text
+- com/vayunmathur/openassistant/domain/WebPageExtractor.kt — on-device readable-text extraction (title + block text, chrome stripped) and the web_read URL policy; a small tolerant duplicate of the readability idea (news's richer extractor is module-private to news)
 ### platform/ — ViewModel, engine + tool registry
 - com/vayunmathur/openassistant/platform/AssistantViewModel.kt
 - com/vayunmathur/openassistant/platform/MamlChatEngine.kt

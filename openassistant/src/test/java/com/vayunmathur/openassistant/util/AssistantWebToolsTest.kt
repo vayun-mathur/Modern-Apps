@@ -89,35 +89,87 @@ class AssistantWebToolsTest {
         assertEquals("Error: search unavailable: down", tools.webSearch("q"))
     }
 
+    private fun htmlPage(title: String, bodyText: String): String =
+        "<html><head><title>$title</title></head><body><main><p>$bodyText</p></main></body></html>"
+
     @Test fun webReadSuccessAndCaps() = runBlocking {
         val longText = "a".repeat(9_000)
-        val body = """{"title":"Page Title","url":"https://example.com/a","text":"$longText","truncated":true,"next_offset":6000}"""
-        val tools = AssistantWebTools(transport = { body }, nowMillis = { 1_000L })
+        val tools = AssistantWebTools(
+            transport = { searchJson(1) },
+            pageTransport = { url ->
+                com.vayunmathur.openassistant.network.FetchedPage(
+                    body = htmlPage("Page Title", longText),
+                    contentType = "text/html; charset=utf-8",
+                    finalUrl = url,
+                )
+            },
+            nowMillis = { 1_000L },
+        )
         val out = tools.webRead("https://example.com/a")
         assertTrue(out.startsWith("Page Title\nhttps://example.com/a"), out.take(80))
         assertTrue(out.contains("[truncated - continue with offset 6000]"), out.takeLast(80))
         // Header + capped text + note stays near the cap.
         assertTrue(out.length <= AssistantWebTools.MAX_READ_CHARS + 120, "len=${out.length}")
+        // Paging continues from the reported offset.
+        val page2 = tools.webRead("https://example.com/a", offset = 6000)
+        assertTrue(page2.contains("a".repeat(100)) && !page2.contains("[truncated"), page2.takeLast(80))
     }
 
     @Test fun webReadFailureIsClean() = runBlocking {
         val tools = AssistantWebTools(
-            transport = { throw java.io.IOException("no route") },
+            transport = { searchJson(1) },
+            pageTransport = { throw java.io.IOException("no route") },
             nowMillis = { 1_000L },
         )
-        assertEquals("Error: could not read page: no route", tools.webRead("https://x.example/"))
-        assertTrue(tools.webRead("").startsWith("Error: could not read page:"))
+        assertEquals(
+            "Error: could not read page: fetch_failed: no route",
+            tools.webRead("https://x.example/"),
+        )
+        assertTrue(tools.webRead("").startsWith("Error: could not read page: invalid_url"))
+        assertTrue(tools.webRead("ftp://example.com/x").startsWith("Error: could not read page: unsupported_scheme"))
+        assertTrue(tools.webRead("https://127.0.0.1/admin").startsWith("Error: could not read page: blocked_url"))
+        assertTrue(tools.webRead("https://localhost:8080/").startsWith("Error: could not read page: blocked_url"))
+    }
+
+    @Test fun webReadRejectsUnsupportedAndErrorStatus() = runBlocking {
+        val pdf = AssistantWebTools(
+            transport = { searchJson(1) },
+            pageTransport = {
+                com.vayunmathur.openassistant.network.FetchedPage(
+                    body = "%PDF-1.4 fake", contentType = "application/pdf", finalUrl = it,
+                )
+            },
+            nowMillis = { 1_000L },
+        )
+        assertTrue(
+            pdf.webRead("https://example.com/doc.pdf")
+                .startsWith("Error: could not read page: unsupported_content_type"),
+        )
+        val failing = AssistantWebTools(
+            transport = { searchJson(1) },
+            pageTransport = {
+                com.vayunmathur.openassistant.network.FetchedPage(
+                    body = "nope", contentType = "text/html", finalUrl = it, status = 503,
+                )
+            },
+            nowMillis = { 1_000L },
+        )
+        assertEquals(
+            "Error: could not read page: fetch_failed: HTTP 503",
+            failing.webRead("https://example.com/down"),
+        )
     }
 
     @Test fun webReadResultResolvesAndValidates() = runBlocking {
         var now = 1_000L
         val tools = AssistantWebTools(
-            transport = { url ->
-                if (url.contains("/api/search")) {
-                    searchJson(2)
-                } else {
-                    """{"title":"T","url":"https://example2.com/page2","text":"hello page","truncated":false}"""
-                }
+            transport = { searchJson(2) },
+            pageTransport = { url ->
+                com.vayunmathur.openassistant.network.FetchedPage(
+                    body = htmlPage("T", "hello page"),
+                    contentType = "text/html",
+                    finalUrl = url,
+                )
             },
             nowMillis = { now },
         )

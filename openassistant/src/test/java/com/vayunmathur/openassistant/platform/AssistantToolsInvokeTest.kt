@@ -194,12 +194,16 @@ class AssistantToolsInvokeTest {
     @Test fun webToolsRunThroughHandlersWithFakeTransport() {
         val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
         val fake = com.vayunmathur.openassistant.network.AssistantWebTools(
-            transport = { url ->
-                if (url.contains("/api/search")) {
-                    """{"type":"text","query":"sushi","text":[{"title":"Sushi Guide","url":"https://example.com/sushi","snippet":"All about sushi"}]}"""
-                } else {
-                    """{"title":"Sushi Guide","url":"https://example.com/sushi","text":"Raw fish, explained.","truncated":false}"""
-                }
+            transport = {
+                """{"type":"text","query":"sushi","text":[{"title":"Sushi Guide","url":"https://example.com/sushi","snippet":"All about sushi"}]}"""
+            },
+            pageTransport = { url ->
+                com.vayunmathur.openassistant.network.FetchedPage(
+                    body = "<html><head><title>Sushi Guide</title></head><body><main>" +
+                        "<p>Raw fish, explained.</p></main></body></html>",
+                    contentType = "text/html",
+                    finalUrl = url,
+                )
             },
             nowMillis = { 1_000L },
         )

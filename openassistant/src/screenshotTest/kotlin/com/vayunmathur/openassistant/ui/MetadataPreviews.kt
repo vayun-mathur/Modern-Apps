@@ -36,7 +36,7 @@ class MetadataPreviews {
         Message(conversationId = 1, text = text, role = role, id = id)
 
     @PreviewTest
-    @Preview(name = "1-chat", device = PHONE, group = "phone", showSystemUi = true)
+    @Preview(name = "1-conversation-page", device = PHONE, group = "phone", showSystemUi = true)
     @Composable
     fun Preview1Chat() {
         DynamicTheme(darkTheme = true) {
@@ -104,7 +104,7 @@ class MetadataPreviews {
     }
 
     @PreviewTest
-    @Preview(name = "3-memories", device = PHONE, group = "phone", showSystemUi = true)
+    @Preview(name = "3-settings-page", device = PHONE, group = "phone", showSystemUi = true)
     @Composable
     fun Preview3Memories() {
         DynamicTheme(darkTheme = true) {
