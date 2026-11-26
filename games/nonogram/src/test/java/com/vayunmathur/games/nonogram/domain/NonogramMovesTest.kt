@@ -48,6 +48,23 @@ class NonogramMovesTest {
         assertEquals(emptySet(), NonogramMoves.undo(after, before).crossed)
     }
 
+    @Test fun notingAnAutoCrossPromotesItToAManualCross() {
+        val auto = game().copy(autoCrossed = setOf(0))
+        val promoted = NonogramMoves.setNote(auto, 0, true)
+        assertEquals(setOf(0), promoted.crossed); assertEquals(emptySet(), promoted.autoCrossed)
+    }
+
+    @Test fun guessingAnAutoCrossedBlankRevealsItAndDropsTheAutoCross() {
+        val g = NonogramMoves.guess(game().copy(autoCrossed = setOf(0)), 0)
+        assertEquals(setOf(0), g.revealedBlanks); assertEquals(emptySet(), g.autoCrossed)
+        assertEquals(STARTING_HEARTS - 1, g.hearts)
+    }
+
+    @Test fun toggleNoteTreatsAnAutoCrossAsCrossed() {
+        val cleared = NonogramMoves.toggleNote(game().copy(autoCrossed = setOf(0)), 0)
+        assertEquals(emptySet(), cleared.crossed); assertEquals(emptySet(), cleared.autoCrossed)
+    }
+
     @Test fun toggleNoteFlipsAndNeverCosts() {
         val once = NonogramMoves.toggleNote(game(), 4)
         assertEquals(setOf(4), once.crossed)

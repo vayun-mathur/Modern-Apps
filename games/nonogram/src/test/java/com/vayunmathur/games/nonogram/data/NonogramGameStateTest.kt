@@ -21,6 +21,7 @@ class NonogramGameStateTest {
         crossed: Set<Int> = emptySet(),
         revealedBlanks: Set<Int> = emptySet(),
         hearts: Int = STARTING_HEARTS,
+        autoCrossed: Set<Int> = emptySet(),
     ) = NonogramGameState(
         puzzle = cross,
         filled = filled,
@@ -29,6 +30,7 @@ class NonogramGameStateTest {
         hearts = hearts,
         mode = GameMode.CASUAL,
         level = 1,
+        autoCrossed = autoCrossed,
     )
 
     /** Indices of the cells that make up the picture. */
@@ -91,6 +93,18 @@ class NonogramGameStateTest {
         val s = state(revealedBlanks = setOf(blankCell))
         assertEquals(CellMark.REVEALED, s.markAt(blankCell), "a mistake must not look like the player's own X")
         assertTrue(s.isLocked(blankCell), "a cell the game revealed cannot be charged for twice")
+    }
+
+    @Test
+    fun anAutoCrossDrawsAsACrossButIsNotThePlayersOwn() {
+        val s = state(autoCrossed = setOf(blankCell))
+        assertEquals(CellMark.CROSSED, s.markAt(blankCell), "auto crosses draw like any cross")
+        assertTrue(s.isAutoCrossed(blankCell))
+        assertFalse(s.isManuallyCrossed(blankCell))
+        assertFalse(s.isLocked(blankCell), "only fills and revealed blanks are locked")
+        assertFalse(state(filled = answer, autoCrossed = setOf(blankCell)).isFailed)
+        assertTrue(state(filled = answer, autoCrossed = setOf(blankCell)).isWon,
+            "auto crosses do not affect the win check either")
     }
 
     @Test

@@ -21,21 +21,36 @@ object NonogramMoves {
     fun guess(game: NonogramGameState, index: Int): NonogramGameState {
         if (game.isOver || game.isLocked(index)) return game
         return if (game.belongsToPicture(index)) {
-            game.copy(filled = game.filled + index, crossed = game.crossed - index)
+            game.copy(
+                filled = game.filled + index,
+                crossed = game.crossed - index,
+                autoCrossed = game.autoCrossed - index,
+            )
         } else {
             game.copy(
                 revealedBlanks = game.revealedBlanks + index,
                 crossed = game.crossed - index,
+                autoCrossed = game.autoCrossed - index,
                 hearts = (game.hearts - 1).coerceAtLeast(0),
             )
         }
     }
 
-    /** Places ([crossed] true) or removes the player's own "looks empty" note. Never costs a heart. */
+    /**
+     * Places ([crossed] true) or removes the player's own "looks empty" note. Never costs a heart.
+     *
+     * Placing a note on an auto-crossed cell promotes that cross to the player's own: it moves
+     * from `autoCrossed` into `crossed`, so the auto-cross derivation can no longer take it back.
+     * Removing a note removes both kinds at this level; the ViewModel's re-derivation then puts
+     * an auto-cross straight back if the line still justifies it, so an automatic cross cannot
+     * be cleared while its line is complete — only a manual one can.
+     */
     fun setNote(game: NonogramGameState, index: Int, crossed: Boolean): NonogramGameState {
         if (game.isOver || game.isLocked(index)) return game
         val notes = if (crossed) game.crossed + index else game.crossed - index
-        return if (notes == game.crossed) game else game.copy(crossed = notes)
+        val auto = game.autoCrossed - index
+        return if (notes == game.crossed && auto == game.autoCrossed) game
+        else game.copy(crossed = notes, autoCrossed = auto)
     }
 
     /**
@@ -50,9 +65,12 @@ object NonogramMoves {
         current.copy(
             filled = before.filled - current.revealedBlanks,
             crossed = before.crossed - current.revealedBlanks,
+            // Auto crosses from before the stroke are restored as they were; the caller
+            // re-derives them, which drops any whose justifying fill the undo removed.
+            autoCrossed = before.autoCrossed - current.revealedBlanks,
         )
 
     /** Flips the note on [index]: the single-tap behaviour of cross mode. */
     fun toggleNote(game: NonogramGameState, index: Int): NonogramGameState =
-        setNote(game, index, crossed = index !in game.crossed)
+        setNote(game, index, crossed = index !in game.crossed && index !in game.autoCrossed)
 }

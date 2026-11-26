@@ -13,6 +13,7 @@ import com.vayunmathur.games.nonogram.data.NonogramPuzzle
 import com.vayunmathur.games.nonogram.data.STARTING_HEARTS
 import com.vayunmathur.games.nonogram.data.StoredBoard
 import com.vayunmathur.games.nonogram.data.sizeForLevel
+import com.vayunmathur.games.nonogram.domain.NonogramClues
 import com.vayunmathur.games.nonogram.domain.NonogramGenerator
 import com.vayunmathur.games.nonogram.domain.NonogramMoves
 import com.vayunmathur.games.nonogram.domain.NonogramStrokes
@@ -192,14 +193,21 @@ class NonogramViewModel(application: Application) : AndroidViewModel(application
                 hearts = board.hearts,
                 mode = session.mode,
                 level = session.level,
+                autoCrossed = board.autoCrossed,
             )
-            var game = stored
+            // Boards saved before auto-crosses existed (or by any path that did not
+            // derive them) gain the crosses their fills already justify on load.
+            val derived = NonogramClues.withAutoCrosses(stored)
+            var game = derived
             // Compare-and-set, so a move committed while this emission was in flight is never
             // overwritten by the older stored board: the retry sees it, and its pending write.
             _uiState.update { state ->
-                game = state.game?.takeIf { hasPendingWrites && it.isBoardFor(session, puzzle) } ?: stored
+                game = state.game?.takeIf { hasPendingWrites && it.isBoardFor(session, puzzle) } ?: derived
                 state.copy(game = game, generating = false, dailyDone = dailyDone, canUndo = canUndo(game))
             }
+            // Persist a load-time derivation, so the crosses on screen are the
+            // crosses on disk even if no further move is made.
+            if (game == derived && derived != stored) persist(derived)
             if (game.isWon) onWin(game, daily, day)
         }
     }
@@ -231,16 +239,20 @@ class NonogramViewModel(application: Application) : AndroidViewModel(application
      * costs one or two disk writes rather than one each.
      */
     private fun commit(next: NonogramGameState) {
+        // Every move flows through here, so this is where auto-crosses are
+        // re-derived: real cell state (win checks, persistence and the board
+        // all see the same crosses), never a drawing-only overlay.
+        val derived = NonogramClues.withAutoCrosses(next)
         val previous = _uiState.value.game ?: return
-        if (next == previous) return
-        _uiState.update { it.copy(game = next, canUndo = canUndo(next)) }
-        persist(next)
-        if (next.isWon) onWin(next, next.mode == GameMode.DAILY, boardDay)
+        if (derived == previous) return
+        _uiState.update { it.copy(game = derived, canUndo = canUndo(derived)) }
+        persist(derived)
+        if (derived.isWon) onWin(derived, derived.mode == GameMode.DAILY, boardDay)
     }
 
     private fun persist(game: NonogramGameState) {
         val ticket = requestedWrite.incrementAndGet()
-        val board = StoredBoard(game.filled, game.crossed, game.revealedBlanks, game.hearts)
+        val board = StoredBoard(game.filled, game.crossed, game.revealedBlanks, game.hearts, game.autoCrossed)
         val daily = game.mode == GameMode.DAILY
         val day = boardDay
         // Off the main thread: the board is already on screen, so nothing waits for this, and the
@@ -321,7 +333,8 @@ class NonogramViewModel(application: Application) : AndroidViewModel(application
         // Only strokes that changed a fill or a note are worth undoing; one that only revealed a
         // mistake has nothing undo could give back.
         if (before == null || after == null) return
-        if (before.filled == after.filled && before.crossed == after.crossed) return
+        if (before.filled == after.filled && before.crossed == after.crossed &&
+            before.autoCrossed == after.autoCrossed) return
         undoStack.addLast(before)
         while (undoStack.size > MAX_UNDO) undoStack.removeFirst()
         _uiState.value = _uiState.value.copy(canUndo = canUndo(after))
@@ -379,6 +392,7 @@ class NonogramViewModel(application: Application) : AndroidViewModel(application
                 filled = emptySet(),
                 crossed = emptySet(),
                 revealedBlanks = emptySet(),
+                autoCrossed = emptySet(),
                 hearts = STARTING_HEARTS,
             )
         )

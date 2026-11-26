@@ -26,6 +26,7 @@ class NonogramDataStore(private val context: Context) {
 
     val filledCells: Flow<Set<Int>> = context.dataStore.data.map { it[FILLED_KEY].toCells() }
     val crossedCells: Flow<Set<Int>> = context.dataStore.data.map { it[CROSSED_KEY].toCells() }
+    val autoCrossedCells: Flow<Set<Int>> = context.dataStore.data.map { it[AUTO_CROSSED_KEY].toCells() }
     val revealedBlanks: Flow<Set<Int>> = context.dataStore.data.map { it[REVEALED_KEY].toCells() }
     val hearts: Flow<Int> = context.dataStore.data.map { it[HEARTS_KEY] ?: STARTING_HEARTS }
 
@@ -50,6 +51,8 @@ class NonogramDataStore(private val context: Context) {
         context.dataStore.data.map { it[DAILY_FILLED_KEY].toCells() }
     val dailyCrossedCells: Flow<Set<Int>> =
         context.dataStore.data.map { it[DAILY_CROSSED_KEY].toCells() }
+    val dailyAutoCrossedCells: Flow<Set<Int>> =
+        context.dataStore.data.map { it[DAILY_AUTO_CROSSED_KEY].toCells() }
     val dailyRevealedBlanks: Flow<Set<Int>> =
         context.dataStore.data.map { it[DAILY_REVEALED_KEY].toCells() }
     val dailyHearts: Flow<Int> =
@@ -74,6 +77,7 @@ class NonogramDataStore(private val context: Context) {
             prefs[LEVEL_KEY] = level
             prefs[FILLED_KEY] = emptySet()
             prefs[CROSSED_KEY] = emptySet()
+            prefs[AUTO_CROSSED_KEY] = emptySet()
             prefs[REVEALED_KEY] = emptySet()
             prefs[HEARTS_KEY] = STARTING_HEARTS
         }
@@ -90,6 +94,7 @@ class NonogramDataStore(private val context: Context) {
         StoredBoard(
             filled = prefs[if (daily) DAILY_FILLED_KEY else FILLED_KEY].toCells(),
             crossed = prefs[if (daily) DAILY_CROSSED_KEY else CROSSED_KEY].toCells(),
+            autoCrossed = prefs[if (daily) DAILY_AUTO_CROSSED_KEY else AUTO_CROSSED_KEY].toCells(),
             revealed = prefs[if (daily) DAILY_REVEALED_KEY else REVEALED_KEY].toCells(),
             hearts = prefs[if (daily) DAILY_HEARTS_KEY else HEARTS_KEY] ?: STARTING_HEARTS,
         )
@@ -110,6 +115,7 @@ class NonogramDataStore(private val context: Context) {
             if (!daily && (prefs[LEVEL_KEY] ?: 1) != level) return@edit
             prefs[if (daily) DAILY_FILLED_KEY else FILLED_KEY] = board.filled.toStrings()
             prefs[if (daily) DAILY_CROSSED_KEY else CROSSED_KEY] = board.crossed.toStrings()
+            prefs[if (daily) DAILY_AUTO_CROSSED_KEY else AUTO_CROSSED_KEY] = board.autoCrossed.toStrings()
             prefs[if (daily) DAILY_REVEALED_KEY else REVEALED_KEY] = board.revealed.toStrings()
             prefs[if (daily) DAILY_HEARTS_KEY else HEARTS_KEY] = board.hearts
         }
@@ -152,6 +158,7 @@ class NonogramDataStore(private val context: Context) {
             prefs[DAILY_DAY_KEY] = day
             prefs[DAILY_FILLED_KEY] = emptySet()
             prefs[DAILY_CROSSED_KEY] = emptySet()
+            prefs[DAILY_AUTO_CROSSED_KEY] = emptySet()
             prefs[DAILY_REVEALED_KEY] = emptySet()
             prefs[DAILY_HEARTS_KEY] = STARTING_HEARTS
         }
@@ -161,6 +168,7 @@ class NonogramDataStore(private val context: Context) {
         val LEVEL_KEY = intPreferencesKey("current_level")
         val FILLED_KEY = stringSetPreferencesKey("filled_cells")
         val CROSSED_KEY = stringSetPreferencesKey("crossed_cells")
+        val AUTO_CROSSED_KEY = stringSetPreferencesKey("auto_crossed_cells")
         val REVEALED_KEY = stringSetPreferencesKey("revealed_blanks")
         val HEARTS_KEY = intPreferencesKey("hearts")
         val GAME_MODE_KEY = stringPreferencesKey("game_mode")
@@ -171,6 +179,7 @@ class NonogramDataStore(private val context: Context) {
         val DAILY_DAY_KEY = longPreferencesKey("daily_day")
         val DAILY_FILLED_KEY = stringSetPreferencesKey("daily_filled_cells")
         val DAILY_CROSSED_KEY = stringSetPreferencesKey("daily_crossed_cells")
+        val DAILY_AUTO_CROSSED_KEY = stringSetPreferencesKey("daily_auto_crossed_cells")
         val DAILY_REVEALED_KEY = stringSetPreferencesKey("daily_revealed_blanks")
         val DAILY_HEARTS_KEY = intPreferencesKey("daily_hearts")
 
@@ -185,6 +194,8 @@ data class StoredBoard(
     val crossed: Set<Int> = emptySet(),
     val revealed: Set<Int> = emptySet(),
     val hearts: Int = STARTING_HEARTS,
+    /** Crosses the game derived, persisted apart from the player's own [crossed]. */
+    val autoCrossed: Set<Int> = emptySet(),
 )
 
 /** Cell indices are stored as strings because DataStore has no int-set type. */

@@ -46,14 +46,17 @@ internal data class CellLabels(
     }
 
     /** What a tap (TalkBack double tap) does: the mode's own mark. */
-    fun tapLabel(mark: CellMark, mode: MarkMode): String =
-        if (mode == MarkMode.FILL) fill else noteLabel(mark)
+    fun tapLabel(mark: CellMark, mode: MarkMode, autoCrossed: Boolean = false): String =
+        if (mode == MarkMode.FILL) fill else noteLabel(mark, autoCrossed)
 
     /** What a long press (TalkBack double tap and hold) does: the other mark. */
-    fun longPressLabel(mark: CellMark, mode: MarkMode): String =
-        if (mode == MarkMode.FILL) noteLabel(mark) else fill
+    fun longPressLabel(mark: CellMark, mode: MarkMode, autoCrossed: Boolean = false): String =
+        if (mode == MarkMode.FILL) noteLabel(mark, autoCrossed) else fill
 
-    private fun noteLabel(mark: CellMark) = if (mark == CellMark.CROSSED) uncross else cross
+    // An auto-cross is not the player's to uncross: the note action on it
+    // promotes it to the player's own cross instead.
+    private fun noteLabel(mark: CellMark, autoCrossed: Boolean = false) =
+        if (mark == CellMark.CROSSED && !autoCrossed) uncross else cross
 }
 
 /** Zero-based row and column, kept together so the cell signature stays short. */

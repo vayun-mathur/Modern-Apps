@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.TextUnit
 import com.vayunmathur.games.nonogram.data.NonogramGameState
+import com.vayunmathur.games.nonogram.domain.NonogramClues
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
 import kotlin.math.roundToInt
@@ -57,15 +58,26 @@ internal fun ColumnClues(
 ) {
     ZoomedLine(horizontal = true, zoom = zoom) {
         for (col in 0 until game.size) {
-            val clues = game.puzzle.colClues[col]
+            val displayed = game.puzzle.colClues[col].ifEmpty { listOf(0) }
+            // Display-only derived state: recomputed from the placed fills on
+            // every recomposition, never stored on the game state.
+            val greying = NonogramClues.greying(
+                displayed,
+                (0 until game.size).map { game.markAt(it * game.size + col) },
+            )
             Column(
                 Modifier.size(metrics.cell, metrics.clueCell * gutterCells),
                 // Bottom-aligned so the last clue sits against the grid it describes.
                 verticalArrangement = Arrangement.Bottom,
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                for (clue in clues.ifEmpty { listOf(0) }) {
-                    ClueText(clue, metrics, Modifier.size(metrics.cell, metrics.clueCell))
+                displayed.forEachIndexed { index, clue ->
+                    ClueText(
+                        clue,
+                        metrics,
+                        Modifier.size(metrics.cell, metrics.clueCell),
+                        greyed = greying.isGreyed(index),
+                    )
                 }
             }
         }
@@ -82,15 +94,24 @@ internal fun RowClues(
 ) {
     ZoomedLine(horizontal = false, zoom = zoom) {
         for (row in 0 until game.size) {
-            val clues = game.puzzle.rowClues[row]
+            val displayed = game.puzzle.rowClues[row].ifEmpty { listOf(0) }
+            val greying = NonogramClues.greying(
+                displayed,
+                (0 until game.size).map { game.markAt(row * game.size + it) },
+            )
             Row(
                 Modifier.size(metrics.clueCell * gutterCells, metrics.cell),
                 // End-aligned for the same reason: the final clue abuts the grid.
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                for (clue in clues.ifEmpty { listOf(0) }) {
-                    ClueText(clue, metrics, Modifier.size(metrics.clueCell, metrics.cell))
+                displayed.forEachIndexed { index, clue ->
+                    ClueText(
+                        clue,
+                        metrics,
+                        Modifier.size(metrics.clueCell, metrics.cell),
+                        greyed = greying.isGreyed(index),
+                    )
                 }
             }
         }
@@ -131,6 +152,7 @@ private fun ClueText(
     clue: Int,
     metrics: ClueMetrics,
     modifier: Modifier = Modifier,
+    greyed: Boolean = false,
 ) {
     Box(modifier, contentAlignment = Alignment.Center) {
         Text(
@@ -141,8 +163,12 @@ private fun ClueText(
             softWrap = false,
             fontWeight = FontWeight.Medium,
             textAlign = TextAlign.Center,
-            color = if (clue == 0) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-            else MaterialTheme.colorScheme.onSurface,
+            // Greyed numbers keep their slot and size; only the colour subdues.
+            color = if (clue == 0 || greyed) {
+                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            },
             overflow = TextOverflow.Ellipsis,
         )
     }

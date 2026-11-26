@@ -206,8 +206,10 @@ private fun Grid(
                             index = index,
                             position = CellPosition(row, col),
                             stateWord = labels.wordFor(mark),
-                            tapLabel = labels.tapLabel(mark, markMode).takeIf { actionable },
-                            longPressLabel = labels.longPressLabel(mark, markMode).takeIf { actionable },
+                            tapLabel = labels.tapLabel(mark, markMode, game.isAutoCrossed(index))
+                                .takeIf { actionable },
+                            longPressLabel = labels.longPressLabel(mark, markMode, game.isAutoCrossed(index))
+                                .takeIf { actionable },
                             onTap = tap,
                             onLongPress = longPress,
                             modifier = Modifier.size(cell),

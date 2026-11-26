@@ -497,6 +497,40 @@ awaitStore("undo persisted") { vm.dataStore.filledCells.first { it.isEmpty() } }
         }
     }
 
+    @Test fun completingALineAutoCrossesAndPersistsThenUndoRemoves() {
+        val vm = loadedVm()
+        val g = vm.uiState.value.game!!
+        val n = g.size
+        // Fill every picture cell of the first row, one tap (stroke) each.
+        val rowCells = (0 until n).map { it }
+        val pictureInRow = rowCells.filter { g.puzzle.solution[it] }
+        assertTrue(pictureInRow.isNotEmpty())
+        for (i in pictureInRow) vm.tapCell(i)
+        val after = vm.uiState.value.game!!
+        val rowBlanks = rowCells.filterNot { g.puzzle.solution[it] }
+        assertTrue(rowBlanks.all { it in after.autoCrossed },
+            "blank cells of a completed row are auto-crossed: blanks=$rowBlanks auto=${after.autoCrossed}")
+        assertTrue(rowBlanks.none { it in after.crossed }, "auto crosses are not manual crosses")
+        // Persisted as real cell state under their own key.
+        awaitStore("auto crosses persisted") {
+            vm.dataStore.autoCrossedCells.first { it == after.autoCrossed }
+        }
+        // A fresh ViewModel (a relaunch) shows the same crosses on load.
+        val reloaded = track(NonogramViewModel(app))
+        awaitState("reload shows auto crosses", reloaded) {
+            it.game?.autoCrossed == after.autoCrossed && it.game?.filled == after.filled
+        }
+        // Undoing the last fill breaks the row again, and its auto crosses go.
+        vm.undo()
+        val undone = vm.uiState.value.game!!
+        assertTrue(pictureInRow.last() !in undone.filled)
+        assertEquals(
+            com.vayunmathur.games.nonogram.domain.NonogramClues.autoCrossedCells(undone),
+            undone.autoCrossed,
+            "auto crosses left are exactly the ones the remaining fills justify",
+        )
+    }
+
     @Test fun retryGenerationReloadsBoard() {
         val vm = loadedVm()
         val before = vm.uiState.value.game!!

@@ -14,10 +14,12 @@ enum class GameMode { CASUAL, DAILY }
 /**
  * What a cell shows.
  *
- * [CROSSED] is the player's own "definitely blank" note. It is bookkeeping only — the win check looks
- * at [FILLED] alone — but it is how a nonogram is actually solved, so it has to persist alongside the
- * fills. [REVEALED] is a blank the game exposed after a wrong guess; it is drawn differently from a
- * note so the player can tell their own working from the cells their mistakes paid for.
+ * [CROSSED] is a "definitely blank" mark, whether the player placed it or the game derived it
+ * automatically (see [NonogramGameState.autoCrossed]); the two draw the same and are told apart by
+ * which set holds the cell. It is bookkeeping only — the win check looks at [FILLED] alone — but it
+ * is how a nonogram is actually solved, so it has to persist alongside the fills. [REVEALED] is a
+ * blank the game exposed after a wrong guess; it is drawn differently from a note so the player can
+ * tell their own working from the cells their mistakes paid for.
  */
 enum class CellMark { BLANK, FILLED, CROSSED, REVEALED }
 
@@ -35,11 +37,17 @@ const val STARTING_HEARTS = 3
 /**
  * A puzzle plus the player's work on it.
  *
- * The three cell sets are disjoint and mean different things:
+ * The four cell sets are disjoint and mean different things:
  *  - [filled] is part of the picture. A fill only ever lands on a cell that belongs, so this is always
  *    a subset of the solution and there is no "wrong cell" state to draw.
  *  - [crossed] is the player's own note that a cell looks empty. Free to place and to take back, and
  *    never checked against the solution — being wrong in a note is not a guess worth punishing.
+ *  - [autoCrossed] is a cross the game derived: every still-blank cell of a row or column whose
+ *    clue fills are all placed. It draws exactly like [crossed], but the game owns it — it is
+ *    re-derived from the fills (see `NonogramClues.withAutoCrosses`), removed when the fills no
+ *    longer justify it, and persisted separately so that removal can never take a player's own
+ *    cross with it. Deliberately placing a cross on an auto-crossed cell promotes it into
+ *    [crossed], from which point it is the player's to keep.
  *  - [revealedBlanks] is a cell the game has *told* the player is empty, after a wrong guess cost a
  *    heart. It draws as a distinct error-coloured cross and cannot be cleared, which is what stops
  *    the same cell being charged for twice.
@@ -56,6 +64,7 @@ data class NonogramGameState(
     val mode: GameMode,
     val level: Int,
     val elapsedSeconds: Int = 0,
+    val autoCrossed: Set<Int> = emptySet(),
 ) {
     val size: Int get() = puzzle.size
 
@@ -63,8 +72,15 @@ data class NonogramGameState(
         index in filled -> CellMark.FILLED
         index in revealedBlanks -> CellMark.REVEALED
         index in crossed -> CellMark.CROSSED
+        index in autoCrossed -> CellMark.CROSSED
         else -> CellMark.BLANK
     }
+
+    /** Whether [index] carries the player's own cross (as opposed to an automatic one). */
+    fun isManuallyCrossed(index: Int): Boolean = index in crossed
+
+    /** Whether [index] carries a cross the game derived and may still take back. */
+    fun isAutoCrossed(index: Int): Boolean = index in autoCrossed
 
     /**
      * Whether [index] is settled and no longer takes input.

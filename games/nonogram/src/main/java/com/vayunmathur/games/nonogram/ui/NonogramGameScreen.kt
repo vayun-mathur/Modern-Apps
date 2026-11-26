@@ -265,7 +265,7 @@ private fun NonogramControls(
     // Restart clears every mark, so only ask when there is something to lose:
     // an untouched board restarts into itself.
     val hasProgress = game.filled.isNotEmpty() || game.crossed.isNotEmpty() ||
-        game.revealedBlanks.isNotEmpty()
+        game.autoCrossed.isNotEmpty() || game.revealedBlanks.isNotEmpty()
     when {
         game.isWon -> {
             Text(
@@ -304,7 +304,7 @@ private fun NonogramControls(
         else -> {
             MarkModeToggle(state.markMode, actions::setMarkMode)
             if (game.filled.isEmpty() && game.crossed.isEmpty() &&
-                game.revealedBlanks.isEmpty()
+                game.autoCrossed.isEmpty() && game.revealedBlanks.isEmpty()
             ) {
                 Text(
                     // Follows the toggle: in Cross mode a tap crosses and a long press fills.

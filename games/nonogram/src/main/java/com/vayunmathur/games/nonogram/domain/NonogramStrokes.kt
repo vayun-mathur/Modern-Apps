@@ -64,7 +64,13 @@ data class StrokeStep(val game: NonogramGameState, val stroke: Stroke)
  */
 object NonogramStrokes {
 
-    /** The action a stroke would take if it started on [index], or null if that cell takes no input. */
+    /**
+     * The action a stroke would take if it started on [index], or null if that cell takes no input.
+     *
+     * In cross mode a manual cross clears, while an auto-crossed cell crosses: placing a
+     * note there promotes the automatic cross to the player's own (see [NonogramMoves.setNote])
+     * rather than clearing a cross the game will immediately re-derive.
+     */
     fun actionFor(game: NonogramGameState, index: Int, mode: MarkMode): StrokeAction? = when {
         game.isLocked(index) -> null
         mode == MarkMode.FILL -> StrokeAction.FILL
@@ -115,9 +121,15 @@ object NonogramStrokes {
         when (action) {
             StrokeAction.FILL ->
                 if (deciding || game.markAt(index) == CellMark.BLANK) NonogramMoves.guess(game, index) else game
-            StrokeAction.CROSS ->
-                if (game.markAt(index) == CellMark.BLANK) NonogramMoves.setNote(game, index, true) else game
+            StrokeAction.CROSS -> when {
+                game.markAt(index) == CellMark.BLANK -> NonogramMoves.setNote(game, index, true)
+                // Already crossed, but only automatically: this stroke's note promotes it.
+                game.isAutoCrossed(index) && !game.isManuallyCrossed(index) ->
+                    NonogramMoves.setNote(game, index, true)
+                else -> game
+            }
             StrokeAction.CLEAR ->
-                if (game.markAt(index) == CellMark.CROSSED) NonogramMoves.setNote(game, index, false) else game
+                // Only the player's own crosses clear; an auto-cross is the game's to remove.
+                if (game.isManuallyCrossed(index)) NonogramMoves.setNote(game, index, false) else game
         }
 }

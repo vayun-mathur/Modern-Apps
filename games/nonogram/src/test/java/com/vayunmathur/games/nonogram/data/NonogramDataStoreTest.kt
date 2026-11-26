@@ -29,26 +29,28 @@ class NonogramDataStoreTest {
         s.setMarkMode(MarkMode.FILL)
     }
 
-    private fun board(filled: Set<Int> = emptySet(), crossed: Set<Int> = emptySet(), revealed: Set<Int> = emptySet(), hearts: Int = STARTING_HEARTS) =
-        StoredBoard(filled, crossed, revealed, hearts)
+    private fun board(filled: Set<Int> = emptySet(), crossed: Set<Int> = emptySet(), revealed: Set<Int> = emptySet(), hearts: Int = STARTING_HEARTS, auto: Set<Int> = emptySet()) =
+        StoredBoard(filled, crossed, revealed, hearts, auto)
 
     @Test fun saveLevelWipesBoardAndRestoresHearts() = runBlocking {
         val s = store(); s.saveLevel(6)
-        s.saveBoard(board(setOf(3), setOf(4), setOf(5), STARTING_HEARTS - 1), daily = false, level = 6, day = 0L)
+        s.saveBoard(board(setOf(3), setOf(4), setOf(5), STARTING_HEARTS - 1, auto = setOf(8)), daily = false, level = 6, day = 0L)
         assertEquals(STARTING_HEARTS - 1, s.hearts.first())
         s.saveLevel(7)
         assertEquals(7, s.currentLevel.first())
         assertEquals(emptySet(), s.filledCells.first())
         assertEquals(emptySet(), s.crossedCells.first())
+        assertEquals(emptySet(), s.autoCrossedCells.first())
         assertEquals(emptySet(), s.revealedBlanks.first())
         assertEquals(STARTING_HEARTS, s.hearts.first())
     }
 
     @Test fun saveBoardRoundTripsAsOneSnapshot() = runBlocking {
         val s = store(); s.saveLevel(2)
-        val b = board(setOf(1, 2), setOf(7), setOf(9), 1)
+        val b = board(setOf(1, 2), setOf(7), setOf(9), 1, auto = setOf(11))
         s.saveBoard(b, daily = false, level = 2, day = 0L)
         assertEquals(b, s.board(daily = false).first())
+        assertEquals(setOf(11), s.autoCrossedCells.first(), "auto crosses persist apart from manual ones")
         assertEquals(setOf(1, 2), s.filledCells.first()); assertEquals(1, s.hearts.first())
     }
 

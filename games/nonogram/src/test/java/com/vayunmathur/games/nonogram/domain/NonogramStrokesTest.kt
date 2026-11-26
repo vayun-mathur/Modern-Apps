@@ -20,8 +20,8 @@ class NonogramStrokesTest {
         "#....",
     )
     private val puzzle = NonogramPuzzle.from(5, rows.joinToString("").map { it == '#' })
-    private fun game(crossed: Set<Int> = emptySet(), filled: Set<Int> = emptySet(), hearts: Int = STARTING_HEARTS) =
-        NonogramGameState(puzzle, filled, crossed, emptySet(), hearts, GameMode.CASUAL, 1)
+    private fun game(crossed: Set<Int> = emptySet(), filled: Set<Int> = emptySet(), hearts: Int = STARTING_HEARTS, auto: Set<Int> = emptySet()) =
+        NonogramGameState(puzzle, filled, crossed, emptySet(), hearts, GameMode.CASUAL, 1, autoCrossed = auto)
     private fun idx(row: Int, col: Int) = row * 5 + col
 
     /** Runs a whole stroke: down on [cells].first(), then the finger over each following cell. */
@@ -107,6 +107,28 @@ class NonogramStrokesTest {
         assertEquals(StrokeAction.CLEAR, s.stroke.action)
         assertEquals(emptySet(), s.game.crossed)
         assertNull(NonogramStrokes.actionFor(start, idx(1, 0), MarkMode.CROSS))
+    }
+
+    @Test fun crossModeOnAnAutoCrossPromotesItInsteadOfClearing() {
+        val start = game(auto = setOf(idx(3, 1)))
+        val s = stroke(start, MarkMode.CROSS, idx(3, 1))
+        assertEquals(StrokeAction.CROSS, s.stroke.action)
+        assertEquals(setOf(idx(3, 1)), s.game.crossed, "the cross becomes the player's own")
+        assertEquals(emptySet(), s.game.autoCrossed)
+    }
+
+    @Test fun clearStrokeLeavesAutoCrossesAlone() {
+        val start = game(crossed = setOf(idx(3, 1)), auto = setOf(idx(3, 2)))
+        val s = stroke(start, MarkMode.CROSS, idx(3, 1), idx(3, 2))
+        assertEquals(emptySet(), s.game.crossed)
+        assertEquals(setOf(idx(3, 2)), s.game.autoCrossed, "only manual crosses clear")
+    }
+
+    @Test fun fillStrokesStepOverAutoCrossesLikeManualOnes() {
+        val start = game(auto = setOf(idx(1, 2)))
+        val s = stroke(start, MarkMode.FILL, idx(1, 0), idx(1, 4))
+        assertEquals(setOf(idx(1, 2)), s.game.autoCrossed)
+        assertTrue(idx(1, 2) !in s.game.filled)
     }
 
     @Test fun nothingHappensOnceTheGameIsOver() {

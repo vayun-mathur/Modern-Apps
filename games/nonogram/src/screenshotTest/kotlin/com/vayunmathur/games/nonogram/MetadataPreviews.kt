@@ -9,6 +9,7 @@ import com.vayunmathur.games.nonogram.data.NonogramGameState
 import com.vayunmathur.games.nonogram.data.NonogramPuzzle
 import com.vayunmathur.games.nonogram.data.STARTING_HEARTS
 import com.vayunmathur.games.nonogram.data.sizeForLevel
+import com.vayunmathur.games.nonogram.domain.NonogramClues
 import com.vayunmathur.games.nonogram.domain.NonogramGenerator
 import com.vayunmathur.games.nonogram.platform.NonogramGameActions
 import com.vayunmathur.games.nonogram.platform.NonogramUiState
@@ -96,13 +97,16 @@ class MetadataPreviews {
 
     @Composable
     private fun Board(game: NonogramGameState, streak: Long = 0) {
+        // The same derivation the ViewModel applies to every move, so the
+        // listing board carries the auto-crosses a played board would.
+        val derived = NonogramClues.withAutoCrosses(game)
         // Layoutlib has no wallpaper to sample, so Material You falls back to the default palette.
         DynamicTheme(darkTheme = true) {
             NonogramGameScreen(
                 state = NonogramUiState(
-                    game = game,
-                    mode = game.mode,
-                    level = game.level,
+                    game = derived,
+                    mode = derived.mode,
+                    level = derived.level,
                     dailyStreak = streak,
                 ),
                 actions = NonogramGameActions.Noop,
