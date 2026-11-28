@@ -23,6 +23,7 @@ _Install: ./install email (dev by default)._
 - `NetworkClient.init(this, TrustBundle.SYSTEM)` must stay first in `onCreateBeforeContent` — mail servers need system CAs, not the first-party bundle
 - `DateMillisBackfill`/`PeekContentBackfill` are one-time migrations gated on `runIfNeeded`; skipping them breaks sort order and snippet previews
 - IDLE push is foreground-gated via `AppLifecycleTracker` — background delivery goes through the hourly worker + notifications, not the socket
+- Startup background work never crashes the first screen: every `MainActivity.onCreateBeforeContent` step runs in isolation via `platform/StartupGuard` (catches `Throwable`, rethrows only cancellation), the backfills and IDLE start guard their own database access, and `EmailViewModel.accounts` degrades to an empty list (the Add Account gate) when the database will not open on the device
 - `network/imap/TrustAll.kt` exists for debug only; never widen its use
 
 ## Key files
@@ -69,6 +70,7 @@ _Install: ./install email (dev by default)._
 - com/vayunmathur/email/network/smtp/MimeBuilder.kt
 ### platform/ — ViewModel, actions, notifications, lifecycle
 - com/vayunmathur/email/platform/EmailViewModel.kt
+- com/vayunmathur/email/platform/StartupGuard.kt — isolated best-effort startup steps (#939)
 - com/vayunmathur/email/platform/EmailManager.kt
 - com/vayunmathur/email/platform/EmailUiContract.kt
 - com/vayunmathur/email/platform/EmailClientFlag.kt

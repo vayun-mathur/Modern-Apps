@@ -13,6 +13,7 @@ import com.vayunmathur.email.data.ImapIdleService
 import com.vayunmathur.email.data.OutboxSendWorker
 import com.vayunmathur.email.platform.AppLifecycleTracker
 import com.vayunmathur.email.platform.EmailViewModel
+import com.vayunmathur.email.platform.StartupGuard
 import com.vayunmathur.email.platform.IntentState
 import com.vayunmathur.email.ui.MainContent
 import com.vayunmathur.email.widget.EmailWidgetReceiver
@@ -37,13 +38,29 @@ class MainActivity : MaActivity() {
         // launch on Dispatchers.IO themselves; calling them from here keeps
         // one startup site. Order preserved: hourly sync, outbox, IDLE,
         // then the one-time backfills.
+        //
+        // Every step runs through StartupGuard in isolation (#939): none of
+        // this background work may crash the process after the first frame.
+        // An unguarded failure here (WorkManager / foreground-service start
+        // refusal, or a database that will not open on this device) used to
+        // escape this launch and exit the app ~1s after the Add Account
+        // gate first composed.
         lifecycleScope.launch(Dispatchers.IO) {
-            this@MainActivity.updateWidgetPreviews(EmailWidgetReceiver::class)
-            EmailSyncWorker.scheduleHourlyNonInboxSync(this@MainActivity)
-            OutboxSendWorker.runNow(this@MainActivity)
-            ImapIdleService.start(this@MainActivity)
-            DateMillisBackfill.runIfNeeded(lifecycleScope, this@MainActivity)
-            PeekContentBackfill.runIfNeeded(lifecycleScope, this@MainActivity)
+            val context = this@MainActivity
+            StartupGuard.runStep("widget previews") {
+                context.updateWidgetPreviews(EmailWidgetReceiver::class)
+            }
+            StartupGuard.runStep("hourly sync schedule") {
+                EmailSyncWorker.scheduleHourlyNonInboxSync(context)
+            }
+            StartupGuard.runStep("outbox flush") { OutboxSendWorker.runNow(context) }
+            StartupGuard.runStep("IDLE start") { ImapIdleService.start(context) }
+            StartupGuard.runStep("date backfill") {
+                DateMillisBackfill.runIfNeeded(lifecycleScope, context)
+            }
+            StartupGuard.runStep("peek backfill") {
+                PeekContentBackfill.runIfNeeded(lifecycleScope, context)
+            }
         }
     }
 
@@ -146,8 +163,18 @@ class MainActivity : MaActivity() {
         // is appended here, as the composer would for a fresh compose,
         // because a draft-resume does not append it again.
         lifecycleScope.launch(Dispatchers.IO) {
+            // A database that will not open on this device (#939) must not
+            // crash a share either: fall back to the plain composer route,
+            // exactly as the no-account case below does.
+            val account = try {
+                EmailRepository.get(this@MainActivity).getAccounts().firstOrNull()
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (_: Throwable) {
+                IntentState.navigationRoute = Route.Composer(to = to, subject = subject, body = body)
+                return@launch
+            }
             val repository = EmailRepository.get(this@MainActivity)
-            val account = repository.getAccounts().firstOrNull()
             if (account == null) {
                 // No account to own a draft yet: keep the pre-existing flow
                 // (the add-account gate runs first, then this route is read).

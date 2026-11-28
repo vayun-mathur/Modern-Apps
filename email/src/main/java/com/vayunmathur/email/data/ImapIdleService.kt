@@ -71,8 +71,18 @@ class ImapIdleService : Service() {
     override fun onDestroy() { scope.cancel(); super.onDestroy() }
 
     private suspend fun startIdleLoops() {
-        val dao = EmailRepository.get(applicationContext).getDatabase().accountDao()
-        val accounts = dao.getAccounts()
+        // A database that will not open on this device (#939) must not
+        // crash the process from this SupervisorJob scope: log and stop,
+        // exactly as the no-accounts case below already does.
+        val accounts = try {
+            EmailRepository.get(applicationContext).getDatabase().accountDao().getAccounts()
+        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+            throw cancelled
+        } catch (failure: Throwable) {
+            Log.status(TAG, "IDLE start skipped; database unavailable", failure)
+            stopSelf()
+            return
+        }
         if (accounts.isEmpty()) { stopSelf(); return }
         try { EmailSyncWorker.scheduleHourlyNonInboxSync(applicationContext) } catch (_: Exception) {}
         val current = accounts.map { it.email }.toSet()

@@ -20,6 +20,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.onEach
@@ -53,8 +54,19 @@ class EmailViewModel(application: Application) :
     val send = EmailSendActions(viewModelScope, appContext, emailManager)
     val aiSummaryHelper = AiSummaryHelper(appContext)
 
+    // If the database will not open on this device (#939: SQLCipher
+    // passphrase / Keystore / migration failure in the shared Room layer),
+    // the accounts flow must degrade to "no accounts" — the Add Account
+    // gate — instead of escaping viewModelScope and crashing the process
+    // a second after that gate first composes from the initial emptyList.
     val accounts: StateFlow<List<EmailAccount>> =
-        accountsDao.getAccountsFlow().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+        accountsDao.getAccountsFlow()
+            .catch { failure ->
+                if (failure is kotlinx.coroutines.CancellationException) throw failure
+                Log.status("EmailViewModel", "Accounts unavailable; database failed to open", failure)
+                emit(emptyList())
+            }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Active sync state — drives the linear progress bar at the top of the inbox. */
     val isSyncing: StateFlow<Boolean> = EmailSyncState.isSyncing
@@ -148,8 +160,17 @@ class EmailViewModel(application: Application) :
 
     init {
         viewModelScope.launch {
-            accountsDao.getAccounts().firstOrNull()?.let {
-                _selectedAccountEmail.value = it.email
+            // Same #939 guard as the accounts flow: a database-open failure
+            // leaves no selected account (Add Account gate) rather than an
+            // uncaught exception that exits the app after the first frame.
+            try {
+                accountsDao.getAccounts().firstOrNull()?.let {
+                    _selectedAccountEmail.value = it.email
+                }
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (failure: Throwable) {
+                Log.status("EmailViewModel", "Initial account load failed; database unavailable", failure)
             }
         }
     }

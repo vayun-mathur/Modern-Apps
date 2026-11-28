@@ -62,7 +62,12 @@ class EmailWidget : MaWidget<List<EmailPreview>>() {
         return withContext(Dispatchers.IO) {
             try {
                 EmailRepository.get(context).getDatabase().queryDao().getRecentUnifiedPreview()
-            } catch (ignored: Exception) {
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (ignored: Throwable) {
+                // Widened from Exception (#939): a native/database Error
+                // (e.g. UnsatisfiedLinkError) must also degrade to an
+                // empty widget, never crash the host process.
                 Log.error("EmailWidget", "DB fail", ignored)
                 emptyList()
             }

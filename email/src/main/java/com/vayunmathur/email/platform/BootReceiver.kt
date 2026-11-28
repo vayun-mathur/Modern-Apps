@@ -47,9 +47,13 @@ class BootReceiver : BroadcastReceiver() {
                         appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                             .edit { putBoolean(KEY_PENDING, true) }
                         Log.debug(TAG, "Boot: deferred IDLE start, set $KEY_PENDING=true")
-                    } catch (t: SecurityException) {
-                        Log.status(TAG, "BootReceiver failed: ${t.message}", t)
-                    } catch (t: IllegalStateException) {
+                    } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                        throw cancelled
+                    } catch (t: Throwable) {
+                        // WorkManager scheduling / deferred-start writes are
+                        // best-effort at boot; none may crash the process
+                        // (#939: Security/IllegalState were only the known
+                        // foreground-service cases).
                         Log.status(TAG, "BootReceiver failed: ${t.message}", t)
                     } finally {
                         pending.finish()
