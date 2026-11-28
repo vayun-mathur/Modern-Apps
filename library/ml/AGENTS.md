@@ -13,7 +13,7 @@
 **Purpose:** All on-device inference — session wrappers for every runtime (ONNX, LiteRT, ExecuTorch, Vulkan compute) plus per-model handles: Whisper (speech), NLLB (translate), Gemma (assistant), Maia (chess), CLIP/faces/segmentation (photos/camera), Supertonic (TTS), OCR post. No vendor SDKs.
 **How to use:** Pick the runtime session (`OnnxSessions` / `LiteRtSessions` / `ExecutorchSessions` / `VulkanSessions`), then the model handle (`WhisperHandle`, `NllbHandle`, `GemmaTypes`, `MaiaHandle`, `ClipHandle`, `SelfieSegmenter`, …). Pre/post via `OnnxPreprocess`, `OcrPost`, `SegmentationMask`.
 **Entry points:** The `*Handle` for your model → its `*Sessions` runtime → `VulkanBridge`/`VulkanWire` if GPU.
-**Gotchas:** Model files are large and versioned per consumer — never share weights across models without checking compatibility; GPU paths need device-specific testing.
+**Gotchas:** Model files are large and versioned per consumer — never share weights across models without checking compatibility; GPU paths need device-specific testing. `TextRecognizer` is thread-safe without caller locks: passes are serialised internally and `close()` defers the native destroy until any in-flight pass returns; the Rust side enforces the same lifetime with the `OCR_LIFETIME` RwLock in `bridge.rs` (recognise holds the read side, `destroyOcr` the write side), so a handle is never freed under a live `recognizeText` call.
 
 ## Key files
 - com/vayunmathur/library/ml/OnnxSessions.kt

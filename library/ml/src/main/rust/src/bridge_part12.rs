@@ -39,13 +39,15 @@ pub unsafe extern "system" fn Java_com_vayunmathur_library_ml_MlNative_recognize
     crop_bottom: jint,
     rotation_degrees: jint,
 ) -> jstring {
+    // Held for the whole pass, as in `recognizeText` (issue #944).
+    let _lifetime = ocr_use_guard();
     env.with_env(|env| -> jni::errors::Result<jstring> {
         let null = std::ptr::null_mut();
         if handle == 0 || width <= 0 || height <= 0 || row_stride <= 0 || pixel_stride <= 0 {
             return Ok(null);
         }
-        // SAFETY: as `recognizeText` — the caller guarantees the handle is
-        // live and serialises this against `destroyOcr`.
+        // SAFETY: the caller guarantees the handle came from `createPpocr`;
+        // `OCR_LIFETIME` (held above) guarantees it is not destroyed concurrently.
         let state = unsafe { &mut *(handle as *mut OcrHandle) };
         let address = match env.get_direct_buffer_address(&buffer) {
             Ok(a) if !a.is_null() => a,

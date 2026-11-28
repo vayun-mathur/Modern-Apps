@@ -368,6 +368,26 @@ struct OcrHandle {
     pixels: Vec<i32>,
 }
 
+/// Lifetime guard for every `OcrHandle` (issue #944).
+///
+/// The JNI contract used to rest entirely on the Kotlin caller serialising
+/// `recognizeText`/`recognizeTextBuffer` against `destroyOcr`. That contract
+/// was broken in practice (a non-suspend `close()` cannot take the coroutine
+/// Mutex the recognise path holds), and `destroyOcr` then freed the handle
+/// while a pass on `Dispatchers.Default` was still reading it — a heap
+/// use-after-free, reported as an MTE tag-mismatch SIGSEGV inside
+/// `recognizeText`. The guard makes the native side enforce the lifetime
+/// itself: recognise passes hold the read side for their whole duration, and
+/// destruction takes the write side, so a destroy can only ever run between
+/// passes, never inside one. Poison-tolerant like the rest of this bridge: a
+/// panicking pass must not wedge every later destroy.
+pub(crate) static OCR_LIFETIME: std::sync::RwLock<()> = std::sync::RwLock::new(());
+
+/// The read side of [`OCR_LIFETIME`], held for one whole recognise pass.
+pub(crate) fn ocr_use_guard() -> std::sync::RwLockReadGuard<'static, ()> {
+    OCR_LIFETIME.read().unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
 /// `TextRecognizer`'s constructor: detection at a fixed square, recognition at a fixed
 /// width, and the character table. Returns 0 on failure, having logged why.
 ///

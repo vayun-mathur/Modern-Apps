@@ -26,13 +26,16 @@ pub unsafe extern "system" fn Java_com_vayunmathur_library_ml_MlNative_recognize
     width: jint,
     height: jint,
 ) -> jstring {
+    // Held for the whole pass: `destroyOcr` cannot free the handle mid-call
+    // even if a caller breaks the serialisation contract (issue #944).
+    let _lifetime = ocr_use_guard();
     env.with_env(|env| -> jni::errors::Result<jstring> {
         let null = std::ptr::null_mut();
         if handle == 0 || width <= 0 || height <= 0 {
             return Ok(null);
         }
-        // SAFETY: as `segment` — the caller guarantees the handle is live and serialises this
-        // against `destroyOcr`.
+        // SAFETY: the caller guarantees the handle came from `createPpocr`;
+        // `OCR_LIFETIME` (held above) guarantees it is not destroyed concurrently.
         let state = unsafe { &mut *(handle as *mut OcrHandle) };
 
         if let Err(e) = read_pixels(env, &pixels, width, height, &mut state.pixels) {
@@ -117,8 +120,14 @@ pub unsafe extern "system" fn Java_com_vayunmathur_library_ml_MlNative_destroyOc
     if handle == 0 {
         return;
     }
+    // The write side of `OCR_LIFETIME`: waits for any in-flight recognise pass
+    // to finish before the handle is freed (issue #944). Each `Net`'s Drop
+    // waits for the device to go idle.
+    let _lifetime = OCR_LIFETIME
+        .write()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
     // SAFETY: the caller guarantees this came from `createPpocr` and has not been
-    // destroyed. Each `Net`'s Drop waits for the device to go idle.
+    // destroyed; the guard guarantees no pass is using it concurrently.
     drop(unsafe { Box::from_raw(handle as *mut OcrHandle) });
 }
 

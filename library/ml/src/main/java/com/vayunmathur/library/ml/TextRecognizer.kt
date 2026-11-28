@@ -47,10 +47,10 @@ data class RecognizedLine(
  *
  * # Threading
  *
- * Not thread-safe, and holding a lock across the whole of [recognize] and [close] is
- * required rather than advisable: the native handle is freed by [close] and reading it
- * afterwards is a use-after-free. See `BokehAnalyzer`, whose comments record what that
- * looked like when it happened.
+ * Thread-safe: recognise passes are serialised internally and [close] defers
+ * the native destruction until any in-flight pass has returned, so no caller
+ * has to hold its own lock across [recognize] and [close] to avoid freeing
+ * the native handle under a live call.
  *
  * Not cheap to construct either - two nets, two arenas, two command buffers - so build one
  * per batch of images and [close] it, rather than one per image.
@@ -63,6 +63,47 @@ class TextRecognizer(
 ) : AutoCloseable {
     private var handle: Long = 0L
     private var pixels: IntArray? = null
+
+    // Lifetime guard for the native handle (issue #944). This class used to rely
+    // on every caller holding an external lock across recognise + close; the pdf
+    // viewer's OcrEngine holds its Mutex across recognise but its close() is a
+    // plain non-suspend call that cannot, so closing a document while an OCR
+    // pass was still running on Dispatchers.Default freed the OcrHandle under
+    // the native call — a use-after-free that surfaces as an MTE tag mismatch
+    // inside recognizeText. The guard is therefore internal now:
+    //  - [callLock] serialises the native calls themselves (the handle's pixel
+    //    Vec and Vulkan nets are single-user, and [pixels] is a reused buffer);
+    //  - [stateLock] + [inFlight] make [close] non-destroying while a call is
+    //    in flight: destruction is deferred to the last call's exit.
+    private val callLock = Any()
+    private val stateLock = Any()
+    private var inFlight = 0
+    private var closeRequested = false
+
+    /** Mark a native call as started, or refuse it once closing. */
+    private fun beginUse(): Boolean = synchronized(stateLock) {
+        if (closeRequested || handle == 0L) {
+            false
+        } else {
+            inFlight++
+            true
+        }
+    }
+
+    /** Mark a native call as finished; destroys the handle if [close] deferred it. */
+    private fun endUse() {
+        val destroy = synchronized(stateLock) {
+            inFlight--
+            if (closeRequested && inFlight == 0 && handle != 0L) {
+                val live = handle
+                handle = 0L
+                live
+            } else {
+                0L
+            }
+        }
+        if (destroy != 0L) MlNative.destroyOcr(destroy)
+    }
 
     init {
         handle = if (!MlNative.isAvailable) {
@@ -82,7 +123,7 @@ class TextRecognizer(
     }
 
     /** True if both networks came up and the dictionary parsed. */
-    val isAvailable: Boolean get() = handle != 0L
+    val isAvailable: Boolean get() = synchronized(stateLock) { handle != 0L && !closeRequested }
 
     /**
      * Recognise every line in [bitmap], in reading order.
@@ -92,23 +133,43 @@ class TextRecognizer(
      * logcat under `ModelRunner`. The caller's [bitmap] is not recycled.
      */
     fun recognize(bitmap: Bitmap): List<RecognizedLine> {
-        if (handle == 0L) return emptyList()
-        // `HARDWARE` bitmaps cannot be read with getPixels, and a null config means the
-        // bitmap was already recycled.
-        val readable = if (bitmap.config == Bitmap.Config.ARGB_8888) {
-            bitmap
-        } else {
-            bitmap.copy(Bitmap.Config.ARGB_8888, false) ?: return emptyList()
-        }
+        if (!beginUse()) return emptyList()
         try {
-            val count = readable.width * readable.height
-            val buffer = pixels?.takeIf { it.size == count } ?: IntArray(count).also { pixels = it }
-            readable.getPixels(buffer, 0, readable.width, 0, 0, readable.width, readable.height)
-            val packed = MlNative.recognizeText(handle, buffer, readable.width, readable.height)
-                ?: return emptyList()
-            return parse(packed)
+            // Serialised: the reused pixel buffer and the native handle's own
+            // scratch Vec are single-user, so two concurrent passes would
+            // interleave pixels even without a close in between.
+            synchronized(callLock) {
+                // `HARDWARE` bitmaps cannot be read with getPixels, and a null config means the
+                // bitmap was already recycled.
+                val readable = if (bitmap.config == Bitmap.Config.ARGB_8888) {
+                    bitmap
+                } else {
+                    bitmap.copy(Bitmap.Config.ARGB_8888, false) ?: return emptyList()
+                }
+                try {
+                    if (readable.isRecycled) return emptyList()
+                    // Long arithmetic: width*height as Int wraps negative on a
+                    // bitmap past 2^31 pixels and would size the array from the wrap.
+                    val countLong = readable.width.toLong() * readable.height.toLong()
+                    if (countLong > Int.MAX_VALUE) return emptyList()
+                    val count = countLong.toInt()
+                    val buffer = pixels?.takeIf { it.size == count } ?: IntArray(count).also { pixels = it }
+                    try {
+                        readable.getPixels(buffer, 0, readable.width, 0, 0, readable.width, readable.height)
+                    } catch (expected: IllegalStateException) {
+                        // Recycled between the check above and here by whoever
+                        // owns the bitmap: that is "no text", not a crash.
+                        return emptyList()
+                    }
+                    val packed = MlNative.recognizeText(handle, buffer, readable.width, readable.height)
+                        ?: return emptyList()
+                    return parse(packed)
+                } finally {
+                    if (readable !== bitmap) readable.recycle()
+                }
+            }
         } finally {
-            if (readable !== bitmap) readable.recycle()
+            endUse()
         }
     }
 
@@ -140,20 +201,39 @@ class TextRecognizer(
         cropBottom: Int,
         rotationDegrees: Int,
     ): List<RecognizedLine>? {
-        if (handle == 0L || !buffer.isDirect) return null
-        val packed = MlNative.recognizeTextBuffer(
-            handle, buffer, width, height, rowStride, pixelStride,
-            cropLeft, cropTop, cropRight, cropBottom, rotationDegrees,
-        ) ?: return null
-        return parse(packed)
+        if (!buffer.isDirect || !beginUse()) return null
+        try {
+            synchronized(callLock) {
+                val packed = MlNative.recognizeTextBuffer(
+                    handle, buffer, width, height, rowStride, pixelStride,
+                    cropLeft, cropTop, cropRight, cropBottom, rotationDegrees,
+                ) ?: return null
+                return parse(packed)
+            }
+        } finally {
+            endUse()
+        }
     }
 
-    /** Free both networks. Idempotent. */
+    /**
+     * Free both networks. Idempotent, and safe to call while a recognise pass
+     * is running on another thread: the native destruction is deferred until
+     * the last in-flight pass returns (see the lifetime guard above), so this
+     * never frees the handle under a live native call.
+     */
     override fun close() {
-        val live = handle
-        handle = 0L
-        pixels = null
-        if (live != 0L) MlNative.destroyOcr(live)
+        val destroy = synchronized(stateLock) {
+            closeRequested = true
+            pixels = null
+            if (inFlight == 0 && handle != 0L) {
+                val live = handle
+                handle = 0L
+                live
+            } else {
+                0L
+            }
+        }
+        if (destroy != 0L) MlNative.destroyOcr(destroy)
     }
 
     private companion object {
