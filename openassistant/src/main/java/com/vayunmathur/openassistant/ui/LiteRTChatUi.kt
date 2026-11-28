@@ -44,9 +44,11 @@ import com.vayunmathur.library.util.NavBackStack
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_EXPANDED_LOWER_BOUND
 import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.openassistant.platform.copyUriToFile
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
@@ -75,7 +77,14 @@ fun LiteRTChatUi(
 
     var inputText by remember { mutableStateOf("") }
     val selectedImageUris = remember { mutableStateListOf<Uri>() }
-    val selectedImageFiles = remember { mutableStateListOf<File>() }
+    // One copy job per picked Uri, in pick order. The Uri (and its thumbnail
+    // and the enabled Send button) lands synchronously, but the file the
+    // model can read only exists once copyUriToFile finishes — so Send must
+    // await these jobs, exactly as it awaits the WAV writer. Reading a
+    // separately filled file list at Send time could capture zero files
+    // for a photo that is visibly attached, and the message then reached
+    // the model text-only (#929).
+    val selectedImageCopies = remember { mutableStateListOf<Deferred<File?>>() }
 
     val recordAudioPermission = rememberPermissionRequest(Manifest.permission.RECORD_AUDIO) { isGranted ->
         if (isGranted) {
@@ -91,12 +100,7 @@ fun LiteRTChatUi(
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris ->
         uris.forEach { uri ->
             selectedImageUris.add(uri)
-            scope.launch(Dispatchers.IO) {
-                val file = copyUriToFile(context, uri)
-                if(file != null) {
-                    withContext(Dispatchers.Main) { selectedImageFiles.add(file) }
-                }
-            }
+            selectedImageCopies.add(scope.async(Dispatchers.IO) { copyUriToFile(context, uri) })
         }
     }
 
@@ -129,7 +133,10 @@ fun LiteRTChatUi(
             val idx = selectedImageUris.indexOf(uri)
             if (idx != -1) {
                 selectedImageUris.removeAt(idx)
-                if (idx < selectedImageFiles.size) selectedImageFiles.removeAt(idx)
+                // Both lists are appended to in the same pick callback, so
+                // the same index names this Uri's copy job — even while the
+                // copy is still in flight.
+                if (idx < selectedImageCopies.size) selectedImageCopies.removeAt(idx).cancel()
             }
         }
 
@@ -138,19 +145,24 @@ fun LiteRTChatUi(
         }
 
         override fun cancelMedia() {
-            selectedImageUris.clear(); selectedImageFiles.clear()
+            selectedImageUris.clear()
+            selectedImageCopies.forEach { it.cancel() }; selectedImageCopies.clear()
             assistantViewModel.cancelRecording()
         }
 
         override fun send() {
             if (isRecording) assistantViewModel.stopRecording()
             val newConv = resources.getString(R.string.new_conversation)
-            val imagePaths = selectedImageFiles.map { it.absolutePath }
+            // Snapshot the pending copies at click time: awaiting them below
+            // binds exactly the photos shown in the composer to this message,
+            // however long their copies take (#929).
+            val pendingImageCopies = selectedImageCopies.toList()
             val textToSend = inputText
             scope.launch {
                 // Awaited rather than read: the WAV is written after stopRecording() returns, so
                 // reading the path here would dispatch one to a file that does not exist yet.
                 val audioPath = assistantViewModel.awaitRecordedAudio()
+                val imagePaths = pendingImageCopies.awaitAll().filterNotNull().map { it.absolutePath }
                 var currentId = conversationId
                 if (currentId == 0L) {
                     currentId = assistantViewModel.upsertConversation(Conversation(newConv))
@@ -158,7 +170,7 @@ fun LiteRTChatUi(
                 }
                 assistantViewModel.upsertMessage(Message(currentId, textToSend, "user", imagePaths, audioPath != null))
                 assistantViewModel.requestInference(currentId, textToSend, imagePaths, audioPath)
-                inputText = ""; selectedImageFiles.clear(); selectedImageUris.clear()
+                inputText = ""; selectedImageCopies.clear(); selectedImageUris.clear()
                 assistantViewModel.consumeRecordedAudio()
             }
         }

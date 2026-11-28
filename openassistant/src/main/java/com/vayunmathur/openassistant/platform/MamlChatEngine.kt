@@ -29,8 +29,15 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.concurrent.Executors
 
-/** One stored message, text only: media is only ever attached to the current turn. */
-data class HistoryTurn(val fromUser: Boolean, val text: String)
+/**
+ * One stored message. A user turn keeps the paths of the photos attached to
+ * it, so the picture stays part of the conversation: the engine re-encodes
+ * them with the vision tower on each turn and [fitConversation] drops the
+ * oldest turns (images included) when the whole history no longer fits.
+ * Dropping them here instead made the model answer as if no photo had ever
+ * been sent (#929).
+ */
+data class HistoryTurn(val fromUser: Boolean, val text: String, val imagePaths: List<String> = emptyList())
 
 /** Immutable value describing chat request. */
 data class ChatRequest(
@@ -75,6 +82,14 @@ open class MamlChatEngine(private val modelDir: File) : AutoCloseable {
      * with the second element carrying the load error to surface.
      */
     internal var textModelOpener: ((File) -> Pair<TextModel?, String?>)? = null
+
+    /**
+     * Behavior-preserving test seam for the vision tower: production leaves
+     * this null and encodes through [Gemma4VisionHandle]; tests substitute a
+     * fake encoder because the tower cannot load on the JVM. A null result
+     * drops that image, like a failed encode does in production.
+     */
+    internal var imageEncoder: ((String) -> FloatArray?)? = null
 
     /** The text-generation surface [MamlChatEngine] needs from the model. */
     internal interface TextModel {
@@ -145,9 +160,11 @@ open class MamlChatEngine(private val modelDir: File) : AutoCloseable {
         mutex.withLock {
             val model = withContext(engineThread) { model() } ?: return@withLock ChatResult.Unavailable
             val declarations = tools.declarations
-            val current = withContext(engineThread) { currentTurn(request) }
-            val history = request.history.map {
-                Gemma4Handle.Turn(if (it.fromUser) Gemma4Handle.Role.USER else Gemma4Handle.Role.MODEL, it.text)
+            // History turns are built on the engine thread too: encoding a
+            // kept photo runs the vision tower, which is not thread-safe.
+            val (current, history) = withContext(engineThread) {
+                val builtHistory = request.history.map { historyTurn(it) }
+                currentTurn(request) to builtHistory
             }
             val conversation = withContext(engineThread) {
                 seedPrefix(model, request.system, declarations)
@@ -265,7 +282,19 @@ open class MamlChatEngine(private val modelDir: File) : AutoCloseable {
         return Gemma4Handle.Turn(Gemma4Handle.Role.USER, request.userText, images, clips)
     }
 
+    /** A stored turn as the model sees it, attached photos encoded as vision inputs. */
+    private fun historyTurn(turn: HistoryTurn): Gemma4Handle.Turn {
+        val images = if (turn.imagePaths.isEmpty()) emptyList() else encodeImages(turn.imagePaths)
+        if (turn.imagePaths.isNotEmpty()) scheduleTowerUnload()
+        return Gemma4Handle.Turn(
+            if (turn.fromUser) Gemma4Handle.Role.USER else Gemma4Handle.Role.MODEL,
+            turn.text,
+            images,
+        )
+    }
+
     private fun encodeImages(paths: List<String>): List<FloatArray> {
+        imageEncoder?.let { encode -> return paths.mapNotNull(encode) }
         val tower = vision?.takeIf { it.isAvailable }
             ?: Gemma4VisionHandle.inDirectory(modelDir).also { vision = it }
         if (!tower.isAvailable) {

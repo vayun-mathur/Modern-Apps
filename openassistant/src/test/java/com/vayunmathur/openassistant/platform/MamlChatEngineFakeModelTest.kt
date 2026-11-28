@@ -291,6 +291,48 @@ class MamlChatEngineFakeModelTest {
         e.close()
     }
 
+    // #929: an attached photo must reach the model as a vision input on its
+    // turn, with its text — on the first message and on later ones alike.
+    // The tower cannot load on the JVM, so the fake encoder stands in for it
+    // and the fake text model captures the exact turns it was handed.
+    private fun visionEngine(fake: FakeTextModel): MamlChatEngine {
+        val e = engine(fake)
+        e.imageEncoder = { path -> FloatArray(1536) { i -> if (i == 0) path.length.toFloat() else 0f } }
+        return e
+    }
+
+    @Test fun firstMessagePhotoReachesModelAsVisionInput() = runBlocking {
+        val fake = FakeTextModel()
+        val e = visionEngine(fake)
+        val result = e.chat(
+            ChatRequest("sys", emptyList(), "what is in this photo?", imagePaths = listOf("/photos/first.jpg")),
+            tools(),
+        ) { true }
+        assertEquals(ChatResult.Reply("plain answer", halted = false), result)
+        val turn = fake.lastConversation.single()
+        assertEquals("what is in this photo?", turn.text)
+        assertEquals(1, turn.images.size, "first-message photo must be a vision input, got ${turn.images.size}")
+        assertEquals(1536, turn.images.single().size)
+        e.close()
+    }
+
+    @Test fun historyPhotoReachesModelAsVisionInputOnLaterTurns() = runBlocking {
+        val fake = FakeTextModel()
+        val e = visionEngine(fake)
+        val history = listOf(
+            HistoryTurn(true, "what is in this photo?", imagePaths = listOf("/photos/first.jpg")),
+            HistoryTurn(false, "a dog"),
+        )
+        val result = e.chat(ChatRequest("sys", history, "what colour is it?"), tools()) { true }
+        assertEquals(ChatResult.Reply("plain answer", halted = false), result)
+        val photoTurn = fake.lastConversation.first()
+        assertEquals("what is in this photo?", photoTurn.text)
+        assertEquals(1, photoTurn.images.size, "history photo must stay a vision input, got ${photoTurn.images.size}")
+        // The follow-up turn itself is text-only, as sent.
+        assertTrue(fake.lastConversation.last().images.isEmpty())
+        e.close()
+    }
+
     @Test fun historyIsTrimmedWhenItCannotFit() = runBlocking {
         val fake = FakeTextModel()
         fake.script = { _, onToken -> onToken("ok"); "ok" }

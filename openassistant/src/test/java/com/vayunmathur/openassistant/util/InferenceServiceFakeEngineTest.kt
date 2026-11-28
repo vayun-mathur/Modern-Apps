@@ -1,5 +1,7 @@
 package com.vayunmathur.openassistant.util
 
+// FIXTURE RELATIVE-TIME EXCEPTION: timestamps are seeded relative to the wall clock the code under test reads internally, so the fresh/expired/relative-time branch under test keeps its meaning; a fixed past instant would silently change that branch.
+
 import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
@@ -333,6 +335,58 @@ class InferenceServiceFakeEngineTest {
         assertEquals(2, paths.size)
         assertEquals("/static/a.jpg", paths[0])
         assertTrue(File(paths[1]).exists(), "copied image should exist: ${paths[1]}")
+    }
+
+    // #929: the first message of a conversation, photo attached. The stored
+    // user row is minutes old by the time a cold service has loaded the
+    // model, so the old 1 s recency window kept it as a text-only history
+    // echo and its photo never reached the model. The echo is now excluded
+    // by position and the photo rides the current turn.
+    @Test fun firstMessagePhotoSurvivesSlowServiceStart() {
+        val now = System.currentTimeMillis()
+        kotlinx.coroutines.runBlocking {
+            messageDao.upsert(
+                Message(31L, "what is in this photo?", "user", imagePaths = listOf("/photos/first.jpg"), timestamp = now - 300_000),
+            )
+        }
+        val fake = FakeEngine()
+        val service = startService(fake)
+        val intent = Intent(ctx, InferenceService::class.java).apply {
+            putExtra("conversation_id", 31L); putExtra("user_text", "what is in this photo?")
+            putExtra("image_paths", arrayOf("/photos/first.jpg"))
+        }
+        service.onStartCommand(intent, 0, 1)
+        await("reply") { fake.lastRequest != null && messageDao.assistantTexts(31L).contains("default reply") }
+        val req = assertNotNull(fake.lastRequest)
+        assertTrue(req.history.isEmpty(), "just-sent echo must not reappear as history: ${req.history}")
+        assertEquals(listOf("/photos/first.jpg"), req.imagePaths)
+        assertEquals("what is in this photo?", req.userText)
+    }
+
+    // #929: a photo attached to an earlier message stays part of the
+    // conversation — HistoryTurn carries imagePaths from the stored row, so
+    // a later text-only follow-up still reaches the model with the photo as
+    // a vision input on its original turn.
+    @Test fun earlierPhotoIsCarriedIntoLaterTurnHistory() {
+        val now = System.currentTimeMillis()
+        kotlinx.coroutines.runBlocking {
+            messageDao.upsert(
+                Message(32L, "what is in this photo?", "user", imagePaths = listOf("/photos/first.jpg"), timestamp = now - 300_000),
+            )
+            messageDao.upsert(Message(32L, "a dog on a beach", "assistant", timestamp = now - 290_000))
+            messageDao.upsert(Message(32L, "what colour is it?", "user", timestamp = now))
+        }
+        val fake = FakeEngine()
+        val service = startService(fake)
+        service.onStartCommand(standardIntent(32L, "what colour is it?"), 0, 1)
+        await("reply") { fake.lastRequest != null && messageDao.assistantTexts(32L).contains("default reply") }
+        val req = assertNotNull(fake.lastRequest)
+        assertEquals(2, req.history.size)
+        val photoTurn = req.history.first()
+        assertTrue(photoTurn.fromUser)
+        assertEquals("what is in this photo?", photoTurn.text)
+        assertEquals(listOf("/photos/first.jpg"), photoTurn.imagePaths)
+        assertTrue(req.imagePaths.isEmpty(), "follow-up sent no new photo: ${req.imagePaths}")
     }
 
     @Test fun customSystemPromptIsUsed() {

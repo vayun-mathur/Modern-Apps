@@ -95,7 +95,6 @@ class InferenceService : Service() {
         private const val INTENT_TIMEOUT_MILLIS = 45000L
         private const val STANDARD_INFERENCE_TIMEOUT_MILLIS = 300_000L
         private const val INTENT_QUEUE_TTL_MILLIS = 45000L
-        private const val HISTORY_RECENCY_MILLIS = 1000L
         private const val DB_WRITE_INTERVAL_MILLIS = 100L
         private const val AUDIT_OUTCOME_CHARS = 200
         private val HOST_CONFIRM = Regex("""\[HostConfirm ([^\]]+)]""")
@@ -350,10 +349,13 @@ class InferenceService : Service() {
     }
 
     private suspend fun loadHistory(conversationId: Long, userText: String): List<HistoryTurn> {
-        val cutoff = Clock.System.now().toEpochMilliseconds() - HISTORY_RECENCY_MILLIS
-        return store.history(conversationId)
-            .filter { it.text != userText || it.timestamp < cutoff }
-            .map { HistoryTurn(fromUser = it.role != "assistant", text = withA2uiBlock(it.text, it.a2ui)) }
+        val stored = store.history(conversationId)
+        // Exclude exactly the just-sent echo by position, not the old 1 s
+        // recency window: a slow first service/model load kept that echo as a
+        // text-only history turn and its photo never reached the model (#929).
+        val echoIndex = stored.indexOfLast { it.role == "user" && it.text == userText }
+        return stored.filterIndexed { index, _ -> index != echoIndex }
+            .map { HistoryTurn(it.role != "assistant", withA2uiBlock(it.text, it.a2ui), it.imagePaths) }
     }
 
     private suspend fun executeStandardInference(job: InferenceJob.Standard) {
