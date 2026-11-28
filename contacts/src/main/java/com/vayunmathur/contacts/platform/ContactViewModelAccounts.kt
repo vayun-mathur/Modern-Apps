@@ -10,6 +10,7 @@ import com.vayunmathur.contacts.R
 import com.vayunmathur.contacts.data.Contact
 import com.vayunmathur.contacts.data.LOCAL_ACCOUNT_TYPE
 import com.vayunmathur.contacts.data.NewContactAccountPolicy
+import com.vayunmathur.contacts.data.NewContactRestriction
 import com.vayunmathur.contacts.data.SIM_ACCOUNT_TYPE
 import com.vayunmathur.contacts.data.SimContactsDataSource
 import com.vayunmathur.contacts.data.isDefaultLocalAccount
@@ -88,7 +89,15 @@ internal suspend fun ContactViewModel.loadAccountsInternal(
     simInfos: List<SimContactsDataSource.SimSubscriptionInfo>? = null,
 ) {
     val app = getApplication<Application>()
-    val accountSet = queryProviderAccounts(app)
+    // The provider-accounts query is the same contacts-provider Binder
+    // call as the contact load, so it gets the same isolation (issue
+    // 926): a throwing or never-answering provider reads as "no provider
+    // accounts" instead of aborting — or wedging — the account refresh
+    // that the contact sync's loading state used to wait on.
+    val accountSet = contactSourceLoader.load(
+        sourceName = "provider-accounts",
+        timeoutMillis = contactSourceTimeoutMillis,
+    ) { queryProviderAccounts(app) } ?: mutableSetOf()
     migrateLegacyAccounts()
     val savedAccounts = loadSavedAccounts()
     migrateHiddenAccountKeys()
@@ -101,7 +110,14 @@ internal suspend fun ContactViewModel.loadAccountsInternal(
         timeoutMillis = contactSourceTimeoutMillis,
     ) { SimContactsDataSource.getSimSubscriptionInfos(app) } ?: emptyList()
     refreshSimAccounts(infos)
-    val restriction = NewContactAccountPolicy.resolve(defaultAccountSource)
+    // The default-account facts are provider/SIM queries too (including
+    // SimContacts.getSimAccounts on Android 16+): isolate them the same
+    // way, so a wedged query reads as "no restriction" instead of
+    // aborting the accounts list after the contacts have published.
+    val restriction: NewContactRestriction? = contactSourceLoader.load(
+        sourceName = "default-account",
+        timeoutMillis = contactSourceTimeoutMillis,
+    ) { NewContactAccountPolicy.resolve(defaultAccountSource) }
     newContactRestrictionState.value = restriction
     // The cloud default is where new contacts now go, so offer it even when it holds
     // no contacts yet (it would otherwise be missing from every account picker).
@@ -147,6 +163,10 @@ internal fun ContactViewModel.newContactDefaultAccount(): ContactAccount {
     return ContactAccount(restriction.cloudAccount.name, restriction.cloudAccount.type)
 }
 
+// Broad catch is deliberate: OEM contacts providers throw undocumented
+// RuntimeExceptions beyond SQLException/SecurityException, and a failed
+// accounts query must read as "no provider accounts" (issue 926).
+@Suppress("TooGenericExceptionCaught")
 private suspend fun ContactViewModel.queryProviderAccounts(
     app: Application,
 ): MutableSet<ContactAccount> {
@@ -171,11 +191,7 @@ private suspend fun ContactViewModel.queryProviderAccounts(
                 accountSet.add(ContactAccount(name, type))
             }
         }
-    } catch (e: android.database.SQLException) {
-        Log.error("ContactViewModel", "Error querying raw contacts for accounts", e)
-    } catch (e: SecurityException) {
-        Log.error("ContactViewModel", "Error querying raw contacts for accounts", e)
-    } catch (e: IllegalArgumentException) {
+    } catch (e: Exception) {
         Log.error("ContactViewModel", "Error querying raw contacts for accounts", e)
     }
     return accountSet

@@ -433,8 +433,6 @@ class ContactViewModel internal constructor(
 
     private suspend fun refreshContactsFromSystem() {
         val app = getApplication<Application>()
-        migrateNoYearEventDates()
-        migrateBirthdayCalendarToUtc()
         // Issue 926: device and SIM are independent sources. Before this,
         // the two ran sequentially and only the merged list was published,
         // so a SIM query that never answered (the LineageOS IccProvider
@@ -448,6 +446,23 @@ class ContactViewModel internal constructor(
             timeoutMillis = contactSourceTimeoutMillis,
             publish = { allContactsState.value = it },
         )
+        // Loading resolves as soon as the contacts themselves land. The
+        // one-time migrations and the account refresh below are ancillary:
+        // they query the same providers (and the calendar provider), so a
+        // wedged one must not hold the loaded flag — and with it both
+        // tabs' loading state — hostage after the list has published.
+        _hasLoadedContacts.value = true
+        // Best-effort one-time migrations, isolated like every other
+        // provider call: a hanging migration is abandoned (its DataStore
+        // flag stays unset, so a later sync retries it) instead of
+        // blocking the load it used to precede.
+        contactSourceLoader.load(
+            sourceName = "contact-migrations",
+            timeoutMillis = contactSourceTimeoutMillis,
+        ) {
+            migrateNoYearEventDates()
+            migrateBirthdayCalendarToUtc()
+        }
         // Refresh SIM account labels for UI (type|name -> display). The
         // subscription enumeration is itself a telephony Binder call, so
         // it gets the same isolation/timeout, and its result is reused

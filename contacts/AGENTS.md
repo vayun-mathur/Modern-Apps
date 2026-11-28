@@ -5,7 +5,7 @@
 _Install: ./install contacts (dev by default)._
 - Gradle: :contacts / dir: contacts/
 - Package roots present: ui, data, intents, auth
-- Entry files: MainActivity.kt (no Route.kt — list/detail/edit flow with dialogs + pick activities)
+- Entry files: MainActivity.kt, Route.kt, Navigation.kt
 - Deps: (none — contacts provider + account framework only)
 - Metadata: metadata_data/contacts.md (present)
 - Rust: no / screenshotTest: yes
@@ -19,6 +19,7 @@ _Install: ./install contacts (dev by default)._
 **Architecture / data-flow:** `ui/` list/detail/edit pages (+ `ui/dialogs/`) → `util/ContactViewModel` (+ split `Accounts`/`Draft` helpers, `ContactsUiContract`) → `data/` models over the system contacts provider (`Contact`/`ContactGroup`, `ContactPrefill`, `SimContacts`); persistence is the provider, not Room — there is no database here.
 **Entry points + reading order:** `MainActivity.kt` → `ui/ContactListScreen.kt` → `ui/ContactDetailsPage.kt` → `ui/EditContactPage.kt` → `util/ContactViewModel.kt` → `data/Contact.kt`.
 **Gotchas:**
+- Contact load is per-source isolated (`data/ContactSourceLoader`): device and SIM contacts publish independently under a per-source timeout, the loaded flag flips as soon as the contacts land, and the one-time migrations plus provider-accounts/default-account refresh run after that under the same timeout — a throwing or never-answering SIM/provider source reads as empty for that source only and never blanks the list or holds the loading state
 - `util/` is NOT a closed package root — don't add more files there
 - Write paths go through the contacts provider + account (`auth/`), not a local DB — account picker dialogs matter
 - `ImportActivity` + `ImportVcfScreen` handle VIEW intents; `ContactListPick`/`ContactItemPick` serve picker callers
@@ -80,6 +81,9 @@ _Install: ./install contacts (dev by default)._
 - com/vayunmathur/contacts/ui/dialogs/AddToGroupDialog.kt
 - com/vayunmathur/contacts/ui/dialogs/EventDatePickerDialog.kt
 - com/vayunmathur/contacts/ui/dialogs/EventDeleteConfirmDialog.kt
+- com/vayunmathur/contacts/ui/dialogs/AddGroupDialog.kt
+- com/vayunmathur/contacts/ui/dialogs/DeleteGroupDialog.kt
+- com/vayunmathur/contacts/ui/dialogs/DeleteSelectedContactsDialog.kt
 ### intents/ — assistant IPC
 - com/vayunmathur/contacts/intents/GetIntent.kt
 - com/vayunmathur/contacts/intents/InsertIntent.kt
