@@ -106,7 +106,7 @@ protobufVersion = "4.36.2"
 # over grpc-okhttp; the messages are generated as protobuf-lite to match the repo's other
 # protobuf module (:youpipe:extractor). These versions must stay mutually compatible with
 # protobufVersion above and are the most likely first build-friction point.
-grpc = "1.85.1"
+grpc = "1.86.0"
 grpcKotlin = "1.5.0"
 # @javax.annotation.Generated referenced by grpc-java generated stubs.
 javaxAnnotation = "1.3.2"
@@ -115,7 +115,7 @@ jsr305 = "3.0.2"
 # `measure_cv` crate — see measure/src/main/rust — so no third-party native CV
 # library ships in the APK at all.)
 zxing = "3.5.4"
-libphonenumber = "9.0.43"
+libphonenumber = "9.0.44"
 brotli = "0.1.2"
 # Pooled HTTP for :library:network's range-fetch path (issue 815): connection
 # reuse + HTTP/2 multiplexing at MapLibre's 20/host concurrency, which per-request
@@ -131,7 +131,7 @@ apksig = "9.4.1"
 # =============================================================================
 
 # JavaScript engines & HTML
-quickjs = "1.0.18"
+quickjs = "1.0.19"
 chicory = "1.7.5"
 
 # Git
@@ -143,7 +143,7 @@ sqldelight = "2.4.1"
 # Desktop JNA binding to the e2ee Rust C ABI (Phase 1D)
 jna = "5.19.1"
 # Ktor client for KMP RelayTransport actuals (Phase 1C)
-ktor = "3.6.1"
+ktor = "3.6.2"
 # Pinned at 0.101.x: the CDSI enclave identity is compiled into the
 # native library, and 0.86.5/0.92.0 carry a retired MRENCLAVE, so contact discovery requests
 # /v1/{stale}/discovery and the server answers 404. 0.101.x also matches the checked-out libsignal source,
@@ -157,9 +157,9 @@ ringrtcAndroid = "2.72.1"
 
 # XML
 kxml2 = "2.3.0"
-robolectric = "4.18"
+robolectric = "4.18.1"
 # Plain-JVM mocks for Android framework classes (Application, Context) in unit tests.
-mockito = "5.24.0"
+mockito = "5.25.0"
 
 # Payments, telephony & auth
 stripe = "23.26.0"
