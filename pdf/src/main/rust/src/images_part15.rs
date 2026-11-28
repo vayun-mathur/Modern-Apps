@@ -155,6 +155,50 @@ mod dct_decode_tests {
         assert_eq!(inverted[3], 255, "alpha is untouched by /Decode");
     }
 
+    /// Issue #924: an Adobe YCCK (APP14 transform 2) CMYK JPEG reaches the CMYK arm
+    /// with ALL FOUR samples in inverted-ink polarity (verified against the real
+    /// DeviceCMYK/DCTDecode images in the reported PETA certificate, whose
+    /// jpeg-decoder samples match libjpeg's inverted Adobe output byte for byte).
+    /// The old code inverted CMY but not K, so each channel came out as
+    /// A*(255-A_K)/255 instead of A*A_K/255 and dark colours solarised.
+    ///
+    /// Reuses the cyan fixture's entropy (raw planes 0,255,255,255) with the
+    /// transform byte patched to 2: jpeg-decoder's YCCK conversion yields
+    /// (178, 0, 225, 0) — inverted ink for a pixel whose true ink is
+    /// (77, 255, 30, 255), i.e. full-strength K, i.e. black. Without the K
+    /// inversion the same pixel renders (178, 0, 225), a bright magenta.
+    #[test]
+    fn ycck_k_is_inverted_with_the_other_components() {
+        let mut jpeg = cyan_cmyk_jpeg();
+        let adobe = jpeg.windows(5).position(|w| w == b"Adobe").expect("fixture has an APP14 segment");
+        jpeg[adobe + 11] = 2;
+        assert_eq!(jpeg_adobe_transform(&jpeg), Some(2), "fixture must be Adobe transform 2");
+
+        let (w, h, rgba) = decode_jpeg_rgba_decoded(&jpeg, false).expect("fixture must decode");
+        assert_eq!((w, h), (1, 1));
+        assert_eq!(
+            &rgba[0..3], &[0, 0, 0],
+            "full K in a YCCK JPEG is black; (178, 0, 225) would mean K kept the wrong polarity"
+        );
+
+        // The gray (soft-mask) path shares the polarity rule.
+        let (_, _, gray) = decode_jpeg_gray(&jpeg).expect("fixture must decode");
+        assert_eq!(gray, vec![0], "a black YCCK pixel has zero luminance in the mask path too");
+
+        // End to end through the image XObject path used for the reported file.
+        let doc = Document::with_version("1.7");
+        let dict = dictionary! {
+            "Type" => "XObject", "Subtype" => "Image",
+            "Width" => 1, "Height" => 1, "BitsPerComponent" => 8,
+            "ColorSpace" => "DeviceCMYK",
+            "Filter" => "DCTDecode",
+        };
+        let out = extract_image(&doc, &Stream::new(dict, jpeg), 0xFF00_0000, &HashMap::new())
+            .expect("a YCCK image must not be dropped");
+        assert_eq!(out.format, 0, "a CMYK JPEG belongs on the Rust decode path, not the passthrough");
+        assert_eq!(&out.data[0..3], &[0, 0, 0]);
+    }
+
     /// End to end: the same JPEG in an image XObject with `/Decode [1 0 1 0 1 0 1 0]`
     /// must come back as decoded RGBA, NOT as `format: 1` passthrough bytes — Android's
     /// decoder has no way to apply /Decode, so the passthrough was the negative.

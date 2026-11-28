@@ -65,21 +65,30 @@ pub(crate) fn decode_jpeg_rgba_decoded(data: &[u8], invert_components: bool) -> 
             out
         }
         jpeg_decoder::PixelFormat::CMYK32 => {
-            // jpeg-decoder has ALREADY un-inverted the Adobe convention before we see
-            // these bytes: `color_convert_line_cmyk` emits 255-c/255-m/255-y/255-k, and
-            // `color_convert_line_ycck` emits correct CMY but 255-k. So inverting all
-            // four again produced a lurid negative for transform 0, and blew out blacks
-            // for transform 2. Correct residual correction: invert CMY only for YCCK
-            // (transform 2), and never invert K.
+            // The two Adobe transforms reach us in DIFFERENT polarities, verified
+            // against real Photoshop/YCCK files (issue #924, the PETA certificate:
+            // DeviceCMYK DCTDecode, APP14 transform 2):
+            //  - transform 0 (`color_convert_line_cmyk`) emits 255 minus each stored
+            //    sample, and Adobe stores CMYK inverted, so those bytes are already
+            //    true ink amounts.
+            //  - transform 2 (`color_convert_line_ycck`) converts the YCC triple —
+            //    which Adobe computed FROM the inverted CMY — back to (255-C, 255-M,
+            //    255-Y), and emits 255 minus the stored K, which is likewise the
+            //    inverted K. All four bytes are therefore inverted ink amounts.
+            // Inverting only CMY for YCCK (the previous code) left K in the wrong
+            // polarity: RGB came out as A*(255-A_K)/255 instead of A*A_K/255 per
+            // channel (A = inverted ink), which brightens every shadow toward a
+            // solarised magenta — exactly the reported colour glitch. Invert all
+            // four for YCCK so the CMYK->RGB conversion below sees true ink.
             if pixels.len() < (w as usize * h as usize * 4) { return None; }
-            let invert_cmy = jpeg_adobe_transform(data) == Some(2);
+            let invert_all = jpeg_adobe_transform(data) == Some(2);
             let mut out = vec![0u8; dw * dh * 4];
             for y in 0..dh {
                 for x in 0..dw {
                     let s = src(x, y) * 4;
                     let (mut c, mut m, mut yy) = (pixels[s], pixels[s+1], pixels[s+2]);
                     let mut k = pixels[s+3];
-                    if invert_cmy { c = 255 - c; m = 255 - m; yy = 255 - yy; }
+                    if invert_all { c = 255 - c; m = 255 - m; yy = 255 - yy; k = 255 - k; }
                     // /Decode applies to the finished samples, so it comes after the
                     // Adobe/YCCK correction above and covers K as well as CMY.
                     if invert_components { c = 255 - c; m = 255 - m; yy = 255 - yy; k = 255 - k; }
@@ -232,14 +241,17 @@ pub(crate) fn decode_jpeg_gray(data: &[u8]) -> Option<(u32,u32,Vec<u8>)> {
             // A CMYK JPEG used as an /SMask previously fell into `_ =>`, and the caller's
             // RGBA fallback then took the R channel as luminance. Convert properly here.
             if pixels.len() < wh * 4 { return None; }
-            let invert_cmy = jpeg_adobe_transform(data) == Some(2);
+            // Same YCCK polarity as `decode_jpeg_rgba_decoded`: all four samples
+            // are inverted ink for transform 2, so K is inverted too (issue #924).
+            let invert_all = jpeg_adobe_transform(data) == Some(2);
             let mut out = vec![0u8; dw * dh];
             for y in 0..dh {
                 for x in 0..dw {
                     let s = src(x, y) * 4;
                     let (mut c, mut m, mut yy) = (pixels[s], pixels[s+1], pixels[s+2]);
-                    let k = pixels[s+3] as u16;
-                    if invert_cmy { c = 255 - c; m = 255 - m; yy = 255 - yy; }
+                    let mut k = pixels[s+3];
+                    if invert_all { c = 255 - c; m = 255 - m; yy = 255 - yy; k = 255 - k; }
+                    let k = k as u16;
                     let kf = 255u16.saturating_sub(k);
                     let r = (255u16 - c as u16) * kf / 255;
                     let g = (255u16 - m as u16) * kf / 255;
