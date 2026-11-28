@@ -25,7 +25,6 @@ import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.ModalDrawerSheet
 import com.vayunmathur.library.ui.ModalNavigationDrawer
 import com.vayunmathur.library.ui.OutlinedButton
-import com.vayunmathur.library.ui.Scaffold
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.rememberDrawerState
 import com.vayunmathur.library.ui.isExpandedWidth
@@ -87,9 +86,7 @@ fun HomePage(
         // Room hasn't answered yet. Hold a plain surface rather than falling
         // through to EmptyHome, which would flash the location chooser on
         // every cold start before the saved rows arrive.
-        // RAW SCAFFOLD EXCEPTION: cold-start placeholder — a bare, bar-less,
-        // content-less surface. No shared scaffold applies (they all draw chrome).
-        Scaffold(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh) {}
+        AppScaffold(topBar = {}, containerColor = MaterialTheme.colorScheme.surfaceContainerHigh) {}
         return
     }
 
@@ -198,12 +195,11 @@ internal fun ForecastScaffold(
     nowEpochSec: Long,
     onOpenMap: (WeatherMetric, String?) -> Unit,
     modifier: Modifier = Modifier,
+    /** Two card columns instead of one stretched column (medium/expanded widths). */
+    wide: Boolean = false,
 ) {
-    Scaffold(
-        // RAW SCAFFOLD EXCEPTION: bespoke full-bleed home. The forecast
-        // scrolls under a floating in-content MainSearchBar (there is no top
-        // app bar), inside a ModalNavigationDrawer, and the
-        // body consumes the scaffold insets itself. No shared scaffold fits.
+    AppScaffold(
+        topBar = {},
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
     ) { paddingValues ->
@@ -216,6 +212,7 @@ internal fun ForecastScaffold(
             precipitationNowcast = precipitationNowcast,
             nowEpochSec = nowEpochSec,
             onOpenMap = onOpenMap,
+            wide = wide,
         )
     }
 }

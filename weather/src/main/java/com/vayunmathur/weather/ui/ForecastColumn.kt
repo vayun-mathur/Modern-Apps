@@ -55,6 +55,8 @@ internal fun ForecastColumn(
     precipitationNowcast: String?,
     nowEpochSec: Long,
     onOpenMap: (WeatherMetric, String?) -> Unit,
+    /** Medium/expanded widths: show the cards in two columns instead of one stretched column. */
+    wide: Boolean = false,
 ) {
     var graphMetric by remember { mutableStateOf<WeatherMetric?>(null) }
 
@@ -115,7 +117,77 @@ internal fun ForecastColumn(
                     tempUnit = units.temperature,
                 )
             }
-            Column(
+            // Wide windows show more at once: the forecast strips in one
+            // column, the metric blocks in another, instead of one phone
+            // column stretched across the whole width. Compact keeps the
+            // single column below (same code path as before).
+            if (wide && current != null && resolved != null) {
+                androidx.compose.foundation.layout.Row(
+                    modifier = Modifier.padding(
+                        start = 16.dp,
+                        end = 16.dp,
+                        top = 24.dp,
+                        bottom = paddingValues.calculateBottomPadding(),
+                    ),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(14.dp),
+                    ) {
+                        if (selected == null) {
+                            SummaryCard(forecast = forecast, tempUnit = units.temperature)
+                        }
+                        if (forecast.hourly != null) {
+                            HourlyCard(
+                                hourly = forecast.hourly,
+                                tempUnit = units.temperature,
+                                utcOffsetSeconds = forecast.utcOffsetSeconds,
+                                use24Hour = units.use24Hour,
+                                selectedIsoTime = (selected as? SelectedDateOrTime.Time)?.isoTime,
+                                onHourSelected = { actions.toggleTime(it) },
+                                scrollToIsoDate = (selected as? SelectedDateOrTime.Day)?.isoDate,
+                                nowIsoHour = forecast.current?.time?.take(13)?.let { "$it:00" },
+                                nowEpochSec = nowEpochSec,
+                            )
+                        }
+                        if (daily != null) {
+                            DailyCard(
+                                daily = daily,
+                                tempUnit = units.temperature,
+                                selectedIsoDate = (selected as? SelectedDateOrTime.Day)?.isoDate,
+                                onDaySelected = { actions.toggleDay(it) },
+                                todayIsoDate = forecast.current?.time?.substringBefore('T'),
+                            )
+                        }
+                    }
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(14.dp),
+                    ) {
+                        WeatherBlocks(
+                            current = resolved.blockCurrent,
+                            uvIndex = resolved.uvIndexMax,
+                            air = state.airQuality,
+                            sunriseEpochSec = resolved.sunriseIso?.let { parseLocalIsoToEpochSec(it, forecast.utcOffsetSeconds) },
+                            sunsetEpochSec = resolved.sunsetIso?.let { parseLocalIsoToEpochSec(it, forecast.utcOffsetSeconds) },
+                            precipitationMm = resolved.precipitationSum,
+                            precipitationNowcast = precipitationNowcast,
+                            daylightDurationSec = resolved.daylightDurationSec,
+                            moonPhase = resolved.moonPhase,
+                            moonriseEpochSec = resolved.moonriseIso?.let { parseLocalIsoToEpochSec(it, forecast.utcOffsetSeconds) },
+                            moonsetEpochSec = resolved.moonsetIso?.let { parseLocalIsoToEpochSec(it, forecast.utcOffsetSeconds) },
+                            onMetricSelected = { graphMetric = it },
+                            tempUnit = units.temperature,
+                            windUnit = units.wind,
+                            pressureUnit = units.pressure,
+                            use24Hour = units.use24Hour,
+                            nowEpochSec = nowEpochSec,
+                            utcOffsetSeconds = forecast.utcOffsetSeconds,
+                        )
+                    }
+                }
+            } else Column(
                 // Include the navigation-bar inset so the last cards (Air quality /
                 // Pollen) clear the system nav bar and can scroll fully into view.
                 modifier = Modifier.padding(

@@ -144,6 +144,24 @@ class ComposeScreensTest {
         rule.waitForIdle()
     }
 
+    @Test fun forecastColumnWide() {
+        rule.setContent {
+            ForecastColumn(
+                state = LocationUiState(location = loc(), forecast = forecast()),
+                units = DisplayUnits(),
+                actions = WeatherActions.Noop,
+                drawerState = rememberDrawerState(DrawerValue.Closed),
+                paddingValues = PaddingValues(0.dp),
+                precipitationNowcast = null,
+                nowEpochSec = 1760000000L,
+                onOpenMap = { _, _ -> },
+                wide = true,
+            )
+        }
+        rule.onNodeWithText("Berlin", substring = true).assertIsDisplayed()
+        rule.onAllNodesWithText("25°")[0].assertIsDisplayed()
+    }
+
     @Test fun homeScreenCompact() {
         rule.setContent {
             HomeScreen(

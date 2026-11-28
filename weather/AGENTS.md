@@ -37,6 +37,7 @@ _Install: ./install weather (dev by default)._
 - com/vayunmathur/weather/data/WeatherRefreshWorker.kt
 - com/vayunmathur/weather/data/SavedLocation.kt
 ### domain/ + domain/map/ — pure formatting + map metadata (no Android)
+- com/vayunmathur/weather/domain/HomeLayout.kt — pure home width breakpoints (600/840dp): compact = modal drawer + single column, medium = full-width two-column forecast, expanded = bounded 280–360dp locations panel + two-column forecast; the home screen sizes itself from its available width, not the activity window
 - com/vayunmathur/weather/domain/WmoCode.kt
 - com/vayunmathur/weather/domain/UnitFormat.kt
 - com/vayunmathur/weather/domain/DateTimeFormat.kt

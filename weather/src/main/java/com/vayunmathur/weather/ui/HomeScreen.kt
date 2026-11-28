@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import com.vayunmathur.library.ui.AppScaffold
@@ -64,6 +65,10 @@ import com.vayunmathur.weather.domain.parseLocalIsoToEpochSec
 import com.vayunmathur.weather.domain.resolveConditions
 import com.vayunmathur.weather.platform.WeatherActions
 import com.vayunmathur.weather.platform.WeatherViewModel
+import com.vayunmathur.weather.domain.forecastColumnCount
+import com.vayunmathur.weather.domain.homeLayoutForWidthDp
+import com.vayunmathur.weather.domain.homeUsesPermanentLocationsPanel
+import com.vayunmathur.weather.domain.locationsPanelWidthDp
 import com.vayunmathur.weather.platform.precipitationNowcast
 import com.vayunmathur.weather.platform.rememberDisplayUnits
 import kotlinx.coroutines.delay
@@ -95,17 +100,56 @@ fun HomeScreen(
     val scope = rememberCoroutineScope()
     BackHandler(enabled = drawerState.isOpen) { scope.launch { drawerState.close() } }
 
-    // Expanded windows (large tablets, desktop) pin the locations list as a
-    // permanent side panel next to the forecast instead of hiding it in a modal
-    // drawer — there is room for both, and picking another location without
-    // losing the current forecast is the point of the wide layout. The panel
-    // fills a fraction of the window rather than a fixed dp so it scales from
-    // an 840dp tablet to a full desktop window.
-    if (isExpandedWidth()) {
-        Row(modifier = Modifier.fillMaxSize()) {
-            Box(modifier = Modifier.fillMaxWidth(0.35f).fillMaxHeight()) {
-                drawerContent()
+    // Lay out for the width actually available here, not the activity
+    // window: hosted in a pane, this screen must size itself to the pane.
+    // (The released squeeze came from the opposite assumption upstream —
+    // the navigation host confined this screen to a list pane while it
+    // still laid out as if it owned the whole window.)
+    androidx.compose.foundation.layout.BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val availableWidthDp = maxWidth.value.toInt()
+        val layout = homeLayoutForWidthDp(availableWidthDp)
+        val wide = forecastColumnCount(layout) > 1
+
+        // Expanded windows (large tablets, desktop) pin the locations list
+        // as a permanent side panel next to the forecast instead of hiding
+        // it in a modal drawer — there is room for both, and picking another
+        // location without losing the current forecast is the point of the
+        // wide layout. The panel is a bounded list width (280–360dp), so
+        // the forecast keeps the majority of the window at any size.
+        if (homeUsesPermanentLocationsPanel(layout)) {
+            Row(modifier = Modifier.fillMaxSize()) {
+                Box(
+                    modifier = Modifier
+                        .width(locationsPanelWidthDp(availableWidthDp).dp)
+                        .fillMaxHeight(),
+                ) {
+                    drawerContent()
+                }
+                ForecastScaffold(
+                    state = state,
+                    units = units,
+                    actions = actions,
+                    drawerState = drawerState,
+                    precipitationNowcast = precipitationNowcast,
+                    nowEpochSec = nowEpochSec,
+                    onOpenMap = onOpenMap,
+                    wide = wide,
+                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                )
             }
+            return@BoxWithConstraints
+        }
+
+        ModalNavigationDrawer(
+            drawerState = drawerState,
+            drawerContent = {
+                ModalDrawerSheet(
+                    drawerContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                ) {
+                    drawerContent()
+                }
+            },
+        ) {
             ForecastScaffold(
                 state = state,
                 units = units,
@@ -114,30 +158,8 @@ fun HomeScreen(
                 precipitationNowcast = precipitationNowcast,
                 nowEpochSec = nowEpochSec,
                 onOpenMap = onOpenMap,
-                modifier = Modifier.weight(1f).fillMaxHeight(),
+                wide = wide,
             )
         }
-        return
-    }
-
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            ModalDrawerSheet(
-                drawerContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-            ) {
-                drawerContent()
-            }
-        },
-    ) {
-        ForecastScaffold(
-            state = state,
-            units = units,
-            actions = actions,
-            drawerState = drawerState,
-            precipitationNowcast = precipitationNowcast,
-            nowEpochSec = nowEpochSec,
-            onOpenMap = onOpenMap,
-        )
     }
 }
