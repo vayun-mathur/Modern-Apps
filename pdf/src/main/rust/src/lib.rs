@@ -95,6 +95,7 @@ mod reference_diff_tests;
 mod perf_tests;
 #[cfg(test)]
 mod robustness_tests;
+#[cfg(test)] mod issue942_tests;
 #[cfg(test)] mod cov_geometry_tests;
 #[cfg(test)] mod cov_outlines_tests;
 #[cfg(test)] mod cov_interpret_tests;

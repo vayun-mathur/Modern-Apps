@@ -22,6 +22,8 @@ _Install: ./install pdf (dev by default)._
 - Started-with-intent launches `finish()` on back instead of returning to the picker; in-app launches reset to the picker
 - Document, frame, and edit code (`FrameGeometry`, `FrameImageOps`, `SafePdfDocumentEdits`, `SafePdfPrimitives`, the `SafePdf*` wrappers) is in `platform/`; `ui/` is `SafePdf*` + capture/crop/cut-glue screens; there is no `domain/` root
 - `util/` holds only `PdfNative` (the Rust engine bridge) — don't add more files there; the capture model is in `data/`
+- Search-index prewarm at open is page-count gated (`SafePdfDocument.MAX_PREWARM_PAGES`, 256): opening a document never eagerly interprets the whole book; larger documents build the same index lazily on first search
+- Adobe YCCK (APP14 transform 2) CMYK JPEGs reach the Rust decoder with all four samples in inverted-ink polarity; the CMYK32 arm inverts all four before converting (transform 0 samples are already true ink)
 
 ## Key files
 ### Root — entry + navigation

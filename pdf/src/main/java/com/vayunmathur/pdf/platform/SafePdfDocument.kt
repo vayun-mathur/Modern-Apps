@@ -259,9 +259,23 @@ class SafePdfDocument private constructor(
     /** Case-insensitive full-text search across all pages. */
     suspend fun searchLegacy(query: String): List<SafeSearchMatch> = search(query, false)
 
-    /** Prebuild the search text index so the first query is instant. */
+    /**
+     * Prebuild the search text index so the first query is instant — but
+     * only for documents where that is cheap (issue #942). Building the
+     * index interprets *every* page and retains a per-glyph span table for
+     * the whole book in the native index cache. The reported document is a
+     * 940-page pdfTeX book: on a clean host that is ~35 s of interpretation
+     * and ~74 MB of span tuples (plus the parsed document) committed at
+     * open, before the first page can be useful — and on a phone, with the
+     * release profile's `panic = "abort"`, any failure in that eager path
+     * kills the process instead of degrading to a failed page. Searching a
+     * large document still builds the same index, lazily, on the first
+     * query, where the wait belongs to an explicit user action.
+     */
     suspend fun prewarmSearch() = withContext(Dispatchers.IO) {
-        PdfNative.buildSearchIndex(documentHandle)
+        if (shouldPrewarmSearch(pageCount)) {
+            PdfNative.buildSearchIndex(documentHandle)
+        }
     }
 
     /** Serialize this document encrypted with the given passwords, or null. */
@@ -271,6 +285,18 @@ class SafePdfDocument private constructor(
     /** Shared constants and helpers for SafePdfDocument. */
     companion object {
         private const val TAG = "SafePdfDocument"
+
+        /**
+         * Largest page count whose search index is built eagerly at open
+         * (see [prewarmSearch], issue #942). Well above a pamphlet or a
+         * paper, well below a book: ~256 pages of dense text is a few
+         * seconds of interpretation and a few MB of retained spans.
+         */
+        internal const val MAX_PREWARM_PAGES = 256
+
+        /** Whether opening a [pageCount]-page document prewarms its search index. */
+        internal fun shouldPrewarmSearch(pageCount: Int): Boolean =
+            pageCount in 0..MAX_PREWARM_PAGES
         private const val MAX_CACHED_PAGES = 12
         /**
          * Rough per-primitive retained cost, in bytes. `FillPath` holds `List<List<Offset>>`
